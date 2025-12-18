@@ -44,7 +44,7 @@ async def get_current_device(
         raise HTTPException(status_code=401, detail="missing device token")
 
     scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "device" or not token:
+    if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="invalid device token")
 
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()

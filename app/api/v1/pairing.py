@@ -57,6 +57,7 @@ class PairingClaimIn(BaseModel):
 
 class PairingClaimOut(BaseModel):
     device_id: int
+    owner_user_id: int
     device_token: str  # nur EINMAL ausgeben
 
 
@@ -150,5 +151,6 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
 
     return PairingClaimOut(
         device_id=device.id,
+        owner_user_id=device.owner_user_id,
         device_token=token_plain,
     )
