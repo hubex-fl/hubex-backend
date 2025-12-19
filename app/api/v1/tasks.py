@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, List, Literal
-import json
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
@@ -10,12 +10,12 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device
+from app.api.v1.validators import validate_json_object
 from app.db.models.device import Device
 from app.db.models.tasks import ExecutionContext, Task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-MAX_JSON_BYTES = 16 * 1024
 MIN_LEASE_SECONDS = 5
 MAX_LEASE_SECONDS = 600
 TASK_STATUS_QUEUED = "queued"
@@ -25,15 +25,6 @@ TERMINAL_STATUSES = {"done", "failed", "canceled"}
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _validate_json_size(obj: Dict[str, Any], label: str) -> None:
-    try:
-        payload_bytes = len(json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=422, detail=f"{label} must be JSON object")
-    if payload_bytes > MAX_JSON_BYTES:
-        raise HTTPException(status_code=413, detail=f"{label} too large")
 
 
 class ContextHeartbeatIn(BaseModel):
@@ -55,6 +46,7 @@ class TaskPollOut(BaseModel):
     created_at: datetime
     lease_expires_at: datetime
     execution_context_id: Optional[int]
+    lease_token: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -63,6 +55,7 @@ class TaskCompleteIn(BaseModel):
     status: Literal["done", "failed", "canceled"]
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    lease_token: str
 
 
 class TaskCompleteOut(BaseModel):
@@ -83,8 +76,8 @@ async def context_heartbeat(
     device: Device = Depends(get_current_device),
 ):
     meta = data.meta or {}
-    _validate_json_size(data.capabilities, "capabilities")
-    _validate_json_size(meta, "meta")
+    validate_json_object(data.capabilities, "capabilities")
+    validate_json_object(meta, "meta")
     now = _now_utc()
     stmt = (
         insert(ExecutionContext)
@@ -153,6 +146,7 @@ async def poll_tasks(
         task.status = TASK_STATUS_IN_FLIGHT
         task.claimed_at = now
         task.lease_expires_at = lease_expires_at
+        task.lease_token = secrets.token_urlsafe(16)
     await db.commit()
 
     return [
@@ -163,6 +157,7 @@ async def poll_tasks(
             created_at=task.created_at,
             lease_expires_at=task.lease_expires_at,
             execution_context_id=task.execution_context_id,
+            lease_token=task.lease_token,
         )
         for task in tasks
     ]
@@ -176,7 +171,7 @@ async def complete_task(
     device: Device = Depends(get_current_device),
 ):
     if data.result is not None:
-        _validate_json_size(data.result, "result")
+        validate_json_object(data.result, "result")
     now = _now_utc()
     res = await db.execute(
         select(Task)
@@ -192,6 +187,10 @@ async def complete_task(
         raise HTTPException(status_code=409, detail="task not in flight")
     if task.lease_expires_at is None or task.lease_expires_at <= now:
         raise HTTPException(status_code=409, detail="task lease expired")
+    if not data.lease_token:
+        raise HTTPException(status_code=409, detail="task lease token required")
+    if task.lease_token != data.lease_token:
+        raise HTTPException(status_code=409, detail="task lease token mismatch")
     task.status = data.status
     task.completed_at = now
     task.result = data.result
@@ -204,6 +203,7 @@ async def complete_task(
 async def renew_task(
     task_id: int,
     lease_seconds: int = Query(60),
+    lease_token: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     device: Device = Depends(get_current_device),
 ):
@@ -221,6 +221,8 @@ async def renew_task(
         raise HTTPException(status_code=409, detail="task not in flight")
     if task.lease_expires_at is None or task.lease_expires_at <= now:
         raise HTTPException(status_code=409, detail="task lease expired")
+    if lease_token and task.lease_token != lease_token:
+        raise HTTPException(status_code=409, detail="task lease token mismatch")
     task.lease_expires_at = now + timedelta(seconds=lease_seconds)
     await db.commit()
     return TaskRenewOut(id=task.id, lease_expires_at=task.lease_expires_at)

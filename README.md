@@ -137,6 +137,7 @@ Limits (MVP):
 - In-memory rate limits are not applied to tasks.
 - Idempotency is enforced per client_id + idempotency_key (partial unique in Postgres).
   Reusing the same idempotency_key returns the existing task (200).
+- Poll returns a `lease_token` and clamps `lease_seconds` to 5..600; expired leases re-queue tasks.
 
 Client context heartbeat (device token):
 

@@ -1,6 +1,5 @@
 ﻿from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
@@ -11,6 +10,7 @@ from app.api.deps import get_db
 from app.api.deps_auth import get_current_device, get_current_user
 from app.db.models.device import Device  # NUR das echte Model importieren
 from app.db.models.user import User
+from app.api.v1.validators import validate_json_object
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 
@@ -151,13 +151,6 @@ async def _get_owned_device(
     return device
 
 
-def _validate_json_size(obj: Dict[str, Any], label: str) -> None:
-    try:
-        payload_bytes = len(json.dumps(obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=422, detail=f"{label} must be JSON object")
-    if payload_bytes > 16 * 1024:
-        raise HTTPException(status_code=413, detail=f"{label} too large")
 
 
 @router.get("/{device_id}/telemetry/recent", response_model=list[UserTelemetryOut])
@@ -221,7 +214,7 @@ async def create_task_for_device(
     user: User = Depends(get_current_user),
 ):
     await _get_owned_device(device_id, db, user)
-    _validate_json_size(data.payload, "payload")
+    validate_json_object(data.payload, "payload")
     context_id = None
     if data.execution_context_key:
         res = await db.execute(

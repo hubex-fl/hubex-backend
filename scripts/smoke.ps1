@@ -213,16 +213,65 @@ Write-Host "Task poll (missing token, expect 401)..."
 $resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{}
 Assert-Status $resp 401 "tasks poll without token"
 
+Write-Host "Task complete without lease (expect 409)..."
+$badComplete = @{ status = "done"; result = @{ ok = $true }; lease_token = "" } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/$taskId/complete" $badComplete @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 409 "tasks complete without lease"
+
 Write-Host "Task poll (device token)..."
-$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{ "X-Device-Token" = $deviceToken }
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey&lease_seconds=1" $null @{ "X-Device-Token" = $deviceToken }
 Assert-Status $resp 200 "tasks poll"
-$pollObj = Parse-Json $resp.Body "tasks poll"
+$pollObj = @((Parse-Json $resp.Body "tasks poll"))
 if ($pollObj.Count -lt 1) { Fail "tasks poll empty" $resp }
+$leaseToken = $pollObj[0].lease_token
+if (-not $leaseToken) { Fail "lease_token missing" $resp }
+
+Write-Host "Task poll while leased (expect empty)..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{ "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks poll while leased"
+$pollObj2 = @((Parse-Json $resp.Body "tasks poll while leased"))
+if ($pollObj2.Count -gt 0) { Fail "task returned while leased" $resp }
+
+Write-Host "Task complete oversized result (expect 413)..."
+$big = ("a" * 17000)
+$bigResult = @{ status = "done"; result = @{ data = $big }; lease_token = $leaseToken } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/$taskId/complete" $bigResult @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 413 "tasks complete oversized result"
 
 Write-Host "Task complete (done)..."
-$completeBody = @{ status = "done"; result = @{ ok = $true } } | ConvertTo-Json -Compress
+$completeBody = @{ status = "done"; result = @{ ok = $true }; lease_token = $leaseToken } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$baseUrl/tasks/$taskId/complete" $completeBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
 Assert-Status $resp 200 "tasks complete"
+
+Write-Host "Owner enqueue task for lease expiry..."
+$leaseTaskBody = @{ type = "config.apply"; payload = @{ mode = "lease-test" }; execution_context_key = $contextKey } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $leaseTaskBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner enqueue task lease test"
+$leaseTask = Parse-Json $resp.Body "owner enqueue task lease test"
+$leaseTaskId = $leaseTask.id
+if (-not $leaseTaskId) { Fail "lease test task id missing" $resp }
+
+Write-Host "Task poll short lease (expect task)..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey&lease_seconds=1" $null @{ "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks poll short lease"
+$leasePoll = @((Parse-Json $resp.Body "tasks poll short lease"))
+if ($leasePoll.Count -lt 1) { Fail "short lease poll empty" $resp }
+$leaseTaskToken = $leasePoll[0].lease_token
+
+Write-Host "Wait for lease expiry..."
+Start-Sleep -Seconds 6
+
+Write-Host "Task poll after lease expiry (expect task)..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{ "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks poll after lease expiry"
+$leasePoll2 = @((Parse-Json $resp.Body "tasks poll after lease expiry"))
+if ($leasePoll2.Count -lt 1) { Fail "lease expiry poll empty" $resp }
+$leaseTaskToken2 = $leasePoll2[0].lease_token
+
+Write-Host "Task complete after lease expiry..."
+$completeLease = @{ status = "done"; result = @{ ok = $true }; lease_token = $leaseTaskToken2 } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/$leaseTaskId/complete" $completeLease @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks complete after lease expiry"
 
 Write-Host "Owner list tasks..."
 $resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/tasks?limit=10" $null @{ "Authorization" = "Bearer $token" }
@@ -233,6 +282,16 @@ foreach ($t in $tasksList) {
     if ($t.id -eq $taskId) { $taskFound = $true }
 }
 if (-not $taskFound) { Fail "task not found in owner list" $resp }
+
+Write-Host "Task context heartbeat oversized meta (expect 413)..."
+$bigMetaBody = @{ context_key = "big-meta"; capabilities = @{ ok = $true }; meta = @{ data = $big } } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/context/heartbeat" $bigMetaBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 413 "tasks context heartbeat oversized meta"
+
+Write-Host "Task context heartbeat oversized capabilities (expect 413)..."
+$bigCapBody = @{ context_key = "big-cap"; capabilities = @{ data = $big }; meta = @{ ok = $true } } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/context/heartbeat" $bigCapBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 413 "tasks context heartbeat oversized capabilities"
 
 Write-Host "Telemetry post (missing token, expect 401)..."
 $telemetryBody = @{ event_type = "boot"; payload = @{ temp_c = 21; ok = $true } } | ConvertTo-Json -Compress
