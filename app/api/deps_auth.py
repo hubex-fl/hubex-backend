@@ -1,7 +1,7 @@
 import hashlib
 
-from fastapi import Depends, HTTPException, Header
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -12,6 +12,7 @@ from app.db.models.device import Device
 from app.db.models.pairing import DeviceToken
 
 bearer = HTTPBearer(auto_error=False)
+device_token_header = APIKeyHeader(name="X-Device-Token", auto_error=False)
 
 async def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
@@ -37,17 +38,13 @@ async def get_current_user_id(user: User = Depends(get_current_user)) -> int:
     return user.id
 
 async def get_current_device(
-    authorization: str | None = Header(default=None, alias="Authorization"),
+    device_token: str | None = Security(device_token_header),
     db: AsyncSession = Depends(get_db),
 ) -> Device:
-    if not authorization:
+    if not device_token:
         raise HTTPException(status_code=401, detail="missing device token")
 
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(status_code=401, detail="invalid device token")
-
-    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    token_hash = hashlib.sha256(device_token.encode("utf-8")).hexdigest()
     res = await db.execute(
         select(Device)
         .join(DeviceToken, DeviceToken.device_id == Device.id)

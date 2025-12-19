@@ -9,6 +9,19 @@ __pycache__/
 venv/
 env/
 
+# Env/config
+.env
+.env.*
+
+# Tests/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Packaging
+*.egg-info/
+
 # Editor
 .vscode/
 
