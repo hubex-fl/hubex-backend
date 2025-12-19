@@ -1,9 +1,12 @@
 $ErrorActionPreference = "Stop"
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$DeviceUid
+    [int]$Days = $env:TELEMETRY_RETENTION_DAYS
 )
+
+if (-not $Days) {
+    $Days = 30
+}
 
 function Fail {
     param([string]$Message)
@@ -35,36 +38,30 @@ if ($dbUrl.StartsWith("postgresql+asyncpg")) {
     $dbUrl = $dbUrl -replace "^postgresql\\+asyncpg", "postgresql"
 }
 
-$env:RESET_DB_URL = $dbUrl
-$env:RESET_DEVICE_UID = $DeviceUid
+$env:CLEANUP_DB_URL = $dbUrl
+$env:CLEANUP_DAYS = "$Days"
 
 $py = @'
 import os
-import sys
 import psycopg2
 
-db = os.environ["RESET_DB_URL"]
-uid = os.environ["RESET_DEVICE_UID"]
+db = os.environ["CLEANUP_DB_URL"]
+days = int(os.environ["CLEANUP_DAYS"])
 
 conn = psycopg2.connect(db)
 cur = conn.cursor()
-cur.execute("select id from devices where device_uid=%s", (uid,))
-row = cur.fetchone()
-if not row:
-    print("not_found")
-    sys.exit(2)
-device_id = row[0]
-cur.execute("update devices set owner_user_id=NULL, is_claimed=false where id=%s", (device_id,))
-cur.execute("delete from device_tokens where device_id=%s", (device_id,))
-cur.execute("delete from pairing_sessions where device_uid=%s", (uid,))
+cur.execute(
+    "delete from device_telemetry where received_at < now() - interval %s",
+    (f"{days} days",),
+)
+deleted = cur.rowcount
 conn.commit()
-print("reset_ok")
-sys.exit(0)
+print(f"deleted:{deleted}")
 '@
 
 $out = $py | python -
 if ($LASTEXITCODE -ne 0) {
-    Fail "reset failed: $out"
+    Fail "cleanup failed: $out"
 }
 
-Write-Host "OK: reset device $DeviceUid"
+Write-Host "OK: $out"

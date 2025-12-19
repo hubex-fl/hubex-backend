@@ -60,10 +60,13 @@ function Get-DatabaseUrl {
     if ($env:DATABASE_URL) {
         return $env:DATABASE_URL
     }
+    if ($env:HUBEX_DATABASE_URL) {
+        return $env:HUBEX_DATABASE_URL
+    }
     if (Test-Path ".env") {
-        $line = Select-String -Path ".env" -Pattern "^DATABASE_URL=" -SimpleMatch | Select-Object -First 1
+        $line = Select-String -Path ".env" -Pattern "^(DATABASE_URL|HUBEX_DATABASE_URL)=" -SimpleMatch | Select-Object -First 1
         if ($line) {
-            return $line.Line.Substring("DATABASE_URL=".Length)
+            return ($line.Line -split "=", 2)[1]
         }
     }
     return $null
@@ -173,7 +176,7 @@ Assert-Status $resp 200 "pairing confirm"
 $confirmObj = Parse-Json $resp.Body "pairing confirm"
 $deviceToken = $confirmObj.device_token
 $deviceId = $confirmObj.device_id
-if (-not $deviceToken -or -not $deviceId) { Fail "pairing confirm missing token or device_id" $resp }
+if (-not $deviceToken -or $null -eq $deviceId) { Fail "pairing confirm missing token or device_id" $resp }
 
 Write-Host "Pairing confirm replay (expect 409)..."
 $resp = Invoke-Api "POST" "$baseUrl/pairing/confirm" $confirmBody @{ "Content-Type" = "application/json" }
@@ -186,6 +189,50 @@ Assert-Status $resp 401 "devices/whoami without token"
 Write-Host "Device whoami (device token)..."
 $resp = Invoke-Api "GET" "$baseUrl/devices/whoami" $null @{ "X-Device-Token" = $deviceToken }
 Assert-Status $resp 200 "devices/whoami"
+
+Write-Host "Task context heartbeat..."
+$contextKey = "default"
+$contextBody = @{ context_key = $contextKey; capabilities = @{ tasks = @("io.write", "config.apply") }; meta = @{ version = "1.0" } } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/context/heartbeat" $contextBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks context heartbeat"
+
+Write-Host "Owner enqueue task (unknown context, expect 409)..."
+$badTaskBody = @{ type = "config.apply"; payload = @{ mode = "safe" }; execution_context_key = "missing" } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $badTaskBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+Assert-Status $resp 409 "owner enqueue task unknown context"
+
+Write-Host "Owner enqueue task..."
+$taskBody = @{ type = "config.apply"; payload = @{ mode = "safe" }; execution_context_key = $contextKey } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $taskBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner enqueue task"
+$taskObj = Parse-Json $resp.Body "owner enqueue task"
+$taskId = $taskObj.id
+if (-not $taskId) { Fail "task id missing" $resp }
+
+Write-Host "Task poll (missing token, expect 401)..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{}
+Assert-Status $resp 401 "tasks poll without token"
+
+Write-Host "Task poll (device token)..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{ "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks poll"
+$pollObj = Parse-Json $resp.Body "tasks poll"
+if ($pollObj.Count -lt 1) { Fail "tasks poll empty" $resp }
+
+Write-Host "Task complete (done)..."
+$completeBody = @{ status = "done"; result = @{ ok = $true } } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/tasks/$taskId/complete" $completeBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks complete"
+
+Write-Host "Owner list tasks..."
+$resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/tasks?limit=10" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner list tasks"
+$tasksList = Parse-Json $resp.Body "owner list tasks"
+$taskFound = $false
+foreach ($t in $tasksList) {
+    if ($t.id -eq $taskId) { $taskFound = $true }
+}
+if (-not $taskFound) { Fail "task not found in owner list" $resp }
 
 Write-Host "Telemetry post (missing token, expect 401)..."
 $telemetryBody = @{ event_type = "boot"; payload = @{ temp_c = 21; ok = $true } } | ConvertTo-Json -Compress
@@ -213,6 +260,16 @@ foreach ($t in $recentObj) {
     if ($t.id -eq $telemetryId) { $telemetryFound = $true }
 }
 if (-not $telemetryFound) { Fail "telemetry not found in recent list" $resp }
+
+Write-Host "User telemetry recent (owner)..."
+$resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/telemetry/recent?limit=5" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "user telemetry recent owner"
+$userTelem = Parse-Json $resp.Body "user telemetry recent owner"
+$userTelemFound = $false
+foreach ($t in $userTelem) {
+    if ($t.id -eq $telemetryId) { $userTelemFound = $true }
+}
+if (-not $userTelemFound) { Fail "owner telemetry missing" $resp }
 
 Write-Host "Devices list (owner)..."
 $resp = Invoke-Api "GET" "$baseUrl/devices" $null @{ "Authorization" = "Bearer $token" }
@@ -253,6 +310,18 @@ if ($found2) { Fail "other user sees device in list" $resp }
 Write-Host "Device detail (other user, expect 403/404)..."
 $resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId" $null @{ "Authorization" = "Bearer $token2" }
 Assert-Status $resp @(403, 404) "device detail other user"
+
+Write-Host "Owner enqueue task (other user, expect 404)..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $taskBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token2" }
+Assert-Status $resp 404 "owner enqueue task other user"
+
+Write-Host "Owner list tasks (other user, expect 404)..."
+$resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/tasks?limit=10" $null @{ "Authorization" = "Bearer $token2" }
+Assert-Status $resp 404 "owner list tasks other user"
+
+Write-Host "User telemetry recent (other user, expect 404)..."
+$resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/telemetry/recent?limit=5" $null @{ "Authorization" = "Bearer $token2" }
+Assert-Status $resp 404 "user telemetry recent other user"
 
 Write-Host "OK: smoke checks passed"
 exit 0
