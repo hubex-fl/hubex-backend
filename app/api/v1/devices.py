@@ -58,6 +58,7 @@ async def hello(data: DeviceHelloIn, db: AsyncSession = Depends(get_db)):
         device.firmware_version = data.firmware_version
         device.capabilities = data.capabilities
         device.last_seen_at = now
+    device.is_claimed = device.owner_user_id is not None
 
     await db.commit()
     await db.refresh(device)

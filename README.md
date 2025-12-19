@@ -43,33 +43,37 @@ python -m uvicorn app.main:app --reload --port 8000
 $pw = "Test1234!"
 $email = "codex+$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
 
-$null = curl.exe -s -X POST http://localhost:8000/api/v1/auth/register `
+$registerBody = @{ email = $email; password = $pw } | ConvertTo-Json -Compress
+$null = $registerBody | curl.exe -sS -X POST http://localhost:8000/api/v1/auth/register `
   -H "Content-Type: application/json" `
-  -d "{\"email\":\"$email\",\"password\":\"$pw\"}"
+  --data-binary '@-'
 
-$login = curl.exe -s -X POST http://localhost:8000/api/v1/auth/login `
+$login = $registerBody | curl.exe -sS -X POST http://localhost:8000/api/v1/auth/login `
   -H "Content-Type: application/json" `
-  -d "{\"email\":\"$email\",\"password\":\"$pw\"}"
+  --data-binary '@-'
 $token = ($login | ConvertFrom-Json).access_token
 
 curl.exe -s -X GET http://localhost:8000/api/v1/users/me `
   -H "Authorization: Bearer $token"
 
-$deviceUid = "device-1234"
+$deviceUid = "device-20251219-$((Get-Date).ToString('yyyyMMddHHmmss'))"
 
-curl.exe -s -X POST http://localhost:8000/api/v1/devices/hello `
+$helloBody = @{ device_uid = $deviceUid; firmware_version = "1.0.0"; capabilities = @{ wifi = $true } } | ConvertTo-Json -Compress
+$helloBody | curl.exe -sS -X POST http://localhost:8000/api/v1/devices/hello `
   -H "Content-Type: application/json" `
-  -d "{\"device_uid\":\"$deviceUid\",\"firmware_version\":\"1.0.0\",\"capabilities\":{\"wifi\":true}}"
+  --data-binary '@-'
 
-$pairing = curl.exe -s -X POST http://localhost:8000/api/v1/pairing/start `
+$pairingBody = @{ device_uid = $deviceUid } | ConvertTo-Json -Compress
+$pairing = $pairingBody | curl.exe -sS -X POST http://localhost:8000/api/v1/pairing/start `
   -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" `
-  -d "{\"device_uid\":\"$deviceUid\"}"
+  --data-binary '@-'
 $pairingObj = $pairing | ConvertFrom-Json
 
-$confirm = curl.exe -s -X POST http://localhost:8000/api/v1/pairing/confirm `
+$confirmBody = @{ device_uid = $deviceUid; pairing_code = $pairingObj.pairing_code } | ConvertTo-Json -Compress
+$confirm = $confirmBody | curl.exe -sS -X POST http://localhost:8000/api/v1/pairing/confirm `
   -H "Content-Type: application/json" `
-  -d "{\"device_uid\":\"$deviceUid\",\"pairing_code\":\"$($pairingObj.pairing_code)\"}"
+  --data-binary '@-'
 $confirmObj = $confirm | ConvertFrom-Json
 $deviceToken = $confirmObj.device_token
 $deviceId = $confirmObj.device_id
@@ -83,3 +87,47 @@ curl.exe -s -X GET http://localhost:8000/api/v1/devices `
 curl.exe -s -X GET http://localhost:8000/api/v1/devices/$deviceId `
   -H "Authorization: Bearer $token"
 ```
+
+## Smoke Flow (Negative Checks)
+
+The script `scripts/smoke.ps1` now also runs these checks and exits non-zero on failure:
+
+- pairing start without JWT -> 401
+- pairing confirm wrong code -> 404
+- pairing confirm expired -> 410 (requires DATABASE_URL or .env + psycopg2)
+- pairing confirm replay -> 409
+- device whoami without device token -> 401
+- devices list for other user -> device not present
+- device detail for other user -> 403/404
+
+If the expiry check cannot update the DB, the script prints a SKIP note and continues.
+
+## Telemetry (Device Token)
+
+POST telemetry:
+
+```powershell
+$telemetryBody = @{ event_type = "boot"; payload = @{ temp_c = 21; ok = $true } } | ConvertTo-Json -Compress
+$telemetry = $telemetryBody | curl.exe -sS -X POST http://localhost:8000/api/v1/telemetry `
+  -H "Content-Type: application/json" `
+  -H "X-Device-Token: $deviceToken" `
+  --data-binary '@-'
+```
+
+GET recent telemetry:
+
+```powershell
+curl.exe -sS -X GET "http://localhost:8000/api/v1/telemetry/recent?limit=5" `
+  -H "X-Device-Token: $deviceToken"
+```
+
+## Dev: Reset Device (optional)
+
+To unclaim a device locally without psql:
+
+```powershell
+.\scripts\dev_reset_device.ps1 -DeviceUid "device-20251219-20251219025140"
+```
+
+The script reads `DATABASE_URL` (env or `.env`) and clears `owner_user_id`, `is_claimed`,
+device tokens, and pairing sessions for the given device UID. Dev only.
