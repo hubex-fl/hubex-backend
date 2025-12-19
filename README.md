@@ -228,3 +228,7 @@ Deletes telemetry older than N days (default 30):
 ```
 
 Uses `DATABASE_URL` or `HUBEX_DATABASE_URL` (env or `.env`) and `psycopg2`.
+
+## Frontend UI Smoke
+
+See `frontend/SMOKE_UI.md` for the minimal UI validation checklist.

@@ -12,6 +12,8 @@ env/
 # Env/config
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 
 # Tests/cache
 .pytest_cache/
