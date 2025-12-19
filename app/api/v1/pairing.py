@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
 from app.db.models.device import Device
+from app.core.device_state import DeviceState, derive_device_states
 from app.db.models.pairing import PairingSession, DeviceToken
 
 router = APIRouter(prefix="/pairing")
@@ -141,7 +142,8 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
         if device is None:
             raise HTTPException(status_code=404, detail="device not found")
 
-        if device.owner_user_id is not None:
+        states = derive_device_states(device, pairing_active=True, now=now)
+        if DeviceState.claimed in states:
             raise HTTPException(status_code=409, detail="device already claimed")
 
         # Claim durchziehen

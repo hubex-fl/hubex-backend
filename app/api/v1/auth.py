@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -31,10 +31,14 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
     return TokenOut(access_token=create_access_token(str(user.id)))
 
 @router.post("/login", response_model=TokenOut)
-async def login(data: RegisterIn, db: AsyncSession = Depends(get_db)):
+async def login(
+    data: RegisterIn,
+    db: AsyncSession = Depends(get_db),
+    access_token_expire_seconds: int | None = Header(default=None, alias="X-Access-Token-Expire-Seconds"),
+):
     res = await db.execute(select(User).where(User.email == data.email))
     user = res.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
 
-    return TokenOut(access_token=create_access_token(str(user.id)))
+    return TokenOut(access_token=create_access_token(str(user.id), access_token_expire_seconds))

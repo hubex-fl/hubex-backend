@@ -126,6 +126,15 @@ Assert-Status $resp 200 "login"
 $token = (Parse-Json $resp.Body "login").access_token
 if (-not $token) { Fail "login token missing" $resp }
 
+Write-Host "Login short-lived token..."
+$resp = Invoke-Api "POST" "$baseUrl/auth/login" $registerBody @{ "Content-Type" = "application/json"; "X-Access-Token-Expire-Seconds" = "1" }
+Assert-Status $resp 200 "login short-lived"
+$shortToken = (Parse-Json $resp.Body "login short-lived").access_token
+if (-not $shortToken) { Fail "short token missing" $resp }
+Start-Sleep -Seconds 2
+$resp = Invoke-Api "GET" "$baseUrl/users/me" $null @{ "Authorization" = "Bearer $shortToken" }
+Assert-Status $resp 401 "short token expired"
+
 Write-Host "User me..."
 $resp = Invoke-Api "GET" "$baseUrl/users/me" $null @{ "Authorization" = "Bearer $token" }
 Assert-Status $resp 200 "users/me"
@@ -209,6 +218,18 @@ $taskObj = Parse-Json $resp.Body "owner enqueue task"
 $taskId = $taskObj.id
 if (-not $taskId) { Fail "task id missing" $resp }
 
+Write-Host "Owner enqueue task for cancel..."
+$cancelBody = @{ type = "config.apply"; payload = @{ mode = "cancel" }; execution_context_key = $contextKey } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $cancelBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner enqueue task cancel"
+$cancelObj = Parse-Json $resp.Body "owner enqueue task cancel"
+$cancelTaskId = $cancelObj.id
+if (-not $cancelTaskId) { Fail "cancel task id missing" $resp }
+
+Write-Host "Owner cancel queued task..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks/$cancelTaskId/cancel" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner cancel queued task"
+
 Write-Host "Task poll (missing token, expect 401)..."
 $resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey" $null @{}
 Assert-Status $resp 401 "tasks poll without token"
@@ -242,6 +263,32 @@ Write-Host "Task complete (done)..."
 $completeBody = @{ status = "done"; result = @{ ok = $true }; lease_token = $leaseToken } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$baseUrl/tasks/$taskId/complete" $completeBody @{ "Content-Type" = "application/json"; "X-Device-Token" = $deviceToken }
 Assert-Status $resp 200 "tasks complete"
+
+Write-Host "Owner cancel completed task (expect 409)..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks/$taskId/cancel" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 409 "owner cancel completed task"
+
+Write-Host "Owner enqueue task for in-flight cancel..."
+$inFlightBody = @{ type = "config.apply"; payload = @{ mode = "inflight" }; execution_context_key = $contextKey } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks" $inFlightBody @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner enqueue in-flight task"
+$inFlightObj = Parse-Json $resp.Body "owner enqueue in-flight task"
+$inFlightTaskId = $inFlightObj.id
+if (-not $inFlightTaskId) { Fail "in-flight task id missing" $resp }
+
+Write-Host "Task poll to claim in-flight..."
+$resp = Invoke-Api "POST" "$baseUrl/tasks/poll?limit=1&context_key=$contextKey&lease_seconds=60" $null @{ "X-Device-Token" = $deviceToken }
+Assert-Status $resp 200 "tasks poll in-flight"
+$inFlightPoll = @((Parse-Json $resp.Body "tasks poll in-flight"))
+if ($inFlightPoll.Count -lt 1) { Fail "in-flight poll empty" $resp }
+
+Write-Host "Owner cancel in-flight (expect 409)..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks/$inFlightTaskId/cancel" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 409 "owner cancel in-flight"
+
+Write-Host "Owner cancel in-flight with force..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks/$inFlightTaskId/cancel?force=true" $null @{ "Authorization" = "Bearer $token" }
+Assert-Status $resp 200 "owner cancel in-flight force"
 
 Write-Host "Owner enqueue task for lease expiry..."
 $leaseTaskBody = @{ type = "config.apply"; payload = @{ mode = "lease-test" }; execution_context_key = $contextKey } | ConvertTo-Json -Compress
@@ -278,10 +325,13 @@ $resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/tasks?limit=10" $null @{ "A
 Assert-Status $resp 200 "owner list tasks"
 $tasksList = Parse-Json $resp.Body "owner list tasks"
 $taskFound = $false
+$cancelFound = $false
 foreach ($t in $tasksList) {
     if ($t.id -eq $taskId) { $taskFound = $true }
+    if ($t.id -eq $cancelTaskId -and $t.status -eq "canceled") { $cancelFound = $true }
 }
 if (-not $taskFound) { Fail "task not found in owner list" $resp }
+if (-not $cancelFound) { Fail "canceled task not found in owner list" $resp }
 
 Write-Host "Task context heartbeat oversized meta (expect 413)..."
 $bigMetaBody = @{ context_key = "big-meta"; capabilities = @{ ok = $true }; meta = @{ data = $big } } | ConvertTo-Json -Compress
@@ -377,6 +427,10 @@ Assert-Status $resp 404 "owner enqueue task other user"
 Write-Host "Owner list tasks (other user, expect 404)..."
 $resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/tasks?limit=10" $null @{ "Authorization" = "Bearer $token2" }
 Assert-Status $resp 404 "owner list tasks other user"
+
+Write-Host "Owner cancel task (other user, expect 404)..."
+$resp = Invoke-Api "POST" "$baseUrl/devices/$deviceId/tasks/$taskId/cancel" $null @{ "Authorization" = "Bearer $token2" }
+Assert-Status $resp 404 "owner cancel task other user"
 
 Write-Host "User telemetry recent (other user, expect 404)..."
 $resp = Invoke-Api "GET" "$baseUrl/devices/$deviceId/telemetry/recent?limit=5" $null @{ "Authorization" = "Bearer $token2" }

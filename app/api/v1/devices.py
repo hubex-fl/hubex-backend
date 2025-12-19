@@ -76,6 +76,12 @@ class UserTaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UserTaskCancelOut(BaseModel):
+    id: int
+    status: str
+    completed_at: datetime
+
+
 @router.post("/hello", response_model=DeviceHelloOut)
 async def hello(data: DeviceHelloIn, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
@@ -270,3 +276,32 @@ async def list_device_tasks(
         stmt = stmt.where(Task.status == status)
     res = await db.execute(stmt.order_by(desc(Task.created_at)).limit(limit))
     return list(res.scalars().all())
+
+
+@router.post("/{device_id}/tasks/{task_id}/cancel", response_model=UserTaskCancelOut)
+async def cancel_task_for_device(
+    device_id: int,
+    task_id: int,
+    force: bool = Query(default=False),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _get_owned_device(device_id, db, user)
+    res = await db.execute(
+        select(Task).where(Task.id == task_id, Task.client_id == device_id)
+    )
+    task = res.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    if task.status in {"done", "failed", "canceled"}:
+        raise HTTPException(status_code=409, detail="task already completed")
+    if task.status == "in_flight" and not force:
+        raise HTTPException(status_code=409, detail="task in flight")
+
+    was_in_flight = task.status == "in_flight"
+    now = datetime.now(timezone.utc)
+    task.status = "canceled"
+    task.completed_at = now
+    task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
+    await db.commit()
+    return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)

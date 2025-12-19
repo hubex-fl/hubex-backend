@@ -32,6 +32,17 @@ If the venv is activated:
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
+## Run SPA (Vue + Vite)
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The Vite dev server proxies `/api` to `http://localhost:8000`, so the UI can call
+`/api/v1/...` without CORS in dev.
+
 ## Auth Overview
 
 - User auth uses `Authorization: Bearer <JWT>`.
@@ -53,8 +64,12 @@ $login = $registerBody | curl.exe -sS -X POST http://localhost:8000/api/v1/auth/
   --data-binary '@-'
 $token = ($login | ConvertFrom-Json).access_token
 
-curl.exe -s -X GET http://localhost:8000/api/v1/users/me `
-  -H "Authorization: Bearer $token"
+diff --git a/README.md b/README.md
+index c521793..97ab410 100644
+--- a/README.md
++++ b/README.md
+@@ -179,6 +179,13 @@ curl.exe -sS -X GET "http://localhost:8000/api/v1/devices/$deviceId/tasks?limit=1
+   -H "Authorization: Bearer $token"
 
 $deviceUid = "device-20251219-$((Get-Date).ToString('yyyyMMddHHmmss'))"
 
@@ -176,6 +191,13 @@ Owner list tasks:
 
 ```powershell
 curl.exe -sS -X GET "http://localhost:8000/api/v1/devices/$deviceId/tasks?limit=10" `
+  -H "Authorization: Bearer $token"
+```
+
+Owner cancel task:
+
+```powershell
+curl.exe -sS -X POST "http://localhost:8000/api/v1/devices/$deviceId/tasks/<task_id>/cancel" `
   -H "Authorization: Bearer $token"
 ```
 

@@ -55,7 +55,7 @@ class TaskCompleteIn(BaseModel):
     status: Literal["done", "failed", "canceled"]
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-    lease_token: str
+    lease_token: Optional[str] = None
 
 
 class TaskCompleteOut(BaseModel):
