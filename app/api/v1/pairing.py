@@ -110,43 +110,52 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
     - setzt device.owner_user_id + is_claimed
     - erstellt DeviceToken (plaintext nur einmal zurückgeben)
     """
-    res = await db.execute(
-        select(PairingSession).where(
-            PairingSession.device_uid == data.device_uid,
-            PairingSession.pairing_code == data.pairing_code,
+    device = None
+    token_plain = None
+
+    async with db.begin():
+        res = await db.execute(
+            select(PairingSession)
+            .where(
+                PairingSession.device_uid == data.device_uid,
+                PairingSession.pairing_code == data.pairing_code,
+            )
+            .with_for_update()
         )
-    )
-    session = res.scalar_one_or_none()
-    if session is None:
-        raise HTTPException(status_code=404, detail="pairing code not found")
+        session = res.scalar_one_or_none()
+        if session is None:
+            raise HTTPException(status_code=404, detail="pairing code not found")
 
-    now = _now_utc()
-    if session.is_used:
-        raise HTTPException(status_code=409, detail="pairing code already used")
-    if session.expires_at <= now:
-        raise HTTPException(status_code=410, detail="pairing code expired")
+        now = _now_utc()
+        if session.is_used:
+            raise HTTPException(status_code=409, detail="pairing code already used")
+        if session.expires_at <= now:
+            raise HTTPException(status_code=410, detail="pairing code expired")
 
-    res = await db.execute(select(Device).where(Device.device_uid == session.device_uid))
-    device = res.scalar_one_or_none()
-    if device is None:
-        raise HTTPException(status_code=404, detail="device not found")
+        res = await db.execute(
+            select(Device)
+            .where(Device.device_uid == session.device_uid)
+            .with_for_update()
+        )
+        device = res.scalar_one_or_none()
+        if device is None:
+            raise HTTPException(status_code=404, detail="device not found")
 
-    if device.owner_user_id is not None:
-        raise HTTPException(status_code=409, detail="device already claimed")
+        if device.owner_user_id is not None:
+            raise HTTPException(status_code=409, detail="device already claimed")
 
-    # Claim durchziehen
-    device.owner_user_id = session.user_id
-    device.is_claimed = True
+        # Claim durchziehen
+        device.owner_user_id = session.user_id
+        device.is_claimed = True
 
-    session.is_used = True
+        session.is_used = True
 
-    # Device Token erstellen (nur einmal plaintext)
-    token_plain = _gen_device_token_plain()
-    token_hash = _hash_token(token_plain)
+        # Device Token erstellen (nur einmal plaintext)
+        token_plain = _gen_device_token_plain()
+        token_hash = _hash_token(token_plain)
 
-    db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
+        db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
 
-    await db.commit()
     await db.refresh(device)
 
     return PairingClaimOut(

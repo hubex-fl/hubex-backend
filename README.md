@@ -55,17 +55,31 @@ $token = ($login | ConvertFrom-Json).access_token
 curl.exe -s -X GET http://localhost:8000/api/v1/users/me `
   -H "Authorization: Bearer $token"
 
+$deviceUid = "device-1234"
+
+curl.exe -s -X POST http://localhost:8000/api/v1/devices/hello `
+  -H "Content-Type: application/json" `
+  -d "{\"device_uid\":\"$deviceUid\",\"firmware_version\":\"1.0.0\",\"capabilities\":{\"wifi\":true}}"
+
 $pairing = curl.exe -s -X POST http://localhost:8000/api/v1/pairing/start `
   -H "Authorization: Bearer $token" `
   -H "Content-Type: application/json" `
-  -d "{\"device_uid\":\"device-1234\"}"
+  -d "{\"device_uid\":\"$deviceUid\"}"
 $pairingObj = $pairing | ConvertFrom-Json
 
 $confirm = curl.exe -s -X POST http://localhost:8000/api/v1/pairing/confirm `
   -H "Content-Type: application/json" `
-  -d "{\"device_uid\":\"device-1234\",\"pairing_code\":\"$($pairingObj.pairing_code)\"}"
-$deviceToken = ($confirm | ConvertFrom-Json).device_token
+  -d "{\"device_uid\":\"$deviceUid\",\"pairing_code\":\"$($pairingObj.pairing_code)\"}"
+$confirmObj = $confirm | ConvertFrom-Json
+$deviceToken = $confirmObj.device_token
+$deviceId = $confirmObj.device_id
 
 curl.exe -s -X GET http://localhost:8000/api/v1/devices/whoami `
   -H "X-Device-Token: $deviceToken"
+
+curl.exe -s -X GET http://localhost:8000/api/v1/devices `
+  -H "Authorization: Bearer $token"
+
+curl.exe -s -X GET http://localhost:8000/api/v1/devices/$deviceId `
+  -H "Authorization: Bearer $token"
 ```
