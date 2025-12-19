@@ -1,35 +1,45 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { apiFetch } from "../lib/api";
 
 const route = useRoute();
 const deviceId = route.params.id as string;
 
-const telemetry = ref<any[]>([]);
+type TelemetryItem = {
+  id: number;
+  created_at: string;
+  event_type: string;
+  payload: Record<string, any>;
+};
+
+const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
-let refreshId: number | undefined;
+
+let timer: number | null = null;
 
 async function loadTelemetry() {
   telemetryError.value = null;
   try {
-    telemetry.value = await apiFetch(
+    telemetry.value = await apiFetch<TelemetryItem[]>(
       `/api/v1/devices/${deviceId}/telemetry/recent?limit=5`
     );
   } catch (e: any) {
-    telemetryError.value = e.message || String(e);
+    telemetryError.value = e?.message || String(e);
   }
 }
 
-onMounted(() => {
-  loadTelemetry();
-  refreshId = window.setInterval(loadTelemetry, 5000);
+function fmtTime(iso: string) {
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+onMounted(async () => {
+  await loadTelemetry();
+  timer = window.setInterval(loadTelemetry, 5000);
 });
 
-onBeforeUnmount(() => {
-  if (refreshId !== undefined) {
-    window.clearInterval(refreshId);
-  }
+onUnmounted(() => {
+  if (timer) window.clearInterval(timer);
 });
 </script>
 
@@ -37,13 +47,7 @@ onBeforeUnmount(() => {
   <div class="card">
     <h2>Device Telemetry (last 5)</h2>
 
-    <div v-if="telemetryError" class="error">
-      {{ telemetryError }}
-    </div>
-
-    <div v-else-if="telemetry.length === 0">
-      No telemetry yet
-    </div>
+    <div v-if="telemetryError" class="error">{{ telemetryError }}</div>
 
     <table v-else class="table">
       <thead>
@@ -51,13 +55,18 @@ onBeforeUnmount(() => {
           <th>Time</th>
           <th>Temperature</th>
           <th>Humidity</th>
+          <th>Event</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="t in telemetry" :key="t.id">
-          <td>{{ new Date(t.received_at).toLocaleString() }}</td>
-          <td>{{ t.payload?.temperature ?? "-" }} °C</td>
-          <td>{{ t.payload?.humidity ?? "-" }} %</td>
+          <td>{{ fmtTime(t.created_at) }}</td>
+          <td>{{ t.payload?.temperature ?? "—" }}</td>
+          <td>{{ t.payload?.humidity ?? "—" }}</td>
+          <td>{{ t.event_type }}</td>
+        </tr>
+        <tr v-if="telemetry.length === 0">
+          <td colspan="4">No telemetry yet</td>
         </tr>
       </tbody>
     </table>
