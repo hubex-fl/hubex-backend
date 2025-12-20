@@ -110,7 +110,10 @@ sys.exit(0 if cur.rowcount == 1 else 2)
     return $out -match "expired:1"
 }
 
-$baseUrl = "http://localhost:8000/api/v1"
+$base = $env:HUBEX_BASE
+if (-not $base) { $base = "http://127.0.0.1:8000" }
+Write-Host "SMOKE_BASE=$base"
+$baseUrl = "$base/api/v1"
 $pw = "Test1234!"
 $email = "codex+$((Get-Date).ToString('yyyyMMddHHmmss'))@example.com"
 $deviceUid = "device-20251219-$((Get-Date).ToString('yyyyMMddHHmmss'))"
