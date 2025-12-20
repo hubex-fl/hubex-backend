@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { apiFetch } from "../lib/api";
 
 type Device = {
@@ -24,6 +24,10 @@ const confirmingPairing = ref(false);
 const pairingRemainingSeconds = ref<number | null>(null);
 const pairingExpired = ref(false);
 
+const pairingClaimInfo = computed(() => {
+  return claimedStatusForUid(pairingDeviceUid.value);
+});
+
 let timer: number | null = null;
 let pairingTimer: number | null = null;
 
@@ -38,14 +42,59 @@ async function load(opts?: { silent?: boolean }) {
   }
 }
 
-function mapPairingError(err: any, fallback: string): string {
-  const msg = String(err?.message || "");
+function mapPairingError(codeOrMessage: string, fallback: string): string {
+  const msg = String(codeOrMessage || "");
   if (msg.includes("401")) return "Not logged in (token expired). Refresh/login.";
   if (msg.includes("403")) return "Forbidden.";
   if (msg.includes("404")) return "Not found / wrong code.";
   if (msg.includes("409")) return "Conflict (already confirmed / replay).";
   if (msg.includes("410")) return "Expired. Start pairing again.";
   return fallback;
+}
+
+function truncate(text: string, max = 300) {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + "...";
+}
+
+function extractErrorDetail(err: any) {
+  const message = String(err?.message || "");
+  let detail = message;
+  let status: string | null = null;
+  let statusText: string | null = null;
+
+  const httpMatch = message.match(/^HTTP\s+(\d{3})(?:\s+([^:]+))?:\s*([\s\S]*)$/i);
+  if (httpMatch) {
+    status = httpMatch[1];
+    statusText = (httpMatch[2] || "").trim() || null;
+    detail = httpMatch[3] || "";
+  } else {
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed && typeof parsed === "object" && "detail" in parsed) {
+        detail = String((parsed as any).detail ?? "");
+      }
+    } catch {
+      // keep message as detail
+    }
+  }
+
+  return { detail, status, statusText };
+}
+
+function formatPairingError(err: any, fallback: string): string {
+  const info = extractErrorDetail(err);
+  const codeOrMessage = info.status ? info.status : info.detail;
+  const mapped = mapPairingError(codeOrMessage, fallback);
+  const statusLabel = info.status
+    ? `HTTP ${info.status}${info.statusText ? " " + info.statusText : ""}`
+    : "HTTP ?";
+  const detailText = truncate(info.detail || "");
+  const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
+  if (mapped !== fallback) {
+    return `${mapped} (${suffix})`;
+  }
+  return `${fallback} (${suffix})`;
 }
 
 function stopPairingCountdown() {
@@ -109,9 +158,13 @@ async function startPairing() {
     error.value = "device_uid required";
     return;
   }
+  if (pairingClaimInfo.value.known && pairingClaimInfo.value.claimed) {
+    error.value = "Device is already claimed.";
+    return;
+  }
   startingPairing.value = true;
   try {
-    const res: any = await apiFetch("/api/v1/pairing/start", {
+    const res: any = await apiFetch("/api/v1/devices/pairing/start", {
       method: "POST",
       body: JSON.stringify({ device_uid: uid }),
     });
@@ -124,7 +177,7 @@ async function startPairing() {
     pairingExpired.value = false;
     startPairingCountdown();
   } catch (err: any) {
-    error.value = mapPairingError(err, "Failed to start pairing");
+    error.value = formatPairingError(err, "Failed to start pairing");
   } finally {
     startingPairing.value = false;
   }
@@ -144,7 +197,7 @@ async function confirmPairing() {
   }
   confirmingPairing.value = true;
   try {
-    await apiFetch("/api/v1/pairing/confirm", {
+    await apiFetch("/api/v1/devices/pairing/confirm", {
       method: "POST",
       body: JSON.stringify({ device_uid: uid, pairing_code: code }),
     });
@@ -157,7 +210,7 @@ async function confirmPairing() {
     stopPairingCountdown();
     await load();
   } catch (err: any) {
-    error.value = mapPairingError(err, "Failed to confirm pairing");
+    error.value = formatPairingError(err, "Failed to confirm pairing");
   } finally {
     confirmingPairing.value = false;
   }
@@ -184,6 +237,14 @@ function healthClass(health: Device["health"]) {
   if (health === "ok") return "pill-ok";
   if (health === "stale") return "pill-warn";
   return "pill-bad";
+}
+
+function claimedStatusForUid(uid: string): { known: boolean; claimed: boolean } {
+  const normalized = uid.trim();
+  if (!normalized) return { known: false, claimed: false };
+  const match = devices.value.find((d) => d.device_uid === normalized);
+  if (!match) return { known: false, claimed: false };
+  return { known: true, claimed: match.claimed };
 }
 
 watch(pairingDeviceUid, () => {
@@ -233,9 +294,12 @@ onUnmounted(() => {
           class="input pairing-input"
           placeholder="Device UID"
         />
-        <button class="btn" :disabled="startingPairing" @click="startPairing">
+        <button class="btn" :disabled="startingPairing || pairingClaimInfo.claimed" @click="startPairing">
           {{ startingPairing ? "Starting..." : "Start pairing" }}
         </button>
+      </div>
+      <div v-if="pairingClaimInfo.claimed" class="pairing-warn">
+        Device is already claimed.
       </div>
 
       <div v-if="pairingStartCode" class="pairing-row">

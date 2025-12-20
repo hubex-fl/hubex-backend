@@ -151,3 +151,9 @@ a {
   font-size: 12px;
   margin-bottom: 6px;
 }
+
+.pairing-warn {
+  color: #b00020;
+  font-size: 12px;
+  margin-top: 6px;
+}
