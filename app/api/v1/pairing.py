@@ -15,7 +15,8 @@ from app.db.models.device import Device
 from app.core.device_state import DeviceState, derive_device_states
 from app.db.models.pairing import PairingSession, DeviceToken
 
-router = APIRouter(tags=["pairing"])
+# Canonical pairing routes live under /api/v1/pairing
+router = APIRouter(prefix="/pairing", tags=["pairing"])
 
 
 PAIRING_TTL_MINUTES = 10
@@ -77,10 +78,11 @@ async def start_pairing(
     device = res.scalar_one_or_none()
 
     if device is None:
-        device = Device(device_uid=data.device_uid, is_claimed=False)
-        db.add(device)
-        await db.commit()
-        await db.refresh(device)
+        raise HTTPException(status_code=404, detail="device not found")
+    if device.last_seen_at is None:
+        raise HTTPException(status_code=404, detail="device not provisioned")
+    if device.owner_user_id is not None or device.is_claimed:
+        raise HTTPException(status_code=409, detail="device already claimed")
 
     # neue Session erzeugen (alte Sessions lassen wir erstmal in Ruhe)
     code = _gen_pairing_code()
@@ -113,6 +115,15 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
     """
     device = None
     token_plain = None
+
+    res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise HTTPException(status_code=404, detail="device not found")
+    if device.last_seen_at is None:
+        raise HTTPException(status_code=404, detail="device not provisioned")
+    if device.owner_user_id is not None or device.is_claimed:
+        raise HTTPException(status_code=409, detail="device already claimed")
 
     async with db.begin():
         res = await db.execute(

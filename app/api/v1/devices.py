@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device, get_current_user
-from app.api.v1.pairing import router as pairing_router
 from app.db.models.device import Device  # NUR das echte Model importieren
 from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
@@ -18,11 +17,6 @@ from app.schemas.device import DeviceListItem, DeviceDetailItem
 from app.schemas.taskcam import CurrentTaskOut, TaskHistoryItemOut
 
 router = APIRouter(prefix="/devices", tags=["devices"])
-
-router.include_router(
-    pairing_router,
-    prefix="/pairing",
-)
 
 
 class DeviceHelloIn(BaseModel):
