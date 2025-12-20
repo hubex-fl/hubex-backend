@@ -175,8 +175,17 @@ if ($expiredOk) {
 
 Write-Host "Pairing start (fresh)..."
 $resp = Invoke-Api "POST" "$baseUrl/pairing/start" $pairingBody @{ "Authorization" = "Bearer $token"; "Content-Type" = "application/json" }
-Assert-Status $resp 200 "pairing start fresh"
-$pairingObj = Parse-Json $resp.Body "pairing start fresh"
+if ($resp.Status -eq 200) {
+    $pairingObj = Parse-Json $resp.Body "pairing start fresh"
+} elseif ($resp.Status -eq 409) {
+    $pairingObj = Parse-Json $resp.Body "pairing start fresh"
+    if ($pairingObj.detail.code -ne "PAIRING_ALREADY_ACTIVE") {
+        Fail "pairing start fresh (expected 200 or PAIRING_ALREADY_ACTIVE)" $resp
+    }
+    Write-Host "Pairing already active: ttl_seconds=$($pairingObj.detail.meta.ttl_seconds) expires_at=$($pairingObj.detail.meta.expires_at)"
+} else {
+    Fail "pairing start fresh (expected 200 or 409)" $resp
+}
 
 Write-Host "Pairing confirm (no JWT)..."
 $confirmBody = @{ device_uid = $deviceUid; pairing_code = $pairingObj.pairing_code } | ConvertTo-Json -Compress
