@@ -130,16 +130,6 @@ async def confirm_pairing(
     """
     token_plain: str | None = None
 
-    # TEMP DEBUG: remove after validation mismatch is resolved.
-    print("PAIRING_CONFIRM_ENTER", data, file=sys.stderr)
-    # Debug: remove after stabilization. Detect nested transactions before begin().
-    logger.info(
-        "PAIRING_CONFIRM session_id=%s in_tx=%s tx=%r",
-        id(db),
-        db.in_transaction(),
-        db.get_transaction(),
-    )
-
     async with db.begin():
         res = await db.execute(
             select(PairingSession)
