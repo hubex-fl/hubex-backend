@@ -7,8 +7,8 @@ from urllib.error import HTTPError, URLError
 
 
 BASE = os.getenv("HUBEX_BASE", "http://127.0.0.1:8000")
-EMAIL = "dev@hubex.local"
-PASSWORD = "devdevdev"
+EMAIL = os.getenv("HUBEX_EMAIL", "dev@example.com")
+PASSWORD = os.getenv("HUBEX_PASSWORD", "devdevdev")
 
 
 def _request_json(method, url, payload=None, headers=None):
@@ -49,7 +49,10 @@ def main():
             "POST", f"{BASE}/api/v1/auth/login", login_payload
         )
         if status != 200:
-            print(f"LOGIN FAILED status={status} body={body}")
+            print(
+                f"LOGIN FAILED using BASE={BASE} EMAIL={EMAIL} status={status} body={body}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     login_obj = _parse_body(body) or {}
