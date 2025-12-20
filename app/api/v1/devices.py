@@ -15,6 +15,11 @@ from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 from app.db.models.pairing import PairingSession
 from app.schemas.device import DeviceListItem, DeviceDetailItem
+from app.api.v1.device_state import (
+    derive_state,
+    fetch_busy_device_ids,
+    fetch_pairing_active_uids,
+)
 from app.schemas.taskcam import CurrentTaskOut, TaskHistoryItemOut
 
 router = APIRouter(prefix="/devices", tags=["devices"])
@@ -140,28 +145,8 @@ async def list_devices(
     devices = res.scalars().all()
     device_uids = [device.device_uid for device in devices]
     device_ids = [device.id for device in devices]
-    active_pairing_uids: set[str] = set()
-    busy_ids: set[int] = set()
-    if device_uids:
-        res = await db.execute(
-            select(PairingSession.device_uid).where(
-                PairingSession.device_uid.in_(device_uids),
-                PairingSession.is_used.is_(False),
-                PairingSession.expires_at > now,
-            )
-        )
-        active_pairing_uids = {row[0] for row in res.all()}
-    if device_ids:
-        res = await db.execute(
-            select(Task.client_id).where(
-                Task.client_id.in_(device_ids),
-                Task.lease_expires_at.is_not(None),
-                Task.lease_expires_at > now,
-                Task.lease_token.is_not(None),
-                Task.status == "in_flight",
-            )
-        )
-        busy_ids = {row[0] for row in res.all()}
+    active_pairing_uids = await fetch_pairing_active_uids(db, device_uids, now)
+    busy_ids = await fetch_busy_device_ids(db, device_ids, now)
     out: list[DeviceListItem] = []
     for device in devices:
         last_seen = device.last_seen_at
@@ -176,17 +161,7 @@ async def list_devices(
         online = bool(last_seen and (now - last_seen) <= online_window)
         pairing_active = device.device_uid in active_pairing_uids
         busy = device.id in busy_ids
-        claimed = device.owner_user_id is not None or device.is_claimed
-        if last_seen is None:
-            state = "unprovisioned"
-        elif busy:
-            state = "busy"
-        elif claimed:
-            state = "claimed"
-        elif pairing_active:
-            state = "pairing_active"
-        else:
-            state = "provisioned_unclaimed"
+        state, claimed = derive_state(device, pairing_active, busy)
         out.append(
             DeviceListItem(
                 id=device.id,
@@ -226,35 +201,13 @@ async def get_device(
             health = "ok"
         elif age_seconds <= 120:
             health = "stale"
-    res = await db.execute(
-        select(PairingSession.device_uid).where(
-            PairingSession.device_uid == device.device_uid,
-            PairingSession.is_used.is_(False),
-            PairingSession.expires_at > now,
-        )
+    active_pairing_uids = await fetch_pairing_active_uids(
+        db, [device.device_uid], now
     )
-    pairing_active = res.scalar_one_or_none() is not None
-    res = await db.execute(
-        select(Task.id).where(
-            Task.client_id == device.id,
-            Task.lease_expires_at.is_not(None),
-            Task.lease_expires_at > now,
-            Task.lease_token.is_not(None),
-            Task.status == "in_flight",
-        )
-    )
-    busy = res.scalar_one_or_none() is not None
-    claimed = device.owner_user_id is not None or device.is_claimed
-    if last_seen is None:
-        state = "unprovisioned"
-    elif busy:
-        state = "busy"
-    elif claimed:
-        state = "claimed"
-    elif pairing_active:
-        state = "pairing_active"
-    else:
-        state = "provisioned_unclaimed"
+    busy_ids = await fetch_busy_device_ids(db, [device.id], now)
+    pairing_active = device.device_uid in active_pairing_uids
+    busy = device.id in busy_ids
+    state, claimed = derive_state(device, pairing_active, busy)
     return DeviceDetailItem(
         id=device.id,
         device_uid=device.device_uid,
