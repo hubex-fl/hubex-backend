@@ -74,3 +74,31 @@ a {
   color: #b91c1c;
   margin-top: 8px;
 }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.pill-ok {
+  background: #e7f7ee;
+  color: #137333;
+}
+
+.pill-bad {
+  background: #fde7e9;
+  color: #b00020;
+}

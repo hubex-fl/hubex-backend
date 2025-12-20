@@ -5,8 +5,9 @@ import { apiFetch } from "../lib/api";
 type Device = {
   id: number;
   device_uid: string;
-  firmware_version?: string | null;
-  owner_user_id?: number | null;
+  claimed: boolean;
+  last_seen: string | null;
+  online: boolean;
 };
 
 const devices = ref<Device[]>([]);
@@ -21,6 +22,11 @@ async function load() {
   }
 }
 
+function fmtTime(iso: string | null) {
+  if (!iso) return "-";
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
 onMounted(load);
 </script>
 
@@ -28,13 +34,33 @@ onMounted(load);
   <div class="card">
     <h2>Devices</h2>
     <div v-if="error" class="error">{{ error }}</div>
-    <ul v-if="devices.length">
-      <li v-for="d in devices" :key="d.id">
-        <router-link :to="`/devices/${d.id}`">
-          {{ d.device_uid }} (id {{ d.id }})
-        </router-link>
-      </li>
-    </ul>
+
+    <table v-if="devices.length" class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>UID</th>
+          <th>Status</th>
+          <th>Last seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="d in devices" :key="d.id">
+          <td>{{ d.id }}</td>
+          <td>
+            <router-link :to="`/devices/${d.id}`">
+              {{ d.device_uid }}
+            </router-link>
+          </td>
+          <td>
+            <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
+              {{ d.online ? "online" : "offline" }}
+            </span>
+          </td>
+          <td>{{ fmtTime(d.last_seen) }}</td>
+        </tr>
+      </tbody>
+    </table>
     <div v-else>No devices.</div>
   </div>
 </template>

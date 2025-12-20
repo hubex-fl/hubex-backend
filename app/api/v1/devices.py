@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+﻿from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,6 +13,7 @@ from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
+from app.schemas.device import DeviceListItem
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -119,15 +120,31 @@ async def whoami(device: Device = Depends(get_current_device)):
     }
 
 
-@router.get("", response_model=list[DeviceOut])
+@router.get("", response_model=list[DeviceListItem])
 async def list_devices(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    now = datetime.now(timezone.utc)
+    online_window = timedelta(seconds=30)
     res = await db.execute(
         select(Device).where(Device.owner_user_id == user.id).order_by(Device.id)
     )
-    return list(res.scalars().all())
+    devices = res.scalars().all()
+    out: list[DeviceListItem] = []
+    for device in devices:
+        last_seen = device.last_seen_at
+        online = bool(last_seen and (now - last_seen) <= online_window)
+        out.append(
+            DeviceListItem(
+                id=device.id,
+                device_uid=device.device_uid,
+                claimed=device.owner_user_id is not None,
+                last_seen=last_seen,
+                online=online,
+            )
+        )
+    return out
 
 
 @router.get("/{device_id}", response_model=DeviceOut)
