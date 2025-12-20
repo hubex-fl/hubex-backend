@@ -43,10 +43,15 @@ def _hash_token(token_plain: str) -> str:
     # für DeviceToken: stabil, schnell, keine bcrypt-72byte-Problematik
     return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
 
-def _raise_error(status_code: int, code: str, message: str) -> None:
+def _raise_error(
+    status_code: int, code: str, message: str, meta: dict | None = None
+) -> None:
+    detail = {"code": code, "message": message}
+    if meta:
+        detail["meta"] = meta
     raise HTTPException(
         status_code=status_code,
-        detail={"code": code, "message": message},
+        detail=detail,
     )
 
 
@@ -59,6 +64,7 @@ class PairingStartOut(BaseModel):
     device_uid: str
     pairing_code: str
     expires_at: datetime
+    ttl_seconds: int
 
 
 class PairingClaimIn(BaseModel):
@@ -79,7 +85,9 @@ class PairingClaimIn(BaseModel):
 class PairingClaimOut(BaseModel):
     device_id: int
     owner_user_id: int
+    device_uid: str
     device_token: str  # nur EINMAL ausgeben
+    claimed_at: datetime
 
 
 @router.post("/start", response_model=PairingStartOut)
@@ -104,6 +112,22 @@ async def start_pairing(
         _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
     now = _now_utc()
+    res = await db.execute(
+        select(PairingSession).where(
+            PairingSession.device_uid == device.device_uid,
+            PairingSession.is_used.is_(False),
+            PairingSession.expires_at > now,
+        )
+    )
+    existing = res.scalar_one_or_none()
+    if existing is not None:
+        ttl_seconds = max(0, int((existing.expires_at - now).total_seconds()))
+        _raise_error(
+            409,
+            "PAIRING_ALREADY_ACTIVE",
+            "pairing already active",
+            meta={"expires_at": existing.expires_at.isoformat(), "ttl_seconds": ttl_seconds},
+        )
     res = await db.execute(
         select(Task.id).where(
             Task.client_id == device.id,
@@ -130,10 +154,12 @@ async def start_pairing(
     db.add(session)
     await db.commit()
 
+    ttl_seconds = max(0, int((expires_at - now).total_seconds()))
     return PairingStartOut(
         device_uid=device.device_uid,
         pairing_code=code,
         expires_at=expires_at,
+        ttl_seconds=ttl_seconds,
     )
 
 
@@ -208,5 +234,7 @@ async def confirm_pairing(
     return PairingClaimOut(
         device_id=device.id,
         owner_user_id=device.owner_user_id,
+        device_uid=device.device_uid,
         device_token=token_plain,
+        claimed_at=now,
     )
