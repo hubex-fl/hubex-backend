@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
 
@@ -22,11 +22,46 @@ type TelemetryItem = {
   payload?: Record<string, any> | null;
 };
 
+type CurrentTaskOut = {
+  has_active_lease: boolean;
+  device_id: number;
+  task_id: number | null;
+  task_name: string | null;
+  task_type: string | null;
+  task_status: string | null;
+  claimed_at: string | null;
+  lease_expires_at: string | null;
+  lease_seconds_remaining: number | null;
+  lease_token_hint: string | null;
+  context_key: string | null;
+};
+
+type TaskHistoryItemOut = {
+  task_id: number;
+  task_name: string;
+  task_type: string;
+  task_status: string;
+  claimed_at: string | null;
+  finished_at: string | null;
+  last_seen_at: string | null;
+};
+
 const deviceInfo = ref<DeviceInfo | null>(null);
 const deviceInfoError = ref<string | null>(null);
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
+
+const currentTask = ref<CurrentTaskOut | null>(null);
+const currentTaskError = ref<string | null>(null);
+const taskHistory = ref<TaskHistoryItemOut[]>([]);
+const taskHistoryError = ref<string | null>(null);
+const leaseSecondsRemaining = ref<number | null>(null);
+const isLeaseExpiredLocally = computed(() => {
+  const s = leaseSecondsRemaining.value;
+  if (s === null) return false;
+  return s <= 0;
+});
 
 let ws: WebSocket | null = null;
 let mounted = false;
@@ -35,6 +70,10 @@ let reconnectAttempt = 0;
 let heartbeatTimer: number | null = null;
 let deviceInfoTimer: number | null = null;
 let lastDeviceInfoRefreshMs = 0;
+let taskStatusTimer: number | null = null;
+let leaseCountdownTimer: number | null = null;
+let lastCurrentTaskRefreshMs = 0;
+let lastTaskHistoryRefreshMs = 0;
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -78,6 +117,20 @@ function refreshDeviceInfoDebounced() {
   loadDeviceInfo();
 }
 
+function refreshCurrentTaskDebounced() {
+  const now = Date.now();
+  if (now - lastCurrentTaskRefreshMs < 1000) return;
+  lastCurrentTaskRefreshMs = now;
+  loadCurrentTask();
+}
+
+function refreshTaskHistoryDebounced() {
+  const now = Date.now();
+  if (now - lastTaskHistoryRefreshMs < 2000) return;
+  lastTaskHistoryRefreshMs = now;
+  loadTaskHistory();
+}
+
 function connectWs() {
   if (!mounted) return;
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -113,6 +166,8 @@ function connectWs() {
       } else if (data && typeof data === "object") {
         telemetry.value = [...telemetry.value, data].slice(-5);
         refreshDeviceInfoDebounced();
+        refreshCurrentTaskDebounced();
+        refreshTaskHistoryDebounced();
       }
     } catch {
       // ignore
@@ -136,6 +191,54 @@ async function loadDeviceInfo() {
     deviceInfo.value = await apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId}`);
   } catch (e: any) {
     deviceInfoError.value = e?.message || String(e);
+  }
+}
+
+function stopLeaseCountdown() {
+  if (leaseCountdownTimer !== null) {
+    window.clearInterval(leaseCountdownTimer);
+    leaseCountdownTimer = null;
+  }
+}
+
+function startLeaseCountdown() {
+  stopLeaseCountdown();
+  if (!currentTask.value?.has_active_lease) return;
+  if (leaseSecondsRemaining.value === null) return;
+  if (leaseSecondsRemaining.value <= 0) {
+    leaseSecondsRemaining.value = 0;
+    return;
+  }
+  leaseCountdownTimer = window.setInterval(() => {
+    if (leaseSecondsRemaining.value === null) return;
+    leaseSecondsRemaining.value -= 1;
+    if (leaseSecondsRemaining.value <= 0) {
+      leaseSecondsRemaining.value = 0;
+      stopLeaseCountdown();
+    }
+  }, 1000);
+}
+
+async function loadCurrentTask() {
+  currentTaskError.value = null;
+  try {
+    const res = await apiFetch<CurrentTaskOut>(`/api/v1/devices/${deviceId}/current-task`);
+    currentTask.value = res;
+    leaseSecondsRemaining.value = res.lease_seconds_remaining ?? null;
+    startLeaseCountdown();
+  } catch (e: any) {
+    currentTaskError.value = e?.message || String(e);
+  }
+}
+
+async function loadTaskHistory() {
+  taskHistoryError.value = null;
+  try {
+    taskHistory.value = await apiFetch<TaskHistoryItemOut[]>(
+      `/api/v1/devices/${deviceId}/task-history?limit=5`
+    );
+  } catch (e: any) {
+    taskHistoryError.value = e?.message || String(e);
   }
 }
 
@@ -166,11 +269,64 @@ function fmtAge(ageSeconds: number | null) {
   return `${Math.floor(ageSeconds / 3600)}h ago`;
 }
 
+function fmtRemaining(seconds: number | null) {
+  if (seconds === null) return "-";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function fmtAgoFromIso(iso: string | null) {
+  if (!iso) return "-";
+  const dt = new Date(iso);
+  if (!Number.isFinite(dt.getTime())) return "-";
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
+  return fmtAge(diffSeconds);
+}
+
+function historyStatusClass(status: string) {
+  const s = (status || "").toLowerCase();
+  if (["done", "success", "succeeded", "completed"].includes(s)) return "pill-ok";
+  if (["failed", "error", "cancelled", "canceled", "timeout", "timed_out"].includes(s)) {
+    return "pill-bad";
+  }
+  return "pill-warn";
+}
+
+function currentTaskStatusClass() {
+  const task = currentTask.value;
+  if (!task || !task.has_active_lease) return "pill-bad";
+  if (isLeaseExpiredLocally.value) return "pill-bad";
+  const status = (task.task_status || "").toLowerCase();
+  if (status.includes("fail") || status.includes("error") || status.includes("cancel")) {
+    return "pill-bad";
+  }
+  if (leaseSecondsRemaining.value !== null && leaseSecondsRemaining.value <= 30) {
+    return "pill-warn";
+  }
+  return "pill-ok";
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    loadCurrentTask();
+    loadTaskHistory();
+    startLeaseCountdown();
+  }
+}
+
 onMounted(() => {
   mounted = true;
   loadDeviceInfo();
   deviceInfoTimer = window.setInterval(loadDeviceInfo, 5000);
+  loadCurrentTask();
+  loadTaskHistory();
+  taskStatusTimer = window.setInterval(() => {
+    loadCurrentTask();
+    loadTaskHistory();
+  }, 5000);
   connectWs();
+  document.addEventListener("visibilitychange", onVisibilityChange);
 });
 
 onUnmounted(() => {
@@ -183,7 +339,13 @@ onUnmounted(() => {
     window.clearInterval(deviceInfoTimer);
     deviceInfoTimer = null;
   }
+  if (taskStatusTimer !== null) {
+    window.clearInterval(taskStatusTimer);
+    taskStatusTimer = null;
+  }
+  stopLeaseCountdown();
   cleanupWs();
+  document.removeEventListener("visibilitychange", onVisibilityChange);
 });
 </script>
 
@@ -208,6 +370,66 @@ onUnmounted(() => {
         <strong>Last seen:</strong>
         {{ fmtAge(deviceInfo?.last_seen_age_seconds ?? null) }}
       </div>
+    </div>
+
+    <div v-if="currentTaskError" class="error">{{ currentTaskError }}</div>
+    <div class="row" style="margin-bottom: 10px;">
+      <div>
+        <strong>Current Task:</strong>
+        <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
+          Running: {{ currentTask?.task_name ?? "-" }}
+          <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
+            ({{ currentTask.task_type }})
+          </span>
+        </span>
+        <span v-else>none</span>
+      </div>
+      <div>
+        <span :class="['pill', currentTaskStatusClass()]" style="margin-left: 6px;">
+          {{
+            currentTask?.has_active_lease && !isLeaseExpiredLocally
+              ? (currentTask?.task_status ?? "active")
+              : "no lease"
+          }}
+        </span>
+      </div>
+      <div>
+        <strong>Lease expires in:</strong>
+        {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}
+      </div>
+    </div>
+
+    <div v-if="taskHistoryError" class="error">{{ taskHistoryError }}</div>
+    <div style="margin-bottom: 14px;">
+      <strong>Recent Tasks</strong>
+      <div v-if="taskHistory.length === 0" style="margin-top: 6px;">No recent tasks</div>
+      <table v-else class="table" style="margin-top: 6px;">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Status</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="t in taskHistory" :key="t.task_id">
+            <td>
+              {{ t.task_name }}
+              <span v-if="t.task_type !== t.task_name">({{ t.task_type }})</span>
+            </td>
+            <td>
+              <span :class="['pill', historyStatusClass(t.task_status)]">
+                {{ t.task_status }}
+              </span>
+            </td>
+            <td>
+              <span v-if="t.finished_at">finished {{ fmtAgoFromIso(t.finished_at) }}</span>
+              <span v-else-if="t.claimed_at">claimed {{ fmtAgoFromIso(t.claimed_at) }}</span>
+              <span v-else>-</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div v-if="telemetryError" class="error">{{ telemetryError }}</div>

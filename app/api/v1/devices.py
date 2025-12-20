@@ -15,6 +15,7 @@ from app.api.v1.validators import validate_json_object
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 from app.schemas.device import DeviceListItem, DeviceDetailItem
+from app.schemas.taskcam import CurrentTaskOut, TaskHistoryItemOut
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -336,6 +337,100 @@ async def list_device_tasks(
         stmt = stmt.where(Task.status == status)
     res = await db.execute(stmt.order_by(desc(Task.created_at)).limit(limit))
     return list(res.scalars().all())
+
+
+@router.get("/{device_id}/current-task", response_model=CurrentTaskOut)
+async def get_current_task(
+    device_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _get_owned_device(device_id, db, user)
+    now = datetime.now(timezone.utc)
+    res = await db.execute(
+        select(Task, ExecutionContext.context_key)
+        .outerjoin(ExecutionContext, ExecutionContext.id == Task.execution_context_id)
+        .where(
+            Task.client_id == device_id,
+            Task.lease_expires_at.is_not(None),
+            Task.lease_expires_at > now,
+            Task.lease_token.is_not(None),
+            Task.status == "in_flight",
+        )
+        # If multiple leases exist (should not), pick the latest expiry.
+        .order_by(desc(Task.lease_expires_at))
+        .limit(1)
+    )
+    row = res.one_or_none()
+    if row is None:
+        return CurrentTaskOut(
+            has_active_lease=False,
+            device_id=device_id,
+            task_id=None,
+            task_name=None,
+            task_type=None,
+            task_status=None,
+            claimed_at=None,
+            lease_expires_at=None,
+            lease_seconds_remaining=None,
+            lease_token_hint=None,
+            context_key=None,
+        )
+
+    task, context_key = row
+    lease_seconds_remaining = max(
+        0, int((task.lease_expires_at - now).total_seconds())
+    )
+    lease_token_hint = task.lease_token[:6] if task.lease_token else None
+    # No separate name field exists; task.type is the canonical identifier.
+    task_name = task.type
+    task_type = task.type
+
+    return CurrentTaskOut(
+        has_active_lease=True,
+        device_id=device_id,
+        task_id=task.id,
+        task_name=task_name,
+        task_type=task_type,
+        task_status=task.status,
+        claimed_at=task.claimed_at,
+        lease_expires_at=task.lease_expires_at,
+        lease_seconds_remaining=lease_seconds_remaining,
+        lease_token_hint=lease_token_hint,
+        context_key=context_key,
+    )
+
+
+@router.get("/{device_id}/task-history", response_model=list[TaskHistoryItemOut])
+async def get_task_history(
+    device_id: int,
+    limit: int = Query(5),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    await _get_owned_device(device_id, db, user)
+    limit = max(1, min(20, limit))
+    res = await db.execute(
+        select(Task)
+        .where(Task.client_id == device_id)
+        .order_by(desc(Task.completed_at), desc(Task.claimed_at), desc(Task.id))
+        .limit(limit)
+    )
+    rows = res.scalars().all()
+    out: list[TaskHistoryItemOut] = []
+    for task in rows:
+        out.append(
+            TaskHistoryItemOut(
+                task_id=task.id,
+                task_name=task.type,
+                task_type=task.type,
+                task_status=task.status,
+                claimed_at=task.claimed_at,
+                finished_at=task.completed_at,
+                last_seen_at=None,
+            )
+        )
+    return out
 
 
 @router.post("/{device_id}/tasks/{task_id}/cancel", response_model=UserTaskCancelOut)
