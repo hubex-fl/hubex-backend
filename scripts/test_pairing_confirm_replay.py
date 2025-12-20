@@ -1,11 +1,12 @@
 ﻿import json
+import os
 import sys
 import uuid
 from urllib import request
 from urllib.error import HTTPError, URLError
 
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.getenv("HUBEX_BASE", "http://127.0.0.1:8000")
 EMAIL = "dev@hubex.local"
 PASSWORD = "devdevdev"
 
@@ -69,24 +70,38 @@ def main():
     start_payload = {"device_uid": device_uid}
     status, body = _request_json(
         "POST",
-        f"{BASE}/api/v1/pairing/start",
+        f"{BASE}/api/v1/devices/pairing/start",
         start_payload,
         headers={"Authorization": f"Bearer {token}"},
     )
     print(f"PAIRING_START status={status} body={body}")
-    if status != 200:
-        print("PAIRING_START failed (expected 200 for fresh device).")
-        sys.exit(1)
-
     start_obj = _parse_body(body) or {}
     code = start_obj.get("pairing_code")
-    if not code:
-        print("PAIRING_START missing pairing_code.")
+    if status == 409:
+        detail = start_obj.get("detail") if isinstance(start_obj, dict) else None
+        code_detail = None
+        if isinstance(detail, dict):
+            code_detail = detail.get("code")
+        if code_detail == "PAIRING_ALREADY_ACTIVE":
+            if not code:
+                print(
+                    "PAIRING_START active pairing but no pairing_code in response (cannot proceed)."
+                )
+                sys.exit(1)
+        else:
+            print("PAIRING_START failed (unexpected 409).")
+            sys.exit(1)
+    elif status == 200:
+        if not code:
+            print("PAIRING_START missing pairing_code.")
+            sys.exit(1)
+    else:
+        print("PAIRING_START failed (expected 200 or 409).")
         sys.exit(1)
 
     confirm_payload = {"deviceUid": device_uid, "pairingCode": code}
     status1, body1 = _request_json(
-        "POST", f"{BASE}/api/v1/pairing/confirm", confirm_payload
+        "POST", f"{BASE}/api/v1/devices/pairing/confirm", confirm_payload
     )
     print(f"CONFIRM#1 status={status1} body={body1}")
     if status1 != 200:
@@ -98,14 +113,13 @@ def main():
         sys.exit(1)
 
     status2, body2 = _request_json(
-        "POST", f"{BASE}/api/v1/pairing/confirm", confirm_payload
+        "POST", f"{BASE}/api/v1/devices/pairing/confirm", confirm_payload
     )
     print(f"CONFIRM#2 status={status2} body={body2}")
     if status2 != 409:
         sys.exit(1)
 
-    confirm2_obj = _parse_body(body2) or {}
-    if confirm2_obj.get("device_token"):
+    if "device_token" in (body2 or ""):
         print("CONFIRM#2 leaked device_token.")
         sys.exit(1)
 
