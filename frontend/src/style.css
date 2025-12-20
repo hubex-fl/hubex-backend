@@ -107,3 +107,47 @@ a {
   background: #fff4ce;
   color: #8a6d1a;
 }
+
+.pairing-section {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.pairing-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pairing-input {
+  flex: 1;
+}
+
+.code-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.pairing-help {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.pairing-expired {
+  color: #b00020;
+  font-size: 12px;
+}
+
+.pairing-countdown {
+  color: #6b7280;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
