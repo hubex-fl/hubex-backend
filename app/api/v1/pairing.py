@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -17,6 +18,7 @@ from app.db.models.pairing import PairingSession, DeviceToken
 
 # Canonical pairing routes live under /api/v1/pairing
 router = APIRouter(prefix="/pairing", tags=["pairing"])
+logger = logging.getLogger("uvicorn.error")
 
 
 PAIRING_TTL_MINUTES = 10
@@ -113,17 +115,15 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
     - setzt device.owner_user_id + is_claimed
     - erstellt DeviceToken (plaintext nur einmal zurückgeben)
     """
-    device = None
-    token_plain = None
+    token_plain: str | None = None
 
-    res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
-    device = res.scalar_one_or_none()
-    if device is None:
-        raise HTTPException(status_code=404, detail="device not found")
-    if device.last_seen_at is None:
-        raise HTTPException(status_code=404, detail="device not provisioned")
-    if device.owner_user_id is not None or device.is_claimed:
-        raise HTTPException(status_code=409, detail="device already claimed")
+    # Debug: remove after stabilization. Detect nested transactions before begin().
+    logger.info(
+        "PAIRING_CONFIRM session_id=%s in_tx=%s tx=%r",
+        id(db),
+        db.in_transaction(),
+        db.get_transaction(),
+    )
 
     async with db.begin():
         res = await db.execute(
@@ -134,42 +134,41 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
             )
             .with_for_update()
         )
-        session = res.scalar_one_or_none()
-        if session is None:
+        ps = res.scalar_one_or_none()
+        if ps is None:
             raise HTTPException(status_code=404, detail="pairing code not found")
 
         now = _now_utc()
-        if session.is_used:
+        if ps.is_used:
             raise HTTPException(status_code=409, detail="pairing code already used")
-        if session.expires_at <= now:
+        if ps.expires_at <= now:
             raise HTTPException(status_code=410, detail="pairing code expired")
 
         res = await db.execute(
             select(Device)
-            .where(Device.device_uid == session.device_uid)
+            .where(Device.device_uid == ps.device_uid)
             .with_for_update()
         )
         device = res.scalar_one_or_none()
         if device is None:
             raise HTTPException(status_code=404, detail="device not found")
-
-        states = derive_device_states(device, pairing_active=True, now=now)
-        if DeviceState.claimed in states:
+        if device.last_seen_at is None:
+            raise HTTPException(status_code=404, detail="device not provisioned")
+        if device.owner_user_id is not None or device.is_claimed:
             raise HTTPException(status_code=409, detail="device already claimed")
 
-        # Claim durchziehen
-        device.owner_user_id = session.user_id
+        # Claim
+        device.owner_user_id = ps.user_id
         device.is_claimed = True
+        ps.is_used = True
 
-        session.is_used = True
-
-        # Device Token erstellen (nur einmal plaintext)
+        # Device Token (nur einmal als Klartext)
         token_plain = _gen_device_token_plain()
         token_hash = _hash_token(token_plain)
-
         db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
 
-    await db.refresh(device)
+        await db.flush()
+        await db.refresh(device)
 
     return PairingClaimOut(
         device_id=device.id,
