@@ -2,6 +2,7 @@ export type ApiErrorInfo = {
   httpStatus?: number;
   code?: string;
   message?: string;
+  meta?: Record<string, unknown>;
   raw?: string;
 };
 
@@ -15,6 +16,7 @@ export function parseApiError(err: unknown): ApiErrorInfo {
   let httpStatus: number | undefined;
   let code: string | undefined;
   let detailMessage: string | undefined;
+  let meta: Record<string, unknown> | undefined;
 
   const httpMatch = message.match(/^HTTP\s+(\d{3})(?:\s+([^:]+))?:\s*([\s\S]*)$/i);
   if (httpMatch) {
@@ -30,6 +32,9 @@ export function parseApiError(err: unknown): ApiErrorInfo {
           if (d && typeof d === "object") {
             code = safeString(d.code);
             detailMessage = safeString(d.message ?? d.detail ?? d);
+            if ("meta" in d && d.meta && typeof d.meta === "object") {
+              meta = d.meta as Record<string, unknown>;
+            }
           } else {
             detailMessage = safeString(d);
           }
@@ -46,6 +51,7 @@ export function parseApiError(err: unknown): ApiErrorInfo {
     httpStatus: Number.isFinite(httpStatus) ? httpStatus : undefined,
     code: code || undefined,
     message: detailMessage || undefined,
+    meta,
     raw: message || undefined,
   };
 }

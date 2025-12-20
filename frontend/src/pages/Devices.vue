@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 
@@ -20,6 +20,8 @@ type Device = {
 const devices = ref<Device[]>([]);
 const error = ref("");
 const pairingSection = ref<HTMLElement | null>(null);
+const pairingConfirmInput = ref<HTMLInputElement | null>(null);
+const route = useRoute();
 const router = useRouter();
 
 const pairingDeviceUid = ref("");
@@ -30,6 +32,9 @@ const startingPairing = ref(false);
 const confirmingPairing = ref(false);
 const pairingRemainingSeconds = ref<number | null>(null);
 const pairingExpired = ref(false);
+const searchQuery = ref("");
+const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
+const actionableOnly = ref(false);
 
 const pairingDevice = computed(() => {
   const uid = pairingDeviceUid.value.trim();
@@ -68,6 +73,41 @@ const canConfirmPairing = computed(() => {
   return !["busy", "claimed", "unprovisioned"].includes(pairingDevice.value.state);
 });
 
+const visibleDevices = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  let list = devices.value.slice();
+  if (q) {
+    list = list.filter((d) => d.device_uid.toLowerCase().includes(q));
+  }
+  if (actionableOnly.value) {
+    list = list.filter((d) => ["provisioned_unclaimed", "pairing_active"].includes(d.state));
+  }
+  const statePriority: Record<Device["state"], number> = {
+    busy: 5,
+    pairing_active: 4,
+    provisioned_unclaimed: 3,
+    claimed: 2,
+    unprovisioned: 1,
+  };
+  const healthPriority: Record<Device["health"], number> = {
+    ok: 3,
+    stale: 2,
+    dead: 1,
+  };
+  if (sortBy.value === "last_seen") {
+    list.sort((a, b) => {
+      const av = a.last_seen_age_seconds ?? Number.POSITIVE_INFINITY;
+      const bv = b.last_seen_age_seconds ?? Number.POSITIVE_INFINITY;
+      return av - bv;
+    });
+  } else if (sortBy.value === "state") {
+    list.sort((a, b) => statePriority[b.state] - statePriority[a.state]);
+  } else if (sortBy.value === "health") {
+    list.sort((a, b) => healthPriority[b.health] - healthPriority[a.health]);
+  }
+  return list;
+});
+
 let timer: number | null = null;
 let pairingTimer: number | null = null;
 
@@ -93,9 +133,10 @@ function formatPairingError(err: any, fallback: string): string {
   const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
   const detailText = truncate(info.message || "");
   const codeText = info.code ? ` ${info.code}` : "";
+  const metaText = info.meta ? ` ${JSON.stringify(info.meta)}` : "";
   const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) return `${mapped} (${suffix}${codeText})`;
-  return `${fallback} (${suffix}${codeText})`;
+  if (mapped !== fallback) return `${mapped} (${suffix}${codeText}${metaText})`;
+  return `${fallback} (${suffix}${codeText}${metaText})`;
 }
 
 function stopPairingCountdown() {
@@ -125,6 +166,8 @@ function updatePairingCountdown() {
     pairingRemainingSeconds.value = 0;
     pairingExpired.value = true;
     stopPairingCountdown();
+    pairingStartCode.value = "";
+    pairingExpiresAt.value = null;
     return;
   }
   pairingRemainingSeconds.value = remaining;
@@ -143,7 +186,7 @@ function fmtRemaining(seconds: number | null) {
   if (seconds === null) return "-";
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}m ${s}s`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 async function startPairing() {
@@ -252,6 +295,11 @@ function onRowAction(device: Device) {
   }
   pairingDeviceUid.value = device.device_uid;
   pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (device.state === "pairing_active") {
+    requestAnimationFrame(() => {
+      pairingConfirmInput.value?.focus();
+    });
+  }
   if (device.state === "provisioned_unclaimed") {
     startPairing();
   }
@@ -298,6 +346,14 @@ function onVisibilityChange() {
 }
 
 onMounted(() => {
+  const uid = typeof route.query.uid === "string" ? route.query.uid : "";
+  if (uid) {
+    pairingDeviceUid.value = uid;
+    pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(() => {
+      pairingConfirmInput.value?.focus();
+    });
+  }
   load();
   timer = window.setInterval(() => load({ silent: true }), 5000);
   document.addEventListener("visibilitychange", onVisibilityChange);
@@ -332,11 +388,20 @@ onUnmounted(() => {
       <div v-if="pairingStateWarning" class="pairing-warn">
         {{ pairingStateWarning }}
       </div>
+      <div v-if="pairingExpired" class="pairing-expired">
+        Expired. Start pairing again.
+      </div>
 
       <div v-if="pairingStartCode" class="pairing-row">
-        <span class="code-badge">{{ pairingStartCode }}</span>
+        <span class="code-badge">
+          {{ pairingStartCode }}
+          <span v-if="pairingRemainingSeconds !== null" class="pairing-countdown-inline">
+            {{ fmtRemaining(pairingRemainingSeconds) }}
+          </span>
+        </span>
         <input
           v-model="pairingConfirmCode"
+          ref="pairingConfirmInput"
           class="input pairing-input"
           placeholder="Pairing code"
         />
@@ -344,16 +409,32 @@ onUnmounted(() => {
           {{ confirmingPairing ? "Confirming..." : "Confirm" }}
         </button>
       </div>
-      <div v-if="pairingStartCode" class="pairing-countdown">
-        <span v-if="pairingExpired" class="pairing-expired">Expired. Start pairing again.</span>
-        <span v-else>Expires in: {{ fmtRemaining(pairingRemainingSeconds) }}</span>
+      <div v-if="pairingStartCode && !pairingExpired" class="pairing-countdown">
+        <span>Expires in: {{ fmtRemaining(pairingRemainingSeconds) }}</span>
       </div>
       <div v-if="pairingExpiresAt" class="pairing-help">
         Expires: {{ fmtIso(pairingExpiresAt) }}
       </div>
     </div>
 
-    <table v-if="devices.length" class="table">
+    <div class="toolbar">
+      <input
+        v-model="searchQuery"
+        class="input toolbar-input"
+        placeholder="Search UID"
+      />
+      <select v-model="sortBy" class="input toolbar-select">
+        <option value="last_seen">Last seen (newest)</option>
+        <option value="state">State priority</option>
+        <option value="health">Health</option>
+      </select>
+      <label class="toolbar-toggle">
+        <input type="checkbox" v-model="actionableOnly" />
+        Show only actionable
+      </label>
+    </div>
+
+    <table v-if="visibleDevices.length" class="table">
       <thead>
         <tr>
           <th>UID</th>
@@ -365,7 +446,7 @@ onUnmounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="d in devices" :key="d.id">
+        <tr v-for="d in visibleDevices" :key="d.id">
           <td>
             <router-link :to="`/devices/${d.id}`">
               {{ d.device_uid }}
@@ -392,7 +473,7 @@ onUnmounted(() => {
           </td>
           <td>
             <button
-              class="btn"
+              class="btn cta-btn"
               :disabled="rowActionDisabled(d)"
               @click="onRowAction(d)"
             >

@@ -144,12 +144,47 @@ a {
 .pairing-expired {
   color: #b00020;
   font-size: 12px;
+  margin-top: 6px;
 }
 
 .pairing-countdown {
   color: #6b7280;
   font-size: 12px;
   margin-bottom: 6px;
+}
+
+.pairing-countdown-inline {
+  margin-left: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.toolbar-input {
+  min-width: 220px;
+}
+
+.toolbar-select {
+  min-width: 180px;
+}
+
+.toolbar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.cta-btn {
+  min-width: 140px;
 }
 
 .pairing-warn {
@@ -163,6 +198,13 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .pill-group {
@@ -198,6 +240,22 @@ a {
 .section-divider {
   margin: 14px 0;
   border-top: 1px solid #e5e7eb;
+}
+
+.payload-preview {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  color: #374151;
+  margin-right: 8px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
 }
 
 @media (max-width: 640px) {
