@@ -191,8 +191,13 @@ if ($resp.Status -eq 200) {
 }
 
 Write-Host "Pairing confirm (no JWT)..."
-$confirmBody = @{ device_uid = $deviceUid; pairing_code = $pairingObj.pairing_code } | ConvertTo-Json -Compress
+$pairingCode = $pairingObj.pairing_code
+Write-Host "SMOKE_PAIRING_INPUT device_uid=$deviceUid pairing_code=$pairingCode"
+$confirmBody = @{ device_uid = $deviceUid; pairing_code = $pairingCode } | ConvertTo-Json -Compress
+Write-Host "SMOKE_CONFIRM1_PAYLOAD $confirmBody"
 $resp = Invoke-Api "POST" "$baseUrl/pairing/confirm" $confirmBody @{ "Content-Type" = "application/json" }
+Write-Host "SMOKE_CONFIRM1_STATUS $($resp.Status)"
+Write-Host "SMOKE_CONFIRM1_BODY $($resp.Body)"
 Assert-Status $resp 200 "pairing confirm"
 $confirmObj = Parse-Json $resp.Body "pairing confirm"
 $deviceToken = $confirmObj.device_token
@@ -200,7 +205,14 @@ $deviceId = $confirmObj.device_id
 if (-not $deviceToken -or $null -eq $deviceId) { Fail "pairing confirm missing token or device_id" $resp }
 
 Write-Host "Pairing confirm replay (expect 409)..."
-$resp = Invoke-Api "POST" "$baseUrl/pairing/confirm" $confirmBody @{ "Content-Type" = "application/json" }
+$confirmBodyReplay = $confirmBody
+if ($confirmBodyReplay -ne $confirmBody) {
+    Fail "replay uses different inputs" @{ Status = -1; Body = "confirm payload mismatch" }
+}
+Write-Host "SMOKE_CONFIRM2_PAYLOAD $confirmBodyReplay"
+$resp = Invoke-Api "POST" "$baseUrl/pairing/confirm" $confirmBodyReplay @{ "Content-Type" = "application/json" }
+Write-Host "SMOKE_CONFIRM2_STATUS $($resp.Status)"
+Write-Host "SMOKE_CONFIRM2_BODY $($resp.Body)"
 Assert-Status $resp 409 "pairing confirm replay"
 
 Write-Host "Device whoami (missing token, expect 401)..."
