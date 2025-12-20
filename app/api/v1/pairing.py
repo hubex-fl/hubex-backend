@@ -4,11 +4,12 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
 import logging
+import sys
 
 from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
@@ -177,6 +178,10 @@ async def confirm_pairing(
     token_plain: str | None = None
     now = _now_utc()
 
+    print(
+        f"CONFIRM_IN uid={data.device_uid} code={data.pairing_code}",
+        file=sys.stderr,
+    )
     async with db.begin_nested():
         res = await db.execute(
             select(PairingSession)
@@ -189,6 +194,11 @@ async def confirm_pairing(
         ps = res.scalar_one_or_none()
         if ps is None:
             _raise_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
+
+        print(
+            f"CONFIRM_PS id={ps.id} used={ps.is_used} expires={ps.expires_at}",
+            file=sys.stderr,
+        )
 
         if ps.is_used:
             _raise_error(409, "PAIRING_CODE_USED", "pairing code already used")
@@ -208,6 +218,11 @@ async def confirm_pairing(
         if device.owner_user_id is not None or device.is_claimed:
             _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
+        print(
+            f"CONFIRM_DEV id={device.id} claimed={device.is_claimed} owner={device.owner_user_id}",
+            file=sys.stderr,
+        )
+
         res = await db.execute(
             select(Task.id).where(
                 Task.client_id == device.id,
@@ -221,15 +236,20 @@ async def confirm_pairing(
             _raise_error(409, "DEVICE_BUSY", "device busy")
 
         res = await db.execute(
-            select(DeviceToken.id)
+            select(func.count())
+            .select_from(DeviceToken)
             .where(
                 DeviceToken.device_id == device.id,
                 DeviceToken.is_active.is_(True),
             )
-            .limit(1)
-            .with_for_update()
         )
-        if res.scalar_one_or_none() is not None:
+        active_tokens = res.scalar_one()
+        print(
+            f"CONFIRM_ACTIVE_TOKENS device_id={device.id} active_count={active_tokens}",
+            file=sys.stderr,
+        )
+        if active_tokens > 0:
+            print("CONFIRM_BLOCK replay: active token exists", file=sys.stderr)
             _raise_error(409, "DEVICE_TOKEN_ALREADY_ISSUED", "device token already issued")
 
         # Claim
