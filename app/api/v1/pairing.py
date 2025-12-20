@@ -13,8 +13,8 @@ from sqlalchemy import select
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
 from app.db.models.device import Device
-from app.core.device_state import DeviceState, derive_device_states
 from app.db.models.pairing import PairingSession, DeviceToken
+from app.db.models.tasks import Task
 
 # Canonical pairing routes live under /api/v1/pairing
 router = APIRouter(prefix="/pairing", tags=["pairing"])
@@ -77,7 +77,7 @@ class PairingClaimOut(BaseModel):
 
 @router.post("/start", response_model=PairingStartOut)
 async def start_pairing(
-    data: PairingStartIn,
+    data: PairingStartIn = Body(...),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -96,9 +96,22 @@ async def start_pairing(
     if device.owner_user_id is not None or device.is_claimed:
         raise HTTPException(status_code=409, detail="device already claimed")
 
+    now = _now_utc()
+    res = await db.execute(
+        select(Task.id).where(
+            Task.client_id == device.id,
+            Task.lease_expires_at.is_not(None),
+            Task.lease_expires_at > now,
+            Task.lease_token.is_not(None),
+            Task.status == "in_flight",
+        )
+    )
+    if res.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="device busy")
+
     # neue Session erzeugen (alte Sessions lassen wir erstmal in Ruhe)
     code = _gen_pairing_code()
-    expires_at = _now_utc() + timedelta(minutes=PAIRING_TTL_MINUTES)
+    expires_at = now + timedelta(minutes=PAIRING_TTL_MINUTES)
 
     session = PairingSession(
         device_uid=device.device_uid,
@@ -129,8 +142,9 @@ async def confirm_pairing(
     - erstellt DeviceToken (plaintext nur einmal zurückgeben)
     """
     token_plain: str | None = None
+    now = _now_utc()
 
-    async with db.begin():
+    async with db.begin_nested():
         res = await db.execute(
             select(PairingSession)
             .where(
@@ -143,7 +157,6 @@ async def confirm_pairing(
         if ps is None:
             raise HTTPException(status_code=404, detail="pairing code not found")
 
-        now = _now_utc()
         if ps.is_used:
             raise HTTPException(status_code=409, detail="pairing code already used")
         if ps.expires_at <= now:
@@ -162,6 +175,18 @@ async def confirm_pairing(
         if device.owner_user_id is not None or device.is_claimed:
             raise HTTPException(status_code=409, detail="device already claimed")
 
+        res = await db.execute(
+            select(Task.id).where(
+                Task.client_id == device.id,
+                Task.lease_expires_at.is_not(None),
+                Task.lease_expires_at > now,
+                Task.lease_token.is_not(None),
+                Task.status == "in_flight",
+            )
+        )
+        if res.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="device busy")
+
         # Claim
         device.owner_user_id = ps.user_id
         device.is_claimed = True
@@ -171,9 +196,7 @@ async def confirm_pairing(
         token_plain = _gen_device_token_plain()
         token_hash = _hash_token(token_plain)
         db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
-
-        await db.flush()
-        await db.refresh(device)
+    await db.refresh(device)
 
     return PairingClaimOut(
         device_id=device.id,

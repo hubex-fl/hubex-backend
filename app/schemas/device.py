@@ -12,6 +12,15 @@ class DeviceListItem(BaseModel):
     online: bool
     health: Literal["ok", "stale", "dead"]
     last_seen_age_seconds: Optional[int]
+    state: Literal[
+        "unprovisioned",
+        "provisioned_unclaimed",
+        "pairing_active",
+        "claimed",
+        "busy",
+    ]
+    pairing_active: bool
+    busy: bool
 
 
 class DeviceDetailItem(BaseModel):
@@ -26,3 +35,12 @@ class DeviceDetailItem(BaseModel):
     created_at: datetime
     health: Literal["ok", "stale", "dead"]
     last_seen_age_seconds: Optional[int]
+    state: Literal[
+        "unprovisioned",
+        "provisioned_unclaimed",
+        "pairing_active",
+        "claimed",
+        "busy",
+    ]
+    pairing_active: bool
+    busy: bool
