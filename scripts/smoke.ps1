@@ -178,11 +178,14 @@ $resp = Invoke-Api "POST" "$baseUrl/pairing/start" $pairingBody @{ "Authorizatio
 if ($resp.Status -eq 200) {
     $pairingObj = Parse-Json $resp.Body "pairing start fresh"
 } elseif ($resp.Status -eq 409) {
-    $pairingObj = Parse-Json $resp.Body "pairing start fresh"
-    if ($pairingObj.detail.code -ne "PAIRING_ALREADY_ACTIVE") {
+    $pairingObj409 = Parse-Json $resp.Body "pairing start fresh"
+    if ($pairingObj409.detail.code -ne "PAIRING_ALREADY_ACTIVE") {
         Fail "pairing start fresh (expected 200 or PAIRING_ALREADY_ACTIVE)" $resp
     }
-    Write-Host "Pairing already active: ttl_seconds=$($pairingObj.detail.meta.ttl_seconds) expires_at=$($pairingObj.detail.meta.expires_at)"
+    Write-Host "Pairing already active: ttl_seconds=$($pairingObj409.detail.meta.ttl_seconds) expires_at=$($pairingObj409.detail.meta.expires_at)"
+    if (-not $pairingObj.pairing_code) {
+        Fail "pairing start fresh missing pairing_code (no prior session in flow)" $resp
+    }
 } else {
     Fail "pairing start fresh (expected 200 or 409)" $resp
 }
