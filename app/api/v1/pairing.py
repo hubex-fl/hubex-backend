@@ -15,7 +15,7 @@ from app.db.models.device import Device
 from app.core.device_state import DeviceState, derive_device_states
 from app.db.models.pairing import PairingSession, DeviceToken
 
-router = APIRouter(prefix="/pairing")
+router = APIRouter(tags=["pairing"])
 
 
 PAIRING_TTL_MINUTES = 10
