@@ -100,6 +100,7 @@ async def context_heartbeat(
     )
     res = await db.execute(stmt)
     row = res.one()
+    device.last_seen_at = now
     await db.commit()
     return ContextHeartbeatOut(id=row.id, context_key=row.context_key, last_seen_at=row.last_seen_at)
 
@@ -147,6 +148,7 @@ async def poll_tasks(
         task.claimed_at = now
         task.lease_expires_at = lease_expires_at
         task.lease_token = secrets.token_urlsafe(16)
+    device.last_seen_at = now
     await db.commit()
 
     return [

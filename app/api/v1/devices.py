@@ -13,7 +13,7 @@ from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
-from app.schemas.device import DeviceListItem
+from app.schemas.device import DeviceListItem, DeviceDetailItem
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -112,7 +112,12 @@ async def hello(data: DeviceHelloIn, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/whoami")
-async def whoami(device: Device = Depends(get_current_device)):
+async def whoami(
+    device: Device = Depends(get_current_device),
+    db: AsyncSession = Depends(get_db),
+):
+    device.last_seen_at = datetime.now(timezone.utc)
+    await db.commit()
     return {
         "id": device.id,
         "device_uid": device.device_uid,
@@ -134,6 +139,14 @@ async def list_devices(
     out: list[DeviceListItem] = []
     for device in devices:
         last_seen = device.last_seen_at
+        age_seconds: Optional[int] = None
+        health = "dead"
+        if last_seen:
+            age_seconds = max(0, int((now - last_seen).total_seconds()))
+            if age_seconds <= 30:
+                health = "ok"
+            elif age_seconds <= 120:
+                health = "stale"
         online = bool(last_seen and (now - last_seen) <= online_window)
         out.append(
             DeviceListItem(
@@ -142,12 +155,14 @@ async def list_devices(
                 claimed=device.owner_user_id is not None,
                 last_seen=last_seen,
                 online=online,
+                health=health,
+                last_seen_age_seconds=age_seconds,
             )
         )
     return out
 
 
-@router.get("/{device_id}", response_model=DeviceOut)
+@router.get("/{device_id}", response_model=DeviceDetailItem)
 async def get_device(
     device_id: int,
     db: AsyncSession = Depends(get_db),
@@ -159,7 +174,29 @@ async def get_device(
     device = res.scalar_one_or_none()
     if device is None:
         raise HTTPException(status_code=404, detail="device not found")
-    return device
+    now = datetime.now(timezone.utc)
+    last_seen = device.last_seen_at
+    age_seconds: Optional[int] = None
+    health = "dead"
+    if last_seen:
+        age_seconds = max(0, int((now - last_seen).total_seconds()))
+        if age_seconds <= 30:
+            health = "ok"
+        elif age_seconds <= 120:
+            health = "stale"
+    return DeviceDetailItem(
+        id=device.id,
+        device_uid=device.device_uid,
+        name=device.name,
+        firmware_version=device.firmware_version,
+        capabilities=device.capabilities,
+        last_seen_at=device.last_seen_at,
+        owner_user_id=device.owner_user_id,
+        is_claimed=device.is_claimed,
+        created_at=device.created_at,
+        health=health,
+        last_seen_age_seconds=age_seconds,
+    )
 
 
 async def _get_owned_device(

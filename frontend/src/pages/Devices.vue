@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { apiFetch } from "../lib/api";
 
 type Device = {
@@ -8,10 +8,14 @@ type Device = {
   claimed: boolean;
   last_seen: string | null;
   online: boolean;
+  health: "ok" | "stale" | "dead";
+  last_seen_age_seconds: number | null;
 };
 
 const devices = ref<Device[]>([]);
 const error = ref("");
+
+let timer: number | null = null;
 
 async function load() {
   error.value = "";
@@ -27,7 +31,30 @@ function fmtTime(iso: string | null) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
-onMounted(load);
+function fmtAge(seconds: number | null) {
+  if (seconds === null || seconds === undefined) return "-";
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
+}
+
+function healthClass(health: Device["health"]) {
+  if (health === "ok") return "pill-ok";
+  if (health === "stale") return "pill-warn";
+  return "pill-bad";
+}
+
+onMounted(() => {
+  load();
+  timer = window.setInterval(load, 5000);
+});
+
+onUnmounted(() => {
+  if (timer !== null) {
+    window.clearInterval(timer);
+    timer = null;
+  }
+});
 </script>
 
 <template>
@@ -41,6 +68,7 @@ onMounted(load);
           <th>ID</th>
           <th>UID</th>
           <th>Status</th>
+          <th>Health</th>
           <th>Last seen</th>
         </tr>
       </thead>
@@ -57,7 +85,15 @@ onMounted(load);
               {{ d.online ? "online" : "offline" }}
             </span>
           </td>
-          <td>{{ fmtTime(d.last_seen) }}</td>
+          <td>
+            <span :class="['pill', healthClass(d.health)]">
+              {{ d.health }}
+            </span>
+          </td>
+          <td>
+            {{ fmtTime(d.last_seen) }}
+            <span v-if="d.last_seen_age_seconds !== null">({{ fmtAge(d.last_seen_age_seconds) }})</span>
+          </td>
         </tr>
       </tbody>
     </table>
