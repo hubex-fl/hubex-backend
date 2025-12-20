@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 
 const route = useRoute();
+const router = useRouter();
 const deviceId = route.params.id as string;
 
 type DeviceInfo = {
@@ -61,6 +62,7 @@ const currentTaskError = ref<string | null>(null);
 const taskHistory = ref<TaskHistoryItemOut[]>([]);
 const taskHistoryError = ref<string | null>(null);
 const leaseSecondsRemaining = ref<number | null>(null);
+const expandedTelemetry = ref<Set<number>>(new Set());
 const isLeaseExpiredLocally = computed(() => {
   const s = leaseSecondsRemaining.value;
   if (s === null) return false;
@@ -250,16 +252,6 @@ function fmtTime(iso: string) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
-function fmtTemp(value: any) {
-  if (value === null || value === undefined || value === "") return "-";
-  return `${value} \u00b0C`;
-}
-
-function fmtHumidity(value: any) {
-  if (value === null || value === undefined || value === "") return "-";
-  return `${value} %`;
-}
-
 function healthClass(health: "ok" | "stale" | "dead") {
   if (health === "ok") return "pill-ok";
   if (health === "stale") return "pill-warn";
@@ -311,9 +303,10 @@ function formatApiError(err: any, fallback: string) {
   const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
   const detailText = (info.message || "").slice(0, 200);
   const codeText = info.code ? ` ${info.code}` : "";
+  const metaText = info.meta ? ` ${JSON.stringify(info.meta)}` : "";
   const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) return `${mapped} (${suffix}${codeText})`;
-  return `${fallback} (${suffix}${codeText})`;
+  if (mapped !== fallback) return `${mapped} (${suffix}${codeText}${metaText})`;
+  return `${fallback} (${suffix}${codeText}${metaText})`;
 }
 
 function currentTaskStatusClass() {
@@ -328,6 +321,55 @@ function currentTaskStatusClass() {
     return "pill-warn";
   }
   return "pill-ok";
+}
+
+function refreshNow() {
+  loadDeviceInfo();
+  loadCurrentTask();
+  loadTaskHistory();
+}
+
+async function copyUid() {
+  const uid = deviceInfo.value?.device_uid;
+  if (!uid) return;
+  try {
+    await navigator.clipboard.writeText(uid);
+  } catch {
+    // ignore
+  }
+}
+
+function openPairingPanel() {
+  const uid = deviceInfo.value?.device_uid;
+  if (!uid) return;
+  router.push({ path: "/devices", query: { uid } });
+}
+
+function isTelemetryExpanded(id: number) {
+  return expandedTelemetry.value.has(id);
+}
+
+function toggleTelemetry(id: number) {
+  const next = new Set(expandedTelemetry.value);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  expandedTelemetry.value = next;
+}
+
+function payloadPreview(payload: Record<string, any> | null | undefined, expanded: boolean) {
+  if (!payload) return "-";
+  const text = JSON.stringify(payload);
+  if (expanded) return text;
+  if (text.length <= 120) return text;
+  return text.slice(0, 120) + "...";
+}
+
+function fmtRelative(iso: string | undefined) {
+  if (!iso) return "-";
+  return fmtAgoFromIso(iso);
 }
 
 function onVisibilityChange() {
@@ -394,6 +436,20 @@ onUnmounted(() => {
           }}
         </span>
       </div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn secondary" @click="refreshNow">Refresh now</button>
+      <button class="btn secondary" :disabled="!deviceInfo?.device_uid" @click="copyUid">
+        Copy UID
+      </button>
+      <button
+        v-if="deviceInfo?.state === 'pairing_active'"
+        class="btn secondary"
+        @click="openPairingPanel"
+      >
+        Open pairing panel
+      </button>
     </div>
 
     <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
@@ -486,20 +542,25 @@ onUnmounted(() => {
       <thead>
         <tr>
           <th>Time</th>
-          <th>Temperature</th>
-          <th>Humidity</th>
-          <th>Event Type</th>
+          <th>Type</th>
+          <th>Payload</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="t in telemetry" :key="t.id">
-          <td>{{ fmtTime(t.received_at || t.created_at || "") }}</td>
-          <td>{{ fmtTemp(t.payload?.temperature) }}</td>
-          <td>{{ fmtHumidity(t.payload?.humidity) }}</td>
+          <td :title="fmtTime(t.received_at || t.created_at || '')">
+            {{ fmtRelative(t.received_at || t.created_at) }}
+          </td>
           <td>{{ t.event_type || "-" }}</td>
+          <td>
+            <span class="payload-preview">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
+            <button class="link-button" @click="toggleTelemetry(t.id)">
+              {{ isTelemetryExpanded(t.id) ? "Collapse" : "Expand" }}
+            </button>
+          </td>
         </tr>
         <tr v-if="telemetry.length === 0">
-          <td colspan="4">No telemetry yet</td>
+          <td colspan="3">No telemetry yet</td>
         </tr>
       </tbody>
     </table>
