@@ -5,8 +5,8 @@ import secrets
 import hashlib
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Body
+from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -55,9 +55,19 @@ class PairingStartOut(BaseModel):
 
 
 class PairingClaimIn(BaseModel):
-    device_uid: str = Field(min_length=4, max_length=128)
-    pairing_code: str = Field(min_length=4, max_length=32)
+    # Accept camelCase payloads from frontend clients.
+    device_uid: str = Field(
+        min_length=4,
+        max_length=128,
+        validation_alias=AliasChoices("device_uid", "deviceUid"),
+    )
+    pairing_code: str = Field(
+        min_length=4,
+        max_length=32,
+        validation_alias=AliasChoices("pairing_code", "pairingCode"),
+    )
 
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 class PairingClaimOut(BaseModel):
     device_id: int
@@ -108,7 +118,10 @@ async def start_pairing(
 
 
 @router.post("/confirm", response_model=PairingClaimOut)
-async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_db)):
+async def confirm_pairing(
+    data: PairingClaimIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Device -> Backend (ohne JWT):
     - validiert pairing_code (existiert, nicht used, nicht expired)
@@ -117,6 +130,8 @@ async def confirm_pairing(data: PairingClaimIn, db: AsyncSession = Depends(get_d
     """
     token_plain: str | None = None
 
+    # TEMP DEBUG: remove after validation mismatch is resolved.
+    print("PAIRING_CONFIRM_ENTER", data, file=sys.stderr)
     # Debug: remove after stabilization. Detect nested transactions before begin().
     logger.info(
         "PAIRING_CONFIRM session_id=%s in_tx=%s tx=%r",
