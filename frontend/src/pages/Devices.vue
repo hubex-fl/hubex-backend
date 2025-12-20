@@ -10,6 +10,9 @@ type Device = {
   online: boolean;
   health: "ok" | "stale" | "dead";
   last_seen_age_seconds: number | null;
+  state: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
+  pairing_active: boolean;
+  busy: boolean;
 };
 
 const devices = ref<Device[]>([]);
@@ -24,8 +27,41 @@ const confirmingPairing = ref(false);
 const pairingRemainingSeconds = ref<number | null>(null);
 const pairingExpired = ref(false);
 
-const pairingClaimInfo = computed(() => {
-  return claimedStatusForUid(pairingDeviceUid.value);
+const pairingDevice = computed(() => {
+  const uid = pairingDeviceUid.value.trim();
+  if (!uid) return null;
+  return devices.value.find((d) => d.device_uid === uid) ?? null;
+});
+
+const pairingStateWarning = computed(() => {
+  if (!pairingDeviceUid.value.trim()) return null;
+  if (!pairingDevice.value) return "Unknown device UID";
+  switch (pairingDevice.value.state) {
+    case "unprovisioned":
+      return "Device not provisioned (never seen)";
+    case "busy":
+      return "Device busy (task running)";
+    case "claimed":
+      return "Device already claimed";
+    case "pairing_active":
+      return "Pairing already active";
+    default:
+      return null;
+  }
+});
+
+const canStartPairing = computed(() => {
+  if (startingPairing.value) return false;
+  if (!pairingDeviceUid.value.trim()) return false;
+  return pairingDevice.value?.state === "provisioned_unclaimed";
+});
+
+const canConfirmPairing = computed(() => {
+  if (confirmingPairing.value) return false;
+  if (!pairingStartCode.value || !pairingConfirmCode.value) return false;
+  if (pairingExpired.value) return false;
+  if (!pairingDevice.value) return false;
+  return !["busy", "claimed", "unprovisioned"].includes(pairingDevice.value.state);
 });
 
 let timer: number | null = null;
@@ -43,7 +79,21 @@ async function load(opts?: { silent?: boolean }) {
 }
 
 function mapPairingError(codeOrMessage: string, fallback: string): string {
-  const msg = String(codeOrMessage || "");
+  const msg = String(codeOrMessage || "").toLowerCase();
+  if (msg.includes("device_not_found")) return "Unknown device UID";
+  if (msg.includes("device_not_provisioned")) return "Device not provisioned (never seen)";
+  if (msg.includes("device_already_claimed")) return "Device already claimed";
+  if (msg.includes("device_busy")) return "Device busy (task running)";
+  if (msg.includes("pairing_code_not_found")) return "Invalid pairing code";
+  if (msg.includes("pairing_code_expired")) return "Pairing code expired";
+  if (msg.includes("pairing_code_used")) return "Pairing code already used";
+  if (msg.includes("pairing code not found")) return "Invalid pairing code";
+  if (msg.includes("pairing code expired")) return "Pairing code expired";
+  if (msg.includes("pairing code already used")) return "Pairing code already used";
+  if (msg.includes("device not found")) return "Unknown device UID";
+  if (msg.includes("device not provisioned")) return "Device not provisioned (never seen)";
+  if (msg.includes("device already claimed")) return "Device already claimed";
+  if (msg.includes("device busy")) return "Device busy (task running)";
   if (msg.includes("401")) return "Not logged in (token expired). Refresh/login.";
   if (msg.includes("403")) return "Forbidden.";
   if (msg.includes("404")) return "Not found / wrong code.";
@@ -60,6 +110,7 @@ function truncate(text: string, max = 300) {
 function extractErrorDetail(err: any) {
   const message = String(err?.message || "");
   let detail = message;
+  let code: string | null = null;
   let status: string | null = null;
   let statusText: string | null = null;
 
@@ -69,22 +120,31 @@ function extractErrorDetail(err: any) {
     statusText = (httpMatch[2] || "").trim() || null;
     detail = httpMatch[3] || "";
   } else {
-    try {
-      const parsed = JSON.parse(message);
-      if (parsed && typeof parsed === "object" && "detail" in parsed) {
-        detail = String((parsed as any).detail ?? "");
+    const trimmed = message.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed && typeof parsed === "object" && "detail" in parsed) {
+          const d = (parsed as any).detail;
+          if (d && typeof d === "object") {
+            code = String(d.code ?? "");
+            detail = String(d.message ?? JSON.stringify(d));
+          } else {
+            detail = String(d ?? "");
+          }
+        }
+      } catch {
+        // keep message as detail
       }
-    } catch {
-      // keep message as detail
     }
   }
 
-  return { detail, status, statusText };
+  return { detail, status, statusText, code };
 }
 
 function formatPairingError(err: any, fallback: string): string {
   const info = extractErrorDetail(err);
-  const codeOrMessage = info.status ? info.status : info.detail;
+  const codeOrMessage = info.code || info.detail || info.status || "";
   const mapped = mapPairingError(codeOrMessage, fallback);
   const statusLabel = info.status
     ? `HTTP ${info.status}${info.statusText ? " " + info.statusText : ""}`
@@ -158,10 +218,7 @@ async function startPairing() {
     error.value = "device_uid required";
     return;
   }
-  if (pairingClaimInfo.value.known && pairingClaimInfo.value.claimed) {
-    error.value = "Device is already claimed.";
-    return;
-  }
+  if (!canStartPairing.value) return;
   startingPairing.value = true;
   try {
     const res: any = await apiFetch("/api/v1/devices/pairing/start", {
@@ -195,6 +252,7 @@ async function confirmPairing() {
     error.value = "pairing_code required";
     return;
   }
+  if (!canConfirmPairing.value) return;
   confirmingPairing.value = true;
   try {
     await apiFetch("/api/v1/devices/pairing/confirm", {
@@ -237,14 +295,6 @@ function healthClass(health: Device["health"]) {
   if (health === "ok") return "pill-ok";
   if (health === "stale") return "pill-warn";
   return "pill-bad";
-}
-
-function claimedStatusForUid(uid: string): { known: boolean; claimed: boolean } {
-  const normalized = uid.trim();
-  if (!normalized) return { known: false, claimed: false };
-  const match = devices.value.find((d) => d.device_uid === normalized);
-  if (!match) return { known: false, claimed: false };
-  return { known: true, claimed: match.claimed };
 }
 
 watch(pairingDeviceUid, () => {
@@ -294,12 +344,12 @@ onUnmounted(() => {
           class="input pairing-input"
           placeholder="Device UID"
         />
-        <button class="btn" :disabled="startingPairing || pairingClaimInfo.claimed" @click="startPairing">
+        <button class="btn" :disabled="!canStartPairing" @click="startPairing">
           {{ startingPairing ? "Starting..." : "Start pairing" }}
         </button>
       </div>
-      <div v-if="pairingClaimInfo.claimed" class="pairing-warn">
-        Device is already claimed.
+      <div v-if="pairingStateWarning" class="pairing-warn">
+        {{ pairingStateWarning }}
       </div>
 
       <div v-if="pairingStartCode" class="pairing-row">
@@ -309,7 +359,7 @@ onUnmounted(() => {
           class="input pairing-input"
           placeholder="Pairing code"
         />
-        <button class="btn secondary" :disabled="confirmingPairing || pairingExpired || !pairingStartCode || !pairingConfirmCode" @click="confirmPairing">
+        <button class="btn secondary" :disabled="!canConfirmPairing" @click="confirmPairing">
           {{ confirmingPairing ? "Confirming..." : "Confirm" }}
         </button>
       </div>

@@ -12,6 +12,9 @@ type DeviceInfo = {
   last_seen_at: string | null;
   health: "ok" | "stale" | "dead";
   last_seen_age_seconds: number | null;
+  state?: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
+  pairing_active?: boolean;
+  busy?: boolean;
 };
 
 type TelemetryItem = {
@@ -262,6 +265,14 @@ function healthClass(health: "ok" | "stale" | "dead") {
   return "pill-bad";
 }
 
+function stateClass(state: DeviceInfo["state"]) {
+  if (!state) return "pill-warn";
+  if (state === "busy" || state === "unprovisioned") return "pill-bad";
+  if (state === "claimed") return "pill-ok";
+  if (state === "pairing_active" || state === "provisioned_unclaimed") return "pill-warn";
+  return "pill-warn";
+}
+
 function fmtAge(ageSeconds: number | null) {
   if (ageSeconds === null) return "-";
   if (ageSeconds < 60) return `${ageSeconds}s ago`;
@@ -351,41 +362,19 @@ onUnmounted(() => {
 
 <template>
   <div class="card">
-    <h2>Device Telemetry (last 5)</h2>
-
-    <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
-    <div v-else class="row" style="margin-bottom: 12px;">
-      <div><strong>ID:</strong> {{ deviceInfo?.id ?? deviceId }}</div>
-      <div v-if="deviceInfo?.device_uid"><strong>UID:</strong> {{ deviceInfo.device_uid }}</div>
-      <div>
-        <strong>Health:</strong>
+    <div class="card-header-row">
+      <h2>Device Telemetry (last 5)</h2>
+      <div class="pill-group">
         <span
-          :class="['pill', healthClass(deviceInfo?.health ?? 'dead')]"
-          style="margin-left: 6px;"
+          v-if="deviceInfo?.health"
+          :class="['pill', healthClass(deviceInfo.health)]"
         >
-          {{ deviceInfo?.health ?? "dead" }}
+          {{ deviceInfo.health }}
         </span>
-      </div>
-      <div>
-        <strong>Last seen:</strong>
-        {{ fmtAge(deviceInfo?.last_seen_age_seconds ?? null) }}
-      </div>
-    </div>
-
-    <div v-if="currentTaskError" class="error">{{ currentTaskError }}</div>
-    <div class="row" style="margin-bottom: 10px;">
-      <div>
-        <strong>Current Task:</strong>
-        <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
-          Running: {{ currentTask?.task_name ?? "-" }}
-          <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
-            ({{ currentTask.task_type }})
-          </span>
+        <span v-if="deviceInfo?.state" :class="['pill', stateClass(deviceInfo.state)]">
+          {{ deviceInfo.state }}
         </span>
-        <span v-else>none</span>
-      </div>
-      <div>
-        <span :class="['pill', currentTaskStatusClass()]" style="margin-left: 6px;">
+        <span :class="['pill', currentTaskStatusClass()]">
           {{
             currentTask?.has_active_lease && !isLeaseExpiredLocally
               ? (currentTask?.task_status ?? "active")
@@ -393,13 +382,53 @@ onUnmounted(() => {
           }}
         </span>
       </div>
-      <div>
-        <strong>Lease expires in:</strong>
-        {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}
+    </div>
+
+    <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
+    <div v-else class="info-grid">
+      <div class="info-item">
+        <div class="info-label">ID</div>
+        <div class="info-value">{{ deviceInfo?.id ?? deviceId }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">UID</div>
+        <div class="info-value">{{ deviceInfo?.device_uid ?? "-" }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Last seen</div>
+        <div class="info-value">{{ fmtAge(deviceInfo?.last_seen_age_seconds ?? null) }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Current Task</div>
+        <div class="info-value">
+          <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
+            Running: {{ currentTask?.task_name ?? "-" }}
+            <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
+              ({{ currentTask.task_type }})
+            </span>
+          </span>
+          <span v-else>none</span>
+          <span :class="['pill', currentTaskStatusClass()]" style="margin-left: 6px;">
+            {{
+              currentTask?.has_active_lease && !isLeaseExpiredLocally
+                ? (currentTask?.task_status ?? "active")
+                : "no lease"
+            }}
+          </span>
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Lease expires in</div>
+        <div class="info-value">
+          {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}
+        </div>
       </div>
     </div>
 
+    <div v-if="currentTaskError" class="error">{{ currentTaskError }}</div>
+
     <div v-if="taskHistoryError" class="error">{{ taskHistoryError }}</div>
+    <div class="section-divider"></div>
     <div style="margin-bottom: 14px;">
       <strong>Recent Tasks</strong>
       <div v-if="taskHistory.length === 0" style="margin-top: 6px;">No recent tasks</div>
@@ -434,6 +463,7 @@ onUnmounted(() => {
 
     <div v-if="telemetryError" class="error">{{ telemetryError }}</div>
 
+    <div class="section-divider"></div>
     <table class="table">
       <thead>
         <tr>
