@@ -1,19 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, List
 import asyncio
 import json
 import time
 from collections import deque
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device
+from app.core.security import decode_access_token
+from app.realtime import hub
 from app.db.models.device import Device
 from app.db.models.telemetry import DeviceTelemetry
+from app.db.models.user import User
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 
@@ -23,6 +26,15 @@ RATE_LIMIT_PER_MINUTE = 60
 _rate_lock = asyncio.Lock()
 _rate_window = 60.0
 _rate_hits: dict[int, deque[float]] = {}
+
+
+def _serialize_telemetry(row: DeviceTelemetry) -> dict:
+    return {
+        "id": row.id,
+        "received_at": row.received_at.isoformat(),
+        "event_type": row.event_type,
+        "payload": row.payload,
+    }
 
 
 def _validate_payload(payload: Dict[str, Any]) -> None:
@@ -86,6 +98,7 @@ async def ingest_telemetry(
 ):
     await _check_rate_limit(device.id)
     _validate_payload(data.payload)
+    device.last_seen_at = datetime.now(timezone.utc)
     telemetry = DeviceTelemetry(
         device_id=device.id,
         event_type=data.event_type,
@@ -94,6 +107,7 @@ async def ingest_telemetry(
     db.add(telemetry)
     await db.commit()
     await db.refresh(telemetry)
+    await hub.broadcast(device.id, _serialize_telemetry(telemetry))
     return TelemetryOut(telemetry_id=telemetry.id, received_at=telemetry.received_at)
 
 
@@ -111,3 +125,55 @@ async def recent_telemetry(
         .limit(limit)
     )
     return list(res.scalars().all())
+
+
+@router.websocket("/devices/{device_id}/telemetry/ws")
+async def telemetry_ws(
+    websocket: WebSocket,
+    device_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    try:
+        payload = decode_access_token(token)
+        user_id = int(payload.get("sub"))
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    res = await db.execute(select(User).where(User.id == user_id))
+    user = res.scalar_one_or_none()
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    res = await db.execute(
+        select(Device).where(Device.id == device_id, Device.owner_user_id == user.id)
+    )
+    device = res.scalar_one_or_none()
+    if not device:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    await hub.add(device_id, websocket)
+    try:
+        res = await db.execute(
+            select(DeviceTelemetry)
+            .where(DeviceTelemetry.device_id == device_id)
+            .order_by(desc(DeviceTelemetry.received_at))
+            .limit(5)
+        )
+        rows = list(res.scalars().all())
+        rows.reverse()
+        await websocket.send_json([_serialize_telemetry(row) for row in rows])
+        while True:
+            await asyncio.sleep(3600)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        hub.remove(device_id, websocket)
