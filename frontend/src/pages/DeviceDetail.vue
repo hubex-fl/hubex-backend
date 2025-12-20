@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
+import { mapErrorToUserText, parseApiError } from "../lib/errors";
 
 const route = useRoute();
 const deviceId = route.params.id as string;
@@ -193,7 +194,7 @@ async function loadDeviceInfo() {
   try {
     deviceInfo.value = await apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId}`);
   } catch (e: any) {
-    deviceInfoError.value = e?.message || String(e);
+    deviceInfoError.value = formatApiError(e, "Failed to load device");
   }
 }
 
@@ -230,7 +231,7 @@ async function loadCurrentTask() {
     leaseSecondsRemaining.value = res.lease_seconds_remaining ?? null;
     startLeaseCountdown();
   } catch (e: any) {
-    currentTaskError.value = e?.message || String(e);
+    currentTaskError.value = formatApiError(e, "Failed to load current task");
   }
 }
 
@@ -241,7 +242,7 @@ async function loadTaskHistory() {
       `/api/v1/devices/${deviceId}/task-history?limit=5`
     );
   } catch (e: any) {
-    taskHistoryError.value = e?.message || String(e);
+    taskHistoryError.value = formatApiError(e, "Failed to load task history");
   }
 }
 
@@ -304,6 +305,17 @@ function historyStatusClass(status: string) {
   return "pill-warn";
 }
 
+function formatApiError(err: any, fallback: string) {
+  const info = parseApiError(err);
+  const mapped = mapErrorToUserText(info, fallback);
+  const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
+  const detailText = (info.message || "").slice(0, 200);
+  const codeText = info.code ? ` ${info.code}` : "";
+  const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
+  if (mapped !== fallback) return `${mapped} (${suffix}${codeText})`;
+  return `${fallback} (${suffix}${codeText})`;
+}
+
 function currentTaskStatusClass() {
   const task = currentTask.value;
   if (!task || !task.has_active_lease) return "pill-bad";
@@ -363,7 +375,7 @@ onUnmounted(() => {
 <template>
   <div class="card">
     <div class="card-header-row">
-      <h2>Device Telemetry (last 5)</h2>
+      <h2>Device Detail</h2>
       <div class="pill-group">
         <span
           v-if="deviceInfo?.health"
@@ -399,33 +411,39 @@ onUnmounted(() => {
         <div class="info-value">{{ fmtAge(deviceInfo?.last_seen_age_seconds ?? null) }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">Current Task</div>
-        <div class="info-value">
-          <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
-            Running: {{ currentTask?.task_name ?? "-" }}
-            <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
-              ({{ currentTask.task_type }})
-            </span>
-          </span>
-          <span v-else>none</span>
-          <span :class="['pill', currentTaskStatusClass()]" style="margin-left: 6px;">
-            {{
-              currentTask?.has_active_lease && !isLeaseExpiredLocally
-                ? (currentTask?.task_status ?? "active")
-                : "no lease"
-            }}
-          </span>
-        </div>
-      </div>
-      <div class="info-item">
         <div class="info-label">Lease expires in</div>
         <div class="info-value">
           {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}
         </div>
       </div>
+      <div class="info-item">
+        <div class="info-label">Current task</div>
+        <div class="info-value">
+          <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
+            {{ currentTask?.task_name ?? "-" }}
+            <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
+              ({{ currentTask.task_type }})
+            </span>
+          </span>
+          <span v-else>none</span>
+        </div>
+      </div>
     </div>
 
-    <div v-if="currentTaskError" class="error">{{ currentTaskError }}</div>
+    <div class="section-divider"></div>
+    <div style="margin-bottom: 14px;">
+      <strong>Current Task + Lease</strong>
+      <div v-if="deviceInfo?.state === 'busy'" class="pairing-warn" style="margin-top: 6px;">
+        Device busy (task running)
+      </div>
+      <div v-if="currentTaskError" class="error" style="margin-top: 6px;">
+        {{ currentTaskError }}
+      </div>
+      <div style="margin-top: 6px;">
+        <div><strong>Status:</strong> {{ currentTask?.task_status ?? "no lease" }}</div>
+        <div><strong>Lease expires in:</strong> {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}</div>
+      </div>
+    </div>
 
     <div v-if="taskHistoryError" class="error">{{ taskHistoryError }}</div>
     <div class="section-divider"></div>
@@ -461,9 +479,9 @@ onUnmounted(() => {
       </table>
     </div>
 
-    <div v-if="telemetryError" class="error">{{ telemetryError }}</div>
-
     <div class="section-divider"></div>
+    <strong>Telemetry</strong>
+    <div v-if="telemetryError" class="error" style="margin-top: 6px;">{{ telemetryError }}</div>
     <table class="table">
       <thead>
         <tr>

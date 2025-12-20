@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
+import { mapErrorToUserText, parseApiError } from "../lib/errors";
 
 type Device = {
   id: number;
@@ -17,6 +19,8 @@ type Device = {
 
 const devices = ref<Device[]>([]);
 const error = ref("");
+const pairingSection = ref<HTMLElement | null>(null);
+const router = useRouter();
 
 const pairingDeviceUid = ref("");
 const pairingStartCode = ref("");
@@ -74,32 +78,8 @@ async function load(opts?: { silent?: boolean }) {
   try {
     devices.value = await apiFetch<Device[]>("/api/v1/devices");
   } catch (err: any) {
-    error.value = err?.message || "Failed to load devices";
+    error.value = formatPairingError(err, "Failed to load devices");
   }
-}
-
-function mapPairingError(codeOrMessage: string, fallback: string): string {
-  const msg = String(codeOrMessage || "").toLowerCase();
-  if (msg.includes("device_not_found")) return "Unknown device UID";
-  if (msg.includes("device_not_provisioned")) return "Device not provisioned (never seen)";
-  if (msg.includes("device_already_claimed")) return "Device already claimed";
-  if (msg.includes("device_busy")) return "Device busy (task running)";
-  if (msg.includes("pairing_code_not_found")) return "Invalid pairing code";
-  if (msg.includes("pairing_code_expired")) return "Pairing code expired";
-  if (msg.includes("pairing_code_used")) return "Pairing code already used";
-  if (msg.includes("pairing code not found")) return "Invalid pairing code";
-  if (msg.includes("pairing code expired")) return "Pairing code expired";
-  if (msg.includes("pairing code already used")) return "Pairing code already used";
-  if (msg.includes("device not found")) return "Unknown device UID";
-  if (msg.includes("device not provisioned")) return "Device not provisioned (never seen)";
-  if (msg.includes("device already claimed")) return "Device already claimed";
-  if (msg.includes("device busy")) return "Device busy (task running)";
-  if (msg.includes("401")) return "Not logged in (token expired). Refresh/login.";
-  if (msg.includes("403")) return "Forbidden.";
-  if (msg.includes("404")) return "Not found / wrong code.";
-  if (msg.includes("409")) return "Conflict (already confirmed / replay).";
-  if (msg.includes("410")) return "Expired. Start pairing again.";
-  return fallback;
 }
 
 function truncate(text: string, max = 300) {
@@ -107,54 +87,15 @@ function truncate(text: string, max = 300) {
   return text.slice(0, max) + "...";
 }
 
-function extractErrorDetail(err: any) {
-  const message = String(err?.message || "");
-  let detail = message;
-  let code: string | null = null;
-  let status: string | null = null;
-  let statusText: string | null = null;
-
-  const httpMatch = message.match(/^HTTP\s+(\d{3})(?:\s+([^:]+))?:\s*([\s\S]*)$/i);
-  if (httpMatch) {
-    status = httpMatch[1];
-    statusText = (httpMatch[2] || "").trim() || null;
-    detail = httpMatch[3] || "";
-  } else {
-    const trimmed = message.trim();
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(message);
-        if (parsed && typeof parsed === "object" && "detail" in parsed) {
-          const d = (parsed as any).detail;
-          if (d && typeof d === "object") {
-            code = String(d.code ?? "");
-            detail = String(d.message ?? JSON.stringify(d));
-          } else {
-            detail = String(d ?? "");
-          }
-        }
-      } catch {
-        // keep message as detail
-      }
-    }
-  }
-
-  return { detail, status, statusText, code };
-}
-
 function formatPairingError(err: any, fallback: string): string {
-  const info = extractErrorDetail(err);
-  const codeOrMessage = info.code || info.detail || info.status || "";
-  const mapped = mapPairingError(codeOrMessage, fallback);
-  const statusLabel = info.status
-    ? `HTTP ${info.status}${info.statusText ? " " + info.statusText : ""}`
-    : "HTTP ?";
-  const detailText = truncate(info.detail || "");
+  const info = parseApiError(err);
+  const mapped = mapErrorToUserText(info, fallback);
+  const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
+  const detailText = truncate(info.message || "");
+  const codeText = info.code ? ` ${info.code}` : "";
   const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) {
-    return `${mapped} (${suffix})`;
-  }
-  return `${fallback} (${suffix})`;
+  if (mapped !== fallback) return `${mapped} (${suffix}${codeText})`;
+  return `${fallback} (${suffix}${codeText})`;
 }
 
 function stopPairingCountdown() {
@@ -297,6 +238,46 @@ function healthClass(health: Device["health"]) {
   return "pill-bad";
 }
 
+function stateClass(state: Device["state"]) {
+  if (state === "busy" || state === "unprovisioned") return "pill-bad";
+  if (state === "claimed") return "pill-ok";
+  if (state === "pairing_active" || state === "provisioned_unclaimed") return "pill-warn";
+  return "pill-warn";
+}
+
+function onRowAction(device: Device) {
+  if (device.state === "claimed") {
+    router.push(`/devices/${device.id}`);
+    return;
+  }
+  pairingDeviceUid.value = device.device_uid;
+  pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (device.state === "provisioned_unclaimed") {
+    startPairing();
+  }
+}
+
+function rowActionLabel(device: Device) {
+  switch (device.state) {
+    case "unprovisioned":
+      return "Waiting for first contact";
+    case "provisioned_unclaimed":
+      return "Start pairing";
+    case "pairing_active":
+      return "Continue pairing";
+    case "claimed":
+      return "Open";
+    case "busy":
+      return "Busy";
+    default:
+      return "Open";
+  }
+}
+
+function rowActionDisabled(device: Device) {
+  return device.state === "unprovisioned" || device.state === "busy";
+}
+
 watch(pairingDeviceUid, () => {
   pairingStartCode.value = "";
   pairingConfirmCode.value = "";
@@ -337,7 +318,7 @@ onUnmounted(() => {
     <h2>Devices</h2>
     <div v-if="error" class="error">{{ error }}</div>
 
-    <div class="pairing-section">
+    <div ref="pairingSection" class="pairing-section">
       <div class="pairing-row">
         <input
           v-model="pairingDeviceUid"
@@ -375,25 +356,20 @@ onUnmounted(() => {
     <table v-if="devices.length" class="table">
       <thead>
         <tr>
-          <th>ID</th>
           <th>UID</th>
-          <th>Status</th>
           <th>Health</th>
+          <th>State</th>
+          <th>Online</th>
           <th>Last seen</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="d in devices" :key="d.id">
-          <td>{{ d.id }}</td>
           <td>
             <router-link :to="`/devices/${d.id}`">
               {{ d.device_uid }}
             </router-link>
-          </td>
-          <td>
-            <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
-              {{ d.online ? "online" : "offline" }}
-            </span>
           </td>
           <td>
             <span :class="['pill', healthClass(d.health)]">
@@ -401,8 +377,27 @@ onUnmounted(() => {
             </span>
           </td>
           <td>
+            <span :class="['pill', stateClass(d.state)]">
+              {{ d.state }}
+            </span>
+          </td>
+          <td>
+            <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
+              {{ d.online ? "online" : "offline" }}
+            </span>
+          </td>
+          <td>
             {{ fmtTime(d.last_seen) }}
             <span v-if="d.last_seen_age_seconds !== null">({{ fmtAge(d.last_seen_age_seconds) }})</span>
+          </td>
+          <td>
+            <button
+              class="btn"
+              :disabled="rowActionDisabled(d)"
+              @click="onRowAction(d)"
+            >
+              {{ rowActionLabel(d) }}
+            </button>
           </td>
         </tr>
       </tbody>
