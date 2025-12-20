@@ -220,6 +220,18 @@ async def confirm_pairing(
         if res.scalar_one_or_none() is not None:
             _raise_error(409, "DEVICE_BUSY", "device busy")
 
+        res = await db.execute(
+            select(DeviceToken.id)
+            .where(
+                DeviceToken.device_id == device.id,
+                DeviceToken.is_active.is_(True),
+            )
+            .limit(1)
+            .with_for_update()
+        )
+        if res.scalar_one_or_none() is not None:
+            _raise_error(409, "DEVICE_TOKEN_ALREADY_ISSUED", "device token already issued")
+
         # Claim
         device.owner_user_id = ps.user_id
         device.is_claimed = True
