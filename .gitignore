@@ -12,6 +12,10 @@ env/
 # Env/config
 .env
 .env.*
+_uvicorn_*.out.log
+_uvicorn_*.err.log
+_uvicorn_*.log
+.env.*
 !.env.example
 !frontend/.env.example
 
