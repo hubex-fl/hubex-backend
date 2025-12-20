@@ -43,6 +43,13 @@ def _hash_token(token_plain: str) -> str:
     # für DeviceToken: stabil, schnell, keine bcrypt-72byte-Problematik
     return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
 
+def _raise_error(status_code: int, code: str, message: str) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message},
+    )
+
+
 
 class PairingStartIn(BaseModel):
     device_uid: str = Field(min_length=4, max_length=128)
@@ -90,11 +97,11 @@ async def start_pairing(
     device = res.scalar_one_or_none()
 
     if device is None:
-        raise HTTPException(status_code=404, detail="device not found")
+        _raise_error(404, "DEVICE_NOT_FOUND", "device not found")
     if device.last_seen_at is None:
-        raise HTTPException(status_code=404, detail="device not provisioned")
+        _raise_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
     if device.owner_user_id is not None or device.is_claimed:
-        raise HTTPException(status_code=409, detail="device already claimed")
+        _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
     now = _now_utc()
     res = await db.execute(
@@ -107,7 +114,7 @@ async def start_pairing(
         )
     )
     if res.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail="device busy")
+        _raise_error(409, "DEVICE_BUSY", "device busy")
 
     # neue Session erzeugen (alte Sessions lassen wir erstmal in Ruhe)
     code = _gen_pairing_code()
@@ -155,12 +162,12 @@ async def confirm_pairing(
         )
         ps = res.scalar_one_or_none()
         if ps is None:
-            raise HTTPException(status_code=404, detail="pairing code not found")
+            _raise_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
 
         if ps.is_used:
-            raise HTTPException(status_code=409, detail="pairing code already used")
+            _raise_error(409, "PAIRING_CODE_USED", "pairing code already used")
         if ps.expires_at <= now:
-            raise HTTPException(status_code=410, detail="pairing code expired")
+            _raise_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
 
         res = await db.execute(
             select(Device)
@@ -169,11 +176,11 @@ async def confirm_pairing(
         )
         device = res.scalar_one_or_none()
         if device is None:
-            raise HTTPException(status_code=404, detail="device not found")
+            _raise_error(404, "DEVICE_NOT_FOUND", "device not found")
         if device.last_seen_at is None:
-            raise HTTPException(status_code=404, detail="device not provisioned")
+            _raise_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
         if device.owner_user_id is not None or device.is_claimed:
-            raise HTTPException(status_code=409, detail="device already claimed")
+            _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
         res = await db.execute(
             select(Task.id).where(
@@ -185,7 +192,7 @@ async def confirm_pairing(
             )
         )
         if res.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=409, detail="device busy")
+            _raise_error(409, "DEVICE_BUSY", "device busy")
 
         # Claim
         device.owner_user_id = ps.user_id
