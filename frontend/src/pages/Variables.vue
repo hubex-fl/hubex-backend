@@ -19,7 +19,9 @@ type ScopeFilter = "all" | VariableScope;
 const definitions = ref<VariableDefinition[]>([]);
 const valuesByKey = ref<Record<string, VariableValue>>({});
 const error = ref<string | null>(null);
+const errorDetails = ref<string | null>(null);
 const loading = ref(false);
+const rowErrors = ref<Record<string, string>>({});
 
 const search = ref("");
 const scopeFilter = ref<ScopeFilter>("all");
@@ -37,6 +39,17 @@ const editorValue = ref("");
 const editorIsSecret = ref(false);
 const editorIsReadonly = ref(false);
 const editorExpectedVersion = ref<number | null>(null);
+const showSecretWarning = computed(() => editorIsSecret.value);
+
+const conflictKey = ref<string | null>(null);
+const conflictMessage = ref<string | null>(null);
+const conflictVersion = ref<number | null>(null);
+const conflictValue = ref<any>(null);
+const conflictDeviceUid = ref<string | null>(null);
+const conflictScope = ref<VariableScope | null>(null);
+const overwritePending = ref(false);
+
+const revealKeys = ref<Set<string>>(new Set());
 
 const isDeviceScope = computed(() => editorScope.value === "device");
 
@@ -57,11 +70,34 @@ function formatApiError(err: any, fallback: string) {
   const info = parseApiError(err);
   const mapped = mapErrorToUserText(info, fallback);
   const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
-  const detailText = (info.message || "").slice(0, 200);
-  const codeText = info.code ? ` ${info.code}` : "";
-  const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) return `${mapped} (${suffix}${codeText})`;
-  return `${fallback} (${suffix}${codeText})`;
+  const codeText = info.code ? `${info.code}` : "UNKNOWN";
+  const message = mapped || fallback;
+  return `${message} (${statusLabel}, ${codeText})`;
+}
+
+function formatErrorDetails(err: any) {
+  const info = parseApiError(err);
+  const pieces: string[] = [];
+  if (info.message) pieces.push(info.message);
+  if (info.meta) pieces.push(JSON.stringify(info.meta));
+  const text = pieces.join(" ");
+  return text ? text.slice(0, 300) : null;
+}
+
+function clearConflict() {
+  conflictKey.value = null;
+  conflictMessage.value = null;
+  conflictVersion.value = null;
+  conflictValue.value = null;
+  conflictDeviceUid.value = null;
+  conflictScope.value = null;
+  overwritePending.value = false;
+}
+
+function clearRowError(key: string) {
+  const next = { ...rowErrors.value };
+  delete next[key];
+  rowErrors.value = next;
 }
 
 function parseValueInput(valueType: VariableDefinitionInput["valueType"], raw: string) {
@@ -91,6 +127,7 @@ function openCreate() {
   editorIsSecret.value = false;
   editorIsReadonly.value = false;
   editorExpectedVersion.value = null;
+  clearConflict();
 }
 
 function openEdit(definition: VariableDefinition, current?: VariableValue) {
@@ -105,10 +142,12 @@ function openEdit(definition: VariableDefinition, current?: VariableValue) {
   editorIsSecret.value = definition.is_secret;
   editorIsReadonly.value = definition.is_readonly;
   editorExpectedVersion.value = current?.version ?? null;
+  clearConflict();
 }
 
 async function loadDefinitionsAndValues() {
   error.value = null;
+  errorDetails.value = null;
   loading.value = true;
   try {
     const defs = await listDefinitions(scopeFilter.value === "all" ? undefined : scopeFilter.value);
@@ -132,8 +171,10 @@ async function loadDefinitionsAndValues() {
       );
     }
     valuesByKey.value = values;
+    revealKeys.value = new Set();
   } catch (e: any) {
     error.value = formatApiError(e, "Failed to load variables");
+    errorDetails.value = formatErrorDetails(e);
   } finally {
     loading.value = false;
   }
@@ -141,6 +182,7 @@ async function loadDefinitionsAndValues() {
 
 async function handleSave() {
   error.value = null;
+  errorDetails.value = null;
   try {
     if (editorMode.value === "create") {
       const defInput: VariableDefinitionInput = {
@@ -176,13 +218,25 @@ async function handleSave() {
     editorOpen.value = false;
     await loadDefinitionsAndValues();
   } catch (e: any) {
+    const info = parseApiError(e);
+    if (info.code === "VAR_VERSION_CONFLICT") {
+      conflictKey.value = editorKey.value.trim();
+      conflictMessage.value = formatApiError(e, "Version conflict - reload or overwrite");
+      conflictVersion.value = (info.meta as any)?.current_version ?? null;
+      conflictValue.value = (info.meta as any)?.current_value ?? null;
+      conflictDeviceUid.value = editorScope.value === "device" ? editorDeviceUid.value.trim() : null;
+      conflictScope.value = editorScope.value;
+      return;
+    }
     error.value = formatApiError(e, "Failed to save variable");
+    errorDetails.value = formatErrorDetails(e);
   }
 }
 
 async function handleDelete(definition: VariableDefinition, current?: VariableValue) {
   if (!confirm("Clear value? This will revert to default if set.")) return;
   error.value = null;
+  errorDetails.value = null;
   try {
     const valueInput: VariableValueInput = {
       key: definition.key,
@@ -193,13 +247,17 @@ async function handleDelete(definition: VariableDefinition, current?: VariableVa
     };
     await putValue(valueInput);
     await loadDefinitionsAndValues();
+    clearRowError(definition.key);
   } catch (e: any) {
-    error.value = formatApiError(e, "Failed to clear variable");
+    const msg = formatApiError(e, "Failed to clear variable");
+    rowErrors.value = { ...rowErrors.value, [definition.key]: msg };
   }
 }
 
 function valueDisplay(definition: VariableDefinition, value?: VariableValue) {
-  if (definition.is_secret) return "***";
+  if (definition.is_secret) {
+    return revealKeys.value.has(definition.key) ? value?.value ?? "-" : "••••••";
+  }
   if (!value) return "-";
   if (value.value === null || value.value === undefined) return "-";
   if (typeof value.value === "string") return value.value;
@@ -209,6 +267,42 @@ function valueDisplay(definition: VariableDefinition, value?: VariableValue) {
 function updatedDisplay(value?: VariableValue) {
   if (!value?.updated_at) return "-";
   try { return new Date(value.updated_at).toLocaleString(); } catch { return value.updated_at; }
+}
+
+function toggleReveal(key: string) {
+  const next = new Set(revealKeys.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  revealKeys.value = next;
+}
+
+async function reloadConflict() {
+  if (!conflictKey.value || !conflictScope.value) return;
+  try {
+    const latest = await getValue({
+      key: conflictKey.value,
+      scope: conflictScope.value,
+      deviceUid: conflictScope.value === "device" ? conflictDeviceUid.value ?? undefined : undefined,
+    });
+    editorExpectedVersion.value = latest.version ?? null;
+    editorValue.value = JSON.stringify(latest.value ?? "");
+    clearConflict();
+  } catch (e: any) {
+    error.value = formatApiError(e, "Failed to reload variable");
+    errorDetails.value = formatErrorDetails(e);
+  }
+}
+
+async function overwriteConflict() {
+  if (overwritePending.value) return;
+  overwritePending.value = true;
+  try {
+    await reloadConflict();
+    if (editorExpectedVersion.value === null) return;
+    await handleSave();
+  } finally {
+    overwritePending.value = false;
+  }
 }
 
 watch([scopeFilter, deviceUid], () => {
@@ -246,6 +340,10 @@ onMounted(() => {
     </div>
 
     <div v-if="error" class="error">{{ error }}</div>
+    <details v-if="errorDetails" class="error-details">
+      <summary>details</summary>
+      <pre>{{ errorDetails }}</pre>
+    </details>
     <div v-if="loading">Loading...</div>
 
     <table v-if="filteredRows.length" class="table">
@@ -262,23 +360,37 @@ onMounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="def in filteredRows" :key="def.key">
-          <td>{{ def.scope }}</td>
-          <td>{{ def.scope === "device" ? (deviceUid || "-") : "-" }}</td>
-          <td>{{ def.key }}</td>
-          <td>{{ def.value_type }}</td>
-          <td>{{ valueDisplay(def, valuesByKey[def.key]) }}</td>
-          <td>{{ valuesByKey[def.key]?.version ?? "-" }}</td>
-          <td>{{ updatedDisplay(valuesByKey[def.key]) }}</td>
-          <td>
-            <button class="btn secondary" @click="openEdit(def, valuesByKey[def.key])">
-              Edit
-            </button>
-            <button class="btn secondary" @click="handleDelete(def, valuesByKey[def.key])">
-              Delete
-            </button>
-          </td>
-        </tr>
+        <template v-for="def in filteredRows" :key="def.key">
+          <tr>
+            <td>{{ def.scope }}</td>
+            <td>{{ def.scope === "device" ? (deviceUid || "-") : "-" }}</td>
+            <td>{{ def.key }}</td>
+            <td>{{ def.value_type }}</td>
+            <td>{{ valueDisplay(def, valuesByKey[def.key]) }}</td>
+            <td>{{ valuesByKey[def.key]?.version ?? "-" }}</td>
+            <td>{{ updatedDisplay(valuesByKey[def.key]) }}</td>
+            <td>
+              <button class="btn secondary" @click="openEdit(def, valuesByKey[def.key])">
+                Edit
+              </button>
+              <button class="btn secondary" @click="handleDelete(def, valuesByKey[def.key])">
+                Delete
+              </button>
+              <button
+                v-if="def.is_secret"
+                class="btn secondary"
+                @click="toggleReveal(def.key)"
+              >
+                {{ revealKeys.has(def.key) ? "Hide" : "Reveal" }}
+              </button>
+            </td>
+          </tr>
+          <tr v-if="rowErrors[def.key]">
+            <td colspan="8">
+              <div class="row-error">{{ rowErrors[def.key] }}</div>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
     <div v-else-if="!loading">No variables found.</div>
@@ -288,6 +400,9 @@ onMounted(() => {
         <div class="card-header-row">
           <h3>{{ editorMode === "create" ? "Add variable" : "Edit variable" }}</h3>
           <button class="btn secondary" @click="editorOpen = false">Close</button>
+        </div>
+        <div v-if="showSecretWarning" class="pairing-warn" style="margin-top: 6px;">
+          Secret values are masked in lists.
         </div>
         <div class="info-grid">
           <div class="info-item">
@@ -334,6 +449,16 @@ onMounted(() => {
             readonly
           </label>
           <button class="btn" @click="handleSave">Save</button>
+        </div>
+        <div v-if="conflictKey" class="action-strip">
+          <div class="row-error">
+            {{ conflictMessage }}
+          </div>
+          <div class="row-actions">
+            <button class="btn secondary" @click="reloadConflict">Reload latest</button>
+            <button class="btn secondary" @click="overwriteConflict">Overwrite anyway</button>
+            <button class="btn secondary" @click="clearConflict">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
