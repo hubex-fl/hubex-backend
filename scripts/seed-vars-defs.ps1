@@ -50,4 +50,23 @@ foreach ($def in $defs) {
     exit 1
 }
 
+$list = Invoke-Api "GET" "$Base/api/v1/variables/defs" $null @{
+    "Authorization" = "Bearer $Token"
+}
+if ($list.Status -ne 200) {
+    Write-Host "FAIL: list defs after seed"
+    Write-Host "Status: $($list.Status)"
+    Write-Host "Body: $($list.Body)"
+    exit 1
+}
+$items = @()
+try { $items = $list.Body | ConvertFrom-Json } catch {}
+if (-not $items -or $items.Count -eq 0) {
+    Write-Host "FAIL: /variables/defs returned empty after seed"
+    Write-Host $list.Body
+    exit 1
+}
+$counts = $items | Group-Object -Property scope | Sort-Object -Property Name
+$summary = ($counts | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join " "
+Write-Host "Defs by scope: $summary"
 Write-Host "DONE"

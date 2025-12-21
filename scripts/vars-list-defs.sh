@@ -10,7 +10,7 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-url="$BASE/api/v1/variables/definitions"
+url="$BASE/api/v1/variables/defs"
 if [ -n "$SCOPE" ]; then
   url="$url?scope=$SCOPE"
 fi
@@ -27,4 +27,8 @@ if [ "$status" != "200" ]; then
 fi
 
 echo "OK"
-echo "$body"
+if [ -n "$body" ] && [ "$body" != "[]" ]; then
+  printf "%s" "$body" | python -c "import sys,json;data=json.load(sys.stdin);[print(f\"{d.get('key')} {d.get('scope')}\") for d in data]"
+else
+  echo "$body"
+fi

@@ -35,10 +35,16 @@ function Invoke-Api {
     return @{ Status = $status; Body = $body }
 }
 
-$url = "$Base/api/v1/variables/definitions"
+$url = "$Base/api/v1/variables/defs"
 if ($Scope) { $url = "$url?scope=$Scope" }
 $resp = Invoke-Api "GET" $url $null @{ "Authorization" = "Bearer $Token" }
 if ($resp.Status -ne 200) { Fail "list definitions" $resp }
 
 Write-Host "OK"
-Write-Host $resp.Body
+$defs = @()
+try { $defs = $resp.Body | ConvertFrom-Json } catch {}
+if ($defs -and $defs.Count -gt 0) {
+    $defs | ForEach-Object { Write-Host "$($_.key) $($_.scope)" }
+} else {
+    Write-Host $resp.Body
+}

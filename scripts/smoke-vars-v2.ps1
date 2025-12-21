@@ -66,12 +66,14 @@ $defsResp = Invoke-Api "GET" "$Base/api/v1/variables/defs" $null @{
 }
 if ($defsResp.Status -ne 200) { Fail "list vars defs" $defsResp }
 $defsJson = $defsResp.Body | ConvertFrom-Json
-$globalDef = $defsJson | Where-Object { $_.scope -eq "global" } | Select-Object -First 1
+$globalDef = $defsJson | Where-Object { $_.scope -in @("system", "global") } | Select-Object -First 1
 $deviceDef = $defsJson | Where-Object { $_.scope -eq "device" } | Select-Object -First 1
 if (-not $globalDef) { Fail "no global variable definitions available" $defsResp }
 if (-not $deviceDef) { Fail "no device variable definitions available" $defsResp }
 $globalKey = $globalDef.key
+$globalScope = $globalDef.scope
 $deviceKey = $deviceDef.key
+$deviceScope = $deviceDef.scope
 
 # 2) Provision device
 $helloBody = @{ device_uid = $DeviceUid; firmware_version = "sim"; capabilities = @{ sim = $true } } | ConvertTo-Json -Compress
@@ -103,14 +105,14 @@ if (-not $deviceToken) { Fail "pairing/confirm missing device_token" $confirm }
 Write-Host "OK: device token issued"
 
 # 5) Set global + device override
-$setGlobal = @{ key = $globalKey; scope = "global"; value = "metric" } | ConvertTo-Json -Compress
+$setGlobal = @{ key = $globalKey; scope = $globalScope; value = "metric" } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $setGlobal @{
     "Authorization" = "Bearer $Token"
     "Content-Type" = "application/json"
 }
 if ($resp.Status -ne 200) { Fail "set global var" $resp }
 
-$setDevice = @{ key = $deviceKey; scope = "device"; deviceUid = $DeviceUid; value = 1.5 } | ConvertTo-Json -Compress
+$setDevice = @{ key = $deviceKey; scope = $deviceScope; deviceUid = $DeviceUid; value = 1.5 } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $setDevice @{
     "Authorization" = "Bearer $Token"
     "Content-Type" = "application/json"

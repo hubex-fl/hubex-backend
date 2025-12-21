@@ -34,4 +34,20 @@ post_def "device.telemetry_interval_ms" '{"key":"device.telemetry_interval_ms","
 post_def "device.temp_offset" '{"key":"device.temp_offset","scope":"device","valueType":"float","defaultValue":0.0,"minValue":-5,"maxValue":5,"deviceWritable":true,"userWritable":true}'
 post_def "device.label" '{"key":"device.label","scope":"device","valueType":"string","defaultValue":"","deviceWritable":true,"userWritable":true}'
 
+resp=$(curl -sS -X GET "$BASE/api/v1/variables/defs" -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}")
+status=$(printf "%s" "$resp" | tail -n 1)
+body=$(printf "%s" "$resp" | sed '$d')
+if [ "$status" != "200" ]; then
+  echo "FAIL: list defs after seed"
+  echo "Status: $status"
+  echo "Body: $body"
+  exit 1
+fi
+if [ "$body" = "[]" ] || [ -z "$body" ]; then
+  echo "FAIL: /variables/defs returned empty after seed"
+  echo "$body"
+  exit 1
+fi
+summary=$(printf "%s" "$body" | python -c "import sys,json;from collections import Counter;data=json.load(sys.stdin);c=Counter(d.get('scope') for d in data);print(' '.join(f\"{k}={v}\" for k,v in sorted(c.items())))")
+echo "Defs by scope: $summary"
 echo "DONE"
