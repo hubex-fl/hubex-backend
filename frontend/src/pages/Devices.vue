@@ -18,6 +18,12 @@ type Device = {
 };
 
 const devices = ref<Device[]>([]);
+type DeviceLookup = {
+  device_uid: string;
+  device_id: number;
+  claimed: boolean;
+};
+
 const error = ref("");
 const pairingSection = ref<HTMLElement | null>(null);
 const pairingConfirmInput = ref<HTMLInputElement | null>(null);
@@ -36,6 +42,9 @@ const searchQuery = ref("");
 const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
 const actionableOnly = ref(false);
 
+const pairingLookup = ref<DeviceLookup | null>(null);
+const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
+
 const pairingDevice = computed(() => {
   const uid = pairingDeviceUid.value.trim();
   if (!uid) return null;
@@ -44,7 +53,13 @@ const pairingDevice = computed(() => {
 
 const pairingStateWarning = computed(() => {
   if (!pairingDeviceUid.value.trim()) return null;
-  if (!pairingDevice.value) return "Unknown device UID";
+  if (pairingLookupStatus.value === "not_found") return "Unknown device UID";
+  if (!pairingDevice.value) {
+    if (pairingLookupStatus.value === "found" && pairingLookup.value?.claimed) {
+      return "Device already claimed";
+    }
+    return null;
+  }
   switch (pairingDevice.value.state) {
     case "unprovisioned":
       return "Device not provisioned (never seen)";
@@ -62,15 +77,20 @@ const pairingStateWarning = computed(() => {
 const canStartPairing = computed(() => {
   if (startingPairing.value) return false;
   if (!pairingDeviceUid.value.trim()) return false;
-  return pairingDevice.value?.state === "provisioned_unclaimed";
+  if (pairingDevice.value) return pairingDevice.value.state === "provisioned_unclaimed";
+  if (pairingLookupStatus.value !== "found") return false;
+  return pairingLookup.value?.claimed === false;
 });
 
 const canConfirmPairing = computed(() => {
   if (confirmingPairing.value) return false;
   if (!pairingStartCode.value || !pairingConfirmCode.value) return false;
   if (pairingExpired.value) return false;
-  if (!pairingDevice.value) return false;
-  return !["busy", "claimed", "unprovisioned"].includes(pairingDevice.value.state);
+  if (pairingDevice.value) {
+    return !["busy", "claimed", "unprovisioned"].includes(pairingDevice.value.state);
+  }
+  if (pairingLookupStatus.value !== "found") return false;
+  return pairingLookup.value?.claimed === false;
 });
 
 const visibleDevices = computed(() => {
@@ -110,6 +130,7 @@ const visibleDevices = computed(() => {
 
 let timer: number | null = null;
 let pairingTimer: number | null = null;
+let lookupTimer: number | null = null;
 
 async function load(opts?: { silent?: boolean }) {
   if (opts?.silent !== true) {
@@ -120,6 +141,42 @@ async function load(opts?: { silent?: boolean }) {
   } catch (err: any) {
     error.value = formatPairingError(err, "Failed to load devices");
   }
+}
+
+async function lookupDevice(uid: string) {
+  pairingLookupStatus.value = "loading";
+  pairingLookup.value = null;
+  try {
+    const res = await apiFetch<DeviceLookup>(`/api/v1/devices/lookup/${encodeURIComponent(uid)}`);
+    pairingLookup.value = res;
+    pairingLookupStatus.value = "found";
+  } catch (err: any) {
+    const info = parseApiError(err);
+    if (info.httpStatus === 404) {
+      pairingLookupStatus.value = "not_found";
+      pairingLookup.value = null;
+      return;
+    }
+    pairingLookupStatus.value = "error";
+    error.value = formatPairingError(err, "Failed to lookup device");
+  }
+}
+
+function scheduleLookup(uid: string) {
+  if (lookupTimer !== null) {
+    window.clearTimeout(lookupTimer);
+    lookupTimer = null;
+  }
+  const trimmed = uid.trim();
+  if (!trimmed) {
+    pairingLookupStatus.value = "idle";
+    pairingLookup.value = null;
+    return;
+  }
+  lookupTimer = window.setTimeout(() => {
+    lookupTimer = null;
+    lookupDevice(trimmed);
+  }, 300);
 }
 
 function truncate(text: string, max = 300) {
@@ -333,6 +390,7 @@ watch(pairingDeviceUid, () => {
   pairingRemainingSeconds.value = null;
   pairingExpired.value = false;
   stopPairingCountdown();
+  scheduleLookup(pairingDeviceUid.value);
 });
 
 function onVisibilityChange() {
@@ -364,6 +422,10 @@ onUnmounted(() => {
   if (timer !== null) {
     window.clearInterval(timer);
     timer = null;
+  }
+  if (lookupTimer !== null) {
+    window.clearTimeout(lookupTimer);
+    lookupTimer = null;
   }
   stopPairingCountdown();
 });

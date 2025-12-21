@@ -63,14 +63,16 @@ export function mapErrorToUserText(
   const code = (info.code || "").toUpperCase();
   const msg = (info.message || "").toLowerCase();
 
-  if (code === "DEVICE_NOT_FOUND") return "Unknown device UID";
+  if (code === "DEVICE_UNKNOWN_UID") return "Unknown device UID";
   if (code === "DEVICE_NOT_PROVISIONED") return "Device not provisioned (never seen)";
   if (code === "DEVICE_ALREADY_CLAIMED") return "Device already claimed";
   if (code === "DEVICE_BUSY") return "Device busy (task running)";
   if (code === "PAIRING_CODE_NOT_FOUND") return "Invalid pairing code";
   if (code === "PAIRING_CODE_EXPIRED") return "Pairing code expired";
-  if (code === "PAIRING_CODE_USED") return "Pairing code already used";
+  if (code === "PAIRING_CODE_ALREADY_USED") return "Pairing code already used";
+  if (code === "PAIRING_ALREADY_ACTIVE") return "Pairing already active";
 
+  if (msg.includes("unknown device uid")) return "Unknown device UID";
   if (msg.includes("device not found")) return "Unknown device UID";
   if (msg.includes("device not provisioned")) return "Device not provisioned (never seen)";
   if (msg.includes("device already claimed")) return "Device already claimed";
