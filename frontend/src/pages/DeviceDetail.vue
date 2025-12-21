@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
+import { getDeviceVariables, putValue, VariableValue } from "../lib/variables";
 
 const route = useRoute();
 const router = useRouter();
@@ -61,6 +62,10 @@ const currentTask = ref<CurrentTaskOut | null>(null);
 const currentTaskError = ref<string | null>(null);
 const taskHistory = ref<TaskHistoryItemOut[]>([]);
 const taskHistoryError = ref<string | null>(null);
+const variablesError = ref<string | null>(null);
+const variablesLoading = ref(false);
+type EffectiveVariable = VariableValue & { source: "global" | "device" };
+const variables = ref<EffectiveVariable[]>([]);
 const leaseSecondsRemaining = ref<number | null>(null);
 const expandedTelemetry = ref<Set<number>>(new Set());
 const isLeaseExpiredLocally = computed(() => {
@@ -80,6 +85,9 @@ let taskStatusTimer: number | null = null;
 let leaseCountdownTimer: number | null = null;
 let lastCurrentTaskRefreshMs = 0;
 let lastTaskHistoryRefreshMs = 0;
+let lastVariablesRefreshMs = 0;
+const editingVarKey = ref<string | null>(null);
+const editingVarValue = ref<string>("");
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -137,6 +145,13 @@ function refreshTaskHistoryDebounced() {
   loadTaskHistory();
 }
 
+function refreshVariablesDebounced() {
+  const now = Date.now();
+  if (now - lastVariablesRefreshMs < 1000) return;
+  lastVariablesRefreshMs = now;
+  loadVariables();
+}
+
 function connectWs() {
   if (!mounted) return;
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -174,6 +189,7 @@ function connectWs() {
         refreshDeviceInfoDebounced();
         refreshCurrentTaskDebounced();
         refreshTaskHistoryDebounced();
+        refreshVariablesDebounced();
       }
     } catch {
       // ignore
@@ -195,6 +211,7 @@ async function loadDeviceInfo() {
   deviceInfoError.value = null;
   try {
     deviceInfo.value = await apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId}`);
+    loadVariables();
   } catch (e: any) {
     deviceInfoError.value = formatApiError(e, "Failed to load device");
   }
@@ -246,6 +263,92 @@ async function loadTaskHistory() {
   } catch (e: any) {
     taskHistoryError.value = formatApiError(e, "Failed to load task history");
   }
+}
+
+async function loadVariables() {
+  const uid = deviceInfo.value?.device_uid;
+  if (!uid) return;
+  variablesError.value = null;
+  variablesLoading.value = true;
+  try {
+    const res = await getDeviceVariables(uid);
+    const merged = [
+      ...res.globals.map((item) => ({ ...item, source: "global" as const })),
+      ...res.device.map((item) => ({ ...item, source: "device" as const })),
+    ];
+    variables.value = merged;
+  } catch (e: any) {
+    variablesError.value = formatApiError(e, "Failed to load variables");
+  } finally {
+    variablesLoading.value = false;
+  }
+}
+
+function openEditVariable(row: EffectiveVariable) {
+  editingVarKey.value = row.key;
+  editingVarValue.value = JSON.stringify(row.value ?? "");
+}
+
+function closeEditVariable() {
+  editingVarKey.value = null;
+  editingVarValue.value = "";
+}
+
+function parseValueInput(raw: string) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+async function saveVariableOverride(row: EffectiveVariable) {
+  if (!deviceInfo.value?.device_uid) return;
+  variablesError.value = null;
+  try {
+    await putValue({
+      key: row.key,
+      scope: "device",
+      deviceUid: deviceInfo.value.device_uid,
+      value: parseValueInput(editingVarValue.value),
+      expectedVersion: row.version ?? undefined,
+    });
+    closeEditVariable();
+    loadVariables();
+  } catch (e: any) {
+    variablesError.value = formatApiError(e, "Failed to update variable");
+  }
+}
+
+async function clearVariableOverride(row: EffectiveVariable) {
+  if (!deviceInfo.value?.device_uid) return;
+  if (!confirm("Clear override?")) return;
+  variablesError.value = null;
+  try {
+    await putValue({
+      key: row.key,
+      scope: "device",
+      deviceUid: deviceInfo.value.device_uid,
+      value: null,
+      expectedVersion: row.version ?? undefined,
+    });
+    closeEditVariable();
+    loadVariables();
+  } catch (e: any) {
+    variablesError.value = formatApiError(e, "Failed to clear override");
+  }
+}
+
+function variableValueText(row: EffectiveVariable) {
+  if (row.is_secret) return "***";
+  if (row.value === null || row.value === undefined) return "-";
+  if (typeof row.value === "string") return row.value;
+  return JSON.stringify(row.value);
+}
+
+function variableSourceLabel(row: EffectiveVariable) {
+  return row.source === "device" ? "device" : "global";
 }
 
 function fmtTime(iso: string) {
@@ -376,6 +479,7 @@ function onVisibilityChange() {
   if (document.visibilityState === "visible") {
     loadCurrentTask();
     loadTaskHistory();
+    loadVariables();
     startLeaseCountdown();
   }
 }
@@ -484,6 +588,62 @@ onUnmounted(() => {
           <span v-else>none</span>
         </div>
       </div>
+    </div>
+
+    <div class="section-divider"></div>
+    <div style="margin-bottom: 14px;">
+      <strong>Effective Variables</strong>
+      <div v-if="variablesError" class="error" style="margin-top: 6px;">
+        {{ variablesError }}
+      </div>
+      <div v-else-if="variablesLoading" style="margin-top: 6px;">Loading...</div>
+      <table v-else class="table" style="margin-top: 6px;">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Value</th>
+            <th>Source</th>
+            <th>Version</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in variables" :key="row.key + row.scope">
+            <td>{{ row.key }}</td>
+            <td>
+              <span v-if="editingVarKey === row.key">
+                <input v-model="editingVarValue" class="input" />
+              </span>
+              <span v-else>{{ variableValueText(row) }}</span>
+            </td>
+            <td>{{ variableSourceLabel(row) }}</td>
+            <td>{{ row.version ?? "-" }}</td>
+            <td>{{ row.updated_at ? fmtTime(row.updated_at) : "-" }}</td>
+            <td>
+              <template v-if="editingVarKey === row.key">
+                <button class="btn secondary" @click="saveVariableOverride(row)">Save</button>
+                <button class="btn secondary" @click="closeEditVariable">Cancel</button>
+              </template>
+              <template v-else>
+                <button class="btn secondary" @click="openEditVariable(row)">
+                  {{ row.source === "global" ? "Edit override" : "Edit" }}
+                </button>
+                <button
+                  v-if="row.source === 'device'"
+                  class="btn secondary"
+                  @click="clearVariableOverride(row)"
+                >
+                  Delete override
+                </button>
+              </template>
+            </td>
+          </tr>
+          <tr v-if="variables.length === 0">
+            <td colspan="6">No variables</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="section-divider"></div>
