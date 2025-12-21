@@ -15,6 +15,7 @@ function logout() {
     <nav class="nav">
       <router-link to="/devices">Devices</router-link>
       <router-link to="/pairing">Pairing</router-link>
+      <router-link to="/variables">Variables</router-link>
       <div class="spacer"></div>
       <button v-if="hasToken()" class="btn secondary" @click="logout">Logout</button>
     </nav>

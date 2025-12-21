@@ -3,6 +3,7 @@ import Login from "./pages/Login.vue";
 import Devices from "./pages/Devices.vue";
 import DeviceDetail from "./pages/DeviceDetail.vue";
 import Pairing from "./pages/Pairing.vue";
+import Variables from "./pages/Variables.vue";
 import { hasToken } from "./lib/api";
 
 const router = createRouter({
@@ -13,6 +14,7 @@ const router = createRouter({
     { path: "/devices", component: Devices },
     { path: "/devices/:id", component: DeviceDetail, props: true },
     { path: "/pairing", component: Pairing },
+    { path: "/variables", component: Variables },
   ],
 });
 
