@@ -1,9 +1,12 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
+from app.api.v1.error_utils import raise_api_error
 from app.core import variables as vars_core
 from app.schemas.variables import (
     VariableDefinitionIn,
@@ -11,6 +14,8 @@ from app.schemas.variables import (
     VariableValueIn,
     VariableValueOut,
     DeviceVariablesOut,
+    EffectiveVariableOut,
+    EffectiveVariablesOut,
     VariableAuditOut,
 )
 from app.db.models.device import Device
@@ -144,6 +149,70 @@ async def list_device_variables(
         )
 
     return DeviceVariablesOut(device_uid=device_uid, globals=globals_out, device=device_out)
+
+
+@router.get("/effective", response_model=EffectiveVariablesOut)
+async def get_effective_variables(
+    device_uid: str = Query(..., alias="deviceUid"),
+    include_secrets: bool = Query(default=False, alias="includeSecrets"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+    if device.owner_user_id != current_user.id:
+        raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+
+    definitions, globals_values, device_values = await vars_core.list_effective_values(
+        db, device.id
+    )
+    computed_at = datetime.now(timezone.utc)
+
+    items: list[EffectiveVariableOut] = []
+    timestamps: list[datetime] = []
+    for definition in definitions:
+        if definition.scope == "global":
+            stored = globals_values.get(definition.key)
+            effective = vars_core.get_effective_value(
+                definition, stored.value_json if stored else None
+            )
+            source = "global_default"
+        else:
+            stored = device_values.get(definition.key)
+            effective = vars_core.get_effective_value(
+                definition, stored.value_json if stored else None
+            )
+            source = "device_override" if stored else "global_default"
+
+        value_out = effective
+        if definition.is_secret and not include_secrets:
+            value_out = None
+
+        items.append(
+            EffectiveVariableOut(
+                key=definition.key,
+                value=value_out,
+                scope=definition.scope,
+                version=stored.version if stored else None,
+                updated_at=stored.updated_at if stored else None,
+                is_secret=definition.is_secret,
+                source=source,
+            )
+        )
+        if stored and stored.updated_at:
+            timestamps.append(stored.updated_at)
+        else:
+            timestamps.append(definition.updated_at)
+
+    effective_dt = max(timestamps) if timestamps else computed_at
+    return EffectiveVariablesOut(
+        device_uid=device_uid,
+        computed_at=computed_at,
+        effective_version=effective_dt.isoformat(),
+        items=items,
+    )
 
 
 @router.get("/audit", response_model=list[VariableAuditOut])

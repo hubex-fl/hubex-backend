@@ -63,6 +63,23 @@ class DeviceVariablesOut(BaseModel):
     device: list[VariableValueOut]
 
 
+class EffectiveVariableOut(BaseModel):
+    key: str
+    value: Any | None
+    scope: Scope
+    version: int | None
+    updated_at: datetime | None
+    is_secret: bool
+    source: Literal["device_override", "global_default"]
+
+
+class EffectiveVariablesOut(BaseModel):
+    device_uid: str
+    computed_at: datetime
+    effective_version: str
+    items: list[EffectiveVariableOut]
+
+
 class VariableAuditOut(BaseModel):
     variable_key: str
     scope: Scope

@@ -280,6 +280,30 @@ async def list_device_values(
     return device, globals_defs, device_defs, globals_values, device_values
 
 
+async def list_effective_values(
+    db: AsyncSession, device_id: int
+) -> tuple[list[VariableDefinition], dict[str, VariableValue], dict[str, VariableValue]]:
+    res = await db.execute(select(VariableDefinition))
+    definitions = list(res.scalars().all())
+
+    res = await db.execute(
+        select(VariableValue).where(
+            VariableValue.scope == "global",
+            VariableValue.device_id.is_(None),
+        )
+    )
+    globals_values = {v.variable_key: v for v in res.scalars().all()}
+
+    res = await db.execute(
+        select(VariableValue).where(
+            VariableValue.scope == "device",
+            VariableValue.device_id == device_id,
+        )
+    )
+    device_values = {v.variable_key: v for v in res.scalars().all()}
+    return definitions, globals_values, device_values
+
+
 async def list_audit(
     db: AsyncSession,
     *,
