@@ -193,6 +193,12 @@ a {
   margin-top: 6px;
 }
 
+.inline-warn {
+  color: #8a6d1a;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
 .card-header-row {
   display: flex;
   align-items: center;
@@ -282,6 +288,37 @@ a {
   border-radius: 12px;
   padding: 16px;
   border: 1px solid #e5e7eb;
+}
+
+.error-details {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.error-details summary {
+  cursor: pointer;
+}
+
+.row-error {
+  color: #b00020;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.action-strip {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {

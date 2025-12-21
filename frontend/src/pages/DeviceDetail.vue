@@ -66,12 +66,23 @@ const variablesError = ref<string | null>(null);
 const variablesLoading = ref(false);
 type EffectiveVariable = VariableValue & { source: "global" | "device" };
 const variables = ref<EffectiveVariable[]>([]);
+const revealVariableKeys = ref<Set<string>>(new Set());
+const addOverrideOpen = ref(false);
+const addOverrideKey = ref("");
+const addOverrideValue = ref("");
+const addOverrideError = ref<string | null>(null);
 const leaseSecondsRemaining = ref<number | null>(null);
 const expandedTelemetry = ref<Set<number>>(new Set());
 const isLeaseExpiredLocally = computed(() => {
   const s = leaseSecondsRemaining.value;
   if (s === null) return false;
   return s <= 0;
+});
+const overrideDisabled = computed(() => deviceInfo.value?.state === "unprovisioned");
+const overrideKeyOptions = computed(() => {
+  const keys = new Set<string>();
+  for (const item of variables.value) keys.add(item.key);
+  return Array.from(keys).sort();
 });
 
 let ws: WebSocket | null = null;
@@ -269,6 +280,7 @@ async function loadVariables() {
   const uid = deviceInfo.value?.device_uid;
   if (!uid) return;
   variablesError.value = null;
+  addOverrideError.value = null;
   variablesLoading.value = true;
   try {
     const res = await getDeviceVariables(uid);
@@ -277,6 +289,7 @@ async function loadVariables() {
       ...res.device.map((item) => ({ ...item, source: "device" as const })),
     ];
     variables.value = merged;
+    revealVariableKeys.value = new Set();
   } catch (e: any) {
     variablesError.value = formatApiError(e, "Failed to load variables");
   } finally {
@@ -305,6 +318,7 @@ function parseValueInput(raw: string) {
 
 async function saveVariableOverride(row: EffectiveVariable) {
   if (!deviceInfo.value?.device_uid) return;
+  if (overrideDisabled.value) return;
   variablesError.value = null;
   try {
     await putValue({
@@ -323,6 +337,7 @@ async function saveVariableOverride(row: EffectiveVariable) {
 
 async function clearVariableOverride(row: EffectiveVariable) {
   if (!deviceInfo.value?.device_uid) return;
+  if (overrideDisabled.value) return;
   if (!confirm("Clear override?")) return;
   variablesError.value = null;
   try {
@@ -341,7 +356,7 @@ async function clearVariableOverride(row: EffectiveVariable) {
 }
 
 function variableValueText(row: EffectiveVariable) {
-  if (row.is_secret) return "***";
+  if (row.is_secret && !revealVariableKeys.value.has(row.key)) return "••••••";
   if (row.value === null || row.value === undefined) return "-";
   if (typeof row.value === "string") return row.value;
   return JSON.stringify(row.value);
@@ -349,6 +364,13 @@ function variableValueText(row: EffectiveVariable) {
 
 function variableSourceLabel(row: EffectiveVariable) {
   return row.source === "device" ? "device" : "global";
+}
+
+function toggleVariableReveal(key: string) {
+  const next = new Set(revealVariableKeys.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  revealVariableKeys.value = next;
 }
 
 function fmtTime(iso: string) {
@@ -403,13 +425,10 @@ function historyStatusClass(status: string) {
 function formatApiError(err: any, fallback: string) {
   const info = parseApiError(err);
   const mapped = mapErrorToUserText(info, fallback);
+  const message = mapped || fallback;
   const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
-  const detailText = (info.message || "").slice(0, 200);
-  const codeText = info.code ? ` ${info.code}` : "";
-  const metaText = info.meta ? ` ${JSON.stringify(info.meta)}` : "";
-  const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) return `${mapped} (${suffix}${codeText}${metaText})`;
-  return `${fallback} (${suffix}${codeText}${metaText})`;
+  const codeText = info.code ? `${info.code}` : "UNKNOWN";
+  return `${message} (${statusLabel}, ${codeText})`;
 }
 
 function currentTaskStatusClass() {
@@ -430,6 +449,7 @@ function refreshNow() {
   loadDeviceInfo();
   loadCurrentTask();
   loadTaskHistory();
+  loadVariables();
 }
 
 async function copyUid() {
@@ -446,6 +466,45 @@ function openPairingPanel() {
   const uid = deviceInfo.value?.device_uid;
   if (!uid) return;
   router.push({ path: "/devices", query: { uid } });
+}
+
+function openAddOverride() {
+  if (overrideDisabled.value || !deviceInfo.value?.device_uid) return;
+  addOverrideOpen.value = true;
+  addOverrideError.value = null;
+  if (!addOverrideKey.value && overrideKeyOptions.value.length > 0) {
+    addOverrideKey.value = overrideKeyOptions.value[0];
+  }
+}
+
+function closeAddOverride() {
+  addOverrideOpen.value = false;
+  addOverrideValue.value = "";
+  addOverrideError.value = null;
+}
+
+async function saveNewOverride() {
+  if (!deviceInfo.value?.device_uid) return;
+  if (!addOverrideKey.value) {
+    addOverrideError.value = "Select a variable key";
+    return;
+  }
+  try {
+    const existing = variables.value.find(
+      (item) => item.key === addOverrideKey.value && item.source === "device"
+    );
+    await putValue({
+      key: addOverrideKey.value,
+      scope: "device",
+      deviceUid: deviceInfo.value.device_uid,
+      value: parseValueInput(addOverrideValue.value),
+      expectedVersion: existing?.version ?? undefined,
+    });
+    closeAddOverride();
+    loadVariables();
+  } catch (e: any) {
+    addOverrideError.value = formatApiError(e, "Failed to add override");
+  }
 }
 
 function isTelemetryExpanded(id: number) {
@@ -592,12 +651,61 @@ onUnmounted(() => {
 
     <div class="section-divider"></div>
     <div style="margin-bottom: 14px;">
-      <strong>Effective Variables</strong>
+      <div class="card-header-row">
+        <strong>Effective Variables</strong>
+        <div class="row-actions">
+          <button class="btn secondary" @click="loadVariables">Refresh vars</button>
+          <button
+            class="btn secondary"
+            :disabled="overrideDisabled || !deviceInfo?.device_uid"
+            @click="openAddOverride"
+          >
+            Add override
+          </button>
+        </div>
+      </div>
+      <div v-if="deviceInfo?.busy" class="inline-warn" style="margin-top: 6px;">
+        Device busy — changes may apply later
+      </div>
+      <div v-if="overrideDisabled" class="pairing-warn" style="margin-top: 6px;">
+        Device not provisioned
+      </div>
       <div v-if="variablesError" class="error" style="margin-top: 6px;">
         {{ variablesError }}
       </div>
       <div v-else-if="variablesLoading" style="margin-top: 6px;">Loading...</div>
-      <table v-else class="table" style="margin-top: 6px;">
+      <div v-if="addOverrideOpen" class="action-strip">
+        <div class="info-grid" style="margin-top: 0;">
+          <div class="info-item">
+            <div class="info-label">Key</div>
+            <select v-model="addOverrideKey" class="input">
+              <option value="" disabled>Select variable</option>
+              <option v-for="key in overrideKeyOptions" :key="key" :value="key">
+                {{ key }}
+              </option>
+            </select>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Value</div>
+            <input v-model="addOverrideValue" class="input" />
+          </div>
+        </div>
+        <div v-if="overrideKeyOptions.length === 0" class="row-error">
+          No variables available for override.
+        </div>
+        <div v-if="addOverrideError" class="row-error">{{ addOverrideError }}</div>
+        <div class="row-actions">
+          <button
+            class="btn secondary"
+            :disabled="overrideDisabled || !addOverrideKey"
+            @click="saveNewOverride"
+          >
+            Save override
+          </button>
+          <button class="btn secondary" @click="closeAddOverride">Cancel</button>
+        </div>
+      </div>
+      <table v-if="!variablesLoading" class="table" style="margin-top: 6px;">
         <thead>
           <tr>
             <th>Key</th>
@@ -626,15 +734,27 @@ onUnmounted(() => {
                 <button class="btn secondary" @click="closeEditVariable">Cancel</button>
               </template>
               <template v-else>
-                <button class="btn secondary" @click="openEditVariable(row)">
+                <button
+                  class="btn secondary"
+                  :disabled="overrideDisabled"
+                  @click="openEditVariable(row)"
+                >
                   {{ row.source === "global" ? "Edit override" : "Edit" }}
                 </button>
                 <button
                   v-if="row.source === 'device'"
                   class="btn secondary"
+                  :disabled="overrideDisabled"
                   @click="clearVariableOverride(row)"
                 >
                   Delete override
+                </button>
+                <button
+                  v-if="row.is_secret"
+                  class="btn secondary"
+                  @click="toggleVariableReveal(row.key)"
+                >
+                  {{ revealVariableKeys.has(row.key) ? "Hide" : "Reveal" }}
                 </button>
               </template>
             </td>
