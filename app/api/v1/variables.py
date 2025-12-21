@@ -80,7 +80,7 @@ async def create_definition(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    async with db.begin_nested():
+    try:
         definition = await vars_core.create_definition(
             db,
             key=data.key,
@@ -99,6 +99,10 @@ async def create_definition(
             device_writable=data.device_writable,
             allow_device_override=data.allow_device_override,
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
     return definition
 
 
@@ -110,7 +114,7 @@ async def create_definition_v2(
 ):
     if not _dev_tools_enabled():
         raise_api_error(403, "DEV_TOOLS_DISABLED", "dev tools disabled")
-    async with db.begin_nested():
+    try:
         definition = await vars_core.create_definition(
             db,
             key=data.key,
@@ -129,6 +133,10 @@ async def create_definition_v2(
             device_writable=data.device_writable,
             allow_device_override=data.allow_device_override,
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
     return definition
 
 
@@ -162,7 +170,7 @@ async def put_value(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    async with db.begin_nested():
+    try:
         definition, value, device = await vars_core.create_or_update_value(
             db,
             key=data.key,
@@ -173,6 +181,10 @@ async def put_value(
             actor_user_id=current_user.id,
             actor_device_id=None,
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
     masked = vars_core.mask_if_secret(definition, value.value_json)
     return VariableValueOut(
         key=definition.key,
@@ -193,7 +205,7 @@ async def set_value(
     device_token: str | None = Security(device_token_header),
 ):
     current_user, current_device = await _resolve_actor(db, user_creds, device_token)
-    async with db.begin_nested():
+    try:
         definition, value, device = await vars_core.create_or_update_value_v2(
             db,
             key=data.key,
@@ -206,6 +218,10 @@ async def set_value(
             force=data.force,
             dev_tools=_dev_tools_enabled(),
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
     masked = vars_core.mask_if_secret(definition, value.value_json)
     return VariableValueOut(
         key=definition.key,
