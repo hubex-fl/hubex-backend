@@ -3,7 +3,11 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
-import { getDeviceVariables, putValue, VariableValue } from "../lib/variables";
+import {
+  getEffectiveVariables,
+  putValue,
+  EffectiveVariable as EffectiveVariableOut,
+} from "../lib/variables";
 
 const route = useRoute();
 const router = useRouter();
@@ -64,8 +68,7 @@ const taskHistory = ref<TaskHistoryItemOut[]>([]);
 const taskHistoryError = ref<string | null>(null);
 const variablesError = ref<string | null>(null);
 const variablesLoading = ref(false);
-type EffectiveVariable = VariableValue & { source: "global" | "device" };
-const variables = ref<EffectiveVariable[]>([]);
+const variables = ref<EffectiveVariableOut[]>([]);
 const revealVariableKeys = ref<Set<string>>(new Set());
 const addOverrideOpen = ref(false);
 const addOverrideKey = ref("");
@@ -283,12 +286,8 @@ async function loadVariables() {
   addOverrideError.value = null;
   variablesLoading.value = true;
   try {
-    const res = await getDeviceVariables(uid);
-    const merged = [
-      ...res.globals.map((item) => ({ ...item, source: "global" as const })),
-      ...res.device.map((item) => ({ ...item, source: "device" as const })),
-    ];
-    variables.value = merged;
+    const res = await getEffectiveVariables(uid);
+    variables.value = res.items;
     revealVariableKeys.value = new Set();
   } catch (e: any) {
     variablesError.value = formatApiError(e, "Failed to load variables");
@@ -297,7 +296,7 @@ async function loadVariables() {
   }
 }
 
-function openEditVariable(row: EffectiveVariable) {
+function openEditVariable(row: EffectiveVariableOut) {
   editingVarKey.value = row.key;
   editingVarValue.value = JSON.stringify(row.value ?? "");
 }
@@ -316,7 +315,7 @@ function parseValueInput(raw: string) {
   }
 }
 
-async function saveVariableOverride(row: EffectiveVariable) {
+async function saveVariableOverride(row: EffectiveVariableOut) {
   if (!deviceInfo.value?.device_uid) return;
   if (overrideDisabled.value) return;
   variablesError.value = null;
@@ -335,7 +334,7 @@ async function saveVariableOverride(row: EffectiveVariable) {
   }
 }
 
-async function clearVariableOverride(row: EffectiveVariable) {
+async function clearVariableOverride(row: EffectiveVariableOut) {
   if (!deviceInfo.value?.device_uid) return;
   if (overrideDisabled.value) return;
   if (!confirm("Clear override?")) return;
@@ -355,15 +354,17 @@ async function clearVariableOverride(row: EffectiveVariable) {
   }
 }
 
-function variableValueText(row: EffectiveVariable) {
-  if (row.is_secret && !revealVariableKeys.value.has(row.key)) return "••••••";
+function variableValueText(row: EffectiveVariableOut) {
+  if (row.is_secret && (row.value === null || !revealVariableKeys.value.has(row.key))) {
+    return "••••••";
+  }
   if (row.value === null || row.value === undefined) return "-";
   if (typeof row.value === "string") return row.value;
   return JSON.stringify(row.value);
 }
 
-function variableSourceLabel(row: EffectiveVariable) {
-  return row.source === "device" ? "device" : "global";
+function variableSourceLabel(row: EffectiveVariableOut) {
+  return row.source === "device_override" ? "device override" : "global default";
 }
 
 function toggleVariableReveal(key: string) {

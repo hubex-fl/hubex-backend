@@ -31,6 +31,23 @@ export type DeviceVariables = {
   device: VariableValue[];
 };
 
+export type EffectiveVariable = {
+  key: string;
+  value: any | null;
+  scope: VariableScope;
+  version: number | null;
+  updated_at: string | null;
+  is_secret: boolean;
+  source: "device_override" | "global_default";
+};
+
+export type EffectiveVariables = {
+  device_uid: string;
+  computed_at: string;
+  effective_version: string;
+  items: EffectiveVariable[];
+};
+
 export type VariableAudit = {
   variable_key: string;
   scope: VariableScope;
@@ -98,6 +115,16 @@ export async function putValue(input: VariableValueInput): Promise<VariableValue
 
 export async function getDeviceVariables(deviceUid: string): Promise<DeviceVariables> {
   return apiFetch<DeviceVariables>(`/api/v1/variables/device/${deviceUid}`);
+}
+
+export async function getEffectiveVariables(
+  deviceUid: string,
+  includeSecrets = false
+): Promise<EffectiveVariables> {
+  const query = new URLSearchParams();
+  query.set("deviceUid", deviceUid);
+  if (includeSecrets) query.set("includeSecrets", "true");
+  return apiFetch<EffectiveVariables>(`/api/v1/variables/effective?${query.toString()}`);
 }
 
 export async function getAudit(params: {
