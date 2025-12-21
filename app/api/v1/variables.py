@@ -285,17 +285,21 @@ async def get_effective_variables(
     items: list[EffectiveVariableOut] = []
     timestamps: list[datetime] = []
     for definition in definitions:
+        if definition.scope == "user":
+            continue
         stored = None
         source = "default"
+        precedence = 0
         if definition.scope == "global":
             stored = globals_values.get(definition.key)
-            source = "global" if stored else "default"
-        elif definition.scope == "user":
-            stored = user_values.get(definition.key)
-            source = "user" if stored else "default"
+            if stored:
+                source = "global"
+                precedence = 1
         elif definition.scope == "device":
             stored = device_values.get(definition.key)
-            source = "device" if stored else "default"
+            if stored:
+                source = "device_override"
+                precedence = 2
 
         effective = vars_core.get_effective_value(
             definition, stored.value_json if stored else None
@@ -310,10 +314,12 @@ async def get_effective_variables(
                 key=definition.key,
                 value=value_out,
                 scope=definition.scope,
+                device_uid=device_uid if definition.scope == "device" else None,
                 version=stored.version if stored else None,
                 updated_at=stored.updated_at if stored else None,
                 is_secret=definition.is_secret,
                 source=source,
+                precedence=precedence,
                 resolved_type=definition.value_type,
                 constraints=vars_core._constraints(definition),
             )

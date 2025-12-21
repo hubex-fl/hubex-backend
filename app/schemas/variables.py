@@ -100,11 +100,13 @@ class EffectiveVariableOut(BaseModel):
     key: str
     value: Any | None
     scope: Scope
+    device_uid: str | None
     version: int | None
     updated_at: datetime | None
     is_secret: bool
-    source: Literal["default", "global", "user", "device"]
-    resolved_type: ValueType
+    source: Literal["default", "global", "device_override"]
+    precedence: int
+    resolved_type: ValueType | None = None
     constraints: dict[str, Any] | None = None
 
 
