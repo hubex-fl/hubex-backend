@@ -44,6 +44,22 @@ done
 
 echo "OK: seeded defs"
 
+# Fetch defs and select keys
+defs=$(curl -sS -X GET "$BASE/api/v1/variables/defs" -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}")
+defs_status=$(printf "%s" "$defs" | tail -n 1)
+defs_body=$(printf "%s" "$defs" | sed '$d')
+if [ "$defs_status" != "200" ]; then
+  fail "list defs" "$defs_status" "$defs_body"
+fi
+global_key=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d['key'] for d in json.load(sys.stdin) if d.get('scope')=='global'),''))")
+device_key=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d['key'] for d in json.load(sys.stdin) if d.get('scope')=='device'),''))")
+if [ -z "$global_key" ]; then
+  fail "no global variable definitions available" "$defs_status" "$defs_body"
+fi
+if [ -z "$device_key" ]; then
+  fail "no device variable definitions available" "$defs_status" "$defs_body"
+fi
+
 # Provision device
 hello='{"device_uid":"'"$DEVICE_UID"'","firmware_version":"sim","capabilities":{"sim":true}}'
 resp=$(printf "%s" "$hello" | curl -sS -X POST "$BASE/api/v1/devices/hello" \
@@ -89,7 +105,7 @@ fi
 echo "OK: device token issued"
 
 # Set vars
-set_global='{"key":"system.units","scope":"global","value":"metric"}'
+set_global='{"key":"'"$global_key"'","scope":"global","value":"metric"}'
 resp=$(printf "%s" "$set_global" | curl -sS -X POST "$BASE/api/v1/variables/set" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   --data-binary '@-' -w "\n%{http_code}")
@@ -98,7 +114,7 @@ if [ "$status" != "200" ]; then
   fail "set global" "$status" "$(printf "%s" "$resp" | sed '$d')"
 fi
 
-set_device='{"key":"device.temp_offset","scope":"device","deviceUid":"'"$DEVICE_UID"'","value":1.5}'
+set_device='{"key":"'"$device_key"'","scope":"device","deviceUid":"'"$DEVICE_UID"'","value":1.5}'
 resp=$(printf "%s" "$set_device" | curl -sS -X POST "$BASE/api/v1/variables/set" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   --data-binary '@-' -w "\n%{http_code}")
