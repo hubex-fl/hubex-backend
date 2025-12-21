@@ -31,15 +31,32 @@ def http_json(method: str, url: str, body: Dict[str, Any] | None = None, headers
         return e.code, payload
 
 
+def parse_value(raw: str | None) -> Any:
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Hubex device simulator")
     parser.add_argument("--base", default="http://127.0.0.1:8000", help="Base URL")
     parser.add_argument("--device-uid", default="", help="Device UID to use")
     parser.add_argument("--device-token", default="", help="Device token for telemetry/tasks")
+    parser.add_argument("--user-token", default="", help="User JWT for variables API")
     parser.add_argument("--interval", type=float, default=5.0, help="Telemetry interval seconds")
     parser.add_argument("--seconds", type=int, default=30, help="Run duration seconds")
     parser.add_argument("--tasks", action="store_true", help="Poll tasks when device token provided")
     parser.add_argument("--context-key", default="default", help="Context key for tasks")
+    parser.add_argument("--vars-key", default="", help="Variable key to read/write")
+    parser.add_argument("--vars-scope", default="device", help="Variable scope: device|global")
+    parser.add_argument("--vars-get", action="store_true", help="Read variable value once")
+    parser.add_argument("--vars-set", action="store_true", help="Write variable value once")
+    parser.add_argument("--vars-value", default="", help="Variable value (JSON string if possible)")
+    parser.add_argument("--vars-expected-version", type=int, default=None, help="Expected version")
+    parser.add_argument("--vars-spam", action="store_true", help="Update variable each telemetry tick")
     args = parser.parse_args()
 
     device_uid = args.device_uid
@@ -58,14 +75,46 @@ def main() -> int:
     if not token:
         log("warning", message="no device token provided; telemetry may be rejected")
 
+    user_token = args.user_token
+    if (args.vars_get or args.vars_set or args.vars_spam) and not user_token:
+        log("warning", message="no user token provided; variables calls will be skipped")
+
+    var_value = parse_value(args.vars_value) if args.vars_value else None
+    if args.vars_get and user_token and args.vars_key:
+        url = f"{args.base}/api/v1/variables/value?key={args.vars_key}&scope={args.vars_scope}"
+        if args.vars_scope == "device":
+            url += f"&deviceUid={device_uid}"
+        status, body = http_json("GET", url, headers={"Authorization": f"Bearer {user_token}"})
+        log("vars.get", status=status, body=body, key=args.vars_key)
+
+    if args.vars_set and user_token and args.vars_key:
+        payload = {
+            "key": args.vars_key,
+            "scope": args.vars_scope,
+            "value": var_value,
+        }
+        if args.vars_scope == "device":
+            payload["deviceUid"] = device_uid
+        if args.vars_expected_version is not None:
+            payload["expectedVersion"] = args.vars_expected_version
+        status, body = http_json(
+            "PUT",
+            f"{args.base}/api/v1/variables/value",
+            payload,
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        log("vars.set", status=status, body=body, key=args.vars_key)
+
     start = time.time()
     next_tick = start
+    tick = 0
 
     while time.time() - start < args.seconds:
         now = time.time()
         if now < next_tick:
             time.sleep(max(0.1, next_tick - now))
         next_tick = next_tick + args.interval
+        tick += 1
 
         payload = {
             "event_type": "sim.sample",
@@ -84,6 +133,22 @@ def main() -> int:
             poll_url = f"{args.base}/api/v1/tasks/poll?limit=1&context_key={args.context_key}&lease_seconds=30"
             status, body = http_json("POST", poll_url, headers={"X-Device-Token": token})
             log("tasks.poll", status=status, body=body)
+
+        if args.vars_spam and user_token and args.vars_key:
+            spam_payload = {
+                "key": args.vars_key,
+                "scope": args.vars_scope,
+                "value": tick,
+            }
+            if args.vars_scope == "device":
+                spam_payload["deviceUid"] = device_uid
+            status, body = http_json(
+                "PUT",
+                f"{args.base}/api/v1/variables/value",
+                spam_payload,
+                headers={"Authorization": f"Bearer {user_token}"},
+            )
+            log("vars.spam", status=status, body=body, key=args.vars_key)
 
     log("done", device_uid=device_uid)
     return 0
