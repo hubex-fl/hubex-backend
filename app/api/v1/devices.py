@@ -11,6 +11,7 @@ from app.api.deps_auth import get_current_device, get_current_user
 from app.db.models.device import Device  # NUR das echte Model importieren
 from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
+from app.api.v1.error_utils import raise_api_error
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 from app.db.models.pairing import PairingSession
@@ -34,6 +35,14 @@ class DeviceHelloIn(BaseModel):
 class DeviceHelloOut(BaseModel):
     device_id: int
     claimed: bool
+
+
+class DeviceLookupOut(BaseModel):
+    device_uid: str
+    device_id: int
+    claimed: bool
+    state: str
+    last_seen_at: Optional[datetime]
 
 
 class DeviceOut(BaseModel):
@@ -130,6 +139,33 @@ async def whoami(
         "device_uid": device.device_uid,
         "owner_user_id": device.owner_user_id,
     }
+
+
+@router.get("/lookup/{device_uid}", response_model=DeviceLookupOut)
+async def lookup_device(
+    device_uid: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+    now = datetime.now(timezone.utc)
+    active_pairing_uids = await fetch_pairing_active_uids(
+        db, [device.device_uid], now
+    )
+    busy_ids = await fetch_busy_device_ids(db, [device.id], now)
+    pairing_active = device.device_uid in active_pairing_uids
+    busy = device.id in busy_ids
+    state, claimed = derive_state(device, pairing_active, busy)
+    return DeviceLookupOut(
+        device_uid=device.device_uid,
+        device_id=device.id,
+        claimed=claimed,
+        state=state,
+        last_seen_at=device.last_seen_at,
+    )
 
 
 @router.get("", response_model=list[DeviceListItem])

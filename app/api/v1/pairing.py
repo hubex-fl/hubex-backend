@@ -3,23 +3,20 @@
 from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
-import logging
-import sys
-
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, Body
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
+from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.tasks import Task
 
 # Canonical pairing routes live under /api/v1/pairing
 router = APIRouter(prefix="/pairing", tags=["pairing"])
-logger = logging.getLogger("uvicorn.error")
 
 
 PAIRING_TTL_MINUTES = 10
@@ -43,19 +40,6 @@ def _gen_device_token_plain() -> str:
 def _hash_token(token_plain: str) -> str:
     # für DeviceToken: stabil, schnell, keine bcrypt-72byte-Problematik
     return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
-
-def _raise_error(
-    status_code: int, code: str, message: str, meta: dict | None = None
-) -> None:
-    detail = {"code": code, "message": message}
-    if meta:
-        detail["meta"] = meta
-    raise HTTPException(
-        status_code=status_code,
-        detail=detail,
-    )
-
-
 
 class PairingStartIn(BaseModel):
     device_uid: str = Field(min_length=4, max_length=128)
@@ -106,11 +90,11 @@ async def start_pairing(
     device = res.scalar_one_or_none()
 
     if device is None:
-        _raise_error(404, "DEVICE_NOT_FOUND", "device not found")
+        raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
     if device.last_seen_at is None:
-        _raise_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
+        raise_api_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
     if device.owner_user_id is not None or device.is_claimed:
-        _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
+        raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
     now = _now_utc()
     res = await db.execute(
@@ -123,7 +107,7 @@ async def start_pairing(
     existing = res.scalar_one_or_none()
     if existing is not None:
         ttl_seconds = max(0, int((existing.expires_at - now).total_seconds()))
-        _raise_error(
+        raise_api_error(
             409,
             "PAIRING_ALREADY_ACTIVE",
             "pairing already active",
@@ -139,7 +123,7 @@ async def start_pairing(
         )
     )
     if res.scalar_one_or_none() is not None:
-        _raise_error(409, "DEVICE_BUSY", "device busy")
+        raise_api_error(409, "DEVICE_BUSY", "device busy")
 
     # neue Session erzeugen (alte Sessions lassen wir erstmal in Ruhe)
     code = _gen_pairing_code()
@@ -178,10 +162,6 @@ async def confirm_pairing(
     token_plain: str | None = None
     now = _now_utc()
 
-    print(
-        f"CONFIRM_IN uid={data.device_uid} code={data.pairing_code}",
-        file=sys.stderr,
-    )
     async with db.begin_nested():
         res = await db.execute(
             select(PairingSession)
@@ -193,17 +173,14 @@ async def confirm_pairing(
         )
         ps = res.scalar_one_or_none()
         if ps is None:
-            _raise_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
-
-        print(
-            f"CONFIRM_PS id={ps.id} used={ps.is_used} expires={ps.expires_at}",
-            file=sys.stderr,
-        )
+            raise_api_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
 
         if ps.is_used:
-            _raise_error(409, "PAIRING_CODE_USED", "pairing code already used")
+            raise_api_error(
+                409, "PAIRING_CODE_ALREADY_USED", "pairing code already used"
+            )
         if ps.expires_at <= now:
-            _raise_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
+            raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
 
         res = await db.execute(
             select(Device)
@@ -212,16 +189,11 @@ async def confirm_pairing(
         )
         device = res.scalar_one_or_none()
         if device is None:
-            _raise_error(404, "DEVICE_NOT_FOUND", "device not found")
+            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
         if device.last_seen_at is None:
-            _raise_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
+            raise_api_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
         if device.owner_user_id is not None or device.is_claimed:
-            _raise_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
-
-        print(
-            f"CONFIRM_DEV id={device.id} claimed={device.is_claimed} owner={device.owner_user_id}",
-            file=sys.stderr,
-        )
+            raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
         res = await db.execute(
             select(Task.id).where(
@@ -233,7 +205,7 @@ async def confirm_pairing(
             )
         )
         if res.scalar_one_or_none() is not None:
-            _raise_error(409, "DEVICE_BUSY", "device busy")
+            raise_api_error(409, "DEVICE_BUSY", "device busy")
 
         res = await db.execute(
             select(func.count())
@@ -244,13 +216,8 @@ async def confirm_pairing(
             )
         )
         active_tokens = res.scalar_one()
-        print(
-            f"CONFIRM_ACTIVE_TOKENS device_id={device.id} active_count={active_tokens}",
-            file=sys.stderr,
-        )
         if active_tokens > 0:
-            print("CONFIRM_BLOCK replay: active token exists", file=sys.stderr)
-            _raise_error(409, "DEVICE_TOKEN_ALREADY_ISSUED", "device token already issued")
+            raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
         # Claim
         device.owner_user_id = ps.user_id
