@@ -9,9 +9,11 @@ DEVICE_UID="${HUBEX_DEVICE_UID:-}"
 VALUE_JSON="${HUBEX_VAR_VALUE_JSON:-}"
 VALUE_RAW="${HUBEX_VAR_VALUE:-}"
 EXPECTED="${HUBEX_VAR_EXPECTED_VERSION:-}"
+FORCE="${HUBEX_VAR_FORCE:-}"
+DEVICE_TOKEN="${HUBEX_DEVICE_TOKEN:-}"
 
-if [ -z "$TOKEN" ]; then
-  echo "FAIL: HUBEX_TOKEN missing"
+if [ -z "$TOKEN" ] && [ -z "$DEVICE_TOKEN" ]; then
+  echo "FAIL: HUBEX_TOKEN or HUBEX_DEVICE_TOKEN missing"
   exit 1
 fi
 if [ -z "$KEY" ]; then
@@ -40,10 +42,19 @@ fi
 if [ -n "$EXPECTED" ]; then
   payload="$payload,\"expectedVersion\":$EXPECTED"
 fi
+if [ -n "$FORCE" ]; then
+  payload="$payload,\"force\":true"
+fi
 payload="$payload}"
 
-resp=$(printf "%s" "$payload" | curl -sS -X PUT "$BASE/api/v1/variables/value" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+if [ -n "$DEVICE_TOKEN" ]; then
+  AUTH_HEADER="X-Device-Token: $DEVICE_TOKEN"
+else
+  AUTH_HEADER="Authorization: Bearer $TOKEN"
+fi
+
+resp=$(printf "%s" "$payload" | curl -sS -X POST "$BASE/api/v1/variables/set" \
+  -H "$AUTH_HEADER" -H "Content-Type: application/json" \
   --data-binary '@-' -w "\n%{http_code}")
 status=$(printf "%s" "$resp" | tail -n 1)
 body=$(printf "%s" "$resp" | sed '$d')

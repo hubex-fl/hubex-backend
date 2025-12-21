@@ -45,6 +45,36 @@ export HUBEX_DEVICE_UID="sim-123"
 ./scripts/smoke-effective-vars.sh
 ```
 
+## Variables v2 quickstart
+```powershell
+# Define v2 registry keys (requires HUBEX_DEV_TOOLS=1)
+$env:HUBEX_DEV_TOOLS="1"
+.\scripts\seed-vars-defs.ps1
+
+# Set and verify v2 values (requires HUBEX_TOKEN)
+$env:HUBEX_VAR_KEY="device.temp_offset"
+$env:HUBEX_VAR_SCOPE="device"
+$env:HUBEX_VAR_VALUE="1.5"
+$env:HUBEX_DEVICE_UID="sim-123"
+.\scripts\vars-set.ps1
+
+# Full v2 smoke (provision + pair + set + effective + simulator)
+.\scripts\smoke-vars-v2.ps1
+```
+
+```bash
+export HUBEX_DEV_TOOLS=1
+./scripts/seed-vars-defs.sh
+
+export HUBEX_VAR_KEY=device.temp_offset
+export HUBEX_VAR_SCOPE=device
+export HUBEX_VAR_VALUE=1.5
+export HUBEX_DEVICE_UID=sim-123
+./scripts/vars-set.sh
+
+./scripts/smoke-vars-v2.sh
+```
+
 ## Troubleshooting
 - **401 Unauthorized**: token missing/expired. Re-run `seed-user` and export the token.
 - **404 DEVICE_UNKNOWN_UID**: device was never provisioned; run `devices/hello` (seed-devices).

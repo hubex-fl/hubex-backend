@@ -12,6 +12,8 @@ $DeviceUid = $env:HUBEX_DEVICE_UID
 $ValueJson = $env:HUBEX_VAR_VALUE_JSON
 $ValueRaw = $env:HUBEX_VAR_VALUE
 $Expected = $env:HUBEX_VAR_EXPECTED_VERSION
+$Force = $env:HUBEX_VAR_FORCE
+$DeviceToken = $env:HUBEX_DEVICE_TOKEN
 
 function Fail {
     param([string]$Message, [hashtable]$Resp)
@@ -64,12 +66,16 @@ $payload = @{
 }
 if ($Scope -eq "device") { $payload.deviceUid = $DeviceUid }
 if ($Expected) { $payload.expectedVersion = [int]$Expected }
+if ($Force) { $payload.force = $true }
 
 $body = $payload | ConvertTo-Json -Compress
-$resp = Invoke-Api "PUT" "$Base/api/v1/variables/value" $body @{
-    "Authorization" = "Bearer $Token"
-    "Content-Type" = "application/json"
+$headers = @{ "Content-Type" = "application/json" }
+if ($DeviceToken) {
+    $headers["X-Device-Token"] = $DeviceToken
+} else {
+    $headers["Authorization"] = "Bearer $Token"
 }
+$resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $body $headers
 if ($resp.Status -ne 200) { Fail "set value" $resp }
 
 Write-Host "OK"
