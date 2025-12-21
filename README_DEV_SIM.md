@@ -30,6 +30,21 @@
 python -m app.simulator --base http://127.0.0.1:8000 --device-uid sim-123 --device-token <token> --seconds 30
 ```
 
+## Effective variables
+```powershell
+$env:HUBEX_DEVICE_UID="sim-123"
+.\scripts\vars-effective.ps1
+
+.\scripts\smoke-effective-vars.ps1
+```
+
+```bash
+export HUBEX_DEVICE_UID="sim-123"
+./scripts/vars-effective.sh
+
+./scripts/smoke-effective-vars.sh
+```
+
 ## Troubleshooting
 - **401 Unauthorized**: token missing/expired. Re-run `seed-user` and export the token.
 - **404 DEVICE_UNKNOWN_UID**: device was never provisioned; run `devices/hello` (seed-devices).
