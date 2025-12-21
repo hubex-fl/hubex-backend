@@ -6,7 +6,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 
+VERBOSE = False
+NOISY_EVENTS = {"telemetry", "tasks.poll", "vars.spam"}
+
+
 def log(event: str, **data: Any) -> None:
+    if not VERBOSE and event in NOISY_EVENTS:
+        return
     stamp = datetime.now(timezone.utc).isoformat()
     payload = {"ts": stamp, "event": event, **data}
     print(json.dumps(payload, ensure_ascii=True))
@@ -67,7 +73,11 @@ def main() -> int:
     parser.add_argument("--vars-effective", action="store_true", help="Poll effective variables")
     parser.add_argument("--vars-poll-seconds", type=float, default=15.0, help="Effective vars poll interval")
     parser.add_argument("--include-secrets", action="store_true", help="Include secrets when polling vars")
+    parser.add_argument("--vars-ack", action="store_true", help="Send applied vars ack using device token")
+    parser.add_argument("--verbose", action="store_true", help="Verbose logs")
     args = parser.parse_args()
+    global VERBOSE
+    VERBOSE = args.verbose
 
     device_uid = args.device_uid
     if not device_uid:
@@ -121,13 +131,18 @@ def main() -> int:
     next_tick = start
     next_vars_poll = start
     vars_cache: dict[str, Any] = {}
+    last_applied_versions: dict[str, int] = {}
     tick = 0
 
     while time.time() - start < args.seconds:
         now = time.time()
         if now < next_tick:
             time.sleep(max(0.1, next_tick - now))
-        next_tick = next_tick + args.interval
+        interval = args.interval
+        interval_ms = vars_cache.get("device.telemetry_interval_ms")
+        if isinstance(interval_ms, (int, float)) and interval_ms > 0:
+            interval = max(0.5, float(interval_ms) / 1000.0)
+        next_tick = time.time() + interval
         tick += 1
 
         if args.vars_effective and user_token and now >= next_vars_poll:
@@ -138,11 +153,35 @@ def main() -> int:
             status, body = http_json("GET", url, headers={"Authorization": f"Bearer {user_token}"})
             payload = parse_json_payload(body)
             if status == 200 and payload:
-                vars_cache = {item["key"]: item.get("value") for item in payload.get("items", [])}
+                items = payload.get("items", [])
+                vars_cache = {item["key"]: item.get("value") for item in items}
                 log("vars.effective", status=status, count=len(vars_cache))
+                if args.vars_ack and token:
+                    current_versions = {
+                        item["key"]: item.get("version")
+                        for item in items
+                        if item.get("version") is not None
+                    }
+                    if current_versions and current_versions != last_applied_versions:
+                        applied = [
+                            {"key": k, "version": v}
+                            for k, v in current_versions.items()
+                        ]
+                        ack_body = {"deviceUid": device_uid, "applied": applied}
+                        ack_status, ack_resp = http_json(
+                            "POST",
+                            f"{args.base}/api/v1/variables/applied",
+                            ack_body,
+                            headers={"X-Device-Token": token},
+                        )
+                        log("vars.applied", status=ack_status, body=ack_resp)
+                        last_applied_versions = current_versions
+                elif args.vars_ack and not token:
+                    log("warning", message="vars ack requested but no device token provided")
             else:
                 log("vars.effective", status=status, body=body)
 
+        label = vars_cache.get("device.label")
         payload = {
             "event_type": "sim.sample",
             "payload": {
@@ -150,6 +189,7 @@ def main() -> int:
                 "voltage": 3.7,
                 "rssi": -60,
                 "uid": device_uid,
+                "label": label,
             },
         }
         headers = {"X-Device-Token": token} if token else {}
