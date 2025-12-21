@@ -122,7 +122,7 @@ body=$(printf "%s" "$resp" | tail -n +2)
 [ "$status" = "200" ] || fail "lookup" "$status" "$body"
 
 echo "Run simulator for $SIM_SECONDS seconds..."
-python -m tools.device_sim --base "$BASE" --device-uid "$device_uid" --device-token "$device_token" --seconds "$SIM_SECONDS"
+python -m app.simulator --base "$BASE" --device-uid "$device_uid" --device-token "$device_token" --seconds "$SIM_SECONDS"
 
 echo "OK: e2e complete"
 echo "DEVICE_UID=$device_uid"

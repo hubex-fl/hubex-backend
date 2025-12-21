@@ -97,7 +97,7 @@ $resp = Invoke-Api "GET" "$Base/api/v1/devices/lookup/$deviceUid" $null @{ "Auth
 if ($resp.Status -ne 200) { Fail "lookup" $resp }
 
 Write-Host "Run simulator for $RunSeconds seconds..."
-python -m tools.device_sim --base $Base --device-uid $deviceUid --device-token $deviceToken --seconds $RunSeconds | Out-Host
+python -m app.simulator --base $Base --device-uid $deviceUid --device-token $deviceToken --seconds $RunSeconds | Out-Host
 
 Write-Host "OK: e2e complete"
 Write-Host "DEVICE_UID=$deviceUid"

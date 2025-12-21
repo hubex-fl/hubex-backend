@@ -2,7 +2,7 @@
 
 ## Prereqs
 - Backend running at `http://127.0.0.1:8000`
-- Python venv activated for scripts that call `python -m tools.device_sim`
+- Python venv activated for scripts that call `python -m app.simulator`
 
 ## Quick start (PowerShell)
 ```powershell
@@ -27,7 +27,7 @@
 
 ## Device simulator
 ```bash
-python -m tools.device_sim --base http://127.0.0.1:8000 --device-uid sim-123 --device-token <token> --seconds 30
+python -m app.simulator --base http://127.0.0.1:8000 --device-uid sim-123 --device-token <token> --seconds 30
 ```
 
 ## Troubleshooting
