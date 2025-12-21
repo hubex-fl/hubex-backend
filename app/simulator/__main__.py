@@ -40,6 +40,13 @@ def parse_value(raw: str | None) -> Any:
         return raw
 
 
+def parse_json_payload(raw: str) -> dict[str, Any] | None:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Hubex device simulator")
     parser.add_argument("--base", default="http://127.0.0.1:8000", help="Base URL")
@@ -57,6 +64,9 @@ def main() -> int:
     parser.add_argument("--vars-value", default="", help="Variable value (JSON string if possible)")
     parser.add_argument("--vars-expected-version", type=int, default=None, help="Expected version")
     parser.add_argument("--vars-spam", action="store_true", help="Update variable each telemetry tick")
+    parser.add_argument("--vars-effective", action="store_true", help="Poll effective variables")
+    parser.add_argument("--vars-poll-seconds", type=float, default=15.0, help="Effective vars poll interval")
+    parser.add_argument("--include-secrets", action="store_true", help="Include secrets when polling vars")
     args = parser.parse_args()
 
     device_uid = args.device_uid
@@ -78,6 +88,8 @@ def main() -> int:
     user_token = args.user_token
     if (args.vars_get or args.vars_set or args.vars_spam) and not user_token:
         log("warning", message="no user token provided; variables calls will be skipped")
+    if args.vars_effective and not user_token:
+        log("warning", message="no user token provided; effective vars polling skipped")
 
     var_value = parse_value(args.vars_value) if args.vars_value else None
     if args.vars_get and user_token and args.vars_key:
@@ -107,6 +119,8 @@ def main() -> int:
 
     start = time.time()
     next_tick = start
+    next_vars_poll = start
+    vars_cache: dict[str, Any] = {}
     tick = 0
 
     while time.time() - start < args.seconds:
@@ -116,10 +130,23 @@ def main() -> int:
         next_tick = next_tick + args.interval
         tick += 1
 
+        if args.vars_effective and user_token and now >= next_vars_poll:
+            next_vars_poll = now + args.vars_poll_seconds
+            url = f"{args.base}/api/v1/variables/effective?deviceUid={device_uid}"
+            if args.include_secrets:
+                url += "&includeSecrets=true"
+            status, body = http_json("GET", url, headers={"Authorization": f"Bearer {user_token}"})
+            payload = parse_json_payload(body)
+            if status == 200 and payload:
+                vars_cache = {item["key"]: item.get("value") for item in payload.get("items", [])}
+                log("vars.effective", status=status, count=len(vars_cache))
+            else:
+                log("vars.effective", status=status, body=body)
+
         payload = {
             "event_type": "sim.sample",
             "payload": {
-                "temp_c": 20.0,
+                "temp_c": 20.0 + float(vars_cache.get("device.temp_offset", 0.0) or 0.0),
                 "voltage": 3.7,
                 "rssi": -60,
                 "uid": device_uid,
