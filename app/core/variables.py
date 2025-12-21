@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
+from app.db.models.tasks import Task
 from app.db.models.variables import VariableDefinition, VariableValue, VariableAudit
 
 
@@ -64,6 +66,66 @@ def validate_and_coerce(value: Any, value_type: str) -> Any:
     raise_api_error(422, "VAR_INVALID_TYPE", "unsupported value type")
 
 
+def _constraints(definition: VariableDefinition) -> dict[str, Any] | None:
+    constraints: dict[str, Any] = {}
+    if definition.min_value is not None:
+        constraints["min"] = definition.min_value
+    if definition.max_value is not None:
+        constraints["max"] = definition.max_value
+    if definition.enum_values:
+        constraints["enum"] = definition.enum_values
+    if definition.regex:
+        constraints["regex"] = definition.regex
+    if definition.unit:
+        constraints["unit"] = definition.unit
+    return constraints or None
+
+
+def validate_and_coerce_value(definition: VariableDefinition, value: Any) -> Any:
+    coerced = validate_and_coerce(value, definition.value_type)
+    constraints = _constraints(definition)
+    if not constraints:
+        return coerced
+
+    if isinstance(coerced, (int, float)):
+        min_value = constraints.get("min")
+        max_value = constraints.get("max")
+        if min_value is not None and coerced < min_value:
+            raise_api_error(
+                422,
+                "VAR_CONSTRAINT_VIOLATION",
+                "value below minimum",
+                meta={"min": min_value},
+            )
+        if max_value is not None and coerced > max_value:
+            raise_api_error(
+                422,
+                "VAR_CONSTRAINT_VIOLATION",
+                "value above maximum",
+                meta={"max": max_value},
+            )
+
+    if isinstance(coerced, str):
+        enum_values = constraints.get("enum")
+        if enum_values and coerced not in enum_values:
+            raise_api_error(
+                422,
+                "VAR_CONSTRAINT_VIOLATION",
+                "value not in enum",
+                meta={"enum": enum_values},
+            )
+        regex = constraints.get("regex")
+        if regex and not re.fullmatch(regex, coerced):
+            raise_api_error(
+                422,
+                "VAR_CONSTRAINT_VIOLATION",
+                "value does not match regex",
+                meta={"regex": regex},
+            )
+
+    return coerced
+
+
 def get_effective_value(definition: VariableDefinition, stored_value: Any | None) -> Any:
     return stored_value if stored_value is not None else definition.default_value
 
@@ -89,6 +151,16 @@ async def resolve_device(db: AsyncSession, device_uid: str) -> Device:
     return device
 
 
+async def resolve_device_for_vars(db: AsyncSession, device_uid: str) -> Device:
+    res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_NOT_FOUND", "device not found")
+    if device.last_seen_at is None:
+        raise_api_error(409, "VAR_DEVICE_NOT_PROVISIONED", "device not provisioned")
+    return device
+
+
 async def create_definition(
     db: AsyncSession,
     *,
@@ -97,22 +169,55 @@ async def create_definition(
     value_type: str,
     default_value: Any | None,
     description: str | None,
+    unit: str | None,
+    min_value: float | None,
+    max_value: float | None,
+    enum_values: list[str] | None,
+    regex: str | None,
     is_secret: bool,
     is_readonly: bool,
+    user_writable: bool,
+    device_writable: bool,
+    allow_device_override: bool,
 ) -> VariableDefinition:
     existing = await get_definition(db, key)
     if existing is not None:
         raise_api_error(409, "VAR_DEF_EXISTS", "variable definition already exists")
     if default_value is not None:
-        default_value = validate_and_coerce(default_value, value_type)
+        dummy = VariableDefinition(
+            key=key,
+            scope=scope,
+            value_type=value_type,
+            default_value=None,
+            description=description,
+            unit=unit,
+            min_value=min_value,
+            max_value=max_value,
+            enum_values=enum_values,
+            regex=regex,
+            is_secret=is_secret,
+            is_readonly=is_readonly,
+            user_writable=user_writable,
+            device_writable=device_writable,
+            allow_device_override=allow_device_override,
+        )
+        default_value = validate_and_coerce_value(dummy, default_value)
     definition = VariableDefinition(
         key=key,
         scope=scope,
         value_type=value_type,
         default_value=default_value,
         description=description,
+        unit=unit,
+        min_value=min_value,
+        max_value=max_value,
+        enum_values=enum_values,
+        regex=regex,
         is_secret=is_secret,
         is_readonly=is_readonly,
+        user_writable=user_writable,
+        device_writable=device_writable,
+        allow_device_override=allow_device_override,
     )
     db.add(definition)
     await db.flush()
@@ -125,6 +230,7 @@ async def get_value(
     key: str,
     scope: str,
     device_uid: str | None,
+    user_id: int | None,
 ) -> tuple[VariableDefinition, VariableValue | None, Device | None]:
     definition = await get_definition(db, key)
     if definition is None:
@@ -139,6 +245,10 @@ async def get_value(
             raise_api_error(422, "VAR_DEVICE_UID_REQUIRED", "device_uid required")
         device = await resolve_device(db, device_uid)
         device_id = device.id
+    elif scope == "user":
+        if user_id is None:
+            raise_api_error(403, "VAR_NOT_ALLOWED", "user scope requires user auth")
+        user_id = int(user_id)
     elif device_uid:
         raise_api_error(409, "VAR_SCOPE_MISMATCH", "device_uid not allowed for global scope")
 
@@ -147,6 +257,7 @@ async def get_value(
             VariableValue.variable_key == definition.key,
             VariableValue.scope == scope,
             VariableValue.device_id == device_id,
+            VariableValue.user_id == user_id,
         )
     )
     value = res.scalar_one_or_none()
@@ -187,6 +298,7 @@ async def create_or_update_value(
             VariableValue.variable_key == definition.key,
             VariableValue.scope == scope,
             VariableValue.device_id == device_id,
+            VariableValue.user_id.is_(None),
         )
     )
     current = res.scalar_one_or_none()
@@ -200,7 +312,7 @@ async def create_or_update_value(
             meta={"current_version": current_version},
         )
 
-    coerced = validate_and_coerce(value, definition.value_type)
+    coerced = validate_and_coerce_value(definition, value)
     now = _now_utc()
 
     old_value = current.value_json if current is not None else None
@@ -211,6 +323,139 @@ async def create_or_update_value(
             variable_key=definition.key,
             scope=scope,
             device_id=device_id,
+            value_json=coerced,
+            version=1,
+            updated_at=now,
+            updated_by_user_id=actor_user_id,
+            updated_by_device_id=actor_device_id,
+        )
+        db.add(current)
+    else:
+        current.value_json = coerced
+        current.version = current.version + 1
+        current.updated_at = now
+        current.updated_by_user_id = actor_user_id
+        current.updated_by_device_id = actor_device_id
+
+    masked_old = mask_if_secret(definition, old_value)
+    masked_new = mask_if_secret(definition, coerced)
+    audit = VariableAudit(
+        variable_key=definition.key,
+        scope=scope,
+        device_id=device_id,
+        old_value_json=masked_old,
+        new_value_json=masked_new,
+        old_version=old_version,
+        new_version=current.version,
+        actor_type="user" if actor_user_id else "device",
+        actor_user_id=actor_user_id,
+        actor_device_id=actor_device_id,
+        created_at=now,
+    )
+    db.add(audit)
+    await db.flush()
+    return definition, current, device
+
+
+async def _device_busy(db: AsyncSession, device_id: int) -> bool:
+    now = _now_utc()
+    res = await db.execute(
+        select(Task.id).where(
+            Task.client_id == device_id,
+            Task.status == "in_flight",
+            Task.lease_expires_at.is_not(None),
+            Task.lease_expires_at > now,
+            Task.lease_token.is_not(None),
+        )
+    )
+    return res.scalar_one_or_none() is not None
+
+
+async def create_or_update_value_v2(
+    db: AsyncSession,
+    *,
+    key: str,
+    scope: str,
+    device_uid: str | None,
+    value: Any,
+    expected_version: int | None,
+    actor_user_id: int | None,
+    actor_device_id: int | None,
+    force: bool,
+    dev_tools: bool,
+) -> tuple[VariableDefinition, VariableValue, Device | None]:
+    definition = await get_definition(db, key)
+    if definition is None:
+        raise_api_error(404, "VAR_DEF_NOT_FOUND", "variable definition not found")
+    if definition.scope != scope:
+        raise_api_error(409, "VAR_SCOPE_MISMATCH", "scope mismatch")
+    if definition.is_readonly:
+        raise_api_error(409, "VAR_READ_ONLY", "variable is read-only")
+
+    actor_is_user = actor_user_id is not None
+    actor_is_device = actor_device_id is not None
+    if scope == "user" and not actor_is_user:
+        raise_api_error(403, "VAR_NOT_ALLOWED", "user scope requires user auth")
+    if scope == "global" and not actor_is_user:
+        raise_api_error(403, "VAR_NOT_ALLOWED", "global scope requires user auth")
+
+    if actor_is_user and not definition.user_writable:
+        raise_api_error(403, "VAR_NOT_ALLOWED", "variable not user writable")
+    if actor_is_device and not definition.device_writable:
+        raise_api_error(403, "VAR_NOT_ALLOWED", "variable not device writable")
+
+    device = None
+    device_id = None
+    user_id = None
+    if scope == "device":
+        if not device_uid:
+            raise_api_error(422, "VAR_DEVICE_UID_REQUIRED", "device_uid required")
+        device = await resolve_device_for_vars(db, device_uid)
+        device_id = device.id
+        if not definition.allow_device_override:
+            raise_api_error(409, "VAR_NOT_ALLOWED", "device override not allowed")
+        if actor_is_device and device.id != actor_device_id:
+            raise_api_error(403, "VAR_NOT_ALLOWED", "device token mismatch")
+        if device.owner_user_id is None and not dev_tools:
+            raise_api_error(403, "VAR_NOT_ALLOWED", "device not claimed")
+        if device.owner_user_id is not None and actor_is_user and device.owner_user_id != actor_user_id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "device not owned")
+        if await _device_busy(db, device.id) and not force:
+            raise_api_error(409, "VAR_DEVICE_BUSY", "device busy")
+    elif scope == "user":
+        user_id = actor_user_id
+
+    res = await db.execute(
+        select(VariableValue).where(
+            VariableValue.variable_key == definition.key,
+            VariableValue.scope == scope,
+            VariableValue.device_id == device_id,
+            VariableValue.user_id == user_id,
+        )
+    )
+    current = res.scalar_one_or_none()
+    current_version = current.version if current is not None else None
+
+    if expected_version is not None and expected_version != current_version:
+        raise_api_error(
+            409,
+            "VAR_VERSION_CONFLICT",
+            "variable version conflict",
+            meta={"expected": expected_version, "got": current_version},
+        )
+
+    coerced = validate_and_coerce_value(definition, value)
+    now = _now_utc()
+
+    old_value = current.value_json if current is not None else None
+    old_version = current.version if current is not None else None
+
+    if current is None:
+        current = VariableValue(
+            variable_key=definition.key,
+            scope=scope,
+            device_id=device_id,
+            user_id=user_id,
             value_json=coerced,
             version=1,
             updated_at=now,
@@ -281,8 +526,13 @@ async def list_device_values(
 
 
 async def list_effective_values(
-    db: AsyncSession, device_id: int
-) -> tuple[list[VariableDefinition], dict[str, VariableValue], dict[str, VariableValue]]:
+    db: AsyncSession, *, device_id: int, user_id: int
+) -> tuple[
+    list[VariableDefinition],
+    dict[str, VariableValue],
+    dict[str, VariableValue],
+    dict[str, VariableValue],
+]:
     res = await db.execute(select(VariableDefinition))
     definitions = list(res.scalars().all())
 
@@ -290,6 +540,7 @@ async def list_effective_values(
         select(VariableValue).where(
             VariableValue.scope == "global",
             VariableValue.device_id.is_(None),
+            VariableValue.user_id.is_(None),
         )
     )
     globals_values = {v.variable_key: v for v in res.scalars().all()}
@@ -301,7 +552,15 @@ async def list_effective_values(
         )
     )
     device_values = {v.variable_key: v for v in res.scalars().all()}
-    return definitions, globals_values, device_values
+
+    res = await db.execute(
+        select(VariableValue).where(
+            VariableValue.scope == "user",
+            VariableValue.user_id == user_id,
+        )
+    )
+    user_values = {v.variable_key: v for v in res.scalars().all()}
+    return definitions, globals_values, device_values, user_values
 
 
 async def list_audit(

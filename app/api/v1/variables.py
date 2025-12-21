@@ -1,21 +1,30 @@
 from datetime import datetime, timezone
+import os
 
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, Security
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.api.deps_auth import get_current_user
+from app.api.deps_auth import (
+    get_current_user,
+    get_current_device,
+    bearer,
+    device_token_header,
+)
 from app.api.v1.error_utils import raise_api_error
 from app.core import variables as vars_core
 from app.schemas.variables import (
     VariableDefinitionIn,
     VariableDefinitionOut,
     VariableValueIn,
+    VariableSetIn,
     VariableValueOut,
     DeviceVariablesOut,
     EffectiveVariableOut,
     EffectiveVariablesOut,
+    VariableAppliedIn,
     VariableAuditOut,
 )
 from app.db.models.device import Device
@@ -23,8 +32,40 @@ from app.db.models.device import Device
 router = APIRouter(prefix="/variables", tags=["variables"])
 
 
+def _dev_tools_enabled() -> bool:
+    return os.getenv("HUBEX_DEV_TOOLS", "0") == "1"
+
+
+async def _resolve_actor(
+    db: AsyncSession,
+    user_creds: HTTPAuthorizationCredentials | None,
+    device_token: str | None,
+):
+    user = None
+    device = None
+    if user_creds and user_creds.credentials:
+        user = await get_current_user(creds=user_creds, db=db)
+    if device_token:
+        device = await get_current_device(device_token=device_token, db=db)
+    if user:
+        return user, None
+    if device:
+        return None, device
+    raise_api_error(401, "AUTH_REQUIRED", "authentication required")
+
+
 @router.get("/definitions", response_model=list[VariableDefinitionOut])
 async def list_definitions(
+    scope: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    definitions = await vars_core.list_definitions(db, scope)
+    return definitions
+
+
+@router.get("/defs", response_model=list[VariableDefinitionOut])
+async def list_definitions_v2(
     scope: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -47,8 +88,46 @@ async def create_definition(
             value_type=data.value_type,
             default_value=data.default_value,
             description=data.description,
+            unit=data.unit,
+            min_value=data.min_value,
+            max_value=data.max_value,
+            enum_values=data.enum_values,
+            regex=data.regex,
             is_secret=data.is_secret,
             is_readonly=data.is_readonly,
+            user_writable=data.user_writable,
+            device_writable=data.device_writable,
+            allow_device_override=data.allow_device_override,
+        )
+    return definition
+
+
+@router.post("/defs", response_model=VariableDefinitionOut)
+async def create_definition_v2(
+    data: VariableDefinitionIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not _dev_tools_enabled():
+        raise_api_error(403, "DEV_TOOLS_DISABLED", "dev tools disabled")
+    async with db.begin_nested():
+        definition = await vars_core.create_definition(
+            db,
+            key=data.key,
+            scope=data.scope,
+            value_type=data.value_type,
+            default_value=data.default_value,
+            description=data.description,
+            unit=data.unit,
+            min_value=data.min_value,
+            max_value=data.max_value,
+            enum_values=data.enum_values,
+            regex=data.regex,
+            is_secret=data.is_secret,
+            is_readonly=data.is_readonly,
+            user_writable=data.user_writable,
+            device_writable=data.device_writable,
+            allow_device_override=data.allow_device_override,
         )
     return definition
 
@@ -62,7 +141,7 @@ async def get_value(
     current_user=Depends(get_current_user),
 ):
     definition, value, device = await vars_core.get_value(
-        db, key=key, scope=scope, device_uid=device_uid
+        db, key=key, scope=scope, device_uid=device_uid, user_id=current_user.id
     )
     effective = vars_core.get_effective_value(definition, value.value_json if value else None)
     masked = vars_core.mask_if_secret(definition, effective)
@@ -93,6 +172,39 @@ async def put_value(
             expected_version=data.expected_version,
             actor_user_id=current_user.id,
             actor_device_id=None,
+        )
+    masked = vars_core.mask_if_secret(definition, value.value_json)
+    return VariableValueOut(
+        key=definition.key,
+        scope=definition.scope,
+        device_uid=data.device_uid,
+        value=masked,
+        version=value.version,
+        updated_at=value.updated_at,
+        is_secret=definition.is_secret,
+    )
+
+
+@router.post("/set", response_model=VariableValueOut)
+async def set_value(
+    data: VariableSetIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user_creds: HTTPAuthorizationCredentials | None = Security(bearer),
+    device_token: str | None = Security(device_token_header),
+):
+    current_user, current_device = await _resolve_actor(db, user_creds, device_token)
+    async with db.begin_nested():
+        definition, value, device = await vars_core.create_or_update_value_v2(
+            db,
+            key=data.key,
+            scope=data.scope,
+            device_uid=data.device_uid,
+            value=data.value,
+            expected_version=data.expected_version,
+            actor_user_id=current_user.id if current_user else None,
+            actor_device_id=current_device.id if current_device else None,
+            force=data.force,
+            dev_tools=_dev_tools_enabled(),
         )
     masked = vars_core.mask_if_secret(definition, value.value_json)
     return VariableValueOut(
@@ -165,26 +277,29 @@ async def get_effective_variables(
     if device.owner_user_id != current_user.id:
         raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
 
-    definitions, globals_values, device_values = await vars_core.list_effective_values(
-        db, device.id
+    definitions, globals_values, device_values, user_values = await vars_core.list_effective_values(
+        db, device_id=device.id, user_id=current_user.id
     )
     computed_at = datetime.now(timezone.utc)
 
     items: list[EffectiveVariableOut] = []
     timestamps: list[datetime] = []
     for definition in definitions:
+        stored = None
+        source = "default"
         if definition.scope == "global":
             stored = globals_values.get(definition.key)
-            effective = vars_core.get_effective_value(
-                definition, stored.value_json if stored else None
-            )
-            source = "global_default"
-        else:
+            source = "global" if stored else "default"
+        elif definition.scope == "user":
+            stored = user_values.get(definition.key)
+            source = "user" if stored else "default"
+        elif definition.scope == "device":
             stored = device_values.get(definition.key)
-            effective = vars_core.get_effective_value(
-                definition, stored.value_json if stored else None
-            )
-            source = "device_override" if stored else "global_default"
+            source = "device" if stored else "default"
+
+        effective = vars_core.get_effective_value(
+            definition, stored.value_json if stored else None
+        )
 
         value_out = effective
         if definition.is_secret and not include_secrets:
@@ -199,6 +314,8 @@ async def get_effective_variables(
                 updated_at=stored.updated_at if stored else None,
                 is_secret=definition.is_secret,
                 source=source,
+                resolved_type=definition.value_type,
+                constraints=vars_core._constraints(definition),
             )
         )
         if stored and stored.updated_at:
@@ -213,6 +330,17 @@ async def get_effective_variables(
         effective_version=effective_dt.isoformat(),
         items=items,
     )
+
+
+@router.post("/applied")
+async def applied(
+    data: VariableAppliedIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    device=Depends(get_current_device),
+):
+    if device.device_uid != data.device_uid:
+        raise_api_error(409, "VAR_NOT_ALLOWED", "device uid mismatch")
+    return {"ok": True, "count": len(data.applied)}
 
 
 @router.get("/audit", response_model=list[VariableAuditOut])

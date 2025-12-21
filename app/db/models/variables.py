@@ -33,8 +33,16 @@ class VariableDefinition(Base):
         _JSON_TYPE, nullable=True
     )
     description: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    min_value: Mapped[float | None] = mapped_column(nullable=True)
+    max_value: Mapped[float | None] = mapped_column(nullable=True)
+    enum_values: Mapped[list | None] = mapped_column(_JSON_TYPE, nullable=True)
+    regex: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_secret: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_readonly: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    user_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    allow_device_override: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -50,10 +58,12 @@ class VariableValue(Base):
             "variable_key",
             "device_id",
             "scope",
+            "user_id",
             name="uq_variable_values_key_device_scope",
         ),
         Index("ix_variable_values_variable_key", "variable_key"),
         Index("ix_variable_values_device_id", "device_id"),
+        Index("ix_variable_values_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -62,6 +72,7 @@ class VariableValue(Base):
     )
     scope: Mapped[str] = mapped_column(String(16), nullable=False)
     device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     value_json: Mapped[dict | list | str | int | float | bool | None] = mapped_column(
         _JSON_TYPE, nullable=True
     )
