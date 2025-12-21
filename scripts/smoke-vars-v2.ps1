@@ -104,6 +104,15 @@ $deviceToken = $confirmJson.device_token
 if (-not $deviceToken) { Fail "pairing/confirm missing device_token" $confirm }
 Write-Host "OK: device token issued"
 
+# 4b) Verify claim persisted
+$lookup = Invoke-Api "GET" "$Base/api/v1/devices/lookup/$DeviceUid" $null @{
+    "Authorization" = "Bearer $Token"
+}
+if ($lookup.Status -ne 200) { Fail "devices/lookup" $lookup }
+$lookupJson = $lookup.Body | ConvertFrom-Json
+if (-not $lookupJson.claimed) { Fail "pairing confirm did not persist claim" $lookup }
+Write-Host "OK: claim persisted"
+
 # 5) Set global + device override
 $setGlobal = @{ key = $globalKey; scope = $globalScope; value = "metric" } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $setGlobal @{

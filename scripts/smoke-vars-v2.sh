@@ -106,6 +106,20 @@ fi
 
 echo "OK: device token issued"
 
+# Verify claim persisted
+resp=$(curl -sS -X GET "$BASE/api/v1/devices/lookup/$DEVICE_UID" \
+  -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}")
+status=$(printf "%s" "$resp" | tail -n 1)
+body=$(printf "%s" "$resp" | sed '$d')
+if [ "$status" != "200" ]; then
+  fail "devices/lookup" "$status" "$body"
+fi
+claimed=$(printf "%s" "$body" | python -c "import sys,json;print(json.load(sys.stdin).get('claimed'))")
+if [ "$claimed" != "True" ] && [ "$claimed" != "true" ]; then
+  fail "pairing confirm did not persist claim" "$status" "$body"
+fi
+echo "OK: claim persisted"
+
 # Set vars
 set_global='{"key":"'"$global_key"'","scope":"'"$global_scope"'","value":"metric"}'
 resp=$(printf "%s" "$set_global" | curl -sS -X POST "$BASE/api/v1/variables/set" \

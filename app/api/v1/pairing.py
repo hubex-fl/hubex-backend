@@ -162,78 +162,95 @@ async def confirm_pairing(
     token_plain: str | None = None
     now = _now_utc()
 
-    async with db.begin_nested():
-        res = await db.execute(
-            select(PairingSession)
-            .where(
-                PairingSession.device_uid == data.device_uid,
-                PairingSession.pairing_code == data.pairing_code,
+    try:
+        async with db.begin_nested():
+            res = await db.execute(
+                select(PairingSession)
+                .where(
+                    PairingSession.device_uid == data.device_uid,
+                    PairingSession.pairing_code == data.pairing_code,
+                )
+                .with_for_update()
             )
-            .with_for_update()
-        )
-        ps = res.scalar_one_or_none()
-        if ps is None:
-            raise_api_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
+            ps = res.scalar_one_or_none()
+            if ps is None:
+                raise_api_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
 
-        if ps.is_used:
-            raise_api_error(
-                409, "PAIRING_CODE_ALREADY_USED", "pairing code already used"
+            if ps.is_used:
+                raise_api_error(
+                    409, "PAIRING_CODE_ALREADY_USED", "pairing code already used"
+                )
+            if ps.expires_at <= now:
+                raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
+
+            res = await db.execute(
+                select(Device)
+                .where(Device.device_uid == ps.device_uid)
+                .with_for_update()
             )
-        if ps.expires_at <= now:
-            raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
+            device = res.scalar_one_or_none()
+            if device is None:
+                raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+            if device.last_seen_at is None:
+                raise_api_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
+            if device.owner_user_id is not None or device.is_claimed:
+                raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
-        res = await db.execute(
-            select(Device)
-            .where(Device.device_uid == ps.device_uid)
-            .with_for_update()
-        )
-        device = res.scalar_one_or_none()
-        if device is None:
-            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
-        if device.last_seen_at is None:
-            raise_api_error(404, "DEVICE_NOT_PROVISIONED", "device not provisioned")
-        if device.owner_user_id is not None or device.is_claimed:
-            raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
-
-        res = await db.execute(
-            select(Task.id).where(
-                Task.client_id == device.id,
-                Task.lease_expires_at.is_not(None),
-                Task.lease_expires_at > now,
-                Task.lease_token.is_not(None),
-                Task.status == "in_flight",
+            res = await db.execute(
+                select(Task.id).where(
+                    Task.client_id == device.id,
+                    Task.lease_expires_at.is_not(None),
+                    Task.lease_expires_at > now,
+                    Task.lease_token.is_not(None),
+                    Task.status == "in_flight",
+                )
             )
-        )
-        if res.scalar_one_or_none() is not None:
-            raise_api_error(409, "DEVICE_BUSY", "device busy")
+            if res.scalar_one_or_none() is not None:
+                raise_api_error(409, "DEVICE_BUSY", "device busy")
 
-        res = await db.execute(
-            select(func.count())
-            .select_from(DeviceToken)
-            .where(
-                DeviceToken.device_id == device.id,
-                DeviceToken.is_active.is_(True),
+            res = await db.execute(
+                select(func.count())
+                .select_from(DeviceToken)
+                .where(
+                    DeviceToken.device_id == device.id,
+                    DeviceToken.is_active.is_(True),
+                )
             )
+            active_tokens = res.scalar_one()
+            if active_tokens > 0:
+                raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
+
+            # Claim
+            device.owner_user_id = ps.user_id
+            device.is_claimed = True
+            ps.is_used = True
+
+            # Device Token (nur einmal als Klartext)
+            token_plain = _gen_device_token_plain()
+            token_hash = _hash_token(token_plain)
+            db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    res = await db.execute(select(Device).where(Device.id == device.id))
+    persisted = res.scalar_one_or_none()
+    if (
+        persisted is None
+        or persisted.owner_user_id != ps.user_id
+        or not persisted.is_claimed
+    ):
+        raise_api_error(
+            500,
+            "PAIRING_CLAIM_NOT_PERSISTED",
+            "pairing claim did not persist",
         )
-        active_tokens = res.scalar_one()
-        if active_tokens > 0:
-            raise_api_error(409, "DEVICE_ALREADY_CLAIMED", "device already claimed")
-
-        # Claim
-        device.owner_user_id = ps.user_id
-        device.is_claimed = True
-        ps.is_used = True
-
-        # Device Token (nur einmal als Klartext)
-        token_plain = _gen_device_token_plain()
-        token_hash = _hash_token(token_plain)
-        db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
-    await db.refresh(device)
 
     return PairingClaimOut(
-        device_id=device.id,
-        owner_user_id=device.owner_user_id,
-        device_uid=device.device_uid,
+        device_id=persisted.id,
+        owner_user_id=persisted.owner_user_id,
+        device_uid=persisted.device_uid,
         device_token=token_plain,
         claimed_at=now,
     )
