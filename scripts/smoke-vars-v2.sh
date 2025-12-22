@@ -32,7 +32,8 @@ call_api() {
 for def in \
   '{"key":"system.units","scope":"global","valueType":"string","defaultValue":"metric","enumValues":["metric","imperial"]}' \
   '{"key":"device.telemetry_interval_ms","scope":"device","valueType":"int","defaultValue":5000,"unit":"ms","minValue":500,"maxValue":60000,"deviceWritable":true,"userWritable":true}' \
-  '{"key":"device.temp_offset","scope":"device","valueType":"float","defaultValue":0.0,"minValue":-5,"maxValue":5,"deviceWritable":true,"userWritable":true}'; do
+  '{"key":"device.temp_offset","scope":"device","valueType":"float","defaultValue":0.0,"minValue":-5,"maxValue":5,"deviceWritable":true,"userWritable":true}' \
+  '{"key":"device.label","scope":"device","valueType":"string","defaultValue":"","deviceWritable":true,"userWritable":true}'; do
   resp=$(printf "%s" "$def" | curl -sS -X POST "$BASE/api/v1/variables/defs" \
     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     --data-binary '@-' -w "\n%{http_code}")
@@ -53,13 +54,18 @@ if [ "$defs_status" != "200" ]; then
 fi
 global_key=$(printf "%s" "$defs_body" | python -c "import sys,json;data=json.load(sys.stdin);print(next((d.get('key') for d in data if d.get('scope') in ('system','global')),''))")
 global_scope=$(printf "%s" "$defs_body" | python -c "import sys,json;data=json.load(sys.stdin);print(next((d.get('scope') for d in data if d.get('scope') in ('system','global')),''))")
-device_key=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d['key'] for d in json.load(sys.stdin) if d.get('scope')=='device'),''))")
-device_scope=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d.get('scope') for d in json.load(sys.stdin) if d.get('scope')=='device'),''))")
+temp_key=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d.get('key') for d in json.load(sys.stdin) if d.get('key')=='device.temp_offset'),''))")
+temp_scope=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d.get('scope') for d in json.load(sys.stdin) if d.get('key')=='device.temp_offset'),''))")
+label_key=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d.get('key') for d in json.load(sys.stdin) if d.get('key')=='device.label'),''))")
+label_scope=$(printf "%s" "$defs_body" | python -c "import sys,json;print(next((d.get('scope') for d in json.load(sys.stdin) if d.get('key')=='device.label'),''))")
 if [ -z "$global_key" ]; then
   fail "no global variable definitions available" "$defs_status" "$defs_body"
 fi
-if [ -z "$device_key" ]; then
-  fail "no device variable definitions available" "$defs_status" "$defs_body"
+if [ -z "$temp_key" ]; then
+  fail "no device.temp_offset definition available" "$defs_status" "$defs_body"
+fi
+if [ -z "$label_key" ]; then
+  fail "no device.label definition available" "$defs_status" "$defs_body"
 fi
 
 # Provision device
@@ -130,13 +136,22 @@ if [ "$status" != "200" ]; then
   fail "set global" "$status" "$(printf "%s" "$resp" | sed '$d')"
 fi
 
-set_device='{"key":"'"$device_key"'","scope":"'"$device_scope"'","deviceUid":"'"$DEVICE_UID"'","value":1.5}'
+set_device='{"key":"'"$temp_key"'","scope":"'"$temp_scope"'","deviceUid":"'"$DEVICE_UID"'","value":1.5}'
 resp=$(printf "%s" "$set_device" | curl -sS -X POST "$BASE/api/v1/variables/set" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   --data-binary '@-' -w "\n%{http_code}")
 status=$(printf "%s" "$resp" | tail -n 1)
 if [ "$status" != "200" ]; then
   fail "set device" "$status" "$(printf "%s" "$resp" | sed '$d')"
+fi
+
+set_label='{"key":"'"$label_key"'","scope":"'"$label_scope"'","deviceUid":"'"$DEVICE_UID"'","value":"kitchen-1"}'
+resp=$(printf "%s" "$set_label" | curl -sS -X POST "$BASE/api/v1/variables/set" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  --data-binary '@-' -w "\n%{http_code}")
+status=$(printf "%s" "$resp" | tail -n 1)
+if [ "$status" != "200" ]; then
+  fail "set device label" "$status" "$(printf "%s" "$resp" | sed '$d')"
 fi
 
 echo "OK: vars set"
@@ -151,6 +166,10 @@ fi
 snapshot_id=$(printf "%s" "$body" | python -c "import sys,json;print(json.load(sys.stdin).get('snapshot_id'))")
 if [ -z "$snapshot_id" ] || [ "$snapshot_id" = "None" ]; then
   fail "effective vars missing snapshot_id" "$status" "$body"
+fi
+items_count=$(printf "%s" "$body" | python -c "import sys,json;print(len((json.load(sys.stdin).get('items') or [])))")
+if [ "$items_count" -lt 4 ]; then
+  fail "effective vars missing items" "$status" "$body"
 fi
 echo "OK: effective vars snapshot=$snapshot_id"
 

@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import Any
+import time
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -23,6 +24,34 @@ from app.db.models.variables import (
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+_effective_cache: dict[tuple[int, str, bool], tuple[float, dict[str, Any]]] = {}
+_effective_cache_ttl = 2.0
+
+
+def _cache_key(user_id: int, device_uid: str, include_secrets: bool) -> tuple[int, str, bool]:
+    return (int(user_id), device_uid, include_secrets)
+
+
+def _cache_get(user_id: int, device_uid: str, include_secrets: bool) -> dict[str, Any] | None:
+    key = _cache_key(user_id, device_uid, include_secrets)
+    entry = _effective_cache.get(key)
+    if not entry:
+        return None
+    ts, payload = entry
+    if time.monotonic() - ts > _effective_cache_ttl:
+        _effective_cache.pop(key, None)
+        return None
+    return payload
+
+
+def _cache_set(user_id: int, device_uid: str, include_secrets: bool, payload: dict[str, Any]) -> None:
+    _effective_cache[_cache_key(user_id, device_uid, include_secrets)] = (time.monotonic(), payload)
+
+
+def invalidate_effective_cache() -> None:
+    _effective_cache.clear()
 
 
 def validate_and_coerce(value: Any, value_type: str) -> Any:
@@ -230,6 +259,7 @@ async def create_definition(
     )
     db.add(definition)
     await db.flush()
+    invalidate_effective_cache()
     return definition
 
 
@@ -363,6 +393,7 @@ async def create_or_update_value(
     )
     db.add(audit)
     await db.flush()
+    invalidate_effective_cache()
     return definition, current, device
 
 
@@ -510,6 +541,7 @@ async def create_or_update_value_v2(
     )
     db.add(audit)
     await db.flush()
+    invalidate_effective_cache()
     return definition, current, device
 
 
@@ -521,6 +553,15 @@ async def resolve_effective_snapshot(
     user_id: int,
     include_secrets: bool,
 ) -> tuple[str, datetime, str, list[dict[str, Any]]]:
+    cached = _cache_get(user_id, device_uid, include_secrets)
+    if cached:
+        return (
+            cached["snapshot_id"],
+            cached["resolved_at"],
+            cached["effective_version"],
+            cached["items"],
+        )
+
     definitions, globals_values, device_values, user_values = await list_effective_values(
         db, device_id=device_id, user_id=user_id
     )
@@ -611,6 +652,17 @@ async def resolve_effective_snapshot(
         )
 
     await db.flush()
+    _cache_set(
+        user_id,
+        device_uid,
+        include_secrets,
+        {
+            "snapshot_id": snapshot_id,
+            "resolved_at": resolved_at,
+            "effective_version": effective_version,
+            "items": items,
+        },
+    )
     return snapshot_id, resolved_at, effective_version, items
 
 
@@ -646,6 +698,23 @@ async def record_applied_ack(
     )
     await db.flush()
     return True
+
+
+async def list_applied_acks(
+    db: AsyncSession,
+    *,
+    device_uid: str,
+    limit: int,
+) -> list[VariableAppliedAck]:
+    device = await resolve_device(db, device_uid)
+    stmt = (
+        select(VariableAppliedAck)
+        .where(VariableAppliedAck.device_id == device.id)
+        .order_by(VariableAppliedAck.created_at.desc())
+        .limit(limit)
+    )
+    res = await db.execute(stmt)
+    return list(res.scalars().all())
 
 
 async def list_definitions(db: AsyncSession, scope: str | None) -> list[VariableDefinition]:

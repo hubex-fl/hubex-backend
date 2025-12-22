@@ -25,6 +25,7 @@ from app.schemas.variables import (
     EffectiveVariableOut,
     EffectiveVariablesOut,
     VariableAppliedIn,
+    VariableAppliedAckOut,
     VariableAuditOut,
 )
 from app.db.models.device import Device
@@ -420,6 +421,35 @@ async def applied(
         raise
 
     return {"ok": True, "applied": applied_count, "failed": failed_count}
+
+
+@router.get("/applied", response_model=list[VariableAppliedAckOut])
+async def list_applied(
+    device_uid: str = Query(..., alias="deviceUid"),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+    if device.owner_user_id != current_user.id:
+        raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+
+    items = await vars_core.list_applied_acks(db, device_uid=device_uid, limit=limit)
+    return [
+        VariableAppliedAckOut(
+            snapshot_id=item.snapshot_id,
+            device_uid=device_uid,
+            key=item.variable_key,
+            version=item.version,
+            status=item.status,
+            reason=item.reason,
+            created_at=item.created_at,
+        )
+        for item in items
+    ]
 
 
 @router.get("/audit", response_model=list[VariableAuditOut])

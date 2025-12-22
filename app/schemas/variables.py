@@ -146,6 +146,16 @@ class VariableAppliedIn(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
+class VariableAppliedAckOut(BaseModel):
+    snapshot_id: str
+    device_uid: str
+    key: str
+    version: int | None
+    status: str
+    reason: str | None
+    created_at: datetime
+
+
 class VariableAuditOut(BaseModel):
     variable_key: str
     scope: Scope

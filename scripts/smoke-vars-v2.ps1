@@ -67,13 +67,17 @@ $defsResp = Invoke-Api "GET" "$Base/api/v1/variables/defs" $null @{
 if ($defsResp.Status -ne 200) { Fail "list vars defs" $defsResp }
 $defsJson = $defsResp.Body | ConvertFrom-Json
 $globalDef = $defsJson | Where-Object { $_.scope -in @("system", "global") } | Select-Object -First 1
-$deviceDef = $defsJson | Where-Object { $_.scope -eq "device" } | Select-Object -First 1
+$tempDef = $defsJson | Where-Object { $_.key -eq "device.temp_offset" } | Select-Object -First 1
+$labelDef = $defsJson | Where-Object { $_.key -eq "device.label" } | Select-Object -First 1
 if (-not $globalDef) { Fail "no global variable definitions available" $defsResp }
-if (-not $deviceDef) { Fail "no device variable definitions available" $defsResp }
+if (-not $tempDef) { Fail "no device.temp_offset definition available" $defsResp }
+if (-not $labelDef) { Fail "no device.label definition available" $defsResp }
 $globalKey = $globalDef.key
 $globalScope = $globalDef.scope
-$deviceKey = $deviceDef.key
-$deviceScope = $deviceDef.scope
+$tempKey = $tempDef.key
+$tempScope = $tempDef.scope
+$labelKey = $labelDef.key
+$labelScope = $labelDef.scope
 
 # 2) Provision device
 $helloBody = @{ device_uid = $DeviceUid; firmware_version = "sim"; capabilities = @{ sim = $true } } | ConvertTo-Json -Compress
@@ -121,12 +125,19 @@ $resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $setGlobal @{
 }
 if ($resp.Status -ne 200) { Fail "set global var" $resp }
 
-$setDevice = @{ key = $deviceKey; scope = $deviceScope; deviceUid = $DeviceUid; value = 1.5 } | ConvertTo-Json -Compress
+$setDevice = @{ key = $tempKey; scope = $tempScope; deviceUid = $DeviceUid; value = 1.5 } | ConvertTo-Json -Compress
 $resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $setDevice @{
     "Authorization" = "Bearer $Token"
     "Content-Type" = "application/json"
 }
 if ($resp.Status -ne 200) { Fail "set device var" $resp }
+
+$labelBody = @{ key = $labelKey; scope = $labelScope; deviceUid = $DeviceUid; value = "kitchen-1" } | ConvertTo-Json -Compress
+$resp = Invoke-Api "POST" "$Base/api/v1/variables/set" $labelBody @{
+    "Authorization" = "Bearer $Token"
+    "Content-Type" = "application/json"
+}
+if ($resp.Status -ne 200) { Fail "set device label" $resp }
 Write-Host "OK: vars set"
 
 # 6) Effective vars check
@@ -137,6 +148,9 @@ if ($effective.Status -ne 200) { Fail "effective vars" $effective }
 $effectiveJson = $effective.Body | ConvertFrom-Json
 $snapshotId = $effectiveJson.snapshot_id
 if (-not $snapshotId) { Fail "effective vars missing snapshot_id" $effective }
+if (-not $effectiveJson.items -or $effectiveJson.items.Count -lt 4) {
+    Fail "effective vars missing items" $effective
+}
 Write-Host "OK: effective vars snapshot=$snapshotId"
 
 # 6b) Ack snapshot

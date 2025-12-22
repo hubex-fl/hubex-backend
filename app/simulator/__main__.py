@@ -133,6 +133,7 @@ def main() -> int:
     vars_cache: dict[str, Any] = {}
     last_applied_versions: dict[str, int] = {}
     last_snapshot_id: str | None = None
+    last_applied_snapshot_id: str | None = None
     tick = 0
 
     while time.time() - start < args.seconds:
@@ -169,15 +170,26 @@ def main() -> int:
                         for item in items
                         if item.get("version") is not None
                     }
-                    if current_versions and current_versions != last_applied_versions:
-                        applied = [
-                            {"key": k, "version": v}
-                            for k, v in current_versions.items()
-                        ]
+                    if (
+                        snapshot_id
+                        and current_versions
+                        and (current_versions != last_applied_versions or snapshot_id != last_applied_snapshot_id)
+                    ):
+                        applied = []
+                        failed = []
+                        for item in items:
+                            version = item.get("version")
+                            if version is None:
+                                continue
+                            if item.get("masked") or (item.get("is_secret") and item.get("value") is None):
+                                failed.append({"key": item.get("key"), "reason": "masked"})
+                            else:
+                                applied.append({"key": item.get("key"), "version": version})
                         ack_body = {
                             "snapshotId": snapshot_id,
                             "deviceUid": device_uid,
                             "applied": applied,
+                            "failed": failed,
                         }
                         ack_status, ack_resp = http_json(
                             "POST",
@@ -187,6 +199,7 @@ def main() -> int:
                         )
                         log("vars.applied", status=ack_status, body=ack_resp)
                         last_applied_versions = current_versions
+                        last_applied_snapshot_id = snapshot_id
                 elif args.vars_ack and not token:
                     log("warning", message="vars ack requested but no device token provided")
             else:
