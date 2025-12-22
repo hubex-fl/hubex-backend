@@ -111,3 +111,72 @@ class VariableAudit(Base):
     actor_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class VariableSnapshot(Base):
+    __tablename__ = "variable_snapshots"
+    __table_args__ = (
+        Index("ix_variable_snapshots_device_id", "device_id"),
+        Index("ix_variable_snapshots_resolved_at", "resolved_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    resolved_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    effective_version: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class VariableSnapshotItem(Base):
+    __tablename__ = "variable_snapshot_items"
+    __table_args__ = (
+        Index("ix_variable_snapshot_items_snapshot_id", "snapshot_id"),
+        Index("ix_variable_snapshot_items_key", "variable_key"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("variable_snapshots.id"), nullable=False
+    )
+    variable_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
+    source: Mapped[str] = mapped_column(String(24), nullable=False)
+    value_json: Mapped[dict | list | str | int | float | bool | None] = mapped_column(
+        _JSON_TYPE, nullable=True
+    )
+    masked: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    is_secret: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    precedence: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    resolved_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    constraints: Mapped[dict | None] = mapped_column(_JSON_TYPE, nullable=True)
+
+
+class VariableAppliedAck(Base):
+    __tablename__ = "variable_applied_acks"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "device_id",
+            "variable_key",
+            "version",
+            name="uq_variable_applied_ack",
+        ),
+        Index("ix_variable_applied_snapshot", "snapshot_id"),
+        Index("ix_variable_applied_device", "device_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("variable_snapshots.id"), nullable=False
+    )
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False)
+    variable_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

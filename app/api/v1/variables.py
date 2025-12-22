@@ -28,6 +28,7 @@ from app.schemas.variables import (
     VariableAuditOut,
 )
 from app.db.models.device import Device
+from app.db.models.variables import VariableSnapshot, VariableSnapshotItem
 
 router = APIRouter(prefix="/variables", tags=["variables"])
 
@@ -293,63 +294,47 @@ async def get_effective_variables(
     if device.owner_user_id != current_user.id:
         raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
 
-    definitions, globals_values, device_values, user_values = await vars_core.list_effective_values(
-        db, device_id=device.id, user_id=current_user.id
-    )
-    computed_at = datetime.now(timezone.utc)
-
-    items: list[EffectiveVariableOut] = []
-    timestamps: list[datetime] = []
-    for definition in definitions:
-        if definition.scope == "user":
-            continue
-        stored = None
-        source = "default"
-        precedence = 0
-        if definition.scope == "global":
-            stored = globals_values.get(definition.key)
-            if stored:
-                source = "global"
-                precedence = 1
-        elif definition.scope == "device":
-            stored = device_values.get(definition.key)
-            if stored:
-                source = "device_override"
-                precedence = 2
-
-        effective = vars_core.get_effective_value(
-            definition, stored.value_json if stored else None
-        )
-
-        value_out = effective
-        if definition.is_secret and not include_secrets:
-            value_out = None
-
-        items.append(
-            EffectiveVariableOut(
-                key=definition.key,
-                value=value_out,
-                scope=definition.scope,
-                device_uid=device_uid if definition.scope == "device" else None,
-                version=stored.version if stored else None,
-                updated_at=stored.updated_at if stored else None,
-                is_secret=definition.is_secret,
-                source=source,
-                precedence=precedence,
-                resolved_type=definition.value_type,
-                constraints=vars_core._constraints(definition),
+    try:
+        snapshot_id, resolved_at, effective_version, items_raw = (
+            await vars_core.resolve_effective_snapshot(
+                db,
+                device_id=device.id,
+                device_uid=device_uid,
+                user_id=current_user.id,
+                include_secrets=include_secrets,
             )
         )
-        if stored and stored.updated_at:
-            timestamps.append(stored.updated_at)
-        else:
-            timestamps.append(definition.updated_at)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
-    effective_dt = max(timestamps) if timestamps else computed_at
+    items: list[EffectiveVariableOut] = []
+    for item in items_raw:
+        items.append(
+            EffectiveVariableOut(
+                key=item["key"],
+                value=item["value"],
+                scope=item["scope"],
+                device_uid=item["device_uid"],
+                version=item["version"],
+                updated_at=item["updated_at"],
+                is_secret=item["is_secret"],
+                masked=item["masked"],
+                source=item["source"],
+                precedence=item["precedence"],
+                resolved_type=item["resolved_type"],
+                constraints=item["constraints"],
+            )
+        )
+
     return EffectiveVariablesOut(
         device_uid=device_uid,
-        computed_at=computed_at,
-        effective_version=effective_dt.isoformat(),
+        computed_at=resolved_at,
+        resolved_at=resolved_at,
+        snapshot_id=snapshot_id,
+        effective_version=effective_version,
+        scope="device",
         items=items,
     )
 
@@ -358,11 +343,83 @@ async def get_effective_variables(
 async def applied(
     data: VariableAppliedIn = Body(...),
     db: AsyncSession = Depends(get_db),
-    device=Depends(get_current_device),
+    user_creds: HTTPAuthorizationCredentials | None = Security(bearer),
+    device_token: str | None = Security(device_token_header),
 ):
-    if device.device_uid != data.device_uid:
-        raise_api_error(409, "VAR_NOT_ALLOWED", "device uid mismatch")
-    return {"ok": True, "count": len(data.applied)}
+    current_user, current_device = await _resolve_actor(db, user_creds, device_token)
+
+    device = None
+    if current_device:
+        device = current_device
+        if data.device_uid and data.device_uid != device.device_uid:
+            raise_api_error(409, "VAR_NOT_ALLOWED", "device uid mismatch")
+    else:
+        if not data.device_uid:
+            raise_api_error(422, "VAR_DEVICE_UID_REQUIRED", "device_uid required")
+        res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
+        device = res.scalar_one_or_none()
+        if device is None:
+            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+        if device.owner_user_id != current_user.id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+
+    res = await db.execute(select(VariableSnapshot).where(VariableSnapshot.id == data.snapshot_id))
+    snapshot = res.scalar_one_or_none()
+    if snapshot is None:
+        raise_api_error(404, "VAR_SNAPSHOT_NOT_FOUND", "snapshot not found")
+    if snapshot.device_id != device.id:
+        raise_api_error(409, "VAR_NOT_ALLOWED", "snapshot device mismatch")
+
+    res = await db.execute(
+        select(VariableSnapshotItem.variable_key, VariableSnapshotItem.version).where(
+            VariableSnapshotItem.snapshot_id == data.snapshot_id
+        )
+    )
+    snapshot_versions = {row[0]: row[1] for row in res.all()}
+
+    for item in data.applied + data.failed:
+        if item.key not in snapshot_versions:
+            raise_api_error(409, "VAR_APPLIED_MISMATCH", "key not in snapshot")
+        expected = snapshot_versions[item.key]
+        if item.version is not None and expected is not None and item.version != expected:
+            raise_api_error(
+                409,
+                "VAR_APPLIED_MISMATCH",
+                "version mismatch",
+                meta={"expected": expected, "got": item.version},
+            )
+
+    try:
+        applied_count = 0
+        failed_count = 0
+        for item in data.applied:
+            if await vars_core.record_applied_ack(
+                db,
+                snapshot_id=data.snapshot_id,
+                device_id=device.id,
+                key=item.key,
+                version=item.version,
+                status="applied",
+                reason=None,
+            ):
+                applied_count += 1
+        for item in data.failed:
+            if await vars_core.record_applied_ack(
+                db,
+                snapshot_id=data.snapshot_id,
+                device_id=device.id,
+                key=item.key,
+                version=item.version,
+                status="failed",
+                reason=item.reason,
+            ):
+                failed_count += 1
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    return {"ok": True, "applied": applied_count, "failed": failed_count}
 
 
 @router.get("/audit", response_model=list[VariableAuditOut])

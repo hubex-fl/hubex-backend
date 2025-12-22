@@ -3,7 +3,14 @@ from .device import Device
 from .pairing import PairingSession, DeviceToken
 from .telemetry import DeviceTelemetry
 from .tasks import ExecutionContext, Task
-from .variables import VariableDefinition, VariableValue, VariableAudit
+from .variables import (
+    VariableDefinition,
+    VariableValue,
+    VariableAudit,
+    VariableSnapshot,
+    VariableSnapshotItem,
+    VariableAppliedAck,
+)
 
 __all__ = [
     "User",
@@ -16,4 +23,7 @@ __all__ = [
     "VariableDefinition",
     "VariableValue",
     "VariableAudit",
+    "VariableSnapshot",
+    "VariableSnapshotItem",
+    "VariableAppliedAck",
 ]

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 
 Scope = Literal["device", "global", "user"]
 ValueType = Literal["string", "int", "float", "bool", "json"]
+EffectiveSource = Literal["default", "global", "user", "device", "device_runtime"]
 
 
 class VariableDefinitionIn(BaseModel):
@@ -104,7 +105,8 @@ class EffectiveVariableOut(BaseModel):
     version: int | None
     updated_at: datetime | None
     is_secret: bool
-    source: Literal["default", "global", "device_override"]
+    masked: bool
+    source: EffectiveSource
     precedence: int
     resolved_type: ValueType | None = None
     constraints: dict[str, Any] | None = None
@@ -112,8 +114,11 @@ class EffectiveVariableOut(BaseModel):
 
 class EffectiveVariablesOut(BaseModel):
     device_uid: str
-    computed_at: datetime
+    computed_at: datetime | None = None
+    resolved_at: datetime
+    snapshot_id: str
     effective_version: str
+    scope: Scope
     items: list[EffectiveVariableOut]
 
 
@@ -123,10 +128,20 @@ class VariableAppliedItemIn(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
+class VariableAppliedFailedIn(BaseModel):
+    key: str
+    reason: str | None = None
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
 
 class VariableAppliedIn(BaseModel):
-    device_uid: str = Field(validation_alias=AliasChoices("device_uid", "deviceUid"))
+    snapshot_id: str = Field(validation_alias=AliasChoices("snapshot_id", "snapshotId"))
+    device_uid: str | None = Field(
+        default=None, validation_alias=AliasChoices("device_uid", "deviceUid")
+    )
     applied: list[VariableAppliedItemIn]
+    failed: list[VariableAppliedFailedIn] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 

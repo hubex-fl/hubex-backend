@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
 from app.db.models.tasks import Task
-from app.db.models.variables import VariableDefinition, VariableValue, VariableAudit
+from app.db.models.pairing import PairingSession
+from app.db.models.variables import (
+    VariableDefinition,
+    VariableValue,
+    VariableAudit,
+    VariableSnapshot,
+    VariableSnapshotItem,
+    VariableAppliedAck,
+)
 
 
 def _now_utc() -> datetime:
@@ -371,6 +380,18 @@ async def _device_busy(db: AsyncSession, device_id: int) -> bool:
     return res.scalar_one_or_none() is not None
 
 
+async def _pairing_active(db: AsyncSession, device_uid: str) -> bool:
+    now = _now_utc()
+    res = await db.execute(
+        select(PairingSession.id).where(
+            PairingSession.device_uid == device_uid,
+            PairingSession.is_used.is_(False),
+            PairingSession.expires_at > now,
+        )
+    )
+    return res.scalar_one_or_none() is not None
+
+
 async def create_or_update_value_v2(
     db: AsyncSession,
     *,
@@ -422,6 +443,8 @@ async def create_or_update_value_v2(
             raise_api_error(404, "DEVICE_NOT_OWNED", "device not owned")
         if await _device_busy(db, device.id) and not force:
             raise_api_error(409, "VAR_DEVICE_BUSY", "device busy")
+        if await _pairing_active(db, device.device_uid) and not force:
+            raise_api_error(409, "VAR_DEVICE_PAIRING_ACTIVE", "pairing active")
     elif scope == "user":
         user_id = actor_user_id
 
@@ -488,6 +511,141 @@ async def create_or_update_value_v2(
     db.add(audit)
     await db.flush()
     return definition, current, device
+
+
+async def resolve_effective_snapshot(
+    db: AsyncSession,
+    *,
+    device_id: int,
+    device_uid: str,
+    user_id: int,
+    include_secrets: bool,
+) -> tuple[str, datetime, str, list[dict[str, Any]]]:
+    definitions, globals_values, device_values, user_values = await list_effective_values(
+        db, device_id=device_id, user_id=user_id
+    )
+    resolved_at = _now_utc()
+    snapshot_id = uuid4().hex
+
+    items: list[dict[str, Any]] = []
+    timestamps: list[datetime] = []
+
+    for definition in definitions:
+        stored = None
+        source = "default"
+        precedence = 0
+        if definition.scope == "global":
+            stored = globals_values.get(definition.key)
+            if stored:
+                source = "global"
+                precedence = 1
+        elif definition.scope == "user":
+            stored = user_values.get(definition.key)
+            if stored:
+                source = "user"
+                precedence = 2
+        elif definition.scope == "device":
+            stored = device_values.get(definition.key)
+            if stored:
+                source = "device"
+                precedence = 3
+
+        effective = get_effective_value(
+            definition, stored.value_json if stored else None
+        )
+        masked = definition.is_secret
+        value_out = None if masked else effective
+
+        items.append(
+            {
+                "key": definition.key,
+                "value": value_out,
+                "scope": definition.scope,
+                "device_uid": device_uid if definition.scope == "device" else None,
+                "version": stored.version if stored else None,
+                "updated_at": stored.updated_at if stored else None,
+                "is_secret": definition.is_secret,
+                "masked": masked,
+                "source": source,
+                "precedence": precedence,
+                "resolved_type": definition.value_type,
+                "constraints": _constraints(definition),
+                "value_json": None if masked else effective,
+            }
+        )
+
+        if stored and stored.updated_at:
+            timestamps.append(stored.updated_at)
+        else:
+            timestamps.append(definition.updated_at)
+
+    effective_dt = max(timestamps) if timestamps else resolved_at
+    effective_version = effective_dt.isoformat()
+
+    snapshot = VariableSnapshot(
+        id=snapshot_id,
+        device_id=device_id,
+        user_id=user_id,
+        resolved_at=resolved_at,
+        effective_version=effective_version,
+    )
+    db.add(snapshot)
+
+    for item in items:
+        db.add(
+            VariableSnapshotItem(
+                snapshot_id=snapshot_id,
+                variable_key=item["key"],
+                scope=item["scope"],
+                device_id=device_id if item["scope"] == "device" else None,
+                source=item["source"],
+                value_json=item["value_json"],
+                masked=item["masked"],
+                is_secret=item["is_secret"],
+                version=item["version"],
+                updated_at=item["updated_at"],
+                precedence=item["precedence"],
+                resolved_type=item["resolved_type"],
+                constraints=item["constraints"],
+            )
+        )
+
+    await db.flush()
+    return snapshot_id, resolved_at, effective_version, items
+
+
+async def record_applied_ack(
+    db: AsyncSession,
+    *,
+    snapshot_id: str,
+    device_id: int,
+    key: str,
+    version: int | None,
+    status: str,
+    reason: str | None,
+) -> bool:
+    res = await db.execute(
+        select(VariableAppliedAck.id).where(
+            VariableAppliedAck.snapshot_id == snapshot_id,
+            VariableAppliedAck.device_id == device_id,
+            VariableAppliedAck.variable_key == key,
+            VariableAppliedAck.version == version,
+        )
+    )
+    if res.scalar_one_or_none() is not None:
+        return False
+    db.add(
+        VariableAppliedAck(
+            snapshot_id=snapshot_id,
+            device_id=device_id,
+            variable_key=key,
+            version=version,
+            status=status,
+            reason=reason,
+        )
+    )
+    await db.flush()
+    return True
 
 
 async def list_definitions(db: AsyncSession, scope: str | None) -> list[VariableDefinition]:
