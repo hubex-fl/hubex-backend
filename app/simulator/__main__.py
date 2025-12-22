@@ -1,5 +1,7 @@
 ﻿import argparse
 import json
+import os
+import random
 import time
 import urllib.request
 from datetime import datetime, timezone
@@ -53,6 +55,20 @@ def parse_json_payload(raw: str) -> dict[str, Any] | None:
         return None
 
 
+def env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def should_fail(rate: float) -> bool:
+    return rate > 0 and random.random() < rate
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Hubex device simulator")
     parser.add_argument("--base", default="http://127.0.0.1:8000", help="Base URL")
@@ -98,8 +114,8 @@ def main() -> int:
     user_token = args.user_token
     if (args.vars_get or args.vars_set or args.vars_spam) and not user_token:
         log("warning", message="no user token provided; variables calls will be skipped")
-    if args.vars_effective and not user_token:
-        log("warning", message="no user token provided; effective vars polling skipped")
+    if args.vars_effective and not (user_token or token):
+        log("warning", message="no token provided; snapshot polling skipped")
 
     var_value = parse_value(args.vars_value) if args.vars_value else None
     if args.vars_get and user_token and args.vars_key:
@@ -131,11 +147,12 @@ def main() -> int:
     next_tick = start
     next_vars_poll = start
     vars_cache: dict[str, Any] = {}
-    last_applied_versions: dict[str, int] = {}
     last_snapshot_id: str | None = None
-    last_applied_snapshot_id: str | None = None
+    last_effective_rev: int | None = None
     tick = 0
     exit_code = 0
+    fail_timeout_rate = env_float("HUBEX_FAIL_RATE_TIMEOUT", 0.0)
+    fail_type_rate = env_float("HUBEX_FAIL_RATE_TYPE", 0.0)
 
     while time.time() - start < args.seconds:
         now = time.time()
@@ -148,88 +165,67 @@ def main() -> int:
         next_tick = time.time() + interval
         tick += 1
 
-        if args.vars_effective and user_token and now >= next_vars_poll:
+        if args.vars_effective and (user_token or token) and now >= next_vars_poll:
             next_vars_poll = now + args.vars_poll_seconds
-            url = f"{args.base}/api/v1/variables/effective?deviceUid={device_uid}"
-            if args.include_secrets:
-                url += "&includeSecrets=true"
-            status, body = http_json("GET", url, headers={"Authorization": f"Bearer {user_token}"})
+            url = f"{args.base}/api/v1/variables/snapshot?deviceUid={device_uid}"
+            headers = {"X-Device-Token": token} if token else {"Authorization": f"Bearer {user_token}"}
+            status, body = http_json("GET", url, headers=headers)
             payload = parse_json_payload(body)
             if status == 200 and payload:
                 snapshot_id = payload.get("snapshot_id")
-                items = payload.get("items", [])
+                effective_rev = payload.get("effective_rev")
+                items = payload.get("vars", [])
                 vars_cache = {
                     item["key"]: item.get("value")
                     for item in items
                     if item.get("value") is not None
                 }
                 last_snapshot_id = snapshot_id
-                log("vars.snapshot", status=status, snapshot_id=snapshot_id, count=len(items))
-                if args.vars_ack and token:
-                    current_versions = {
-                        item["key"]: item.get("version")
-                        for item in items
-                        if item.get("version") is not None
-                    }
-                    if (
-                        snapshot_id
-                        and current_versions
-                        and (current_versions != last_applied_versions or snapshot_id != last_applied_snapshot_id)
-                    ):
-                        applied = []
-                        failed = []
+                log("vars.snapshot", status=status, snapshot_id=snapshot_id, effective_rev=effective_rev, count=len(items))
+                if args.vars_ack and token and effective_rev is not None:
+                    if effective_rev != last_effective_rev:
+                        results = []
                         for item in items:
-                            version = item.get("version")
-                            if version is None:
+                            key = item.get("key")
+                            if not key:
                                 continue
-                            if item.get("masked") or (item.get("is_secret") and item.get("value") is None):
-                                failed.append({"key": item.get("key"), "reason": "masked"})
-                            else:
-                                applied.append({"key": item.get("key"), "version": version})
+                            status_code = "OK"
+                            detail = None
+                            if should_fail(fail_timeout_rate):
+                                status_code = "HW_TIMEOUT"
+                                detail = "timeout"
+                            elif should_fail(fail_type_rate):
+                                status_code = "TYPE_MISMATCH"
+                                detail = "type mismatch"
+                            results.append({"key": key, "status": status_code, "detail": detail})
                         ack_body = {
-                            "snapshotId": snapshot_id,
                             "deviceUid": device_uid,
-                            "applied": applied,
-                            "failed": failed,
+                            "effectiveRev": effective_rev,
+                            "results": results,
                         }
                         ack_status, ack_resp = http_json(
                             "POST",
-                            f"{args.base}/api/v1/variables/applied",
+                            f"{args.base}/api/v1/variables/ack",
                             ack_body,
                             headers={"X-Device-Token": token},
                         )
                         ack_payload = parse_json_payload(ack_resp)
-
-                    log("vars.applied", status=ack_status, body=ack_resp)
-
-                    if ack_status != 200 or not ack_payload:
-                        log("vars.applied.error", status=ack_status)
-                        exit_code = 2
-                        break
-
-                    def _count(v):
-                        if v is None:
-                            return 0
-                        if isinstance(v, int):
-                            return v
-                        if isinstance(v, (list, tuple, set)):
-                            return len(v)
-                        return 0
-
-                    failed_count = _count(ack_payload.get("failed"))
-                    applied_count = _count(ack_payload.get("applied"))
-
-                    if failed_count > 0:
-                        log("vars.applied.fail", applied=applied_count, failed=failed_count)
-                        exit_code = 2
-                        break
-
-                    last_applied_versions = current_versions
-                    last_applied_snapshot_id = snapshot_id
+                        log("vars.ack", status=ack_status, body=ack_resp)
+                        if ack_status != 200 or not ack_payload:
+                            log("vars.ack.error", status=ack_status)
+                            exit_code = 2
+                            break
+                        failed_count = int(ack_payload.get("failed") or 0)
+                        if failed_count > 0:
+                            log("vars.ack.fail", failed=failed_count)
+                            exit_code = 2
+                            break
+                        last_effective_rev = effective_rev
                 elif args.vars_ack and not token:
+
                     log("warning", message="vars ack requested but no device token provided")
             else:
-                log("vars.effective", status=status, body=body)
+                log("vars.snapshot", status=status, body=body)
 
         label = vars_cache.get("device.label")
         payload = {
@@ -241,6 +237,7 @@ def main() -> int:
                 "uid": device_uid,
                 "label": label,
                 "vars_snapshot_id": last_snapshot_id,
+                "vars_effective_rev": last_effective_rev,
             },
         }
         headers = {"X-Device-Token": token} if token else {}
@@ -277,3 +274,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
