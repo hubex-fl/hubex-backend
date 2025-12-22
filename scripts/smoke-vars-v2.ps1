@@ -134,7 +134,30 @@ $effective = Invoke-Api "GET" "$Base/api/v1/variables/effective?deviceUid=$Devic
     "Authorization" = "Bearer $Token"
 }
 if ($effective.Status -ne 200) { Fail "effective vars" $effective }
-Write-Host "OK: effective vars"
+$effectiveJson = $effective.Body | ConvertFrom-Json
+$snapshotId = $effectiveJson.snapshot_id
+if (-not $snapshotId) { Fail "effective vars missing snapshot_id" $effective }
+Write-Host "OK: effective vars snapshot=$snapshotId"
+
+# 6b) Ack snapshot
+$appliedItems = @()
+foreach ($item in $effectiveJson.items) {
+    if ($null -ne $item.version) {
+        $appliedItems += @{ key = $item.key; version = $item.version }
+    }
+}
+if ($appliedItems.Count -eq 0) { Fail "effective vars missing versions for ack" $effective }
+$ackBody = @{
+    snapshotId = $snapshotId
+    deviceUid = $DeviceUid
+    applied = $appliedItems
+} | ConvertTo-Json -Compress
+$ack = Invoke-Api "POST" "$Base/api/v1/variables/applied" $ackBody @{
+    "Content-Type" = "application/json"
+    "X-Device-Token" = $deviceToken
+}
+if ($ack.Status -ne 200) { Fail "variables/applied" $ack }
+Write-Host "OK: vars ack"
 
 # 7) Simulator run
 Write-Host "Running simulator..."

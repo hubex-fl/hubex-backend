@@ -144,11 +144,41 @@ echo "OK: vars set"
 resp=$(curl -sS -X GET "$BASE/api/v1/variables/effective?deviceUid=$DEVICE_UID" \
   -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}")
 status=$(printf "%s" "$resp" | tail -n 1)
+body=$(printf "%s" "$resp" | sed '$d')
 if [ "$status" != "200" ]; then
-  fail "effective vars" "$status" "$(printf "%s" "$resp" | sed '$d')"
+  fail "effective vars" "$status" "$body"
 fi
+snapshot_id=$(printf "%s" "$body" | python -c "import sys,json;print(json.load(sys.stdin).get('snapshot_id'))")
+if [ -z "$snapshot_id" ] || [ "$snapshot_id" = "None" ]; then
+  fail "effective vars missing snapshot_id" "$status" "$body"
+fi
+echo "OK: effective vars snapshot=$snapshot_id"
 
-echo "OK: effective vars"
+applied=$(printf "%s" "$body" | python - <<'PY'
+import json,sys
+data=json.load(sys.stdin)
+items=data.get("items") or []
+out=[]
+for item in items:
+    v=item.get("version")
+    if v is not None:
+        out.append({"key": item.get("key"), "version": v})
+print(json.dumps(out))
+PY
+)
+if [ "$applied" = "[]" ]; then
+  fail "effective vars missing versions for ack" "$status" "$body"
+fi
+ack_payload=$(printf '{"snapshotId":"%s","deviceUid":"%s","applied":%s}' "$snapshot_id" "$DEVICE_UID" "$applied")
+resp=$(printf "%s" "$ack_payload" | curl -sS -X POST "$BASE/api/v1/variables/applied" \
+  -H "Content-Type: application/json" \
+  -H "X-Device-Token: $DEVICE_TOKEN" -w "\n%{http_code}" --data-binary '@-')
+status=$(printf "%s" "$resp" | tail -n 1)
+body=$(printf "%s" "$resp" | sed '$d')
+if [ "$status" != "200" ]; then
+  fail "variables/applied" "$status" "$body"
+fi
+echo "OK: vars ack"
 
 echo "Running simulator..."
 python -m app.simulator --base "$BASE" --device-uid "$DEVICE_UID" --device-token "$DEVICE_TOKEN" --user-token "$TOKEN" --vars-effective --vars-ack --vars-poll-seconds 5 --seconds "$SECONDS"
