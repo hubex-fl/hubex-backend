@@ -132,6 +132,7 @@ def main() -> int:
     next_vars_poll = start
     vars_cache: dict[str, Any] = {}
     last_applied_versions: dict[str, int] = {}
+    last_snapshot_id: str | None = None
     tick = 0
 
     while time.time() - start < args.seconds:
@@ -153,9 +154,15 @@ def main() -> int:
             status, body = http_json("GET", url, headers={"Authorization": f"Bearer {user_token}"})
             payload = parse_json_payload(body)
             if status == 200 and payload:
+                snapshot_id = payload.get("snapshot_id")
                 items = payload.get("items", [])
-                vars_cache = {item["key"]: item.get("value") for item in items}
-                log("vars.effective", status=status, count=len(vars_cache))
+                vars_cache = {
+                    item["key"]: item.get("value")
+                    for item in items
+                    if item.get("value") is not None
+                }
+                last_snapshot_id = snapshot_id
+                log("vars.snapshot", status=status, snapshot_id=snapshot_id, count=len(items))
                 if args.vars_ack and token:
                     current_versions = {
                         item["key"]: item.get("version")
@@ -167,7 +174,11 @@ def main() -> int:
                             {"key": k, "version": v}
                             for k, v in current_versions.items()
                         ]
-                        ack_body = {"deviceUid": device_uid, "applied": applied}
+                        ack_body = {
+                            "snapshotId": snapshot_id,
+                            "deviceUid": device_uid,
+                            "applied": applied,
+                        }
                         ack_status, ack_resp = http_json(
                             "POST",
                             f"{args.base}/api/v1/variables/applied",
@@ -190,6 +201,7 @@ def main() -> int:
                 "rssi": -60,
                 "uid": device_uid,
                 "label": label,
+                "vars_snapshot_id": last_snapshot_id,
             },
         }
         headers = {"X-Device-Token": token} if token else {}
