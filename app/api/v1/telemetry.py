@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, List
 import asyncio
 import json
 import time
+import logging
 from collections import deque
 
 from fastapi import APIRouter, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
@@ -17,12 +18,15 @@ from app.realtime import hub
 from app.db.models.device import Device
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.user import User
+from app.db.session import AsyncSessionLocal
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
+logger = logging.getLogger("uvicorn.error")
 
 MAX_PAYLOAD_BYTES = 16 * 1024
 MAX_PAYLOAD_KEY_LENGTH = 64
 RATE_LIMIT_PER_MINUTE = 60
+MAX_WS_CONNECTIONS = 200
 _rate_lock = asyncio.Lock()
 _rate_window = 60.0
 _rate_hits: dict[int, deque[float]] = {}
@@ -131,7 +135,6 @@ async def recent_telemetry(
 async def telemetry_ws(
     websocket: WebSocket,
     device_id: int,
-    db: AsyncSession = Depends(get_db),
 ):
     token = websocket.query_params.get("token")
     if not token:
@@ -145,30 +148,39 @@ async def telemetry_ws(
         await websocket.close(code=1008)
         return
 
-    res = await db.execute(select(User).where(User.id == user_id))
-    user = res.scalar_one_or_none()
-    if not user:
-        await websocket.close(code=1008)
-        return
+    rows: list[DeviceTelemetry] = []
+    async with AsyncSessionLocal() as session:
+        res = await session.execute(select(User).where(User.id == user_id))
+        user = res.scalar_one_or_none()
+        if not user:
+            await websocket.close(code=1008)
+            return
 
-    res = await db.execute(
-        select(Device).where(Device.id == device_id, Device.owner_user_id == user.id)
-    )
-    device = res.scalar_one_or_none()
-    if not device:
-        await websocket.close(code=1008)
-        return
+        res = await session.execute(
+            select(Device).where(Device.id == device_id, Device.owner_user_id == user.id)
+        )
+        device = res.scalar_one_or_none()
+        if not device:
+            await websocket.close(code=1008)
+            return
 
-    await websocket.accept()
-    await hub.add(device_id, websocket)
-    try:
-        res = await db.execute(
+        res = await session.execute(
             select(DeviceTelemetry)
             .where(DeviceTelemetry.device_id == device_id)
             .order_by(desc(DeviceTelemetry.received_at))
             .limit(5)
         )
         rows = list(res.scalars().all())
+
+    active_ws = sum(len(s) for s in hub.clients.values())
+    if active_ws >= MAX_WS_CONNECTIONS:
+        await websocket.close(code=1013)
+        return
+
+    await websocket.accept()
+    await hub.add(device_id, websocket)
+    logger.info("telemetry_ws connect device_id=%s active=%s", device_id, active_ws + 1)
+    try:
         rows.reverse()
         await websocket.send_json([_serialize_telemetry(row) for row in rows])
         while True:
