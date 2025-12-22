@@ -69,6 +69,8 @@ const taskHistoryError = ref<string | null>(null);
 const variablesError = ref<string | null>(null);
 const variablesLoading = ref(false);
 const variables = ref<EffectiveVariableOut[]>([]);
+const variablesSnapshotId = ref<string | null>(null);
+const variablesAppliedSummary = ref<string | null>(null);
 const variablesSorted = computed(() =>
   [...variables.value].sort((a, b) => a.key.localeCompare(b.key))
 );
@@ -290,12 +292,33 @@ async function loadVariables() {
   variablesLoading.value = true;
   try {
     const res = await getEffectiveVariables(uid);
+    const snapshot = (res as any).snapshot_id ?? (res as any).snapshotId ?? null;
+    variablesSnapshotId.value = snapshot;
     upsertEffectiveItems(res.items);
     revealVariableKeys.value = new Set();
+    await loadVariablesApplied(uid);
   } catch (e: any) {
     variablesError.value = formatApiError(e, "Failed to load variables");
+    variablesSnapshotId.value = null;
+    variablesAppliedSummary.value = null;
   } finally {
     variablesLoading.value = false;
+  }
+}
+
+async function loadVariablesApplied(uid: string) {
+  try {
+    const res = await apiFetch<any[]>(`/api/v1/variables/applied?deviceUid=${uid}&limit=1`);
+    const latest = Array.isArray(res) ? res[0] : null;
+    if (!latest) {
+      variablesAppliedSummary.value = null;
+      return;
+    }
+    const appliedCount = Array.isArray(latest.applied) ? latest.applied.length : (latest.applied_count ?? 0);
+    const failedCount = Array.isArray(latest.failed) ? latest.failed.length : (latest.failed_count ?? 0);
+    variablesAppliedSummary.value = `${appliedCount} applied, ${failedCount} failed`;
+  } catch {
+    variablesAppliedSummary.value = null;
   }
 }
 
@@ -690,6 +713,13 @@ onUnmounted(() => {
       </div>
       <div v-if="overrideDisabled" class="pairing-warn" style="margin-top: 6px;">
         Device not provisioned
+      </div>
+      <div v-if="variablesSnapshotId || variablesAppliedSummary" class="info-note" style="margin-top: 6px;">
+        <span v-if="variablesSnapshotId">
+          Last snapshot: <span class="cell-mono">{{ variablesSnapshotId }}</span>
+        </span>
+        <span v-if="variablesSnapshotId && variablesAppliedSummary"> • </span>
+        <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
       </div>
       <div v-if="variablesError" class="error" style="margin-top: 6px;">
         {{ variablesError }}

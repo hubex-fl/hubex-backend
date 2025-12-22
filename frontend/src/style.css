@@ -179,6 +179,11 @@ a {
   margin-bottom: 6px;
 }
 
+.info-note {
+  color: #6b7280;
+  font-size: 12px;
+}
+
 .pairing-countdown-inline {
   margin-left: 8px;
   color: #6b7280;
