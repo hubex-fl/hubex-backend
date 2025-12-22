@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
+    BigInteger,
     String,
     DateTime,
     ForeignKey,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     func,
     text,
 )
+import uuid
 
 from app.db.base import Base
 
@@ -125,6 +127,7 @@ class VariableSnapshot(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     resolved_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
     effective_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    effective_rev: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
 
 class VariableSnapshotItem(Base):
@@ -180,3 +183,40 @@ class VariableAppliedAck(Base):
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class VariableEffect(Base):
+    __tablename__ = "variable_effects"
+    __table_args__ = (
+        Index("ix_variable_effects_status_next", "status", "next_attempt_at"),
+        Index("ix_variable_effects_device_id", "device_id"),
+        Index("ix_variable_effects_correlation", "correlation_id"),
+        Index("ix_variable_effects_audit", "trigger_audit_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
+    device_uid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trigger_audit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("variable_audits.id"), nullable=True
+    )
+    payload: Mapped[dict | list | str | int | float | bool | None] = mapped_column(
+        _JSON_TYPE, nullable=True
+    )
+    error: Mapped[dict | list | str | int | float | bool | None] = mapped_column(
+        _JSON_TYPE, nullable=True
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    next_attempt_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

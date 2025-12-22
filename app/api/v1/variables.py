@@ -15,6 +15,7 @@ from app.api.deps_auth import (
 )
 from app.api.v1.error_utils import raise_api_error
 from app.core import variables as vars_core
+from app.core.variable_effects import run_effects_once
 from app.schemas.variables import (
     VariableDefinitionIn,
     VariableDefinitionOut,
@@ -24,12 +25,16 @@ from app.schemas.variables import (
     DeviceVariablesOut,
     EffectiveVariableOut,
     EffectiveVariablesOut,
+    VariableSnapshotV3Out,
     VariableAppliedIn,
     VariableAppliedAckOut,
     VariableAuditOut,
+    VariableEffectOut,
+    VariableEffectRunIn,
+    VariableEffectRunOut,
 )
 from app.db.models.device import Device
-from app.db.models.variables import VariableSnapshot, VariableSnapshotItem
+from app.db.models.variables import VariableSnapshot, VariableSnapshotItem, VariableEffect
 
 router = APIRouter(prefix="/variables", tags=["variables"])
 
@@ -296,7 +301,7 @@ async def get_effective_variables(
         raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
 
     try:
-        snapshot_id, resolved_at, effective_version, items_raw = (
+        snapshot_id, resolved_at, effective_version, effective_rev, items_raw = (
             await vars_core.resolve_effective_snapshot(
                 db,
                 device_id=device.id,
@@ -335,9 +340,48 @@ async def get_effective_variables(
         resolved_at=resolved_at,
         snapshot_id=snapshot_id,
         effective_version=effective_version,
+        effective_rev=effective_rev,
         scope="device",
         items=items,
     )
+
+
+@router.get("/snapshot", response_model=VariableSnapshotV3Out)
+async def get_snapshot_v3(
+    device_uid: str | None = Query(default=None, alias="deviceUid"),
+    db: AsyncSession = Depends(get_db),
+    user_creds: HTTPAuthorizationCredentials | None = Security(bearer),
+    device_token: str | None = Security(device_token_header),
+):
+    current_user, current_device = await _resolve_actor(db, user_creds, device_token)
+    device = None
+    if current_device:
+        device = current_device
+        device_uid = device.device_uid
+        user_id = device.owner_user_id or 0
+    else:
+        if not device_uid:
+            raise_api_error(422, "VAR_DEVICE_UID_REQUIRED", "device_uid required")
+        res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+        device = res.scalar_one_or_none()
+        if device is None:
+            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+        if device.owner_user_id != current_user.id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+        user_id = current_user.id
+
+    try:
+        snapshot = await vars_core.resolve_snapshot_v3(
+            db,
+            device_id=device.id,
+            device_uid=device.device_uid,
+            user_id=user_id,
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return VariableSnapshotV3Out(**snapshot)
 
 
 @router.post("/applied")
@@ -495,3 +539,106 @@ async def list_audit(
             )
         )
     return out
+
+
+@router.get("/effects", response_model=list[VariableEffectOut])
+async def list_effects(
+    device_uid: str | None = Query(default=None, alias="deviceUid"),
+    status: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    device_id = None
+    if device_uid:
+        res = await db.execute(select(Device).where(Device.device_uid == device_uid))
+        device = res.scalar_one_or_none()
+        if device is None:
+            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+        if device.owner_user_id != current_user.id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+        device_id = device.id
+
+    stmt = select(VariableEffect)
+    if device_id is not None:
+        stmt = stmt.where(VariableEffect.device_id == device_id)
+    if status:
+        stmt = stmt.where(VariableEffect.status == status)
+    stmt = stmt.order_by(VariableEffect.created_at.desc()).limit(limit)
+    res = await db.execute(stmt)
+    items = list(res.scalars().all())
+    return [
+        VariableEffectOut(
+            id=item.id,
+            status=item.status,
+            kind=item.kind,
+            scope=item.scope,
+            device_uid=item.device_uid,
+            trigger_audit_id=item.trigger_audit_id,
+            payload=item.payload,
+            error=item.error,
+            attempts=item.attempts,
+            next_attempt_at=item.next_attempt_at,
+            locked_until=item.locked_until,
+            locked_by=item.locked_by,
+            correlation_id=item.correlation_id,
+            created_at=item.created_at,
+            updated_at=item.updated_at,
+        )
+        for item in items
+    ]
+
+
+@router.get("/effects/{effect_id}", response_model=VariableEffectOut)
+async def get_effect(
+    effect_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    res = await db.execute(select(VariableEffect).where(VariableEffect.id == effect_id))
+    item = res.scalar_one_or_none()
+    if item is None:
+        raise_api_error(404, "VAR_EFFECT_NOT_FOUND", "effect not found")
+    if item.device_id is not None:
+        res = await db.execute(select(Device).where(Device.id == item.device_id))
+        device = res.scalar_one_or_none()
+        if device is None or device.owner_user_id != current_user.id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+    return VariableEffectOut(
+        id=item.id,
+        status=item.status,
+        kind=item.kind,
+        scope=item.scope,
+        device_uid=item.device_uid,
+        trigger_audit_id=item.trigger_audit_id,
+        payload=item.payload,
+        error=item.error,
+        attempts=item.attempts,
+        next_attempt_at=item.next_attempt_at,
+        locked_until=item.locked_until,
+        locked_by=item.locked_by,
+        correlation_id=item.correlation_id,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+@router.post("/effects/run-once", response_model=VariableEffectRunOut)
+async def run_effects(
+    data: VariableEffectRunIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not _dev_tools_enabled():
+        raise_api_error(403, "DEV_TOOLS_DISABLED", "dev tools disabled")
+    try:
+        result = await run_effects_once(
+            db,
+            limit=data.limit,
+            locked_by=f"user:{current_user.id}",
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return VariableEffectRunOut(**result)

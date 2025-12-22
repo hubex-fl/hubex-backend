@@ -20,6 +20,8 @@ from app.db.models.variables import (
     VariableSnapshotItem,
     VariableAppliedAck,
 )
+from app.db.models.device_runtime import DeviceRuntimeSetting
+from app.core.variable_effects import derive_effects_from_change, enqueue_effects
 
 
 def _now_utc() -> datetime:
@@ -52,6 +54,29 @@ def _cache_set(user_id: int, device_uid: str, include_secrets: bool, payload: di
 
 def invalidate_effective_cache() -> None:
     _effective_cache.clear()
+
+
+async def _get_or_create_runtime_setting(
+    db: AsyncSession, device_id: int
+) -> DeviceRuntimeSetting:
+    res = await db.execute(
+        select(DeviceRuntimeSetting).where(DeviceRuntimeSetting.device_id == device_id)
+    )
+    setting = res.scalar_one_or_none()
+    if setting is None:
+        setting = DeviceRuntimeSetting(device_id=device_id)
+        db.add(setting)
+        await db.flush()
+    return setting
+
+
+async def _next_effective_rev(db: AsyncSession, device_id: int) -> int:
+    setting = await _get_or_create_runtime_setting(db, device_id)
+    current = setting.last_effective_rev or 0
+    next_rev = current + 1
+    setting.last_effective_rev = next_rev
+    await db.flush()
+    return next_rev
 
 
 def validate_and_coerce(value: Any, value_type: str) -> Any:
@@ -393,6 +418,14 @@ async def create_or_update_value(
     )
     db.add(audit)
     await db.flush()
+    effects = derive_effects_from_change(
+        definition,
+        device=device,
+        old_value=old_value,
+        new_value=coerced,
+        audit=audit,
+    )
+    await enqueue_effects(db, effects=effects, audit=audit, device=device)
     invalidate_effective_cache()
     return definition, current, device
 
@@ -552,13 +585,14 @@ async def resolve_effective_snapshot(
     device_uid: str,
     user_id: int,
     include_secrets: bool,
-) -> tuple[str, datetime, str, list[dict[str, Any]]]:
+) -> tuple[str, datetime, str, int, list[dict[str, Any]]]:
     cached = _cache_get(user_id, device_uid, include_secrets)
     if cached:
         return (
             cached["snapshot_id"],
             cached["resolved_at"],
             cached["effective_version"],
+            cached["effective_rev"],
             cached["items"],
         )
 
@@ -567,6 +601,7 @@ async def resolve_effective_snapshot(
     )
     resolved_at = _now_utc()
     snapshot_id = uuid4().hex
+    effective_rev = await _next_effective_rev(db, device_id)
 
     items: list[dict[str, Any]] = []
     timestamps: list[datetime] = []
@@ -629,6 +664,7 @@ async def resolve_effective_snapshot(
         user_id=user_id,
         resolved_at=resolved_at,
         effective_version=effective_version,
+        effective_rev=effective_rev,
     )
     db.add(snapshot)
 
@@ -660,10 +696,49 @@ async def resolve_effective_snapshot(
             "snapshot_id": snapshot_id,
             "resolved_at": resolved_at,
             "effective_version": effective_version,
+            "effective_rev": effective_rev,
             "items": items,
         },
     )
-    return snapshot_id, resolved_at, effective_version, items
+    return snapshot_id, resolved_at, effective_version, effective_rev, items
+
+
+async def resolve_snapshot_v3(
+    db: AsyncSession,
+    *,
+    device_id: int,
+    device_uid: str,
+    user_id: int,
+) -> dict[str, Any]:
+    snapshot_id, resolved_at, effective_version, effective_rev, items = (
+        await resolve_effective_snapshot(
+            db,
+            device_id=device_id,
+            device_uid=device_uid,
+            user_id=user_id,
+            include_secrets=False,
+        )
+    )
+    vars_out: list[dict[str, Any]] = []
+    for item in items:
+        vars_out.append(
+            {
+                "key": item["key"],
+                "value": item["value"],
+                "resolved_type": item["resolved_type"],
+                "constraints": item["constraints"],
+                "masked": item["masked"],
+            }
+        )
+    return {
+        "schema": "vars.snapshot.v3",
+        "server_time_ms": int(_now_utc().timestamp() * 1000),
+        "effective_rev": effective_rev,
+        "device_uid": device_uid,
+        "resolved_at": resolved_at,
+        "snapshot_id": snapshot_id,
+        "vars": vars_out,
+    }
 
 
 async def record_applied_ack(

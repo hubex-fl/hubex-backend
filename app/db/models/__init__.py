@@ -10,7 +10,9 @@ from .variables import (
     VariableSnapshot,
     VariableSnapshotItem,
     VariableAppliedAck,
+    VariableEffect,
 )
+from .device_runtime import DeviceRuntimeSetting
 
 __all__ = [
     "User",
@@ -26,4 +28,6 @@ __all__ = [
     "VariableSnapshot",
     "VariableSnapshotItem",
     "VariableAppliedAck",
+    "VariableEffect",
+    "DeviceRuntimeSetting",
 ]

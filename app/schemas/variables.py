@@ -118,13 +118,34 @@ class EffectiveVariablesOut(BaseModel):
     resolved_at: datetime
     snapshot_id: str
     effective_version: str
+    effective_rev: int | None = None
     scope: Scope
     items: list[EffectiveVariableOut]
+
+
+class VariableSnapshotV3Item(BaseModel):
+    key: str
+    value: Any | None
+    resolved_type: ValueType | None = None
+    constraints: dict[str, Any] | None = None
+    masked: bool = False
+
+
+class VariableSnapshotV3Out(BaseModel):
+    schema: str
+    server_time_ms: int
+    effective_rev: int
+    device_uid: str
+    resolved_at: datetime
+    snapshot_id: str
+    vars: list[VariableSnapshotV3Item]
 
 
 class VariableAppliedItemIn(BaseModel):
     key: str
     version: int | None = None
+    ok: bool | None = None
+    error: dict | None = None
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -156,6 +177,32 @@ class VariableAppliedAckOut(BaseModel):
     created_at: datetime
 
 
+class VariableAckResultIn(BaseModel):
+    key: str
+    status: str
+    detail: str | None = None
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class VariableAckIn(BaseModel):
+    device_uid: str | None = Field(
+        default=None, validation_alias=AliasChoices("device_uid", "deviceUid")
+    )
+    effective_rev: int = Field(validation_alias=AliasChoices("effective_rev", "effectiveRev"))
+    results: list[VariableAckResultIn]
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class VariableAckOut(BaseModel):
+    ok: bool
+    applied: int
+    failed: int
+    stale: int
+    invalid: int
+
+
 class VariableAuditOut(BaseModel):
     variable_key: str
     scope: Scope
@@ -170,3 +217,33 @@ class VariableAuditOut(BaseModel):
     request_id: str | None
     note: str | None
     created_at: datetime
+
+
+class VariableEffectOut(BaseModel):
+    id: str
+    status: str
+    kind: str
+    scope: str
+    device_uid: str | None
+    trigger_audit_id: int | None
+    payload: dict | list | str | int | float | bool | None
+    error: dict | list | str | int | float | bool | None
+    attempts: int
+    next_attempt_at: datetime | None
+    locked_until: datetime | None
+    locked_by: str | None
+    correlation_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VariableEffectRunIn(BaseModel):
+    limit: int = 50
+
+
+class VariableEffectRunOut(BaseModel):
+    processed: int
+    done: int
+    failed: int
