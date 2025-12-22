@@ -151,8 +151,15 @@ def main() -> int:
     last_effective_rev: int | None = None
     tick = 0
     exit_code = 0
-    fail_timeout_rate = env_float("HUBEX_FAIL_RATE_TIMEOUT", 0.0)
-    fail_type_rate = env_float("HUBEX_FAIL_RATE_TYPE", 0.0)
+    fail_timeout_rate = env_float(
+        "HUBEX_FAIL_TIMEOUT_RATE",
+        env_float("HUBEX_FAIL_RATE_TIMEOUT", 0.0),
+    )
+    fail_type_rate = env_float(
+        "HUBEX_FAIL_TYPE_MISMATCH_RATE",
+        env_float("HUBEX_FAIL_RATE_TYPE", 0.0),
+    )
+    fail_busy_rate = env_float("HUBEX_FAIL_BUSY_RATE", 0.0)
 
     while time.time() - start < args.seconds:
         now = time.time()
@@ -197,6 +204,9 @@ def main() -> int:
                             elif should_fail(fail_type_rate):
                                 status_code = "TYPE_MISMATCH"
                                 detail = "type mismatch"
+                            elif should_fail(fail_busy_rate):
+                                status_code = "BUSY_RETRYABLE"
+                                detail = "device busy"
                             results.append({"key": key, "status": status_code, "detail": detail})
                         ack_body = {
                             "deviceUid": device_uid,
