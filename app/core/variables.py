@@ -741,6 +741,104 @@ async def resolve_snapshot_v3(
     }
 
 
+async def _latest_effective_rev(db: AsyncSession, device_id: int) -> int | None:
+    res = await db.execute(
+        select(VariableSnapshot.effective_rev)
+        .where(VariableSnapshot.device_id == device_id)
+        .order_by(VariableSnapshot.resolved_at.desc())
+        .limit(1)
+    )
+    return res.scalar_one_or_none()
+
+
+async def _snapshot_id_for_rev(
+    db: AsyncSession, device_id: int, effective_rev: int
+) -> str | None:
+    res = await db.execute(
+        select(VariableSnapshot.id).where(
+            VariableSnapshot.device_id == device_id,
+            VariableSnapshot.effective_rev == effective_rev,
+        )
+    )
+    return res.scalar_one_or_none()
+
+
+async def apply_effective_ack_v3(
+    db: AsyncSession,
+    *,
+    device: Device,
+    effective_rev: int,
+    results: list[dict[str, str | None]],
+) -> dict[str, int | bool]:
+    setting = await _get_or_create_runtime_setting(db, device.id)
+    last_acked = setting.last_acked_rev or 0
+
+    if effective_rev < last_acked:
+        return {"ok": True, "applied": 0, "failed": 0, "stale": len(results), "invalid": 0}
+    if effective_rev == last_acked:
+        return {"ok": True, "applied": 0, "failed": 0, "stale": len(results), "invalid": 0}
+
+    latest_rev = await _latest_effective_rev(db, device.id)
+    if latest_rev is None or effective_rev > latest_rev:
+        return {
+            "ok": False,
+            "applied": 0,
+            "failed": 0,
+            "stale": 0,
+            "invalid": len(results),
+        }
+
+    snapshot_id = await _snapshot_id_for_rev(db, device.id, effective_rev)
+    if snapshot_id is None:
+        raise_api_error(404, "VAR_SNAPSHOT_NOT_FOUND", "snapshot not found")
+
+    res = await db.execute(
+        select(VariableSnapshotItem.variable_key, VariableSnapshotItem.version).where(
+            VariableSnapshotItem.snapshot_id == snapshot_id
+        )
+    )
+    snapshot_versions = {row[0]: row[1] for row in res.all()}
+
+    applied_count = 0
+    failed_count = 0
+    for item in results:
+        key = str(item.get("key") or "")
+        if key not in snapshot_versions:
+            raise_api_error(409, "VAR_APPLIED_MISMATCH", "key not in snapshot")
+        version = snapshot_versions[key]
+        status = str(item.get("status") or "").upper()
+        detail = item.get("detail")
+        if status == "OK":
+            if await record_applied_ack(
+                db,
+                snapshot_id=snapshot_id,
+                device_id=device.id,
+                key=key,
+                version=version,
+                status="applied",
+                reason=None,
+            ):
+                applied_count += 1
+        else:
+            reason = detail or status or "FAILED"
+            if await record_applied_ack(
+                db,
+                snapshot_id=snapshot_id,
+                device_id=device.id,
+                key=key,
+                version=version,
+                status="failed",
+                reason=reason,
+            ):
+                failed_count += 1
+
+    setting.last_acked_rev = effective_rev
+    if failed_count == 0:
+        setting.last_applied_rev = effective_rev
+    await db.flush()
+    return {"ok": True, "applied": applied_count, "failed": failed_count, "stale": 0, "invalid": 0}
+
+
 async def record_applied_ack(
     db: AsyncSession,
     *,

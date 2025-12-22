@@ -26,6 +26,8 @@ from app.schemas.variables import (
     EffectiveVariableOut,
     EffectiveVariablesOut,
     VariableSnapshotV3Out,
+    VariableAckIn,
+    VariableAckOut,
     VariableAppliedIn,
     VariableAppliedAckOut,
     VariableAuditOut,
@@ -465,6 +467,44 @@ async def applied(
         raise
 
     return {"ok": True, "applied": applied_count, "failed": failed_count}
+
+
+@router.post("/ack", response_model=VariableAckOut)
+async def ack_v3(
+    data: VariableAckIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user_creds: HTTPAuthorizationCredentials | None = Security(bearer),
+    device_token: str | None = Security(device_token_header),
+):
+    current_user, current_device = await _resolve_actor(db, user_creds, device_token)
+
+    device = None
+    if current_device:
+        device = current_device
+        if data.device_uid and data.device_uid != device.device_uid:
+            raise_api_error(409, "VAR_NOT_ALLOWED", "device uid mismatch")
+    else:
+        if not data.device_uid:
+            raise_api_error(422, "VAR_DEVICE_UID_REQUIRED", "device_uid required")
+        res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
+        device = res.scalar_one_or_none()
+        if device is None:
+            raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+        if device.owner_user_id != current_user.id:
+            raise_api_error(404, "DEVICE_NOT_OWNED", "Device not owned")
+
+    try:
+        result = await vars_core.apply_effective_ack_v3(
+            db,
+            device=device,
+            effective_rev=data.effective_rev,
+            results=[{"key": item.key, "status": item.status, "detail": item.detail} for item in data.results],
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return VariableAckOut(**result)
 
 
 @router.get("/applied", response_model=list[VariableAppliedAckOut])
