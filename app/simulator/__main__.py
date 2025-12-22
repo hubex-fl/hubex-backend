@@ -135,6 +135,7 @@ def main() -> int:
     last_snapshot_id: str | None = None
     last_applied_snapshot_id: str | None = None
     tick = 0
+    exit_code = 0
 
     while time.time() - start < args.seconds:
         now = time.time()
@@ -197,9 +198,34 @@ def main() -> int:
                             ack_body,
                             headers={"X-Device-Token": token},
                         )
-                        log("vars.applied", status=ack_status, body=ack_resp)
-                        last_applied_versions = current_versions
-                        last_applied_snapshot_id = snapshot_id
+                        ack_payload = parse_json_payload(ack_resp)
+
+                    log("vars.applied", status=ack_status, body=ack_resp)
+
+                    if ack_status != 200 or not ack_payload:
+                        log("vars.applied.error", status=ack_status)
+                        exit_code = 2
+                        break
+
+                    def _count(v):
+                        if v is None:
+                            return 0
+                        if isinstance(v, int):
+                            return v
+                        if isinstance(v, (list, tuple, set)):
+                            return len(v)
+                        return 0
+
+                    failed_count = _count(ack_payload.get("failed"))
+                    applied_count = _count(ack_payload.get("applied"))
+
+                    if failed_count > 0:
+                        log("vars.applied.fail", applied=applied_count, failed=failed_count)
+                        exit_code = 2
+                        break
+
+                    last_applied_versions = current_versions
+                    last_applied_snapshot_id = snapshot_id
                 elif args.vars_ack and not token:
                     log("warning", message="vars ack requested but no device token provided")
             else:
@@ -242,8 +268,11 @@ def main() -> int:
             )
             log("vars.spam", status=status, body=body, key=args.vars_key)
 
-    log("done", device_uid=device_uid)
-    return 0
+        if exit_code:
+            break
+
+    log("done", device_uid=device_uid, status=exit_code)
+    return exit_code
 
 
 if __name__ == "__main__":
