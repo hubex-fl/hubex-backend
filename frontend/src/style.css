@@ -108,6 +108,32 @@ a {
   color: #8a6d1a;
 }
 
+/* Prevent layout shift during polling */
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.cell-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Stable column sizing for effective variables table */
+.ev-col-key { width: 34%; }
+.ev-col-value { width: 18%; }
+.ev-col-source { width: 16%; }
+.ev-col-version { width: 10%; }
+.ev-col-updated { width: 16%; }
+.ev-col-actions { width: 16%; }
+
+/* Avoid row height jumping when content appears/disappears */
+.ev-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .pairing-section {
   margin: 12px 0 16px;
   padding: 12px;

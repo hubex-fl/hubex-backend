@@ -69,6 +69,9 @@ const taskHistoryError = ref<string | null>(null);
 const variablesError = ref<string | null>(null);
 const variablesLoading = ref(false);
 const variables = ref<EffectiveVariableOut[]>([]);
+const variablesSorted = computed(() =>
+  [...variables.value].sort((a, b) => a.key.localeCompare(b.key))
+);
 const revealVariableKeys = ref<Set<string>>(new Set());
 const addOverrideOpen = ref(false);
 const addOverrideKey = ref("");
@@ -287,7 +290,7 @@ async function loadVariables() {
   variablesLoading.value = true;
   try {
     const res = await getEffectiveVariables(uid);
-    variables.value = res.items;
+    upsertEffectiveItems(res.items);
     revealVariableKeys.value = new Set();
   } catch (e: any) {
     variablesError.value = formatApiError(e, "Failed to load variables");
@@ -358,9 +361,7 @@ function variableValueText(row: EffectiveVariableOut) {
   if (row.is_secret && (row.value === null || !revealVariableKeys.value.has(row.key))) {
     return "••••••";
   }
-  if (row.value === null || row.value === undefined) return "-";
-  if (typeof row.value === "string") return row.value;
-  return JSON.stringify(row.value);
+  return formatValue(row.value);
 }
 
 function variableSourceLabel(row: EffectiveVariableOut) {
@@ -376,6 +377,14 @@ function toggleVariableReveal(key: string) {
 
 function fmtTime(iso: string) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return "-";
+  if (typeof value === "number") return Number.isFinite(value) ? value.toString() : "-";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
 }
 
 function healthClass(health: "ok" | "stale" | "dead") {
@@ -444,6 +453,17 @@ function currentTaskStatusClass() {
     return "pill-warn";
   }
   return "pill-ok";
+}
+
+function upsertEffectiveItems(next: EffectiveVariableOut[]) {
+  const byKey = new Map(variables.value.map((i) => [i.key, i]));
+  for (const item of next) {
+    const cur = byKey.get(item.key);
+    if (cur) Object.assign(cur, item);
+    else variables.value.push(item);
+  }
+  const nextKeys = new Set(next.map((i) => i.key));
+  variables.value = variables.value.filter((i) => nextKeys.has(i.key));
 }
 
 function refreshNow() {
@@ -706,30 +726,34 @@ onUnmounted(() => {
           <button class="btn secondary" @click="closeAddOverride">Cancel</button>
         </div>
       </div>
-      <table v-if="!variablesLoading" class="table" style="margin-top: 6px;">
+      <table v-if="!variablesLoading" class="table table-fixed" style="margin-top: 6px;">
         <thead>
           <tr>
-            <th>Key</th>
-            <th>Value</th>
-            <th>Source</th>
-            <th>Version</th>
-            <th>Updated</th>
-            <th>Actions</th>
+            <th class="ev-col-key">Key</th>
+            <th class="ev-col-value">Value</th>
+            <th class="ev-col-source">Source</th>
+            <th class="ev-col-version">Version</th>
+            <th class="ev-col-updated">Updated</th>
+            <th class="ev-col-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in variables" :key="row.key + row.scope">
-            <td>{{ row.key }}</td>
-            <td>
+          <tr v-for="row in variablesSorted" :key="row.key">
+            <td class="ev-cell ev-col-key">{{ row.key }}</td>
+            <td class="ev-cell ev-col-value">
               <span v-if="editingVarKey === row.key">
                 <input v-model="editingVarValue" class="input" />
               </span>
               <span v-else>{{ variableValueText(row) }}</span>
             </td>
-            <td>{{ variableSourceLabel(row) }}</td>
-            <td>{{ row.version ?? "-" }}</td>
-            <td>{{ row.updated_at ? fmtTime(row.updated_at) : "-" }}</td>
-            <td>
+            <td class="ev-cell ev-col-source">{{ variableSourceLabel(row) }}</td>
+            <td class="ev-cell ev-col-version">
+              <span class="cell-mono">{{ row.version ?? "-" }}</span>
+            </td>
+            <td class="ev-cell ev-col-updated">
+              <span class="cell-mono">{{ row.updated_at ? fmtTime(row.updated_at) : "-" }}</span>
+            </td>
+            <td class="ev-cell ev-col-actions">
               <template v-if="editingVarKey === row.key">
                 <button class="btn secondary" @click="saveVariableOverride(row)">Save</button>
                 <button class="btn secondary" @click="closeEditVariable">Cancel</button>
