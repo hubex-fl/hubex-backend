@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch, getToken } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
@@ -11,7 +11,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
-const deviceId = route.params.id as string;
+const deviceId = ref(route.params.id as string);
 
 type DeviceInfo = {
   id: number;
@@ -98,13 +98,15 @@ let mounted = false;
 let reconnectTimer: number | null = null;
 let reconnectAttempt = 0;
 let heartbeatTimer: number | null = null;
-let deviceInfoTimer: number | null = null;
-let lastDeviceInfoRefreshMs = 0;
-let taskStatusTimer: number | null = null;
 let leaseCountdownTimer: number | null = null;
-let lastCurrentTaskRefreshMs = 0;
-let lastTaskHistoryRefreshMs = 0;
-let lastVariablesRefreshMs = 0;
+const POLL_INTERVAL_MS = 2500;
+const MAX_BACKOFF_MS = 15000;
+const inflightControllers = new Map<string, AbortController>();
+let pollTimer: number | null = null;
+let pollBackoffMs = 0;
+let pollInFlight = false;
+let pendingRefresh = false;
+let lastRefreshRequestMs = 0;
 const editingVarKey = ref<string | null>(null);
 const editingVarValue = ref<string>("");
 
@@ -114,7 +116,7 @@ function buildWsUrl(token: string): string {
   u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
   const basePath = u.pathname.replace(/\/+$/, "");
   const prefix = basePath && basePath !== "/" ? basePath : "/api/v1";
-  u.pathname = `${prefix}/telemetry/devices/${deviceId}/telemetry/ws`;
+  u.pathname = `${prefix}/telemetry/devices/${deviceId.value}/telemetry/ws`;
   u.search = `token=${encodeURIComponent(token)}`;
   return u.toString();
 }
@@ -135,7 +137,9 @@ function scheduleReconnect(reason: string) {
   if (!mounted) return;
   if (reconnectTimer !== null) return;
   telemetryError.value = reason;
-  const delay = Math.min(5000, 250 * Math.pow(2, reconnectAttempt));
+  const baseDelay = Math.min(10000, 250 * Math.pow(2, reconnectAttempt));
+  const jitter = Math.floor(Math.random() * 200);
+  const delay = baseDelay + jitter;
   reconnectAttempt = Math.min(reconnectAttempt + 1, 6);
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null;
@@ -143,32 +147,95 @@ function scheduleReconnect(reason: string) {
   }, delay);
 }
 
-function refreshDeviceInfoDebounced() {
-  const now = Date.now();
-  if (now - lastDeviceInfoRefreshMs < 1000) return;
-  lastDeviceInfoRefreshMs = now;
-  loadDeviceInfo();
+function abortInflight(key?: string) {
+  if (key) {
+    const controller = inflightControllers.get(key);
+    if (controller) {
+      controller.abort();
+      inflightControllers.delete(key);
+    }
+    return;
+  }
+  for (const [k, controller] of inflightControllers.entries()) {
+    controller.abort();
+    inflightControllers.delete(k);
+  }
 }
 
-function refreshCurrentTaskDebounced() {
-  const now = Date.now();
-  if (now - lastCurrentTaskRefreshMs < 1000) return;
-  lastCurrentTaskRefreshMs = now;
-  loadCurrentTask();
+async function guardedFetch<T>(
+  key: string,
+  fn: (signal: AbortSignal) => Promise<T>
+): Promise<T | undefined> {
+  if (inflightControllers.has(key)) return undefined;
+  const controller = new AbortController();
+  inflightControllers.set(key, controller);
+  try {
+    return await fn(controller.signal);
+  } catch (err: any) {
+    if (err?.name === "AbortError") return undefined;
+    throw err;
+  } finally {
+    inflightControllers.delete(key);
+  }
 }
 
-function refreshTaskHistoryDebounced() {
+function requestRefreshAllThrottled() {
   const now = Date.now();
-  if (now - lastTaskHistoryRefreshMs < 2000) return;
-  lastTaskHistoryRefreshMs = now;
-  loadTaskHistory();
+  if (document.visibilityState === "hidden") return;
+  if (now - lastRefreshRequestMs < 1000) return;
+  lastRefreshRequestMs = now;
+  refreshAll("ws");
 }
 
-function refreshVariablesDebounced() {
-  const now = Date.now();
-  if (now - lastVariablesRefreshMs < 1000) return;
-  lastVariablesRefreshMs = now;
-  loadVariables();
+function stopPolling() {
+  if (pollTimer !== null) {
+    window.clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function scheduleNextPoll() {
+  if (!mounted) return;
+  if (document.visibilityState === "hidden") return;
+  if (pollTimer !== null) return;
+  const delay = pollBackoffMs > 0 ? pollBackoffMs : POLL_INTERVAL_MS;
+  pollTimer = window.setTimeout(async () => {
+    pollTimer = null;
+    await refreshAll("poll");
+    scheduleNextPoll();
+  }, delay);
+}
+
+async function refreshAll(reason: string) {
+  if (!mounted) return;
+  if (pollInFlight) {
+    pendingRefresh = true;
+    return;
+  }
+  pollInFlight = true;
+  let hadError = false;
+  const [deviceOk, taskOk, historyOk, varsOk] = await Promise.all([
+    loadDeviceInfo(),
+    loadCurrentTask(),
+    loadTaskHistory(),
+    loadVariables(),
+  ]);
+  if (deviceOk === false || taskOk === false || historyOk === false || varsOk === false) {
+    hadError = true;
+  }
+  pollBackoffMs = hadError
+    ? Math.min(MAX_BACKOFF_MS, pollBackoffMs > 0 ? pollBackoffMs * 2 : POLL_INTERVAL_MS)
+    : 0;
+  pollInFlight = false;
+  if (pendingRefresh) {
+    pendingRefresh = false;
+    refreshAll("queued");
+  }
+}
+
+function startPolling() {
+  stopPolling();
+  scheduleNextPoll();
 }
 
 function connectWs() {
@@ -196,6 +263,7 @@ function connectWs() {
         try { ws.send("ping"); } catch {}
       }
     }, 25000);
+    requestRefreshAllThrottled();
   };
 
   ws.onmessage = (ev) => {
@@ -205,10 +273,7 @@ function connectWs() {
         telemetry.value = data;
       } else if (data && typeof data === "object") {
         telemetry.value = [...telemetry.value, data].slice(-5);
-        refreshDeviceInfoDebounced();
-        refreshCurrentTaskDebounced();
-        refreshTaskHistoryDebounced();
-        refreshVariablesDebounced();
+        requestRefreshAllThrottled();
       }
     } catch {
       // ignore
@@ -226,13 +291,65 @@ function connectWs() {
   };
 }
 
-async function loadDeviceInfo() {
+function isSameDeviceInfo(a: DeviceInfo | null, b: DeviceInfo | null) {
+  if (!a || !b) return false;
+  return (
+    a.id === b.id &&
+    a.device_uid === b.device_uid &&
+    a.last_seen_at === b.last_seen_at &&
+    a.health === b.health &&
+    a.state === b.state &&
+    a.pairing_active === b.pairing_active &&
+    a.busy === b.busy
+  );
+}
+
+function isSameCurrentTask(a: CurrentTaskOut | null, b: CurrentTaskOut | null) {
+  if (!a || !b) return false;
+  return (
+    a.task_id === b.task_id &&
+    a.task_status === b.task_status &&
+    a.lease_expires_at === b.lease_expires_at &&
+    a.has_active_lease === b.has_active_lease
+  );
+}
+
+function isSameTaskHistory(a: TaskHistoryItemOut[], b: TaskHistoryItemOut[]) {
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+  return a[0].task_id === b[0].task_id;
+}
+
+function hasVariablesChanged(next: EffectiveVariableOut[], snapshotId: string | null) {
+  if (!snapshotId || snapshotId !== variablesSnapshotId.value) return true;
+  if (next.length !== variables.value.length) return true;
+  const currentMap = new Map(
+    variables.value.map((item) => [
+      item.key,
+      `${item.version ?? "n"}|${item.source}|${item.updated_at ?? ""}`,
+    ])
+  );
+  for (const item of next) {
+    const sig = `${item.version ?? "n"}|${item.source}|${item.updated_at ?? ""}`;
+    if (currentMap.get(item.key) !== sig) return true;
+  }
+  return false;
+}
+
+async function loadDeviceInfo(): Promise<boolean> {
   deviceInfoError.value = null;
   try {
-    deviceInfo.value = await apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId}`);
-    loadVariables();
+    const res = await guardedFetch("deviceInfo", (signal) =>
+      apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId.value}`, { signal })
+    );
+    if (!res) return true;
+    if (!isSameDeviceInfo(deviceInfo.value, res)) {
+      deviceInfo.value = res;
+    }
+    return true;
   } catch (e: any) {
     deviceInfoError.value = formatApiError(e, "Failed to load device");
+    return false;
   }
 }
 
@@ -261,54 +378,92 @@ function startLeaseCountdown() {
   }, 1000);
 }
 
-async function loadCurrentTask() {
+async function loadCurrentTask(): Promise<boolean> {
   currentTaskError.value = null;
   try {
-    const res = await apiFetch<CurrentTaskOut>(`/api/v1/devices/${deviceId}/current-task`);
-    currentTask.value = res;
-    leaseSecondsRemaining.value = res.lease_seconds_remaining ?? null;
-    startLeaseCountdown();
+    const res = await guardedFetch("currentTask", (signal) =>
+      apiFetch<CurrentTaskOut>(`/api/v1/devices/${deviceId.value}/current-task`, { signal })
+    );
+    if (!res) return true;
+    if (!isSameCurrentTask(currentTask.value, res)) {
+      currentTask.value = res;
+      leaseSecondsRemaining.value = res.lease_seconds_remaining ?? null;
+      startLeaseCountdown();
+    } else if (leaseSecondsRemaining.value === null && res.lease_seconds_remaining !== null) {
+      leaseSecondsRemaining.value = res.lease_seconds_remaining;
+      startLeaseCountdown();
+    }
+    return true;
   } catch (e: any) {
     currentTaskError.value = formatApiError(e, "Failed to load current task");
+    return false;
   }
 }
 
-async function loadTaskHistory() {
+async function loadTaskHistory(): Promise<boolean> {
   taskHistoryError.value = null;
   try {
-    taskHistory.value = await apiFetch<TaskHistoryItemOut[]>(
-      `/api/v1/devices/${deviceId}/task-history?limit=5`
+    const res = await guardedFetch("taskHistory", (signal) =>
+      apiFetch<TaskHistoryItemOut[]>(
+        `/api/v1/devices/${deviceId.value}/task-history?limit=5`,
+        { signal }
+      )
     );
+    if (!res) return true;
+    if (!isSameTaskHistory(taskHistory.value, res)) {
+      taskHistory.value = res;
+    }
+    return true;
   } catch (e: any) {
     taskHistoryError.value = formatApiError(e, "Failed to load task history");
+    return false;
   }
 }
 
-async function loadVariables() {
+async function loadVariables(): Promise<boolean> {
   const uid = deviceInfo.value?.device_uid;
-  if (!uid) return;
+  if (!uid) return true;
   variablesError.value = null;
   addOverrideError.value = null;
-  variablesLoading.value = true;
   try {
-    const res = await getEffectiveVariables(uid);
+    variablesLoading.value = true;
+    const res = await guardedFetch("variables", () => getEffectiveVariables(uid));
+    if (!res) {
+      variablesLoading.value = false;
+      return true;
+    }
     const snapshot = (res as any).snapshot_id ?? (res as any).snapshotId ?? null;
-    variablesSnapshotId.value = snapshot;
-    upsertEffectiveItems(res.items);
-    revealVariableKeys.value = new Set();
-    await loadVariablesApplied(uid);
+    const snapshotChanged = snapshot !== variablesSnapshotId.value;
+    const changed = hasVariablesChanged(res.items, snapshot);
+    if (changed) {
+      variablesSnapshotId.value = snapshot;
+      upsertEffectiveItems(res.items);
+      const allowedKeys = new Set(res.items.map((item: EffectiveVariableOut) => item.key));
+      const nextReveal = new Set(Array.from(revealVariableKeys.value).filter((k) => allowedKeys.has(k)));
+      revealVariableKeys.value = nextReveal;
+    }
+    if (snapshotChanged || variablesAppliedSummary.value === null) {
+      await loadVariablesApplied(uid);
+    }
+    variablesLoading.value = false;
+    return true;
   } catch (e: any) {
     variablesError.value = formatApiError(e, "Failed to load variables");
     variablesSnapshotId.value = null;
     variablesAppliedSummary.value = null;
+    variablesLoading.value = false;
+    return false;
   } finally {
     variablesLoading.value = false;
   }
 }
 
-async function loadVariablesApplied(uid: string) {
+async function loadVariablesApplied(uid: string): Promise<void> {
   try {
-    const res = await apiFetch<any[]>(`/api/v1/variables/applied?deviceUid=${uid}&limit=1`);
+    const res = await guardedFetch("varsApplied", (signal) =>
+      apiFetch<any[]>(`/api/v1/variables/applied?deviceUid=${uid}&limit=1`, { signal })
+    );
+    if (!res) return;
     const latest = Array.isArray(res) ? res[0] : null;
     if (!latest) {
       variablesAppliedSummary.value = null;
@@ -490,10 +645,7 @@ function upsertEffectiveItems(next: EffectiveVariableOut[]) {
 }
 
 function refreshNow() {
-  loadDeviceInfo();
-  loadCurrentTask();
-  loadTaskHistory();
-  loadVariables();
+  refreshAll("manual");
 }
 
 async function copyUid() {
@@ -579,26 +731,55 @@ function fmtRelative(iso: string | undefined) {
 }
 
 function onVisibilityChange() {
-  if (document.visibilityState === "visible") {
-    loadCurrentTask();
-    loadTaskHistory();
-    loadVariables();
-    startLeaseCountdown();
+  if (document.visibilityState === "hidden") {
+    stopPolling();
+    abortInflight();
+    return;
   }
+  refreshAll("visible");
+  startPolling();
+  startLeaseCountdown();
 }
+
+function resetForDeviceChange(nextId: string) {
+  deviceId.value = nextId;
+  deviceInfo.value = null;
+  currentTask.value = null;
+  taskHistory.value = [];
+  telemetry.value = [];
+  telemetryError.value = null;
+  currentTaskError.value = null;
+  taskHistoryError.value = null;
+  variables.value = [];
+  variablesSnapshotId.value = null;
+  variablesAppliedSummary.value = null;
+  revealVariableKeys.value = new Set();
+  expandedTelemetry.value = new Set();
+
+  stopLeaseCountdown();
+  abortInflight();
+  stopPolling();
+  cleanupWs();
+  connectWs();
+  refreshAll("route");
+  startPolling();
+}
+
+watch(
+  () => route.params.id,
+  (next) => {
+    if (!next) return;
+    if (next === deviceId.value) return;
+    resetForDeviceChange(next as string);
+  }
+);
 
 onMounted(() => {
   mounted = true;
-  loadDeviceInfo();
-  deviceInfoTimer = window.setInterval(loadDeviceInfo, 5000);
-  loadCurrentTask();
-  loadTaskHistory();
-  taskStatusTimer = window.setInterval(() => {
-    loadCurrentTask();
-    loadTaskHistory();
-  }, 5000);
   connectWs();
   document.addEventListener("visibilitychange", onVisibilityChange);
+  refreshAll("mount");
+  startPolling();
 });
 
 onUnmounted(() => {
@@ -607,15 +788,9 @@ onUnmounted(() => {
     window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
-  if (deviceInfoTimer !== null) {
-    window.clearInterval(deviceInfoTimer);
-    deviceInfoTimer = null;
-  }
-  if (taskStatusTimer !== null) {
-    window.clearInterval(taskStatusTimer);
-    taskStatusTimer = null;
-  }
   stopLeaseCountdown();
+  abortInflight();
+  stopPolling();
   cleanupWs();
   document.removeEventListener("visibilitychange", onVisibilityChange);
 });
