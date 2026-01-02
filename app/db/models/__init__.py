@@ -14,6 +14,7 @@ from .variables import (
 )
 from .device_runtime import DeviceRuntimeSetting
 from .revoked_token import RevokedToken
+from .entities import Entity, EntityDeviceBinding
 
 __all__ = [
     "User",
@@ -32,4 +33,6 @@ __all__ = [
     "VariableEffect",
     "DeviceRuntimeSetting",
     "RevokedToken",
+    "Entity",
+    "EntityDeviceBinding",
 ]
