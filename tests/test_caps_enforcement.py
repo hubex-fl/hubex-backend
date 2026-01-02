@@ -5,7 +5,10 @@ from fastapi.testclient import TestClient
 
 from app.api.deps_caps import capability_guard
 from app.core.capabilities import CAPABILITY_MAP, PUBLIC_WHITELIST
-from app.core.security import create_access_token
+from datetime import datetime, timezone
+from jose import jwt
+
+from app.core.security import SECRET_KEY, ALGORITHM, ISSUER
 
 
 def _make_app():
@@ -63,11 +66,32 @@ def test_protected_requires_token_and_caps(monkeypatch):
     res = client.get("/protected")
     assert res.status_code == 401
 
-    token = create_access_token("1", caps=["vars.read"])
+    now = datetime.now(timezone.utc)
+    token = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["vars.read"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
     res = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
 
-    token = create_access_token("1", caps=["vars.ack"])
+    token = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["vars.ack"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
     res = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 403
 
