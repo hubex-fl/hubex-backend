@@ -43,17 +43,23 @@ function Get-JtiFromJwt($token) {
   }
 }
 
-$login = Invoke-Req "POST" "$Base/api/v1/auth/login" @{} @{ email = $Email; password = $Password }
-if ($login.status -ne 200 -or -not $login.body) {
-  Write-Host "FAIL login expected 200 got $($login.status)" -ForegroundColor Red
-  Write-Host $login.body
+try {
+  $loginObj = Invoke-RestMethod -Method POST -Uri "$Base/api/v1/auth/login" -Body (@{ email = $Email; password = $Password } | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
+} catch {
+  Write-Host "FAIL login request failed" -ForegroundColor Red
+  $ex = $_.Exception
+  if ($ex.Response) {
+    $sr = New-Object System.IO.StreamReader($ex.Response.GetResponseStream())
+    Write-Host $sr.ReadToEnd()
+  } else {
+    Write-Host $ex.Message
+  }
   exit 1
 }
-$loginObj = $login.body | ConvertFrom-Json
 $token = $loginObj.access_token
 if (-not $token) {
   Write-Host "FAIL login missing access_token" -ForegroundColor Red
-  Write-Host $login.body
+  Write-Host ($loginObj | ConvertTo-Json -Depth 10)
   exit 1
 }
 $jti = Get-JtiFromJwt $token
