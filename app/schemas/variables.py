@@ -132,13 +132,15 @@ class VariableSnapshotV3Item(BaseModel):
 
 
 class VariableSnapshotV3Out(BaseModel):
-    schema: str
+    schema_: str = Field(alias="schema")
     server_time_ms: int
     effective_rev: int
     device_uid: str
     resolved_at: datetime
     snapshot_id: str
     vars: list[VariableSnapshotV3Item]
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class VariableAppliedItemIn(BaseModel):
