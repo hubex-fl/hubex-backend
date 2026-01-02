@@ -82,6 +82,8 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/entities/{entity_id}/devices"): ["entities.read"],
     ("GET", "/api/v1/events"): ["events.read"],
     ("POST", "/api/v1/events/ack"): ["events.ack"],
+    ("GET", "/api/v1/audit"): ["audit.read"],
+    ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).
