@@ -18,6 +18,7 @@ from .entities import Entity, EntityDeviceBinding
 from .events import EventV1, EventV1Checkpoint
 from .audit import AuditV1Entry
 from .secrets import SecretV1
+from .config import ConfigV1
 
 __all__ = [
     "User",
@@ -42,4 +43,5 @@ __all__ = [
     "EventV1Checkpoint",
     "AuditV1Entry",
     "SecretV1",
+    "ConfigV1",
 ]
