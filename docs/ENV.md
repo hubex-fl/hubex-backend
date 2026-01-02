@@ -63,18 +63,4 @@ python -m pip install -U -r requirements.txt -r requirements-dev.txt
 - `HUBEX_KNOWN_UID` (default: `debug-test-1`) — known UID for lookup smoke.
 
 ## Local quick start
-PowerShell:
-```
-$env:HUBEX_BASE="http://127.0.0.1:8000"
-$env:HUBEX_TOKEN="<JWT>"
-$env:HUBEX_CAPS_ENFORCE="0"
-$env:HUBEX_RL_ENABLED="0"
-```
-
-bash:
-```
-export HUBEX_BASE="http://127.0.0.1:8000"
-export HUBEX_TOKEN="<JWT>"
-export HUBEX_CAPS_ENFORCE=0
-export HUBEX_RL_ENABLED=0
-```
+See `docs/DEV.md`.

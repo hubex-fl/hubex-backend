@@ -1,5 +1,7 @@
 # Hubex Backend
 
+Developer entry point: `docs/DEV.md`
+
 ## Setup (Windows PowerShell)
 
 ```powershell
