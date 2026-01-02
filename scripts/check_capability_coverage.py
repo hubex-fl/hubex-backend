@@ -1,5 +1,8 @@
 ﻿import sys
+from pathlib import Path
 from fastapi.routing import APIRoute
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.main import app
 from app.core.capabilities import CAPABILITY_MAP, PUBLIC_WHITELIST
