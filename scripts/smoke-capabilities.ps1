@@ -12,11 +12,11 @@ $env:HUBEX_CAPS_ENFORCE = "0"
 Write-Host "MODE enforce=0"
 
 function Invoke-Req($method, $url, $headers, $bodyObj=$null) {
-  $json = $null
-  if ($null -ne $bodyObj) { $json = ($bodyObj | ConvertTo-Json -Depth 10 -Compress) }
   try {
-    $resp = Invoke-WebRequest -Method $method -Uri $url -Headers $headers -Body $json -ContentType "application/json" -ErrorAction Stop
-    return @{ status = $resp.StatusCode; body = $resp.Content }
+    $json = $null
+    if ($null -ne $bodyObj) { $json = ($bodyObj | ConvertTo-Json -Depth 10 -Compress) }
+    $resp = Invoke-RestMethod -Method $method -Uri $url -Headers $headers -Body $json -ContentType "application/json" -ErrorAction Stop
+    return @{ status = 200; body = ($resp | ConvertTo-Json -Depth 10) }
   } catch {
     $ex = $_.Exception
     $status = $null
