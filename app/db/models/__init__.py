@@ -16,6 +16,7 @@ from .device_runtime import DeviceRuntimeSetting
 from .revoked_token import RevokedToken
 from .entities import Entity, EntityDeviceBinding
 from .events import EventV1, EventV1Checkpoint
+from .audit import AuditV1Entry
 
 __all__ = [
     "User",
@@ -38,4 +39,5 @@ __all__ = [
     "EntityDeviceBinding",
     "EventV1",
     "EventV1Checkpoint",
+    "AuditV1Entry",
 ]
