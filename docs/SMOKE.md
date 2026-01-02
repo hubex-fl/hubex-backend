@@ -97,5 +97,6 @@ bash:
 Expected output:
 - One line per step: "OK <step>" or "FAIL <step>"
 - Non-zero exit on first failure
- - Prints "PY=<path>" once, using repo .venv if present
- - Includes "repo hygiene" as the final step
+- Prints "PY=<path>" once, using repo .venv if present
+- Includes "repo hygiene" as the final step
+ - Includes "api readonly catalog" as the final step
