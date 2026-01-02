@@ -19,6 +19,7 @@ $steps = @(
   @{ Name = "capability coverage"; Cmd = { & $py scripts/check_capability_coverage.py } },
   @{ Name = "openapi snapshot"; Cmd = { & $py scripts/gen-openapi-snapshot.py --check } },
   @{ Name = "repo hygiene"; Cmd = { & $py scripts/check_repo_hygiene.py } }
+  @{ Name = "feature freeze marker"; Cmd = { & $py scripts/check_feature_frozen_marker.py } }
 )
 
 foreach ($step in $steps) {

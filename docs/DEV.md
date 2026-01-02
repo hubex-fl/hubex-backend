@@ -34,3 +34,6 @@ See `docs/SMOKE.md`.
 
 ## CI gates
 See `.github/workflows/phase1_gates.yml`.
+
+## Release
+See `docs/RELEASE.md`.

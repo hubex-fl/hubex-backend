@@ -25,3 +25,5 @@ jobs:
         run: python scripts/gen-openapi-snapshot.py --check
       - name: Repo hygiene
         run: python scripts/check_repo_hygiene.py
+      - name: Feature freeze marker
+        run: python scripts/check_feature_frozen_marker.py
