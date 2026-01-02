@@ -1,19 +1,20 @@
 param(
   [string]$Base = $env:HUBEX_BASE,
-  [string]$Token = $env:HUBEX_TOKEN
+  [string]$Email = $env:HUBEX_EMAIL,
+  [string]$Password = $env:HUBEX_PASSWORD
 )
 
 $ErrorActionPreference = "Stop"
 
 if (-not $Base) { $Base = "http://127.0.0.1:8000" }
-if (-not $Token) {
-  Write-Host "HUBEX_TOKEN missing" -ForegroundColor Red
-  exit 1
-}
+if (-not $Email) { $Email = "dev@example.com" }
+if (-not $Password) { $Password = "devdevdev" }
 
-function Invoke-Req($method, $url, $headers) {
+function Invoke-Req($method, $url, $headers, $bodyObj = $null) {
   try {
-    $resp = Invoke-WebRequest -Method $method -Uri $url -Headers $headers -ErrorAction Stop
+    $json = $null
+    if ($bodyObj -ne $null) { $json = ($bodyObj | ConvertTo-Json -Depth 10) }
+    $resp = Invoke-WebRequest -Method $method -Uri $url -Headers $headers -Body $json -ContentType "application/json" -ErrorAction Stop
     return @{ status = $resp.StatusCode; body = $resp.Content }
   } catch {
     $ex = $_.Exception
@@ -28,7 +29,40 @@ function Invoke-Req($method, $url, $headers) {
   }
 }
 
-$headers = @{ Authorization = "Bearer $Token" }
+function Get-JtiFromJwt($token) {
+  try {
+    $parts = $token.Split(".")
+    if ($parts.Length -lt 2) { return $null }
+    $payload = $parts[1]
+    $pad = "=" * ((4 - ($payload.Length % 4)) % 4)
+    $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($payload -replace "-", "+" -replace "_", "/") + $pad))
+    $obj = $json | ConvertFrom-Json
+    return $obj.jti
+  } catch {
+    return $null
+  }
+}
+
+$login = Invoke-Req "POST" "$Base/api/v1/auth/login" @{} @{ email = $Email; password = $Password }
+if ($login.status -ne 200 -or -not $login.body) {
+  Write-Host "FAIL login expected 200 got $($login.status)" -ForegroundColor Red
+  Write-Host $login.body
+  exit 1
+}
+$loginObj = $login.body | ConvertFrom-Json
+$token = $loginObj.access_token
+if (-not $token) {
+  Write-Host "FAIL login missing access_token" -ForegroundColor Red
+  Write-Host $login.body
+  exit 1
+}
+$jti = Get-JtiFromJwt $token
+if (-not $jti) {
+  Write-Host "FAIL login token missing jti" -ForegroundColor Red
+  exit 1
+}
+
+$headers = @{ Authorization = "Bearer $token" }
 
 $res1 = Invoke-Req "GET" "$Base/api/v1/users/me" $headers
 if ($res1.status -ne 200) {
@@ -38,7 +72,7 @@ if ($res1.status -ne 200) {
 }
 Write-Host "OK pre-check authenticated"
 
-& "$PSScriptRoot\\revoke-token.ps1" -Token $Token | Out-Null
+& "$PSScriptRoot\\revoke-token.ps1" -Token $token | Out-Null
 
 $res2 = Invoke-Req "GET" "$Base/api/v1/users/me" $headers
 if ($res2.status -ne 401) {
