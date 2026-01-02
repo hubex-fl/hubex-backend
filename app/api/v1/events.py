@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
@@ -92,5 +92,6 @@ async def ack_events(
         return EventAckOut(ok=True, stored_cursor=checkpoint.cursor, status=status)
 
     checkpoint.cursor = data.cursor
+    checkpoint.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return EventAckOut(ok=True, stored_cursor=checkpoint.cursor, status=status)
