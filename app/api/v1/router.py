@@ -1,6 +1,7 @@
 ﻿from fastapi import APIRouter, Depends
 
 from app.api.deps_caps import capability_guard
+from app.api.deps_rate_limit import rate_limit_guard
 
 from .auth import router as auth_router
 from .users import router as users_router
@@ -15,7 +16,7 @@ from .audit import router as audit_router
 from .secrets import router as secrets_router
 from .config import router as config_router
 
-router = APIRouter(dependencies=[Depends(capability_guard)])
+router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
 router.include_router(auth_router, tags=["auth"])
 router.include_router(users_router, tags=["users"])
