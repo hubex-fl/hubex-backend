@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
+from app.db.models.events import EventV1
 from app.db.models.tasks import Task
 from app.db.models.pairing import PairingSession
 from app.db.models.variables import (
@@ -22,6 +24,8 @@ from app.db.models.variables import (
 )
 from app.db.models.device_runtime import DeviceRuntimeSetting
 from app.core.variable_effects import derive_effects_from_change, enqueue_effects
+
+logger = logging.getLogger("uvicorn.error")
 
 
 def _now_utc() -> datetime:
@@ -836,6 +840,27 @@ async def apply_effective_ack_v3(
     if failed_count == 0:
         setting.last_applied_rev = effective_rev
     await db.flush()
+    try:
+        keys = [str(item.get("key") or "") for item in results if item.get("key")]
+        db.add(
+            EventV1(
+                stream="tenant.system",
+                type="vars.v3.applied",
+                payload={
+                    "device_uid": device.device_uid,
+                    "effective_rev": effective_rev,
+                    "keys": keys,
+                },
+            )
+        )
+        logger.info(
+            "vars.v3.applied trace emitted device_uid=%s effective_rev=%s keys=%s",
+            device.device_uid,
+            effective_rev,
+            len(keys),
+        )
+    except Exception:
+        logger.exception("vars.v3.applied trace emission failed")
     return {"ok": True, "applied": applied_count, "failed": failed_count, "stale": 0, "invalid": 0}
 
 
