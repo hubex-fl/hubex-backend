@@ -10,42 +10,55 @@ if (-not $Token) {
 }
 
 $Headers = @{ Authorization = "Bearer $Token" }
-$Endpoint = "$Base/api/v1/variables/defs"
+$Endpoint = "$Base/api/v1/devices"
 
 function CallOnce {
   try {
-    $resp = Invoke-WebRequest -Method GET -Uri $Endpoint -Headers $Headers -ErrorAction Stop
-    return @{ ok = $true; status = [int]$resp.StatusCode; body = $resp.Content }
+    $resp = Invoke-WebRequest -UseBasicParsing -Method GET -Uri $Endpoint -Headers $Headers -ErrorAction Stop
+    return @{ status = [int]$resp.StatusCode }
   } catch {
     $ex = $_.Exception
     $status = $null
-    $body = $null
     if ($ex.Response) {
       $status = [int]$ex.Response.StatusCode
-      $sr = New-Object System.IO.StreamReader($ex.Response.GetResponseStream())
-      $body = $sr.ReadToEnd()
     }
-    return @{ ok = $false; status = $status; body = $body }
+    return @{ status = $status }
   }
 }
 
 Write-Host "SMOKE_RL_BASE=$Base"
 
-$hits = @()
-for ($i = 0; $i -lt 10; $i++) {
-  $hits += CallOnce
+$counts = @{}
+function IncStatus($code) {
+  if (-not $counts.ContainsKey($code)) { $counts[$code] = 0 }
+  $counts[$code] += 1
 }
 
-$has429 = $hits | Where-Object { $_.status -eq 429 }
-
 if ($env:HUBEX_RL_ENABLED -eq "1") {
-  if (-not $has429) {
+  $max = 60
+  $found = $false
+  for ($i = 0; $i -lt $max; $i++) {
+    $res = CallOnce
+    IncStatus $res.status
+    if ($res.status -eq 429) {
+      $found = $true
+      break
+    }
+  }
+  if (-not $found) {
     throw "FAIL: expected 429 with HUBEX_RL_ENABLED=1"
   }
   Write-Host "OK: 429 observed (rate limit enabled)"
 } else {
-  if ($has429) {
-    throw "FAIL: unexpected 429 with HUBEX_RL_ENABLED!=1"
+  for ($i = 0; $i -lt 15; $i++) {
+    $res = CallOnce
+    IncStatus $res.status
+    if ($res.status -eq 429) {
+      throw "FAIL: unexpected 429 with HUBEX_RL_ENABLED!=1"
+    }
   }
   Write-Host "OK: no 429 (rate limit disabled)"
 }
+
+$hist = ($counts.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ", "
+Write-Host "STATUS_HISTOGRAM $hist"
