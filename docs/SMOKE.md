@@ -76,3 +76,24 @@ Expected output:
 
 Failure modes:
 - Missing HUBEX_TOKEN
+
+## phase1 local gate runners
+**Purpose:** Run Phase-1 gates locally in one command.
+
+Preconditions:
+- .venv activated
+- dependencies installed
+
+PowerShell:
+```
+.\scripts\run-phase1-gates.ps1
+```
+
+bash:
+```
+./scripts/run-phase1-gates.sh
+```
+
+Expected output:
+- One line per step: "OK <step>" or "FAIL <step>"
+- Non-zero exit on first failure
