@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
 from app.db.models.events import EventV1
+from app.db.models.effects import EffectV1
 from app.db.models.tasks import Task
 from app.db.models.pairing import PairingSession
 from app.db.models.variables import (
@@ -842,20 +843,29 @@ async def apply_effective_ack_v3(
     await db.flush()
     try:
         keys = [str(item.get("key") or "") for item in results if item.get("key")]
+        event = EventV1(
+            stream="tenant.system",
+            type="vars.v3.applied",
+            payload={
+                "device_uid": device.device_uid,
+                "effective_rev": effective_rev,
+                "keys": keys,
+            },
+        )
+        db.add(event)
+        await db.flush()
         db.add(
-            EventV1(
-                stream="tenant.system",
-                type="vars.v3.applied",
-                payload={
-                    "device_uid": device.device_uid,
-                    "effective_rev": effective_rev,
-                    "keys": keys,
-                },
+            EffectV1(
+                effect_id=uuid4().hex,
+                source_event_id=event.id,
+                kind="vars.v3.apply",
+                status="queued",
+                payload_json={"effective_rev": effective_rev},
+                error_json=None,
             )
         )
         logger.info(
-            "vars.v3.applied trace emitted device_uid=%s effective_rev=%s keys=%s",
-            device.device_uid,
+            "TRACE vars.v3.applied effective_rev=%s keys_count=%s",
             effective_rev,
             len(keys),
         )
