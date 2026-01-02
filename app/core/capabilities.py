@@ -8,6 +8,7 @@ logger = logging.getLogger("uvicorn.error")
 CAPABILITY_REGISTRY: set[str] = {
     "cap.admin",
     "config.write",
+    "config.read",
     "secrets.write",
     "secrets.read",
     "audit.read",
@@ -87,6 +88,8 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],
     ("GET", "/api/v1/secrets"): ["secrets.read"],
     ("GET", "/api/v1/secrets/{secret_id}"): ["secrets.read"],
+    ("GET", "/api/v1/config"): ["config.read"],
+    ("GET", "/api/v1/config/{config_id}"): ["config.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).
