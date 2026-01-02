@@ -37,3 +37,4 @@ run_step "openapi snapshot" "$PY" scripts/gen-openapi-snapshot.py --check
 run_step "repo hygiene" "$PY" scripts/check_repo_hygiene.py
 run_step "feature freeze marker" "$PY" scripts/check_feature_frozen_marker.py
 run_step "api readonly catalog" "$PY" scripts/check_api_readonly_catalog.py
+run_step "changelog entry" "$PY" scripts/check_changelog_entry.py

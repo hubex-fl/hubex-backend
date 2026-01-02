@@ -21,6 +21,7 @@ $steps = @(
   @{ Name = "repo hygiene"; Cmd = { & $py scripts/check_repo_hygiene.py } }
   @{ Name = "feature freeze marker"; Cmd = { & $py scripts/check_feature_frozen_marker.py } }
   @{ Name = "api readonly catalog"; Cmd = { & $py scripts/check_api_readonly_catalog.py } }
+  @{ Name = "changelog entry"; Cmd = { & $py scripts/check_changelog_entry.py } }
 )
 
 foreach ($step in $steps) {

@@ -29,3 +29,5 @@ jobs:
         run: python scripts/check_feature_frozen_marker.py
       - name: API readonly catalog
         run: python scripts/check_api_readonly_catalog.py
+      - name: Changelog entry
+        run: python scripts/check_changelog_entry.py
