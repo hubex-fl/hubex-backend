@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import uuid4
 import os
 
 from jose import jwt, JWTError
@@ -40,6 +41,7 @@ def create_access_token(
         "iss": ISSUER,
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
+        "jti": uuid4().hex,
     }
     if caps:
         payload["caps"] = caps
