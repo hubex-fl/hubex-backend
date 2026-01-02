@@ -12,7 +12,8 @@ $steps = @(
   @{ Name = "pytest"; Cmd = { & $py -m pytest -q } },
   @{ Name = "alembic single head"; Cmd = { & $py scripts/check_alembic_single_head.py } },
   @{ Name = "capability coverage"; Cmd = { & $py scripts/check_capability_coverage.py } },
-  @{ Name = "openapi snapshot"; Cmd = { & $py scripts/gen-openapi-snapshot.py --check } }
+  @{ Name = "openapi snapshot"; Cmd = { & $py scripts/gen-openapi-snapshot.py --check } },
+  @{ Name = "repo hygiene"; Cmd = { & $py scripts/check_repo_hygiene.py } }
 )
 
 foreach ($step in $steps) {

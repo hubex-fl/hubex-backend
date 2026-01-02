@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env sh
+#!/usr/bin/env sh
 set -eu
 
 if [ -x ".venv/bin/python" ]; then
@@ -16,6 +16,7 @@ echo "PY=$PY"
 run_step() {
   name="$1"
   shift
+  echo "STEP $name"
   if "$@"; then
     echo "OK  $name"
   else
@@ -30,3 +31,4 @@ run_step "pytest" "$PY" -m pytest -q
 run_step "alembic single head" "$PY" scripts/check_alembic_single_head.py
 run_step "capability coverage" "$PY" scripts/check_capability_coverage.py
 run_step "openapi snapshot" "$PY" scripts/gen-openapi-snapshot.py --check
+run_step "repo hygiene" "$PY" scripts/check_repo_hygiene.py
