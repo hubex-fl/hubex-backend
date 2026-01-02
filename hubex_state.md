@@ -98,6 +98,9 @@ Keine DB-Leaks, kein WS-Pool-Exhaustion
 
 Alle Public Contracts versioniert & dokumentiert
 
+Phase-1 COMPLETE / FEATURE-FROZEN (2025-12-24):
+Phase-1.5 is consolidation only: no new APIs, no new contracts, no semantics changes.
+
 4. Phase-0 / Phase-1 Trennung
 
 Phase 0 – Core-Freeze
