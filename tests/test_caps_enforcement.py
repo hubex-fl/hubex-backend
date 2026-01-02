@@ -107,3 +107,28 @@ def test_enforce_off_allows_unmapped(monkeypatch):
 
     res = client.get("/unmapped")
     assert res.status_code == 200
+
+
+def test_enforce_off_allows_missing_caps(monkeypatch):
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "0")
+    CAPABILITY_MAP.clear()
+    CAPABILITY_MAP.update({("GET", "/protected"): ["vars.read"]})
+    PUBLIC_WHITELIST.clear()
+
+    app = _make_app()
+    client = TestClient(app)
+
+    now = datetime.now(timezone.utc)
+    token = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["vars.ack"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+    res = client.get("/protected", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
