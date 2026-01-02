@@ -19,7 +19,11 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
-def create_access_token(subject: str, expires_seconds: Optional[int] = None) -> str:
+def create_access_token(
+    subject: str,
+    expires_seconds: Optional[int] = None,
+    caps: Optional[list[str]] = None,
+) -> str:
     now = datetime.now(timezone.utc)
     env_seconds = os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS")
     if expires_seconds is None and env_seconds:
@@ -37,6 +41,8 @@ def create_access_token(subject: str, expires_seconds: Optional[int] = None) -> 
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
     }
+    if caps:
+        payload["caps"] = caps
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 class AuthTokenError(ValueError):
