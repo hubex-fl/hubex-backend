@@ -84,6 +84,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/entities/{entity_id}"): ["entities.read"],
     ("GET", "/api/v1/entities/{entity_id}/devices"): ["entities.read"],
     ("GET", "/api/v1/events"): ["events.read"],
+    ("GET", "/api/v1/events/{event_id}"): ["events.read"],
     ("POST", "/api/v1/events/ack"): ["events.ack"],
     ("GET", "/api/v1/audit"): ["audit.read"],
     ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],

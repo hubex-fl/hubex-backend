@@ -61,6 +61,18 @@ async def read_events(
     return EventReadOut(stream=stream, cursor=cursor, next_cursor=next_cursor, items=items)
 
 
+@router.get("/{event_id}", response_model=EventItemOut)
+async def get_event(
+    event_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(select(EventV1).where(EventV1.id == event_id))
+    row = res.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="event not found")
+    return EventItemOut(cursor=row.id, ts=row.ts, type=row.type, payload=row.payload)
+
+
 @router.post("/ack", response_model=EventAckOut)
 async def ack_events(
     data: EventAckIn,
