@@ -5,6 +5,11 @@ if (-not (Test-Path $py)) {
   $py = "python"
 }
 Write-Host "PY=$py"
+try {
+  & $py -m pytest --version | Out-Null
+} catch {
+  Write-Host "WARN pytest missing: install requirements-dev.txt" -ForegroundColor Yellow
+}
 
 $steps = @(
   @{ Name = "compileall"; Cmd = { & $py -m compileall app -q } },

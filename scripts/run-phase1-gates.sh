@@ -12,6 +12,9 @@ else
 fi
 
 echo "PY=$PY"
+if ! "$PY" -m pytest --version >/dev/null 2>&1; then
+  echo "WARN pytest missing: install requirements-dev.txt" >&2
+fi
 
 run_step() {
   name="$1"

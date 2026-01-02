@@ -3,6 +3,11 @@
 This document lists environment variables used by HUBEX core, smokes, and dev tooling.
 Values shown are examples only. Do not commit real secrets.
 
+## Local installs
+```
+python -m pip install -U -r requirements.txt -r requirements-dev.txt
+```
+
 ## Core runtime
 - `HUBEX_ENV` (default: `dev`) — runtime environment label.
 - `HUBEX_HOST` (default: `127.0.0.1`) — bind host.
