@@ -2,14 +2,16 @@
 set -eu
 
 BASE="${HUBEX_BASE:-http://127.0.0.1:8000}"
+TOKEN="${HUBEX_TOKEN:-}"
 EMAIL="${HUBEX_EMAIL:-dev@example.com}"
 PASSWORD="${HUBEX_PASSWORD:-devdevdev}"
 
-login_resp=$(curl -s -X POST "$BASE/api/v1/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+if [ -z "$TOKEN" ]; then
+  login_resp=$(curl -s -X POST "$BASE/api/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 
-TOKEN=$(python - <<'PY'
+  TOKEN=$(python - <<'PY'
 import json, sys, base64
 resp = sys.stdin.read()
 try:
@@ -35,12 +37,13 @@ PY
 <<EOF
 $login_resp
 EOF
-)
+  )
 
-if [ -z "$TOKEN" ]; then
-  echo "LOGIN FAILED or missing jti (check HUBEX_EMAIL/HUBEX_PASSWORD)" >&2
-  echo "$login_resp" >&2
-  exit 1
+  if [ -z "$TOKEN" ]; then
+    echo "LOGIN FAILED or missing jti (check HUBEX_EMAIL/HUBEX_PASSWORD)" >&2
+    echo "$login_resp" >&2
+    exit 1
+  fi
 fi
 
 status1=$(curl -s -o /tmp/revoke_pre.json -w "%{http_code}" \

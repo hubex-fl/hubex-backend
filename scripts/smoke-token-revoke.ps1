@@ -1,5 +1,6 @@
 param(
   [string]$Base = $env:HUBEX_BASE,
+  [string]$Token = $env:HUBEX_TOKEN,
   [string]$Email = $env:HUBEX_EMAIL,
   [string]$Password = $env:HUBEX_PASSWORD
 )
@@ -43,32 +44,34 @@ function Get-JtiFromJwt($token) {
   }
 }
 
-try {
-  $loginObj = Invoke-RestMethod -Method POST -Uri "$Base/api/v1/auth/login" -Body (@{ email = $Email; password = $Password } | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
-} catch {
-  Write-Host "FAIL login request failed" -ForegroundColor Red
-  $ex = $_.Exception
-  if ($ex.Response) {
-    $sr = New-Object System.IO.StreamReader($ex.Response.GetResponseStream())
-    Write-Host $sr.ReadToEnd()
-  } else {
-    Write-Host $ex.Message
+if (-not $Token) {
+  try {
+    $loginObj = Invoke-RestMethod -Method POST -Uri "$Base/api/v1/auth/login" -Body (@{ email = $Email; password = $Password } | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction Stop
+  } catch {
+    Write-Host "FAIL login request failed" -ForegroundColor Red
+    $ex = $_.Exception
+    if ($ex.Response) {
+      $sr = New-Object System.IO.StreamReader($ex.Response.GetResponseStream())
+      Write-Host $sr.ReadToEnd()
+    } else {
+      Write-Host $ex.Message
+    }
+    exit 1
   }
-  exit 1
+  $Token = $loginObj.access_token
+  if (-not $Token) {
+    Write-Host "FAIL login missing access_token" -ForegroundColor Red
+    Write-Host ($loginObj | ConvertTo-Json -Depth 10)
+    exit 1
+  }
 }
-$token = $loginObj.access_token
-if (-not $token) {
-  Write-Host "FAIL login missing access_token" -ForegroundColor Red
-  Write-Host ($loginObj | ConvertTo-Json -Depth 10)
-  exit 1
-}
-$jti = Get-JtiFromJwt $token
+$jti = Get-JtiFromJwt $Token
 if (-not $jti) {
-  Write-Host "FAIL login token missing jti" -ForegroundColor Red
+  Write-Host "FAIL token missing jti" -ForegroundColor Red
   exit 1
 }
 
-$headers = @{ Authorization = "Bearer $token" }
+$headers = @{ Authorization = "Bearer $Token" }
 
 $res1 = Invoke-Req "GET" "$Base/api/v1/users/me" $headers
 if ($res1.status -ne 200) {
@@ -78,7 +81,7 @@ if ($res1.status -ne 200) {
 }
 Write-Host "OK pre-check authenticated"
 
-& "$PSScriptRoot\\revoke-token.ps1" -Token $token | Out-Null
+& "$PSScriptRoot\\revoke-token.ps1" -Token $Token | Out-Null
 
 $res2 = Invoke-Req "GET" "$Base/api/v1/users/me" $headers
 if ($res2.status -ne 401) {
