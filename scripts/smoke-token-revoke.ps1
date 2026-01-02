@@ -14,8 +14,9 @@ function Invoke-Req($method, $url, $headers, $bodyObj = $null) {
   try {
     $json = $null
     if ($bodyObj -ne $null) { $json = ($bodyObj | ConvertTo-Json -Depth 10) }
-    $resp = Invoke-WebRequest -Method $method -Uri $url -Headers $headers -Body $json -ContentType "application/json" -ErrorAction Stop
-    return @{ status = $resp.StatusCode; body = $resp.Content }
+    $status = $null
+    $resp = Invoke-RestMethod -Method $method -Uri $url -Headers $headers -Body $json -ContentType "application/json" -StatusCodeVariable status -ErrorAction Stop
+    return @{ status = $status; body = ($resp | ConvertTo-Json -Depth 10) }
   } catch {
     $ex = $_.Exception
     $status = $null
