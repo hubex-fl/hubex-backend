@@ -16,6 +16,7 @@ $steps = @(
 )
 
 foreach ($step in $steps) {
+  Write-Host "STEP $($step.Name)"
   try {
     & $step.Cmd
     Write-Host "OK  $($step.Name)"

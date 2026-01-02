@@ -81,7 +81,7 @@ Failure modes:
 **Purpose:** Run Phase-1 gates locally in one command.
 
 Preconditions:
-- .venv activated
+- .venv present (auto-detected) or system Python available
 - dependencies installed
 
 PowerShell:
@@ -97,3 +97,4 @@ bash:
 Expected output:
 - One line per step: "OK <step>" or "FAIL <step>"
 - Non-zero exit on first failure
+ - Prints "PY=<path>" once, using repo .venv if present
