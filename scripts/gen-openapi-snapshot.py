@@ -13,15 +13,23 @@ def _generate() -> dict:
     return app.openapi()
 
 
+def _normalize(obj):
+    if isinstance(obj, dict):
+        return {k: _normalize(obj[k]) for k in sorted(obj)}
+    if isinstance(obj, list):
+        return [_normalize(v) for v in obj]
+    return obj
+
+
 def main() -> int:
     check = "--check" in sys.argv
-    data = _generate()
+    data = _normalize(_generate())
 
     if check:
         if not SNAPSHOT_PATH.exists():
             print("openapi snapshot missing: docs/openapi.snapshot.json", file=sys.stderr)
             return 1
-        existing = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
+        existing = _normalize(json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8")))
         if existing != data:
             print("openapi snapshot drift detected", file=sys.stderr)
             return 1
