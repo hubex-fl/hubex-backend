@@ -51,19 +51,21 @@ if [ "${HUBEX_CAPS_ENFORCE:-0}" != "1" ]; then
 fi
 
 # Enforce=1 (real blocking)
-echo "MODE enforce=1"
+if [ "${HUBEX_CAPS_ENFORCE:-0}" = "1" ]; then
+  echo "MODE enforce=1"
 
-if [ -z "$TOKEN" ]; then
-  echo "HUBEX_TOKEN missing; cannot verify 403 on insufficient caps"
-  exit 0
-fi
+  if [ -z "$TOKEN" ]; then
+    echo "HUBEX_TOKEN missing; cannot verify 403 on insufficient caps"
+    exit 0
+  fi
 
-forbidden_status=$(curl -s -o /tmp/smoke_caps_forbidden.json -w "%{http_code}" \
-  -H "Authorization: Bearer $TOKEN" \
-  -X GET "$BASE/api/v1/devices")
-if [ "$forbidden_status" != "403" ]; then
-  echo "FAIL enforce=1 expected 403 got $forbidden_status"
-  cat /tmp/smoke_caps_forbidden.json
-  exit 1
+  forbidden_status=$(curl -s -o /tmp/smoke_caps_forbidden.json -w "%{http_code}" \
+    -H "Authorization: Bearer $TOKEN" \
+    -X GET "$BASE/api/v1/devices")
+  if [ "$forbidden_status" != "403" ]; then
+    echo "FAIL enforce=1 expected 403 got $forbidden_status"
+    cat /tmp/smoke_caps_forbidden.json
+    exit 1
+  fi
+  echo "OK enforce=1 non-whitelist with token lacking caps => 403"
 fi
-echo "OK enforce=1 non-whitelist with token lacking caps => 403"

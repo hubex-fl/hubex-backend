@@ -69,18 +69,20 @@ if ($env:HUBEX_CAPS_ENFORCE -ne "1") {
 }
 
 # Enforce=1 (real blocking)
-Write-Host "MODE enforce=1"
+if ($env:HUBEX_CAPS_ENFORCE -eq "1") {
+  Write-Host "MODE enforce=1"
 
-# 4) Non-whitelisted with token lacking caps => 403
-if (-not $Token) {
-  Write-Host "HUBEX_TOKEN missing; cannot verify 403 on insufficient caps" -ForegroundColor Yellow
-  exit 0
+  # 4) Non-whitelisted with token lacking caps => 403
+  if (-not $Token) {
+    Write-Host "HUBEX_TOKEN missing; cannot verify 403 on insufficient caps" -ForegroundColor Yellow
+    exit 0
+  }
+  $headers = @{ Authorization = "Bearer $Token" }
+  $forbidden = Invoke-Req "GET" "$Base/api/v1/devices" $headers $null
+  if ($forbidden.status -ne 403) {
+    Write-Host "FAIL enforce=1 expected 403 got $($forbidden.status)" -ForegroundColor Red
+    Write-Host $forbidden.body
+    exit 1
+  }
+  Write-Host "OK enforce=1 non-whitelist with token lacking caps => 403"
 }
-$headers = @{ Authorization = "Bearer $Token" }
-$forbidden = Invoke-Req "GET" "$Base/api/v1/devices" $headers $null
-if ($forbidden.status -ne 403) {
-  Write-Host "FAIL enforce=1 expected 403 got $($forbidden.status)" -ForegroundColor Red
-  Write-Host $forbidden.body
-  exit 1
-}
-Write-Host "OK enforce=1 non-whitelist with token lacking caps => 403"
