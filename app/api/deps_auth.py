@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.api.deps import get_db
 from app.core.security import decode_access_token, AuthTokenError
+from app.core.token_revoke import is_token_revoked
 from app.db.models.user import User
 from app.db.models.device import Device
 from app.db.models.pairing import DeviceToken
@@ -32,6 +33,10 @@ async def get_current_user(
         _auth_error(str(e))
     except Exception:
         _auth_error("invalid token")
+
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(db, str(jti)):
+        _auth_error("token revoked")
 
     res = await db.execute(select(User).where(User.id == user_id))
     user = res.scalar_one_or_none()

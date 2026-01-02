@@ -13,6 +13,7 @@ from .variables import (
     VariableEffect,
 )
 from .device_runtime import DeviceRuntimeSetting
+from .revoked_token import RevokedToken
 
 __all__ = [
     "User",
@@ -30,4 +31,5 @@ __all__ = [
     "VariableAppliedAck",
     "VariableEffect",
     "DeviceRuntimeSetting",
+    "RevokedToken",
 ]

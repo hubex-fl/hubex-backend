@@ -3,14 +3,17 @@ from typing import Iterable
 
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, APIKeyHeader
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token, AuthTokenError
+from app.core.token_revoke import is_token_revoked
 from app.core.capabilities import (
     enforcement_enabled,
     is_public_route,
     resolve_required_caps,
     validate_caps,
 )
+from app.api.deps import get_db
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -41,6 +44,7 @@ async def capability_guard(
     request: Request,
     creds: HTTPAuthorizationCredentials = Depends(bearer),
     device_token: str | None = Security(device_token_header),
+    db: AsyncSession = Depends(get_db),
 ) -> None:
     method = request.method.upper()
     route = request.scope.get("route")
@@ -79,6 +83,10 @@ async def capability_guard(
             _http_401(_detail("CAP_AUTH_INVALID", "invalid token"))
         logger.warning("CAP_AUTH_INVALID %s %s", method, path)
         return
+
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(db, str(jti)):
+        _http_401(_detail("CAP_TOKEN_REVOKED", "token revoked"))
 
     caps = payload.get("caps") or []
     if not isinstance(caps, list):
