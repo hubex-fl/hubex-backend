@@ -9,6 +9,7 @@ CAPABILITY_REGISTRY: set[str] = {
     "cap.admin",
     "config.write",
     "secrets.write",
+    "secrets.read",
     "audit.read",
     "audit.write",
     "mic.admin",
@@ -84,6 +85,8 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/events/ack"): ["events.ack"],
     ("GET", "/api/v1/audit"): ["audit.read"],
     ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],
+    ("GET", "/api/v1/secrets"): ["secrets.read"],
+    ("GET", "/api/v1/secrets/{secret_id}"): ["secrets.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).

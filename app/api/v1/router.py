@@ -12,6 +12,7 @@ from .variables import router as variables_router
 from .entities import router as entities_router
 from .events import router as events_router
 from .audit import router as audit_router
+from .secrets import router as secrets_router
 
 router = APIRouter(dependencies=[Depends(capability_guard)])
 
@@ -27,4 +28,5 @@ router.include_router(variables_router, tags=["variables"])
 router.include_router(entities_router, tags=["entities"])
 router.include_router(events_router, tags=["events"])
 router.include_router(audit_router, tags=["audit"])
+router.include_router(secrets_router, tags=["secrets"])
 
