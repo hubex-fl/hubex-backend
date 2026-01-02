@@ -17,6 +17,7 @@ from .revoked_token import RevokedToken
 from .entities import Entity, EntityDeviceBinding
 from .events import EventV1, EventV1Checkpoint
 from .audit import AuditV1Entry
+from .secrets import SecretV1
 
 __all__ = [
     "User",
@@ -40,4 +41,5 @@ __all__ = [
     "EventV1",
     "EventV1Checkpoint",
     "AuditV1Entry",
+    "SecretV1",
 ]
