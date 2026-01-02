@@ -19,6 +19,7 @@ from .events import EventV1, EventV1Checkpoint
 from .audit import AuditV1Entry
 from .secrets import SecretV1
 from .config import ConfigV1
+from .effects import EffectV1
 
 __all__ = [
     "User",
@@ -44,4 +45,5 @@ __all__ = [
     "AuditV1Entry",
     "SecretV1",
     "ConfigV1",
+    "EffectV1",
 ]
