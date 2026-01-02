@@ -10,6 +10,7 @@ from .telemetry import router as telemetry_router
 from .tasks import router as tasks_router
 from .variables import router as variables_router
 from .entities import router as entities_router
+from .events import router as events_router
 
 router = APIRouter(dependencies=[Depends(capability_guard)])
 
@@ -23,4 +24,5 @@ router.include_router(telemetry_router, tags=["telemetry"])
 router.include_router(tasks_router, tags=["tasks"])
 router.include_router(variables_router, tags=["variables"])
 router.include_router(entities_router, tags=["entities"])
+router.include_router(events_router, tags=["events"])
 
