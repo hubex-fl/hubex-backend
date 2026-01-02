@@ -15,5 +15,5 @@ class AuditV1Entry(Base):
     actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
     action: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     resource: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    audit_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)

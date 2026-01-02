@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,10 +18,12 @@ class AuditEntryOut(BaseModel):
     actor_id: str
     action: str
     resource: str | None
-    metadata: dict | None
+    audit_metadata: dict | None = Field(
+        default=None, serialization_alias="metadata", validation_alias="audit_metadata"
+    )
     trace_id: str | None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 @router.get("", response_model=list[AuditEntryOut])
