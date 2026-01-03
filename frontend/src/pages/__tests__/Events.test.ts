@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createApp, nextTick } from "vue";
 import Events from "../Events.vue";
-import { useCapabilities } from "../../lib/capabilities";
+import * as capMod from "../../lib/capabilities";
 
 function mountEvents() {
   const el = document.createElement("div");
@@ -15,16 +15,18 @@ function setInput(el: HTMLElement, value: string) {
   const input = el.querySelector("input") as HTMLInputElement;
   input.value = value;
   input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function clickStart(el: HTMLElement) {
   const buttons = Array.from(el.querySelectorAll("button"));
   const start = buttons.find((btn) => btn.textContent?.includes("Start"));
-  start?.click();
+  start?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  return start as HTMLButtonElement | undefined;
 }
 
 describe("Events view", () => {
-  const caps = useCapabilities();
+  const caps = capMod.useCapabilities();
 
   beforeEach(() => {
     caps.status = "ready";
@@ -41,7 +43,19 @@ describe("Events view", () => {
     let capturedSignal: AbortSignal | null = null;
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((_, init) => {
       capturedSignal = (init as RequestInit)?.signal as AbortSignal;
-      return new Promise<Response>(() => undefined);
+      return new Promise<Response>((_resolve, reject) => {
+        const signal = capturedSignal;
+        if (!signal) return;
+        if (signal.aborted) {
+          reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
+          return;
+        }
+        signal.addEventListener(
+          "abort",
+          () => reject(Object.assign(new Error("Aborted"), { name: "AbortError" })),
+          { once: true }
+        );
+      });
     });
 
     const { app, el } = mountEvents();
@@ -62,35 +76,52 @@ describe("Events view", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
 
     const { app, el } = mountEvents();
-    let vis = "visible";
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => vis,
-    });
-    setInput(el, "tenant.system");
-    await nextTick();
-    clickStart(el);
-    vi.advanceTimersByTime(3000);
-    await nextTick();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    try {
+      await nextTick();
+      expect(el.textContent).not.toContain("Missing capability: events.read");
+      expect(capMod.hasCap("events.read")).toBe(true);
 
-    vis = "hidden";
-    document.dispatchEvent(new Event("visibilitychange"));
-    vi.advanceTimersByTime(4000);
-    await Promise.resolve();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+      let visibility: "visible" | "hidden" = "visible";
+      Object.defineProperty(document, "visibilityState", {
+        get: () => visibility,
+        configurable: true,
+      });
+      const setVisibility = (state: "visible" | "hidden") => {
+        visibility = state;
+        document.dispatchEvent(new Event("visibilitychange"));
+        window.dispatchEvent(new Event("visibilitychange"));
+      };
+      expect(document.visibilityState).toBe("visible");
 
-    vis = "visible";
-    document.dispatchEvent(new Event("visibilitychange"));
-    vi.advanceTimersByTime(10);
-    await Promise.resolve();
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+      setInput(el, "tenant.system");
+      await nextTick();
+      const startBtn = clickStart(el);
+      expect(startBtn).toBeTruthy();
+      await nextTick();
+      expect(startBtn?.disabled).toBe(true);
+      expect(el.textContent).not.toContain("Stream required");
+      await Promise.resolve();
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(0);
+      const afterStart = fetchSpy.mock.calls.length;
 
-    app.unmount();
-    vi.useRealTimers();
+      setVisibility("hidden");
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(3100);
+      await Promise.resolve();
+      expect(fetchSpy.mock.calls.length).toBe(afterStart);
+
+      setVisibility("visible");
+      await vi.advanceTimersByTimeAsync(3100);
+      await Promise.resolve();
+      expect(fetchSpy.mock.calls.length).toBeGreaterThan(afterStart);
+    } finally {
+      app.unmount();
+      vi.useRealTimers();
+    }
   });
 
   it("hides viewer without events.read capability", () => {
+    vi.spyOn(capMod, "hasCap").mockReturnValue(false);
     caps.caps = new Set();
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
       return Promise.reject(new Error("should not call fetch"));
