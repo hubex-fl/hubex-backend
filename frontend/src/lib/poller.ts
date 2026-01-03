@@ -6,6 +6,7 @@ type PollerState = {
   running: boolean;
   timer: number | null;
   paused: boolean;
+  inflight: boolean;
 };
 
 export function createPoller(
@@ -13,7 +14,7 @@ export function createPoller(
   intervalMs: number,
   options: PollerOptions = {}
 ) {
-  const state: PollerState = { running: false, timer: null, paused: false };
+  const state: PollerState = { running: false, timer: null, paused: false, inflight: false };
   const pauseWhenHidden = options.pauseWhenHidden !== false;
 
   const onVisibility = () => {
@@ -27,7 +28,9 @@ export function createPoller(
     }
     if (state.running) {
       state.paused = false;
-      runOnce();
+      if (!state.inflight) {
+        runOnce();
+      }
     }
   };
 
@@ -47,12 +50,14 @@ export function createPoller(
   };
 
   const runOnce = async () => {
-    if (!state.running || state.paused) {
+    if (!state.running || state.paused || state.inflight) {
       return;
     }
+    state.inflight = true;
     try {
       await fn();
     } finally {
+      state.inflight = false;
       schedule();
     }
   };
