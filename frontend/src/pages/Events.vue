@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
@@ -148,7 +148,7 @@ onUnmounted(() => {
     </div>
 
     <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities…</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
     <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <div v-if="!canReadEvents" class="muted">Missing capability: events.read</div>
@@ -163,11 +163,11 @@ onUnmounted(() => {
       <p class="muted">ACK disabled in Phase-2</p>
       <p class="muted">
         Cursor: {{ cursor }} | Next: {{ nextCursor }}
-        <span v-if="caughtUp"> — Caught up</span>
+        <span v-if="caughtUp"> - Caught up</span>
       </p>
 
       <div v-if="error" class="error">{{ error }}</div>
-      <div v-else-if="loading" class="muted">Loading…</div>
+      <div v-else-if="loading" class="muted">Loading.</div>
       <div v-else-if="items.length === 0" class="muted">No events.</div>
       <table v-else class="table">
         <thead>
@@ -190,3 +190,7 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+
+
+
