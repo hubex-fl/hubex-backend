@@ -1,26 +1,31 @@
-<script setup lang="ts">
-import { clearToken, hasToken } from "./lib/api";
-import { useRouter } from "vue-router";
+﻿<script setup lang="ts">
+import { onMounted } from "vue";
+import { hasToken } from "./lib/api";
+import { refreshCapabilities, useCapabilities, hasCap } from "./lib/capabilities";
+import { useAbortHandle } from "./lib/abort";
 
-const router = useRouter();
+const caps = useCapabilities();
+const { signal } = useAbortHandle();
 
-function logout() {
-  clearToken();
-  router.push("/login");
-}
+onMounted(() => {
+  refreshCapabilities(signal);
+});
 </script>
 
 <template>
-  <div>
-    <nav class="nav">
-      <router-link to="/devices">Devices</router-link>
-      <router-link to="/pairing">Pairing</router-link>
-      <router-link to="/variables">Variables</router-link>
+  <div class="shell">
+    <aside class="nav">
+      <div class="nav-title">HUBEX</div>
+      <router-link v-if="hasCap('entities.read')" to="/system-stage">System Stage</router-link>
+      <router-link v-if="hasCap('events.read')" to="/events">Events</router-link>
+      <router-link v-if="hasCap('effects.read')" to="/effects">Effects</router-link>
+      <router-link to="/settings/auth">Auth</router-link>
       <div class="spacer"></div>
-      <button v-if="hasToken()" class="btn secondary" @click="logout">Logout</button>
-    </nav>
-    <div class="container">
+      <div class="nav-status">Token: {{ hasToken() ? 'present' : 'missing' }}</div>
+      <div class="nav-status">Caps: {{ caps.status }}</div>
+    </aside>
+    <main class="content">
       <router-view />
-    </div>
+    </main>
   </div>
 </template>

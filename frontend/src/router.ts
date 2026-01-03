@@ -1,28 +1,18 @@
-import { createRouter, createWebHistory } from "vue-router";
-import Login from "./pages/Login.vue";
-import Devices from "./pages/Devices.vue";
-import DeviceDetail from "./pages/DeviceDetail.vue";
-import Pairing from "./pages/Pairing.vue";
-import Variables from "./pages/Variables.vue";
-import { hasToken } from "./lib/api";
+﻿import { createRouter, createWebHistory } from "vue-router";
+import SystemStage from "./pages/SystemStage.vue";
+import Events from "./pages/Events.vue";
+import Effects from "./pages/Effects.vue";
+import SettingsAuth from "./pages/SettingsAuth.vue";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", redirect: "/devices" },
-    { path: "/login", component: Login },
-    { path: "/devices", component: Devices },
-    { path: "/devices/:id", component: DeviceDetail, props: true },
-    { path: "/pairing", component: Pairing },
-    { path: "/variables", component: Variables },
+    { path: "/", redirect: "/system-stage" },
+    { path: "/system-stage", component: SystemStage },
+    { path: "/events", component: Events },
+    { path: "/effects", component: Effects },
+    { path: "/settings/auth", component: SettingsAuth },
   ],
-});
-
-router.beforeEach((to) => {
-  if (to.path !== "/login" && !hasToken()) {
-    return "/login";
-  }
-  return true;
 });
 
 export default router;
