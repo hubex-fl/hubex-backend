@@ -14,6 +14,7 @@ try {
 $steps = @(
   @{ Name = "compileall"; Cmd = { & $py -m compileall app -q } },
   @{ Name = "alembic upgrade head"; Cmd = { & $py -m alembic upgrade head } },
+  @{ Name = "db connectivity"; Cmd = { & $py scripts/smoke-db.py } },
   @{ Name = "pytest"; Cmd = { & $py -m pytest -q } },
   @{ Name = "app boot smoke"; Cmd = { & $py scripts/smoke-app-boot.py } },
   @{ Name = "alembic single head"; Cmd = { & $py scripts/check_alembic_single_head.py } },

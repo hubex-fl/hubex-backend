@@ -30,6 +30,7 @@ run_step() {
 
 run_step "compileall" "$PY" -m compileall app -q
 run_step "alembic upgrade head" "$PY" -m alembic upgrade head
+run_step "db connectivity" "$PY" scripts/smoke-db.py
 run_step "pytest" "$PY" -m pytest -q
 run_step "app boot smoke" "$PY" scripts/smoke-app-boot.py
 run_step "alembic single head" "$PY" scripts/check_alembic_single_head.py
