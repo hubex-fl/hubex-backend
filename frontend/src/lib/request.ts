@@ -16,8 +16,30 @@ type InflightEntry<T> = {
 const inflightGet = new Map<string, InflightEntry<unknown>>();
 let subCounter = 0;
 
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const params = Array.from(parsed.searchParams.entries()).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
+    parsed.search = params.length
+      ? `?${params.map(([k, v]) => `${k}=${v}`).join("&")}`
+      : "";
+    return parsed.pathname + parsed.search;
+  } catch {
+    return url;
+  }
+}
+
+function bodyKey(body: RequestInit["body"]): string {
+  if (!body) return "";
+  if (typeof body === "string") return body;
+  if (body instanceof URLSearchParams) return body.toString();
+  return "[body]";
+}
+
 function buildKey(method: string, url: string, hasToken: boolean): string {
-  return `${method.toUpperCase()} ${url} token=${hasToken ? "1" : "0"}`;
+  return `${method.toUpperCase()} ${normalizeUrl(url)} token=${hasToken ? "1" : "0"}`;
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -50,7 +72,7 @@ export async function fetchJson<T>(
   }
 
   if (method === "GET") {
-    const key = buildKey(method, url, Boolean(token));
+    const key = `${buildKey(method, url, Boolean(token))} body=${bodyKey(init.body)}`;
     const existing = inflightGet.get(key) as InflightEntry<T> | undefined;
     if (existing) {
       const subId = ++subCounter;
