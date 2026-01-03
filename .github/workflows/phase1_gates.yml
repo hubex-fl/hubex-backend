@@ -21,6 +21,8 @@ jobs:
         run: python scripts/check_capability_coverage.py
       - name: Alembic single head
         run: python scripts/check_alembic_single_head.py
+      - name: App boot smoke
+        run: python scripts/smoke-app-boot.py
       - name: OpenAPI snapshot drift
         run: python scripts/gen-openapi-snapshot.py --check
       - name: Repo hygiene
@@ -49,6 +51,8 @@ jobs:
         run: python scripts/check_capability_coverage.py
       - name: Alembic single head
         run: python scripts/check_alembic_single_head.py
+      - name: App boot smoke
+        run: python scripts/smoke-app-boot.py
       - name: OpenAPI snapshot drift
         run: python scripts/gen-openapi-snapshot.py --check
       - name: Repo hygiene

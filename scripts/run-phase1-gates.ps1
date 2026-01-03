@@ -15,6 +15,7 @@ $steps = @(
   @{ Name = "compileall"; Cmd = { & $py -m compileall app -q } },
   @{ Name = "alembic upgrade head"; Cmd = { & $py -m alembic upgrade head } },
   @{ Name = "pytest"; Cmd = { & $py -m pytest -q } },
+  @{ Name = "app boot smoke"; Cmd = { & $py scripts/smoke-app-boot.py } },
   @{ Name = "alembic single head"; Cmd = { & $py scripts/check_alembic_single_head.py } },
   @{ Name = "capability coverage"; Cmd = { & $py scripts/check_capability_coverage.py } },
   @{ Name = "openapi snapshot"; Cmd = { & $py scripts/gen-openapi-snapshot.py --check } },
