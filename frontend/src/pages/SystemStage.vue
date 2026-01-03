@@ -1,9 +1,15 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
+
+type RuntimeBadge = {
+  label: string;
+  value: string;
+  className: string;
+};
 
 type DeviceRow = {
   id: number;
@@ -31,10 +37,18 @@ const stoppedOnError = ref(false);
 
 const canReadDevices = computed(() => hasCap("devices.read"));
 const canReadEntities = computed(() => hasCap("entities.read"));
+const canReadVars = computed(() => hasCap("vars.read"));
 
 const ENTITIES_PATH = "/api/v1/entities";
 const DEVICES_PATH = "/api/v1/devices";
 const offlineThresholdMs = 5 * 60 * 1000;
+
+const bindingsByEntity = ref<Record<string, { device_id: number; enabled: boolean; priority: number }[]>>({});
+const bindingsError = ref<string | null>(null);
+
+let devicesInflight = false;
+let entitiesInflight = false;
+let bindingsInflight = false;
 
 function lastSeen(device: DeviceRow): string | null {
   return device.last_seen_at ?? device.last_seen ?? null;
@@ -57,6 +71,26 @@ function statusClass(device: DeviceRow): string {
   return isOffline(device) ? "pill-bad" : "pill-ok";
 }
 
+function runtimeBadges(device: DeviceRow): RuntimeBadge[] {
+  const unknown = !canReadVars.value;
+  const offlineValue = lastSeen(device) ? (isOffline(device) ? "Offline" : "Online") : "Unknown";
+  const offlineClass = lastSeen(device)
+    ? (isOffline(device) ? "pill-bad" : "pill-ok")
+    : "pill-warn";
+  const unknownValue = unknown ? "N/A" : "Unknown";
+  return [
+    { label: "Pending", value: unknownValue, className: "pill-warn" },
+    { label: "Ack", value: unknownValue, className: "pill-warn" },
+    { label: "Stale", value: unknownValue, className: "pill-warn" },
+    { label: "Offline", value: offlineValue, className: offlineClass },
+  ];
+}
+
+function deviceLabel(deviceId: number): string {
+  const found = devices.value.find((device) => device.id === deviceId);
+  return found ? found.device_uid : `device#${deviceId}`;
+}
+
 function mapError(err: unknown): string {
   const e = err as ApiError;
   if (e?.status) {
@@ -71,8 +105,14 @@ async function refreshDevices() {
     devicesError.value = "Missing capability: devices.read";
     return;
   }
+  if (devicesInflight) return;
+  devicesInflight = true;
   devicesError.value = null;
-  devices.value = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
+  try {
+    devices.value = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
+  } finally {
+    devicesInflight = false;
+  }
 }
 
 async function refreshEntities() {
@@ -81,17 +121,54 @@ async function refreshEntities() {
     entitiesError.value = "Missing capability: entities.read";
     return;
   }
+  if (entitiesInflight) return;
+  entitiesInflight = true;
   entitiesError.value = null;
   try {
     entities.value = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
+    bindingsError.value = null;
   } catch (err) {
     const e = err as ApiError;
     if (e?.status === 404) {
       entities.value = [];
       entitiesError.value = null;
-      return;
+    } else {
+      entitiesError.value = mapError(err);
     }
-    entitiesError.value = mapError(err);
+  } finally {
+    entitiesInflight = false;
+  }
+}
+
+async function refreshBindings() {
+  if (!canReadEntities.value) {
+    bindingsByEntity.value = {};
+    bindingsError.value = "Missing capability: entities.read";
+    return;
+  }
+  if (!entities.value.length || entitiesError.value) return;
+  if (bindingsInflight) return;
+  bindingsInflight = true;
+  try {
+    const next: Record<string, { device_id: number; enabled: boolean; priority: number }[]> = {};
+    await Promise.all(
+      entities.value.map(async (entity) => {
+        const path = `/api/v1/entities/${encodeURIComponent(entity.entity_id)}/devices`;
+        try {
+          next[entity.entity_id] = await fetchJson(path, { method: "GET" }, signal);
+        } catch (err) {
+          const e = err as ApiError;
+          if (e?.status === 404) {
+            next[entity.entity_id] = [];
+            return;
+          }
+          bindingsError.value = mapError(err);
+        }
+      })
+    );
+    bindingsByEntity.value = next;
+  } finally {
+    bindingsInflight = false;
   }
 }
 
@@ -100,6 +177,7 @@ async function refreshAll() {
   loading.value = true;
   try {
     await Promise.all([refreshDevices(), refreshEntities()]);
+    await refreshBindings();
   } catch (err) {
     if (!devicesError.value) devicesError.value = mapError(err);
     stoppedOnError.value = true;
@@ -113,10 +191,13 @@ function retryAll() {
   stoppedOnError.value = false;
   devicesError.value = null;
   entitiesError.value = null;
-  refreshAll().catch(() => {
-    stoppedOnError.value = true;
-    poller.stop();
-  });
+  bindingsError.value = null;
+  if (document.visibilityState !== "hidden") {
+    refreshAll().catch(() => {
+      stoppedOnError.value = true;
+      poller.stop();
+    });
+  }
   poller.start();
 }
 
@@ -150,20 +231,21 @@ onUnmounted(() => {
     </div>
 
     <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities…</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
     <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <section class="card">
       <h3>Entities</h3>
       <div v-if="entitiesError" class="error">{{ entitiesError }}</div>
       <div v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</div>
-      <div v-else-if="loading" class="muted">Loading…</div>
+      <div v-else-if="loading" class="muted">Loading.</div>
       <table v-else-if="entities.length" class="table">
         <thead>
           <tr>
             <th>ID</th>
             <th>Type</th>
             <th>Name</th>
+            <th>Devices</th>
           </tr>
         </thead>
         <tbody>
@@ -171,6 +253,18 @@ onUnmounted(() => {
             <td>{{ entity.entity_id }}</td>
             <td>{{ entity.type }}</td>
             <td>{{ entity.name }}</td>
+            <td>
+              <div v-if="bindingsError" class="error">{{ bindingsError }}</div>
+              <ul v-else class="muted">
+                <li
+                  v-for="binding in bindingsByEntity[entity.entity_id] || []"
+                  :key="`${entity.entity_id}-${binding.device_id}`"
+                >
+                  {{ deviceLabel(binding.device_id) }}
+                </li>
+                <li v-if="!bindingsByEntity[entity.entity_id]?.length">-</li>
+              </ul>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -181,13 +275,17 @@ onUnmounted(() => {
       <h3>Devices</h3>
       <div v-if="devicesError" class="error">{{ devicesError }}</div>
       <div v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</div>
-      <div v-else-if="loading" class="muted">Loading…</div>
+      <div v-else-if="!canReadVars" class="muted">
+        Missing capability: vars.read (runtime states unavailable)
+      </div>
+      <div v-else-if="loading" class="muted">Loading.</div>
       <table v-else-if="devices.length" class="table">
         <thead>
           <tr>
             <th>ID</th>
             <th>UID</th>
             <th>Status</th>
+            <th>Runtime</th>
             <th>State</th>
             <th>Last seen</th>
           </tr>
@@ -201,6 +299,17 @@ onUnmounted(() => {
                 {{ statusLabel(device) }}
               </span>
             </td>
+            <td>
+              <div class="row">
+                <span
+                  v-for="badge in runtimeBadges(device)"
+                  :key="badge.label"
+                  :class="['pill', badge.className]"
+                >
+                  {{ badge.label }}: {{ badge.value }}
+                </span>
+              </div>
+            </td>
             <td>{{ device.state ?? "Unknown" }}</td>
             <td>{{ lastSeen(device) ?? "-" }}</td>
           </tr>
@@ -210,3 +319,5 @@ onUnmounted(() => {
     </section>
   </div>
 </template>
+
+
