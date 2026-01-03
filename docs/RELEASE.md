@@ -16,6 +16,11 @@ Phase-1 is feature-frozen. This file defines release hygiene only.
    - `git tag phase1-YYYYMMDD`
    - `git push --tags`
 
+## Phase-1 baseline
+- Run Phase-1 gates.
+- Tag using `phase1-YYYYMMDD`.
+- Baseline stays feature-frozen.
+
 ## Pre-tag checklist
 - Phase-1 gates pass (local or CI).
 - `scripts/check_feature_frozen_marker.py` passes.

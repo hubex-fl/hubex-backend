@@ -6,6 +6,7 @@
 - Add Windows CI job for phase1 gates.
 - Add app boot smoke to phase1 gate suite.
 - Add DB connectivity smoke to phase1 gate suite.
+- Phase-1.5 consolidation: gates + smokes hardened.
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

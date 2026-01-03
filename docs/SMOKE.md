@@ -100,6 +100,7 @@ Expected output:
 - Prints "PY=<path>" once, using repo .venv if present
 - Includes "db connectivity" after alembic upgrade head
 - Includes "app boot smoke" after pytest
+- Includes "auth caps smoke" after app boot smoke
 - Includes "repo hygiene" as the final step
 - Includes "api readonly catalog" as the final step
 - Includes "changelog entry" as the final step
@@ -109,3 +110,9 @@ Expected output:
 
 Expected output:
 - `OK: openapi`
+
+## smoke-auth-caps.py
+**Purpose:** Verify whitelist and auth guard basics without external server.
+
+Expected output:
+- `OK: auth caps`

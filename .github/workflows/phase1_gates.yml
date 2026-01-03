@@ -17,24 +17,8 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Capability coverage
-        run: python scripts/check_capability_coverage.py
-      - name: Alembic single head
-        run: python scripts/check_alembic_single_head.py
-      - name: DB connectivity
-        run: python scripts/smoke-db.py
-      - name: App boot smoke
-        run: python scripts/smoke-app-boot.py
-      - name: OpenAPI snapshot drift
-        run: python scripts/gen-openapi-snapshot.py --check
-      - name: Repo hygiene
-        run: python scripts/check_repo_hygiene.py
-      - name: Feature freeze marker
-        run: python scripts/check_feature_frozen_marker.py
-      - name: API readonly catalog
-        run: python scripts/check_api_readonly_catalog.py
-      - name: Changelog entry
-        run: python scripts/check_changelog_entry.py
+      - name: Phase-1 gates
+        run: ./scripts/run-phase1-gates.sh
 
   gates-windows:
     runs-on: windows-latest
@@ -49,21 +33,6 @@ jobs:
           if (Test-Path requirements.txt) { pip install -r requirements.txt }
           if (Test-Path requirements-dev.txt) { pip install -r requirements-dev.txt }
         shell: pwsh
-      - name: Capability coverage
-        run: python scripts/check_capability_coverage.py
-      - name: Alembic single head
-        run: python scripts/check_alembic_single_head.py
-      - name: DB connectivity
-        run: python scripts/smoke-db.py
-      - name: App boot smoke
-        run: python scripts/smoke-app-boot.py
-      - name: OpenAPI snapshot drift
-        run: python scripts/gen-openapi-snapshot.py --check
-      - name: Repo hygiene
-        run: python scripts/check_repo_hygiene.py
-      - name: Feature freeze marker
-        run: python scripts/check_feature_frozen_marker.py
-      - name: API readonly catalog
-        run: python scripts/check_api_readonly_catalog.py
-      - name: Changelog entry
-        run: python scripts/check_changelog_entry.py
+      - name: Phase-1 gates
+        run: scripts/run-phase1-gates.ps1
+        shell: pwsh

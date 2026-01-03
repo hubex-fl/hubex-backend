@@ -26,6 +26,10 @@ bash:
 ./scripts/run-phase1-gates.sh
 ```
 
+Prereqs:
+- .venv activated or repo .venv present
+- dependencies installed (requirements.txt + requirements-dev.txt)
+
 ## Environment variables
 See `docs/ENV.md`.
 
