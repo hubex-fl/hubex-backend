@@ -4,8 +4,6 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
-import GateBanner from "../components/GateBanner.vue";
-import ErrorBox from "../components/ErrorBox.vue";
 
 type RuntimeBadge = {
   label: string;
@@ -260,15 +258,13 @@ onUnmounted(() => {
       <button class="btn secondary" @click="retryAll">Retry</button>
     </div>
 
-    <GateBanner
-      v-if="caps.status !== 'ready'"
-      :status="caps.status"
-      :message="capsStatusMessage()"
-    />
+    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
+    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <section class="card">
       <h3>Entities</h3>
-      <ErrorBox v-if="entitiesError" :message="entitiesError" @retry="retryAll" />
+      <div v-if="entitiesError" class="error">{{ entitiesError }}</div>
       <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
       <div v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</div>
       <div v-else-if="loading" class="muted">Loading.</div>
@@ -287,7 +283,7 @@ onUnmounted(() => {
             <td>{{ entity.type }}</td>
             <td>{{ entity.name }}</td>
             <td>
-              <ErrorBox v-if="bindingsError" :message="bindingsError" :showRetry="false" />
+              <div v-if="bindingsError" class="error">{{ bindingsError }}</div>
               <ul v-else class="muted">
                 <li
                   v-for="binding in bindingsByEntity[entity.entity_id] || []"
@@ -306,7 +302,7 @@ onUnmounted(() => {
 
     <section class="card">
       <h3>Devices</h3>
-      <ErrorBox v-if="devicesError" :message="devicesError" @retry="retryAll" />
+      <div v-if="devicesError" class="error">{{ devicesError }}</div>
       <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
       <div v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</div>
       <div v-else-if="!canReadVars" class="muted">

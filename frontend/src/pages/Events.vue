@@ -4,8 +4,6 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
-import GateBanner from "../components/GateBanner.vue";
-import ErrorBox from "../components/ErrorBox.vue";
 
 type EventItem = {
   cursor: number;
@@ -168,11 +166,9 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <GateBanner
-      v-if="caps.status !== 'ready'"
-      :status="caps.status"
-      :message="capsStatusMessage()"
-    />
+    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
+    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <div v-else-if="!canReadEvents" class="muted">Missing capability: events.read</div>
     <div v-else class="card">
@@ -189,7 +185,7 @@ onUnmounted(() => {
         <span v-if="caughtUp"> - Caught up</span>
       </p>
 
-      <ErrorBox v-if="error" :message="error" @retry="retryAll" />
+      <div v-if="error" class="error">{{ error }}</div>
       <div v-else-if="loading" class="muted">Loading.</div>
       <div v-else-if="items.length === 0" class="muted">No events.</div>
       <table v-else class="table">

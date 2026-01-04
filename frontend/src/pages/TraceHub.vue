@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useCapabilities, hasCap } from "../lib/capabilities";
-import GateBanner from "../components/GateBanner.vue";
 import Events from "./Events.vue";
 import Effects from "./Effects.vue";
 
@@ -17,7 +16,6 @@ function capsStatusMessage(): string {
   if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
   return "Capabilities unavailable";
 }
-
 </script>
 
 <template>
@@ -26,11 +24,9 @@ function capsStatusMessage(): string {
       <h2>Trace Hub (read-only)</h2>
     </div>
 
-    <GateBanner
-      v-if="caps.status !== 'ready'"
-      :status="caps.status"
-      :message="capsStatusMessage()"
-    />
+    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
+    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <div v-else class="card">
       <div class="form-row">
@@ -39,12 +35,14 @@ function capsStatusMessage(): string {
       </div>
 
       <div v-if="activeTab === 'events'">
-        <div v-if="!canReadEvents" class="muted">Missing capability: events.read</div>
+        <div v-if="!capsReady" class="muted">{{ capsStatusMessage() }}</div>
+        <div v-else-if="!canReadEvents" class="muted">Missing capability: events.read</div>
         <Events v-else />
       </div>
 
       <div v-else>
-        <div v-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
+        <div v-if="!capsReady" class="muted">{{ capsStatusMessage() }}</div>
+        <div v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
         <Effects v-else />
       </div>
     </div>

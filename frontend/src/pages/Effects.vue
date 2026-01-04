@@ -4,8 +4,6 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
-import GateBanner from "../components/GateBanner.vue";
-import ErrorBox from "../components/ErrorBox.vue";
 
 type EffectItem = {
   id: number;
@@ -209,11 +207,9 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <GateBanner
-      v-if="caps.status !== 'ready'"
-      :status="caps.status"
-      :message="capsStatusMessage()"
-    />
+    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
+    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
     <div v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
     <div v-else class="card">
@@ -232,7 +228,7 @@ onUnmounted(() => {
         <span v-if="caughtUp">- Caught up</span>
       </p>
 
-      <ErrorBox v-if="listError" :message="listError" @retry="retryList" />
+      <div v-if="listError" class="error">{{ listError }}</div>
       <div v-else-if="loadingList" class="muted">Loading.</div>
       <div v-else-if="effects.length === 0" class="muted">No effects.</div>
       <table v-else class="table">
@@ -263,7 +259,7 @@ onUnmounted(() => {
       <div v-if="!selectedEffectId" class="muted">Select an effect to view details.</div>
       <div v-else>
         <div class="muted">Selected: {{ selectedEffectId }}</div>
-        <ErrorBox v-if="detailError" :message="detailError" :showRetry="false" />
+        <div v-if="detailError" class="error">{{ detailError }}</div>
         <div v-else-if="loadingDetail" class="muted">Loading.</div>
         <div v-else-if="detail" class="card">
           <pre class="muted">{{ detail }}</pre>
