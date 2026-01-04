@@ -7,6 +7,7 @@ import SettingsAuth from "./pages/SettingsAuth.vue";
 import TraceHub from "./pages/TraceHub.vue";
 import Audit from "./pages/Audit.vue";
 import Executions from "./pages/Executions.vue";
+import Correlation from "./pages/Correlation.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +20,7 @@ const router = createRouter({
     { path: "/observability", component: Observability },
     { path: "/executions", component: Executions },
     { path: "/audit", component: Audit },
+    { path: "/correlation", component: Correlation },
     { path: "/settings/auth", component: SettingsAuth },
   ],
 });
