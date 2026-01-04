@@ -98,6 +98,10 @@ function startPolling() {
     error.value = capsStatusMessage();
     return;
   }
+  if (!canReadEvents.value) {
+    error.value = "Missing capability: events.read";
+    return;
+  }
   if (!stream.value.trim()) {
     error.value = "Stream required";
     return;
@@ -117,6 +121,10 @@ function stopPolling() {
 function retryAll() {
   if (!capsReady.value) {
     error.value = capsStatusMessage();
+    return;
+  }
+  if (!canReadEvents.value) {
+    error.value = "Missing capability: events.read";
     return;
   }
   error.value = null;

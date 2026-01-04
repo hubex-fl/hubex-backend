@@ -134,6 +134,10 @@ function startPolling() {
     listError.value = capsStatusMessage();
     return;
   }
+  if (!canReadEffects.value) {
+    listError.value = "Missing capability: effects.read";
+    return;
+  }
   listError.value = null;
   stoppedOnError.value = false;
   polling.value = true;
@@ -149,6 +153,10 @@ function stopPolling() {
 function retryList() {
   if (!capsReady.value) {
     listError.value = capsStatusMessage();
+    return;
+  }
+  if (!canReadEffects.value) {
+    listError.value = "Missing capability: effects.read";
     return;
   }
   listError.value = null;

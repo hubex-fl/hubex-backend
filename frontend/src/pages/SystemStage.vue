@@ -216,6 +216,12 @@ function retryAll() {
     bindingsError.value = capsStatusMessage();
     return;
   }
+  if (!canReadDevices.value && !canReadEntities.value) {
+    devicesError.value = "Missing capability: devices.read";
+    entitiesError.value = "Missing capability: entities.read";
+    bindingsError.value = "Missing capability: entities.read";
+    return;
+  }
   stoppedOnError.value = false;
   devicesError.value = null;
   entitiesError.value = null;
