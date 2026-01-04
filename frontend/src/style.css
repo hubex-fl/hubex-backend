@@ -141,6 +141,12 @@ a {
   margin-top: 8px;
 }
 
+.error-box {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

@@ -4,6 +4,7 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
+import GateBanner from "../components/GateBanner.vue";
 
 type DeviceRow = {
   id: number;
@@ -231,9 +232,11 @@ onUnmounted(() => {
       <button class="btn secondary" @click="retryAll">Retry</button>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
+    <GateBanner
+      v-if="caps.status !== 'ready'"
+      :status="caps.status"
+      :message="capsStatusMessage()"
+    />
     <p v-else-if="!anyCap" class="muted">No capabilities available for observability.</p>
 
     <div class="info-grid">
