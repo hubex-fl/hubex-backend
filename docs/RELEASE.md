@@ -21,6 +21,16 @@ Phase-1 is feature-frozen. This file defines release hygiene only.
 - Tag using `phase1-YYYYMMDD`.
 - Baseline stays feature-frozen.
 
+## Phase-2 tag checklist (UI-only)
+- Run frontend gates:
+  - `npm --prefix frontend run typecheck`
+  - `npm --prefix frontend run test`
+  - `npm --prefix frontend run build`
+- Confirm `git status` is clean.
+- Confirm no `node_modules/` or `dist/` are tracked.
+- Confirm SSOT constraints: consumer-only, deny-by-default, no backend changes.
+- Tag using `phase2-YYYY-MM-DD`.
+
 ## Pre-tag checklist
 - Phase-1 gates pass (local or CI).
 - `scripts/check_feature_frozen_marker.py` passes.
