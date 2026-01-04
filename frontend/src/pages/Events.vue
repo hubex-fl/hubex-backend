@@ -32,6 +32,7 @@ const stoppedOnError = ref(false);
 const caughtUp = ref(false);
 const polling = ref(false);
 
+const capsReady = computed(() => caps.status === "ready");
 const canReadEvents = computed(() => hasCap("events.read"));
 const limit = 100;
 
@@ -51,8 +52,18 @@ function buildUrl() {
   return `/api/v1/events?${params.toString()}`;
 }
 
+function capsStatusMessage(): string {
+  if (caps.status === "loading") return "Capabilities loading.";
+  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
+  return "Capabilities unavailable";
+}
+
 async function refreshEvents() {
   if (stoppedOnError.value) return;
+  if (!capsReady.value) {
+    error.value = capsStatusMessage();
+    return;
+  }
   if (!canReadEvents.value) {
     error.value = "Missing capability: events.read";
     return;
@@ -83,6 +94,10 @@ async function refreshEvents() {
 
 function startPolling() {
   if (polling.value) return;
+  if (!capsReady.value) {
+    error.value = capsStatusMessage();
+    return;
+  }
   if (!stream.value.trim()) {
     error.value = "Stream required";
     return;
@@ -100,6 +115,10 @@ function stopPolling() {
 }
 
 function retryAll() {
+  if (!capsReady.value) {
+    error.value = capsStatusMessage();
+    return;
+  }
   error.value = null;
   stoppedOnError.value = false;
   refreshEvents().catch(() => {
@@ -151,7 +170,7 @@ onUnmounted(() => {
     <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
     <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
-    <div v-if="!canReadEvents" class="muted">Missing capability: events.read</div>
+    <div v-else-if="!canReadEvents" class="muted">Missing capability: events.read</div>
     <div v-else class="card">
       <div class="form-row">
         <div>

@@ -31,6 +31,7 @@ const stoppedOnError = ref(false);
 const polling = ref(false);
 const caughtUp = ref(false);
 
+const capsReady = computed(() => caps.status === "ready");
 const limit = ref(50);
 const kindFilter = ref("");
 
@@ -64,8 +65,18 @@ function buildListUrl(afterId?: number | null) {
   return `/api/v1/effects?${params.toString()}`;
 }
 
+function capsStatusMessage(): string {
+  if (caps.status === "loading") return "Capabilities loading.";
+  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
+  return "Capabilities unavailable";
+}
+
 async function refreshList(reset = false) {
   if (stoppedOnError.value || inflightList) return;
+  if (!capsReady.value) {
+    listError.value = capsStatusMessage();
+    return;
+  }
   if (!canReadEffects.value) {
     listError.value = "Missing capability: effects.read";
     return;
@@ -95,6 +106,10 @@ async function refreshList(reset = false) {
 
 async function refreshDetail(effectId: string) {
   if (inflightDetail) return;
+  if (!capsReady.value) {
+    detailError.value = capsStatusMessage();
+    return;
+  }
   if (!canReadEffects.value) {
     detailError.value = "Missing capability: effects.read";
     return;
@@ -115,6 +130,10 @@ async function refreshDetail(effectId: string) {
 
 function startPolling() {
   if (polling.value) return;
+  if (!capsReady.value) {
+    listError.value = capsStatusMessage();
+    return;
+  }
   listError.value = null;
   stoppedOnError.value = false;
   polling.value = true;
@@ -128,6 +147,10 @@ function stopPolling() {
 }
 
 function retryList() {
+  if (!capsReady.value) {
+    listError.value = capsStatusMessage();
+    return;
+  }
   listError.value = null;
   stoppedOnError.value = false;
   refreshList(true).catch(() => {
@@ -188,7 +211,7 @@ onUnmounted(() => {
     <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
     <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
 
-    <div v-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
+    <div v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
     <div v-else class="card">
       <div class="form-row">
         <div>

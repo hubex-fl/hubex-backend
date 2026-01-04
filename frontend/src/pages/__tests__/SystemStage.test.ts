@@ -56,6 +56,19 @@ describe("SystemStage", () => {
     app.unmount();
   });
 
+  it("does not fetch when capabilities are unavailable", () => {
+    caps.status = "unavailable";
+    caps.caps = new Set(["devices.read"]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      return Promise.reject(new Error("should not call fetch"));
+    });
+
+    const { app, el } = mountSystemStage();
+    expect(el.textContent).toContain("Capabilities unavailable");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    app.unmount();
+  });
+
   it("pauses polling when hidden and resumes on visible", async () => {
     vi.useFakeTimers();
     caps.caps = new Set(["devices.read"]);

@@ -38,6 +38,7 @@ const eventsError = ref<string | null>(null);
 const stoppedOnError = ref(false);
 const loading = ref(false);
 
+const capsReady = computed(() => caps.status === "ready");
 const pendingCount = ref<number | null>(null);
 const failedCount = ref<number | null>(null);
 const offlineCount = ref<number | null>(null);
@@ -73,6 +74,12 @@ function mapError(err: unknown): string {
   return (e && "message" in e) ? String(e.message) : "request_failed";
 }
 
+function capsStatusMessage(): string {
+  if (caps.status === "loading") return "Capabilities loading.";
+  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
+  return "Capabilities unavailable";
+}
+
 function lastSeen(device: DeviceRow): string | null {
   return device.last_seen_at ?? device.last_seen ?? null;
 }
@@ -101,6 +108,12 @@ function computeEffectCounts(rows: EffectRow[]) {
 }
 
 async function refreshDevices() {
+  if (!capsReady.value) {
+    devices.value = [];
+    devicesError.value = capsStatusMessage();
+    offlineCount.value = null;
+    return;
+  }
   if (!canReadDevices.value) {
     devices.value = [];
     devicesError.value = "Missing capability: devices.read";
@@ -122,6 +135,13 @@ async function refreshDevices() {
 }
 
 async function refreshEffects() {
+  if (!capsReady.value) {
+    effects.value = [];
+    effectsError.value = capsStatusMessage();
+    pendingCount.value = null;
+    failedCount.value = null;
+    return;
+  }
   if (!canReadEffects.value) {
     effects.value = [];
     effectsError.value = "Missing capability: effects.read";
@@ -163,6 +183,12 @@ async function refreshAll() {
 }
 
 function retryAll() {
+  if (!capsReady.value) {
+    devicesError.value = capsStatusMessage();
+    effectsError.value = capsStatusMessage();
+    eventsError.value = capsStatusMessage();
+    return;
+  }
   stoppedOnError.value = false;
   devicesError.value = null;
   effectsError.value = null;
@@ -208,14 +234,14 @@ onUnmounted(() => {
     <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
     <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
     <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
-
-    <div v-if="!anyCap" class="muted">No capabilities available for observability.</div>
+    <p v-else-if="!anyCap" class="muted">No capabilities available for observability.</p>
 
     <div class="info-grid">
       <div class="card">
         <div class="info-label">Pending intents</div>
         <div class="info-value">
-          <span v-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
+          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
           <span v-else-if="effectsError" class="error">{{ effectsError }}</span>
           <span v-else>{{ pendingCount ?? "Unavailable" }}</span>
         </div>
@@ -224,7 +250,8 @@ onUnmounted(() => {
       <div class="card">
         <div class="info-label">Failure counts</div>
         <div class="info-value">
-          <span v-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
+          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
           <span v-else-if="effectsError" class="error">{{ effectsError }}</span>
           <span v-else>{{ failedCount ?? "Unavailable" }}</span>
         </div>
@@ -233,7 +260,8 @@ onUnmounted(() => {
       <div class="card">
         <div class="info-label">Offline devices</div>
         <div class="info-value">
-          <span v-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
+          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
           <span v-else-if="devicesError" class="error">{{ devicesError }}</span>
           <span v-else>{{ offlineCount ?? "Unavailable" }}</span>
         </div>
@@ -242,7 +270,8 @@ onUnmounted(() => {
       <div class="card">
         <div class="info-label">Ack outcomes (last N)</div>
         <div class="info-value">
-          <span v-if="ackOutcome.startsWith('Missing capability')" class="muted">{{ ackOutcome }}</span>
+          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-else-if="ackOutcome.startsWith('Missing capability')" class="muted">{{ ackOutcome }}</span>
           <span v-else-if="ackOutcome.startsWith('HTTP')" class="error">{{ ackOutcome }}</span>
           <span v-else>{{ ackOutcome }}</span>
         </div>
@@ -251,7 +280,8 @@ onUnmounted(() => {
       <div class="card">
         <div class="info-label">Time-to-ack (approx)</div>
         <div class="info-value">
-          <span v-if="timeToAck.startsWith('Missing capability')" class="muted">{{ timeToAck }}</span>
+          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-else-if="timeToAck.startsWith('Missing capability')" class="muted">{{ timeToAck }}</span>
           <span v-else-if="timeToAck.startsWith('HTTP')" class="error">{{ timeToAck }}</span>
           <span v-else>{{ timeToAck }}</span>
         </div>

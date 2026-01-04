@@ -35,6 +35,7 @@ const entitiesError = ref<string | null>(null);
 const loading = ref(false);
 const stoppedOnError = ref(false);
 
+const capsReady = computed(() => caps.status === "ready");
 const canReadDevices = computed(() => hasCap("devices.read"));
 const canReadEntities = computed(() => hasCap("entities.read"));
 const canReadVars = computed(() => hasCap("vars.read"));
@@ -99,7 +100,18 @@ function mapError(err: unknown): string {
   return (e && "message" in e) ? String(e.message) : "request_failed";
 }
 
+function capsStatusMessage(): string {
+  if (caps.status === "loading") return "Capabilities loading.";
+  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
+  return "Capabilities unavailable";
+}
+
 async function refreshDevices() {
+  if (!capsReady.value) {
+    devices.value = [];
+    devicesError.value = capsStatusMessage();
+    return;
+  }
   if (!canReadDevices.value) {
     devices.value = [];
     devicesError.value = "Missing capability: devices.read";
@@ -116,6 +128,11 @@ async function refreshDevices() {
 }
 
 async function refreshEntities() {
+  if (!capsReady.value) {
+    entities.value = [];
+    entitiesError.value = capsStatusMessage();
+    return;
+  }
   if (!canReadEntities.value) {
     entities.value = [];
     entitiesError.value = "Missing capability: entities.read";
@@ -141,6 +158,11 @@ async function refreshEntities() {
 }
 
 async function refreshBindings() {
+  if (!capsReady.value) {
+    bindingsByEntity.value = {};
+    bindingsError.value = capsStatusMessage();
+    return;
+  }
   if (!canReadEntities.value) {
     bindingsByEntity.value = {};
     bindingsError.value = "Missing capability: entities.read";
@@ -188,6 +210,12 @@ async function refreshAll() {
 }
 
 function retryAll() {
+  if (!capsReady.value) {
+    devicesError.value = capsStatusMessage();
+    entitiesError.value = capsStatusMessage();
+    bindingsError.value = capsStatusMessage();
+    return;
+  }
   stoppedOnError.value = false;
   devicesError.value = null;
   entitiesError.value = null;
@@ -237,6 +265,7 @@ onUnmounted(() => {
     <section class="card">
       <h3>Entities</h3>
       <div v-if="entitiesError" class="error">{{ entitiesError }}</div>
+      <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
       <div v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</div>
       <div v-else-if="loading" class="muted">Loading.</div>
       <table v-else-if="entities.length" class="table">
@@ -274,6 +303,7 @@ onUnmounted(() => {
     <section class="card">
       <h3>Devices</h3>
       <div v-if="devicesError" class="error">{{ devicesError }}</div>
+      <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
       <div v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</div>
       <div v-else-if="!canReadVars" class="muted">
         Missing capability: vars.read (runtime states unavailable)

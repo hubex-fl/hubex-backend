@@ -45,6 +45,19 @@ describe("Effects view", () => {
     app.unmount();
   });
 
+  it("does not fetch when capabilities are unavailable", () => {
+    caps.status = "unavailable";
+    caps.caps = new Set(["effects.read"]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      return Promise.reject(new Error("should not call fetch"));
+    });
+
+    const { app, el } = mountEffects();
+    expect(el.textContent).toContain("Capabilities unavailable");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    app.unmount();
+  });
+
   it("aborts request on unmount", () => {
     let capturedSignal: AbortSignal | null = null;
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((_, init) => {
