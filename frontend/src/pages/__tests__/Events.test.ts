@@ -25,6 +25,23 @@ function clickStart(el: HTMLElement) {
   return start as HTMLButtonElement | undefined;
 }
 
+function clickButton(el: HTMLElement, label: string) {
+  const buttons = Array.from(el.querySelectorAll("button"));
+  const btn = buttons.find((b) => b.textContent?.trim() === label);
+  btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  return btn as HTMLButtonElement | undefined;
+}
+
+async function flushUi() {
+  await Promise.resolve();
+  await nextTick();
+}
+
+async function flushAsyncUi() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await nextTick();
+}
+
 describe("Events view", () => {
   const caps = capMod.useCapabilities();
 
@@ -143,6 +160,64 @@ describe("Events view", () => {
     const { app, el } = mountEvents();
     expect(el.textContent).toContain("Capabilities unavailable");
     expect(fetchSpy).not.toHaveBeenCalled();
+    app.unmount();
+  });
+
+  it("cursor controls do not fetch unless polling or retry", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      return Promise.reject(new Error("should not call fetch"));
+    });
+
+    const { app, el } = mountEvents();
+    setInput(el, "tenant.system");
+    await nextTick();
+    const cursorInput = el.querySelectorAll("input")[1] as HTMLInputElement;
+    cursorInput.value = "10";
+    cursorInput.dispatchEvent(new Event("input", { bubbles: true }));
+    cursorInput.dispatchEvent(new Event("change", { bubbles: true }));
+    clickButton(el, "Set cursor");
+    clickButton(el, "Jump to next");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    app.unmount();
+  });
+
+  it("hides ack button without events.ack capability", () => {
+    caps.caps = new Set(["events.read"]);
+    const { app, el } = mountEvents();
+    expect(el.textContent).not.toContain("ACK");
+    app.unmount();
+  });
+
+  it("ack posts and shows success on 200", async () => {
+    caps.caps = new Set(["events.read", "events.ack"]);
+    const okResponse = new Response(
+      JSON.stringify({ ok: true, stored_cursor: 5, status: "OK" }),
+      { status: 200 }
+    );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse);
+
+    const { app, el } = mountEvents();
+    setInput(el, "tenant.system");
+    await nextTick();
+    clickButton(el, "ACK");
+    await flushAsyncUi();
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(el.textContent).toContain("ACK OK");
+    app.unmount();
+  });
+
+  it("ack shows failure on non-200", async () => {
+    caps.caps = new Set(["events.read", "events.ack"]);
+    const failResponse = new Response("fail", { status: 500 });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(failResponse);
+
+    const { app, el } = mountEvents();
+    setInput(el, "tenant.system");
+    await nextTick();
+    clickButton(el, "ACK");
+    await flushAsyncUi();
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(el.textContent).toContain("HTTP 500");
     app.unmount();
   });
 });

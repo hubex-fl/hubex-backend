@@ -31,10 +31,15 @@ const error = ref<string | null>(null);
 const stoppedOnError = ref(false);
 const caughtUp = ref(false);
 const polling = ref(false);
+const ackStatus = ref<string | null>(null);
+const ackError = ref<string | null>(null);
+const cursorInput = ref("");
 
 const capsReady = computed(() => caps.status === "ready");
 const canReadEvents = computed(() => hasCap("events.read"));
+const canAckEvents = computed(() => hasCap("events.ack"));
 const limit = 100;
+const subscriberId = "ui.events.viewer";
 
 function mapError(err: unknown): string {
   const e = err as ApiError;
@@ -118,6 +123,68 @@ function stopPolling() {
   poller.stop();
 }
 
+function setCursorFromInput() {
+  const raw = String(cursorInput.value ?? "").trim();
+  if (!raw) {
+    error.value = "Cursor required";
+    return;
+  }
+  const next = Number(raw);
+  if (!Number.isFinite(next) || next < 0) {
+    error.value = "Cursor must be a non-negative number";
+    return;
+  }
+  cursor.value = Math.floor(next);
+  items.value = [];
+  nextCursor.value = 0;
+  caughtUp.value = false;
+}
+
+function jumpToNext() {
+  cursor.value = nextCursor.value;
+  items.value = [];
+  caughtUp.value = false;
+}
+
+async function ackCursor() {
+  ackStatus.value = null;
+  ackError.value = null;
+  if (!capsReady.value) {
+    ackError.value = capsStatusMessage();
+    return;
+  }
+  if (!canAckEvents.value) {
+    ackError.value = "Missing capability: events.ack";
+    return;
+  }
+  const s = stream.value.trim();
+  if (!s) {
+    ackError.value = "Stream required";
+    return;
+  }
+  try {
+    const res = await fetchJson<{ ok: boolean; stored_cursor: number; status: string }>(
+      "/api/v1/events/ack",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          stream: s,
+          subscriber_id: subscriberId,
+          cursor: cursor.value,
+        }),
+      },
+      signal
+    );
+    if (res?.ok) {
+      ackStatus.value = `ACK OK (${res.status ?? "OK"})`;
+    } else {
+      ackError.value = "ACK failed";
+    }
+  } catch (err) {
+    ackError.value = mapError(err);
+  }
+}
+
 function retryAll() {
   if (!capsReady.value) {
     error.value = capsStatusMessage();
@@ -187,11 +254,27 @@ onUnmounted(() => {
         </div>
         <button class="btn" @click="startPolling" :disabled="polling">Start</button>
       </div>
-      <p class="muted">ACK disabled in Phase-2</p>
+      <div class="form-row">
+        <div>
+          <label class="muted">Set cursor</label>
+          <input v-model="cursorInput" class="input" type="number" min="0" />
+        </div>
+        <button class="btn secondary" @click="setCursorFromInput">Set cursor</button>
+        <button class="btn secondary" @click="jumpToNext">Jump to next</button>
+        <button
+          v-if="canAckEvents"
+          class="btn secondary"
+          @click="ackCursor"
+        >
+          ACK
+        </button>
+      </div>
       <p class="muted">
         Cursor: {{ cursor }} | Next: {{ nextCursor }}
         <span v-if="caughtUp"> - Caught up</span>
       </p>
+      <p v-if="ackStatus" class="muted">{{ ackStatus }}</p>
+      <p v-if="ackError" class="error">{{ ackError }}</p>
 
       <div v-if="error" class="error">{{ error }}</div>
       <div v-else-if="loading" class="muted">Loading.</div>
