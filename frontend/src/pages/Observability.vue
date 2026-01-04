@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -22,6 +22,17 @@ type EffectsResponse = {
   items?: EffectRow[];
 } | EffectRow[];
 
+type EventItem = {
+  cursor?: number;
+};
+
+type EventsResponse = {
+  stream?: string;
+  cursor?: number;
+  next_cursor?: number;
+  items?: EventItem[];
+};
+
 const caps = useCapabilities();
 const { signal } = useAbortHandle();
 
@@ -35,21 +46,18 @@ const effects = ref<EffectRow[]>([]);
 const devicesError = ref<string | null>(null);
 const effectsError = ref<string | null>(null);
 const eventsError = ref<string | null>(null);
-const stoppedOnError = ref(false);
 const loading = ref(false);
 
 const capsReady = computed(() => caps.status === "ready");
-const pendingCount = ref<number | null>(null);
 const failedCount = ref<number | null>(null);
 const offlineCount = ref<number | null>(null);
+const eventsCount = ref<number | null>(null);
+const caughtUp = ref<boolean | null>(null);
+const eventsCursor = ref(0);
 
-const ackOutcome = computed(() => {
-  if (!canReadEffects.value) return "Missing capability: effects.read";
-  if (effectsError.value) return effectsError.value;
-  if (failedCount.value === null || pendingCount.value === null) return "Unavailable";
-  const doneCount = effects.value.filter((e) => normalizeStatus(e.status) === "done").length;
-  return `ok: ${doneCount}, failed: ${failedCount.value}`;
-});
+const devicesPaused = ref(false);
+const effectsPaused = ref(false);
+const eventsPaused = ref(false);
 
 const timeToAck = computed(() => {
   if (!canReadEvents.value) return "Missing capability: events.read";
@@ -61,10 +69,14 @@ const anyCap = computed(() => canReadDevices.value || canReadEffects.value || ca
 
 const DEVICES_PATH = "/api/v1/devices";
 const EFFECTS_PATH = "/api/v1/effects?limit=200";
+const EVENTS_STREAM = "tenant.system";
+const EVENTS_LIMIT = 100;
 const offlineThresholdMs = 5 * 60 * 1000;
 
 let devicesInflight = false;
 let effectsInflight = false;
+let eventsInflight = false;
+let polling = false;
 
 function mapError(err: unknown): string {
   const e = err as ApiError;
@@ -102,9 +114,8 @@ function normalizeStatus(value?: string): string {
 
 function computeEffectCounts(rows: EffectRow[]) {
   const statuses = rows.map((row) => normalizeStatus(row.status));
-  const pending = statuses.filter((s) => s === "queued" || s === "in_flight").length;
   const failed = statuses.filter((s) => s === "failed").length;
-  return { pending, failed };
+  return { failed };
 }
 
 async function refreshDevices() {
@@ -120,15 +131,18 @@ async function refreshDevices() {
     offlineCount.value = null;
     return;
   }
+  if (devicesPaused.value) return;
   if (devicesInflight) return;
   devicesInflight = true;
   devicesError.value = null;
   try {
     devices.value = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
     offlineCount.value = computeOfflineCount(devices.value);
+    devicesPaused.value = false;
   } catch (err) {
     devicesError.value = mapError(err);
     offlineCount.value = null;
+    devicesPaused.value = true;
   } finally {
     devicesInflight = false;
   }
@@ -138,17 +152,16 @@ async function refreshEffects() {
   if (!capsReady.value) {
     effects.value = [];
     effectsError.value = capsStatusMessage();
-    pendingCount.value = null;
     failedCount.value = null;
     return;
   }
   if (!canReadEffects.value) {
     effects.value = [];
     effectsError.value = "Missing capability: effects.read";
-    pendingCount.value = null;
     failedCount.value = null;
     return;
   }
+  if (effectsPaused.value) return;
   if (effectsInflight) return;
   effectsInflight = true;
   effectsError.value = null;
@@ -157,26 +170,60 @@ async function refreshEffects() {
     const rows = Array.isArray(res) ? res : res.items ?? [];
     effects.value = rows;
     const counts = computeEffectCounts(rows);
-    pendingCount.value = counts.pending;
     failedCount.value = counts.failed;
+    effectsPaused.value = false;
   } catch (err) {
     effectsError.value = mapError(err);
-    pendingCount.value = null;
     failedCount.value = null;
+    effectsPaused.value = true;
   } finally {
     effectsInflight = false;
   }
 }
 
+async function refreshEvents() {
+  if (!capsReady.value) {
+    eventsError.value = capsStatusMessage();
+    eventsCount.value = null;
+    caughtUp.value = null;
+    return;
+  }
+  if (!canReadEvents.value) {
+    eventsError.value = "Missing capability: events.read";
+    eventsCount.value = null;
+    caughtUp.value = null;
+    return;
+  }
+  if (eventsPaused.value) return;
+  if (eventsInflight) return;
+  eventsInflight = true;
+  eventsError.value = null;
+  try {
+    const url = `/api/v1/events?stream=${encodeURIComponent(EVENTS_STREAM)}&cursor=${eventsCursor.value}&limit=${EVENTS_LIMIT}`;
+    const res = await fetchJson<EventsResponse>(url, { method: "GET" }, signal);
+    const items = res?.items ?? [];
+    eventsCount.value = items.length;
+    caughtUp.value = items.length === 0;
+    if (typeof res?.next_cursor === "number") {
+      eventsCursor.value = res.next_cursor;
+    }
+    eventsPaused.value = false;
+  } catch (err) {
+    eventsError.value = mapError(err);
+    eventsCount.value = null;
+    caughtUp.value = null;
+    eventsPaused.value = true;
+  } finally {
+    eventsInflight = false;
+  }
+}
+
 async function refreshAll() {
-  if (stoppedOnError.value) return;
   loading.value = true;
   try {
-    await Promise.all([refreshDevices(), refreshEffects()]);
+    await Promise.all([refreshDevices(), refreshEffects(), refreshEvents()]);
   } catch (err) {
     if (!devicesError.value) devicesError.value = mapError(err);
-    stoppedOnError.value = true;
-    poller.stop();
   } finally {
     loading.value = false;
   }
@@ -189,38 +236,99 @@ function retryAll() {
     eventsError.value = capsStatusMessage();
     return;
   }
-  stoppedOnError.value = false;
+  if (!anyCap.value) {
+    devicesError.value = "Missing capabilities.";
+    effectsError.value = "Missing capabilities.";
+    eventsError.value = "Missing capabilities.";
+    return;
+  }
   devicesError.value = null;
   effectsError.value = null;
   eventsError.value = null;
-  if (document.visibilityState !== "hidden") {
-    refreshAll().catch(() => {
-      stoppedOnError.value = true;
-      poller.stop();
-    });
+  devicesPaused.value = false;
+  effectsPaused.value = false;
+  eventsPaused.value = false;
+  if (polling) {
+    if (document.visibilityState !== "hidden") {
+      refreshAll().catch(() => {
+        stopPolling();
+      });
+    }
+    return;
   }
-  poller.start();
+  startPolling();
+}
+
+function retryDevices() {
+  if (!capsReady.value) {
+    devicesError.value = capsStatusMessage();
+    return;
+  }
+  if (!canReadDevices.value) {
+    devicesError.value = "Missing capability: devices.read";
+    return;
+  }
+  devicesPaused.value = false;
+  devicesError.value = null;
+  refreshDevices().catch(() => {
+    devicesPaused.value = true;
+  });
+}
+
+function retryEffects() {
+  if (!capsReady.value) {
+    effectsError.value = capsStatusMessage();
+    return;
+  }
+  if (!canReadEffects.value) {
+    effectsError.value = "Missing capability: effects.read";
+    return;
+  }
+  effectsPaused.value = false;
+  effectsError.value = null;
+  refreshEffects().catch(() => {
+    effectsPaused.value = true;
+  });
+}
+
+function retryEvents() {
+  if (!capsReady.value) {
+    eventsError.value = capsStatusMessage();
+    return;
+  }
+  if (!canReadEvents.value) {
+    eventsError.value = "Missing capability: events.read";
+    return;
+  }
+  eventsPaused.value = false;
+  eventsError.value = null;
+  refreshEvents().catch(() => {
+    eventsPaused.value = true;
+  });
 }
 
 const poller = createPoller(refreshAll, 5000, { pauseWhenHidden: true });
 
-watch(
-  () => caps.status,
-  (status) => {
-    if (status === "ready") {
-      retryAll();
-    }
-  }
-);
+function startPolling() {
+  if (polling) return;
+  polling = true;
+  poller.start();
+}
+
+function stopPolling() {
+  if (!polling) return;
+  polling = false;
+  poller.stop();
+}
 
 onMounted(() => {
-  if (caps.status === "ready") {
-    retryAll();
+  if (caps.status === "ready" && anyCap.value) {
+    startPolling();
   }
 });
 
 onUnmounted(() => {
-  poller.stop();
+  stopPolling();
 });
 </script>
 
@@ -238,17 +346,24 @@ onUnmounted(() => {
 
     <div class="info-grid">
       <div class="card">
-        <div class="info-label">Pending intents</div>
+        <div class="card-header-row">
+          <div class="info-label">Events lag / caught up</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadEvents" @click="retryEvents">Retry</button>
+        </div>
         <div class="info-value">
           <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
-          <span v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
-          <span v-else-if="effectsError" class="error">{{ effectsError }}</span>
-          <span v-else>{{ pendingCount ?? "Unavailable" }}</span>
+          <span v-else-if="!canReadEvents" class="muted">Missing capability: events.read</span>
+          <span v-else-if="eventsError" class="error">{{ eventsError }}</span>
+          <span v-else-if="caughtUp === null" class="muted">Unavailable</span>
+          <span v-else>{{ caughtUp ? "Caught up" : `New events: ${eventsCount ?? 0}` }}</span>
         </div>
       </div>
 
       <div class="card">
-        <div class="info-label">Failure counts</div>
+        <div class="card-header-row">
+          <div class="info-label">Recent failures</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadEffects" @click="retryEffects">Retry</button>
+        </div>
         <div class="info-value">
           <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
           <span v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
@@ -258,22 +373,15 @@ onUnmounted(() => {
       </div>
 
       <div class="card">
-        <div class="info-label">Offline devices</div>
+        <div class="card-header-row">
+          <div class="info-label">Offline devices</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadDevices" @click="retryDevices">Retry</button>
+        </div>
         <div class="info-value">
           <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
           <span v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
           <span v-else-if="devicesError" class="error">{{ devicesError }}</span>
           <span v-else>{{ offlineCount ?? "Unavailable" }}</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="info-label">Ack outcomes (last N)</div>
-        <div class="info-value">
-          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
-          <span v-else-if="ackOutcome.startsWith('Missing capability')" class="muted">{{ ackOutcome }}</span>
-          <span v-else-if="ackOutcome.startsWith('HTTP')" class="error">{{ ackOutcome }}</span>
-          <span v-else>{{ ackOutcome }}</span>
         </div>
       </div>
 
