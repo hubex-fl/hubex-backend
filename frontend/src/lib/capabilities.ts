@@ -16,6 +16,19 @@ const state: CapState = reactive({
   error: null,
 });
 
+const DEV_CAPS_ENV = (import.meta as any).env?.VITE_HUBEX_DEV_CAPS ?? "";
+const DEV_CAPS_RAW = String(DEV_CAPS_ENV).trim();
+const DEV_ALL = DEV_CAPS_RAW === "*";
+const DEV_CAPS = DEV_ALL
+  ? []
+  : DEV_CAPS_RAW.split(",").map((cap) => cap.trim()).filter(Boolean);
+
+function isLocalHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
+}
+
 function decodeTokenCaps(token: string | null): string[] {
   if (!token) return [];
   const parts = token.split(".");
@@ -39,32 +52,52 @@ export async function refreshCapabilities(signal?: AbortSignal): Promise<void> {
     state.error = "No token";
     return;
   }
-  state.status = "loading";
-  state.error = null;
+  const tokenCaps = decodeTokenCaps(token);
+  if (tokenCaps.length > 0) {
+    state.caps = new Set(tokenCaps);
+    state.status = "ready";
+    state.error = null;
+    return;
+  } else if (DEV_CAPS_RAW && isLocalHost()) {
+    state.caps = new Set(DEV_CAPS);
+    state.status = "ready";
+    state.error = "DEV CAPS ACTIVE (local override)";
+    return;
+  } else {
+    state.status = "loading";
+    state.error = null;
+  }
+
   try {
     await fetchJson("/api/v1/users/me", { method: "GET" }, signal);
   } catch (err) {
     const e = err as ApiError;
+    if (e.status === 401) {
+      state.status = "error";
+      state.caps.clear();
+      state.error = "Auth failed (401). Paste a fresh token.";
+      return;
+    }
+    if (e.status === 403) {
+      state.status = "unavailable";
+      state.caps.clear();
+      state.error = "Token valid, but no caps present (deny-by-default).";
+      return;
+    }
     state.status = "error";
     state.caps.clear();
-    state.error = e.message;
+    state.error = `Capabilities probe failed: ${e.message}`;
     return;
   }
 
-  const caps = decodeTokenCaps(token);
-  if (caps.length === 0) {
-    state.status = "unavailable";
-    state.caps.clear();
-    state.error = "Capabilities unavailable";
-    return;
-  }
-  state.caps = new Set(caps);
-  state.status = "ready";
-  state.error = null;
+  state.status = "unavailable";
+  state.caps.clear();
+  state.error = "No caps in token. UI is deny-by-default.";
 }
 
 export function hasCap(cap: string): boolean {
   if (state.status !== "ready") return false;
+  if (DEV_ALL && isLocalHost()) return true;
   return state.caps.has(cap);
 }
 
