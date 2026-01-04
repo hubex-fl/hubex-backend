@@ -19,6 +19,7 @@ onMounted(() => {
       <router-link v-if="hasCap('entities.read')" to="/system-stage">System Stage</router-link>
       <router-link v-if="hasCap('events.read')" to="/events">Events</router-link>
       <router-link v-if="hasCap('effects.read')" to="/effects">Effects</router-link>
+      <router-link v-if="hasCap('events.read') || hasCap('effects.read')" to="/trace-hub">Trace Hub</router-link>
       <router-link
         v-if="hasCap('devices.read') || hasCap('effects.read') || hasCap('events.read') || hasCap('vars.read')"
         to="/observability"

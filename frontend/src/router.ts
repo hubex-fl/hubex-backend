@@ -4,6 +4,7 @@ import Events from "./pages/Events.vue";
 import Effects from "./pages/Effects.vue";
 import Observability from "./pages/Observability.vue";
 import SettingsAuth from "./pages/SettingsAuth.vue";
+import TraceHub from "./pages/TraceHub.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,6 +13,7 @@ const router = createRouter({
     { path: "/system-stage", component: SystemStage },
     { path: "/events", component: Events },
     { path: "/effects", component: Effects },
+    { path: "/trace-hub", component: TraceHub },
     { path: "/observability", component: Observability },
     { path: "/settings/auth", component: SettingsAuth },
   ],
