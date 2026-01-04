@@ -5,6 +5,7 @@ import Effects from "./pages/Effects.vue";
 import Observability from "./pages/Observability.vue";
 import SettingsAuth from "./pages/SettingsAuth.vue";
 import TraceHub from "./pages/TraceHub.vue";
+import Audit from "./pages/Audit.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,7 @@ const router = createRouter({
     { path: "/effects", component: Effects },
     { path: "/trace-hub", component: TraceHub },
     { path: "/observability", component: Observability },
+    { path: "/audit", component: Audit },
     { path: "/settings/auth", component: SettingsAuth },
   ],
 });
