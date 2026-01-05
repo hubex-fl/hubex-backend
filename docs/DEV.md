@@ -40,6 +40,7 @@ bash:
 ```
 ./scripts/run-gates.sh
 ```
+Note: Do not run `pytest` directly; use the gate runner to ensure the repo `.venv` is used.
 
 ## Environment variables
 See `docs/ENV.md`.
