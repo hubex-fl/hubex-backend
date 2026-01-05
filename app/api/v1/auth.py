@@ -1,4 +1,5 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Header
+﻿import logging
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -6,6 +7,9 @@ from sqlalchemy import select
 from app.api.deps import get_db
 from app.db.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
+from app.core.capabilities import validate_caps
+
+logger = logging.getLogger("uvicorn.error")
 
 router = APIRouter(prefix="/auth")
 
@@ -41,4 +45,10 @@ async def login(
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
 
-    return TokenOut(access_token=create_access_token(str(user.id), access_token_expire_seconds))
+    caps = user.caps or []
+    unknown = validate_caps(caps)
+    if unknown:
+        logger.warning("auth login: dropping unknown caps: %s", unknown)
+        caps = [cap for cap in caps if cap not in unknown]
+
+    return TokenOut(access_token=create_access_token(str(user.id), access_token_expire_seconds, caps=caps))

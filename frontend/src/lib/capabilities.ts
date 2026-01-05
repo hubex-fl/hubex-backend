@@ -16,7 +16,9 @@ const state: CapState = reactive({
   error: null,
 });
 
-const DEV_CAPS_ENV = (import.meta as any).env?.VITE_HUBEX_DEV_CAPS ?? "";
+const ENV = (globalThis as any).__HUBEX_ENV__ ?? (import.meta as any).env ?? {};
+const DEV_ENABLED = Boolean(ENV.DEV);
+const DEV_CAPS_ENV = DEV_ENABLED ? ENV.VITE_HUBEX_DEV_CAPS ?? "" : "";
 const DEV_CAPS_RAW = String(DEV_CAPS_ENV).trim();
 const DEV_ALL = DEV_CAPS_RAW === "*";
 const DEV_CAPS = DEV_ALL

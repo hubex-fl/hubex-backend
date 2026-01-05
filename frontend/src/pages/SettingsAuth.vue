@@ -9,6 +9,7 @@ const caps = useCapabilities();
 const { signal } = useAbortHandle();
 
 const status = computed(() => (getToken() ? "present" : "missing"));
+const devCapsActive = computed(() => caps.error?.includes("DEV CAPS ACTIVE"));
 
 function saveToken() {
   const token = tokenInput.value.trim();
@@ -39,6 +40,10 @@ function removeToken() {
       />
       <button class="btn" @click="saveToken">Save</button>
       <button class="btn secondary" @click="removeToken">Clear</button>
+    </div>
+
+    <div v-if="devCapsActive" class="inline-warn">
+      DEV CAPS ACTIVE (local override)
     </div>
 
     <div class="muted">Capabilities: {{ caps.status }}</div>
