@@ -8,6 +8,7 @@ import TraceHub from "./pages/TraceHub.vue";
 import Audit from "./pages/Audit.vue";
 import Executions from "./pages/Executions.vue";
 import Correlation from "./pages/Correlation.vue";
+import TokenInspector from "./pages/TokenInspector.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,6 +22,7 @@ const router = createRouter({
     { path: "/executions", component: Executions },
     { path: "/audit", component: Audit },
     { path: "/correlation", component: Correlation },
+    { path: "/token", component: TokenInspector },
     { path: "/settings/auth", component: SettingsAuth },
   ],
 });

@@ -30,6 +30,7 @@ onMounted(() => {
         Observability
       </router-link>
       <router-link to="/settings/auth">Auth</router-link>
+      <router-link to="/token">Token</router-link>
       <div class="spacer"></div>
       <div class="nav-status">Token: {{ hasToken() ? 'present' : 'missing' }}</div>
       <div class="nav-status">Caps: {{ caps.status }}</div>
