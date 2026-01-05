@@ -45,6 +45,14 @@ Note: Do not run `pytest` directly; use the gate runner to ensure the repo `.ven
 ## Environment variables
 See `docs/ENV.md`.
 
+## Local caps (dev)
+If the UI shows "Capabilities unavailable", set caps on your dev user in DB and re-login to mint a new JWT:
+```
+UPDATE users
+SET caps = '["devices.read","events.read","effects.read","vars.read"]'::jsonb
+WHERE email = 'dev@example.com';
+```
+
 ## Smoke scripts
 See `docs/SMOKE.md`.
 

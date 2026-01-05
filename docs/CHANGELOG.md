@@ -3,6 +3,7 @@
 ## Unreleased
 - Make gate runner deterministic across platforms.
 - JWT now includes user caps claim to enable UI capability gating.
+- Reduce soft capability enforcement log noise; clarify caps flow for UI.
 - Docs/gates consolidation and changelog gate enforcement for Phase-1.5.
 - Add phase1 tag guard workflow and release tagging guidance.
 - Add Windows CI job for phase1 gates.

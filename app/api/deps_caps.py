@@ -23,6 +23,13 @@ device_token_header = APIKeyHeader(name="X-Device-Token", auto_error=False)
 DEVICE_CAPS: set[str] = {"vars.read", "vars.ack", "telemetry.emit"}
 
 
+def _log_soft(enforce: bool, msg: str, *args: object) -> None:
+    if enforce:
+        logger.warning(msg, *args)
+    else:
+        logger.debug(msg, *args)
+
+
 def _http_401(detail: dict) -> None:
     raise HTTPException(status_code=401, detail=detail)
 
@@ -56,7 +63,7 @@ async def capability_guard(
     if required is None:
         if enforce:
             _http_403(_detail("CAP_MAPPING_MISSING", "capability mapping missing"))
-        logger.warning("CAP_MAPPING_MISSING %s %s", method, path)
+        _log_soft(enforce, "CAP_MAPPING_MISSING %s %s", method, path)
         return
 
     if is_public_route(method, path):
@@ -68,7 +75,7 @@ async def capability_guard(
     if not creds or not creds.credentials:
         if enforce:
             _http_401(_detail("CAP_AUTH_REQUIRED", "missing bearer token"))
-        logger.warning("CAP_AUTH_MISSING %s %s", method, path)
+        _log_soft(enforce, "CAP_AUTH_MISSING %s %s", method, path)
         return
 
     try:
@@ -76,12 +83,12 @@ async def capability_guard(
     except AuthTokenError as e:
         if enforce:
             _http_401(_detail("CAP_AUTH_INVALID", str(e)))
-        logger.warning("CAP_AUTH_INVALID %s %s", method, path)
+        _log_soft(enforce, "CAP_AUTH_INVALID %s %s", method, path)
         return
     except Exception:
         if enforce:
             _http_401(_detail("CAP_AUTH_INVALID", "invalid token"))
-        logger.warning("CAP_AUTH_INVALID %s %s", method, path)
+        _log_soft(enforce, "CAP_AUTH_INVALID %s %s", method, path)
         return
 
     jti = payload.get("jti")
@@ -96,11 +103,11 @@ async def capability_guard(
     if unknown:
         if enforce:
             _http_403(_detail("CAP_UNKNOWN", "unknown capability"))
-        logger.warning("CAP_UNKNOWN %s %s caps=%s", method, path, unknown)
+        _log_soft(enforce, "CAP_UNKNOWN %s %s caps=%s", method, path, unknown)
         return
 
     if not _has_required_caps(required, caps):
         if enforce:
             _http_403(_detail("CAP_FORBIDDEN", "insufficient capability"))
-        logger.warning("CAP_FORBIDDEN %s %s required=%s", method, path, required)
+        _log_soft(enforce, "CAP_FORBIDDEN %s %s required=%s", method, path, required)
         return

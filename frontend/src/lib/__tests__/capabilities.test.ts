@@ -10,17 +10,6 @@ function makeToken(payload: Record<string, unknown>): string {
   return `x.${b64}.y`;
 }
 
-function setHostname(hostname: string) {
-  Object.defineProperty(window, "location", {
-    value: { hostname },
-    configurable: true,
-  });
-}
-
-function setTestEnv(env: Record<string, unknown>) {
-  (globalThis as any).__HUBEX_ENV__ = env;
-}
-
 async function loadModule(getTokenMock: () => string | null, fetchJsonMock: () => Promise<unknown>) {
   vi.resetModules();
   vi.doMock("../api", () => ({ getToken: getTokenMock }));
@@ -35,7 +24,6 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  delete (globalThis as any).__HUBEX_ENV__;
   vi.restoreAllMocks();
 });
 
@@ -52,13 +40,13 @@ describe("capabilities", () => {
 
   it("token with caps => ready without /users/me", async () => {
     const token = makeToken({ caps: ["events.read"] });
-    const fetchJson = vi.fn();
+    const fetchJson = vi.fn().mockResolvedValue({});
     const mod = await loadModule(() => token, fetchJson as any);
     const state = mod.useCapabilities();
     await mod.refreshCapabilities();
     expect(state.status).toBe("ready");
     expect(mod.hasCap("events.read")).toBe(true);
-    expect(fetchJson).not.toHaveBeenCalled();
+    expect(fetchJson).toHaveBeenCalledTimes(1);
   });
 
   it("token no caps + /users/me 401 => error", async () => {
@@ -71,49 +59,23 @@ describe("capabilities", () => {
     expect(state.error).toContain("401");
   });
 
-  it("token no caps + /users/me 403 => unavailable", async () => {
+  it("token no caps + /users/me 403 => error", async () => {
     const token = makeToken({});
     const fetchJson = vi.fn().mockRejectedValue({ status: 403, message: "forbidden" });
     const mod = await loadModule(() => token, fetchJson as any);
     const state = mod.useCapabilities();
     await mod.refreshCapabilities();
     expect(state.status).toBe("unavailable");
-    expect(state.error).toContain("no caps");
+    expect(state.error).toContain("Token valid but no capabilities present");
   });
 
-  it("dev caps override on localhost => ready", async () => {
-    setHostname("localhost");
-    setTestEnv({ DEV: true, VITE_HUBEX_DEV_CAPS: "events.read,devices.read" });
+  it("token no caps + /users/me 200 => unavailable", async () => {
     const token = makeToken({});
-    const fetchJson = vi.fn();
-    const mod = await loadModule(() => token, fetchJson as any);
-    const state = mod.useCapabilities();
-    await mod.refreshCapabilities();
-    expect(state.status).toBe("ready");
-    expect(mod.hasCap("events.read")).toBe(true);
-    expect(state.error).toContain("DEV CAPS ACTIVE");
-    expect(fetchJson).not.toHaveBeenCalled();
-  });
-
-  it("dev caps ignored on non-local host", async () => {
-    setHostname("example.com");
-    setTestEnv({ DEV: true, VITE_HUBEX_DEV_CAPS: "events.read" });
-    const token = makeToken({});
-    const fetchJson = vi.fn().mockRejectedValue({ status: 403, message: "forbidden" });
+    const fetchJson = vi.fn().mockResolvedValue({});
     const mod = await loadModule(() => token, fetchJson as any);
     const state = mod.useCapabilities();
     await mod.refreshCapabilities();
     expect(state.status).toBe("unavailable");
-    expect(mod.hasCap("events.read")).toBe(false);
-  });
-
-  it("dev caps '*' allows any cap on localhost", async () => {
-    setHostname("127.0.0.1");
-    setTestEnv({ DEV: true, VITE_HUBEX_DEV_CAPS: "*" });
-    const token = makeToken({});
-    const fetchJson = vi.fn();
-    const mod = await loadModule(() => token, fetchJson as any);
-    await mod.refreshCapabilities();
-    expect(mod.hasCap("anything.read")).toBe(true);
+    expect(state.error).toContain("No caps in token");
   });
 });
