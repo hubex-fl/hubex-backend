@@ -30,6 +30,17 @@ Prereqs:
 - .venv activated or repo .venv present
 - dependencies installed (requirements.txt + requirements-dev.txt)
 
+## Local gates (all)
+PowerShell:
+```
+.\scripts\run-gates.ps1
+```
+
+bash:
+```
+./scripts/run-gates.sh
+```
+
 ## Environment variables
 See `docs/ENV.md`.
 
