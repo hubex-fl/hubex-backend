@@ -15,6 +15,9 @@ env/
 _uvicorn_*.out.log
 _uvicorn_*.err.log
 _uvicorn_*.log
+*.log
+_codex_progress.log
+tmp/
 .env.*
 !.env.example
 !frontend/.env.example

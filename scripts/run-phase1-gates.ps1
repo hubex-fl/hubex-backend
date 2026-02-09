@@ -1,4 +1,6 @@
-﻿$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Stop"
+# Native tools may write INFO to stderr; gates must fail only on exit codes.
+$PSNativeCommandUseErrorActionPreference = $false
 
 $py = ".\\.venv\\Scripts\\python.exe"
 if (-not (Test-Path $py)) {
@@ -13,7 +15,7 @@ try {
 
 $steps = @(
   @{ Name = "compileall"; Cmd = { & $py -m compileall app -q } },
-  @{ Name = "alembic upgrade head"; Cmd = { & $py -m alembic upgrade head } },
+  @{ Name = "alembic upgrade head"; Cmd = { & $py -m alembic upgrade head }; Alembic = $true },
   @{ Name = "db connectivity"; Cmd = { & $py scripts/smoke-db.py } },
   @{ Name = "pytest"; Cmd = { & $py -m pytest -q } },
   @{ Name = "app boot smoke"; Cmd = { & $py scripts/smoke-app-boot.py } },
@@ -29,11 +31,16 @@ $steps = @(
 
 foreach ($step in $steps) {
   Write-Host "STEP $($step.Name)"
-  try {
-    & $step.Cmd
+  if ($step.ContainsKey("Alembic") -and $step.Alembic) {
+    $out = & $step.Cmd 2>&1
+    if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "FAIL $($step.Name)" }
     Write-Host "OK  $($step.Name)"
-  } catch {
-    Write-Host "FAIL $($step.Name)" -ForegroundColor Red
-    exit 1
+    continue
   }
+  & $step.Cmd
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL $($step.Name)" -ForegroundColor Red
+    exit $LASTEXITCODE
+  }
+  Write-Host "OK  $($step.Name)"
 }
