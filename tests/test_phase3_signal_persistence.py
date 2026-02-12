@@ -16,9 +16,10 @@ class _FakeAsyncSession:
 
     async def scalar(self, stmt):
         params = stmt.compile().params
+        stream = params.get("stream_1")
         idem = params.get("idempotency_key_1")
         for row in self._rows:
-            if row.idempotency_key == idem:
+            if row.stream == stream and row.idempotency_key == idem:
                 return row
         return None
 
@@ -29,7 +30,10 @@ class _FakeAsyncSession:
         if self._pending is None:
             return
         for row in self._rows:
-            if row.idempotency_key == self._pending.idempotency_key:
+            if (
+                row.stream == self._pending.stream
+                and row.idempotency_key == self._pending.idempotency_key
+            ):
                 raise IntegrityError("duplicate idempotency key", params=None, orig=None)
         self._pending.id = self._next_id
         self._next_id += 1
@@ -66,6 +70,31 @@ async def test_persist_signal_dedupes_idempotency_key():
     assert second.created is False
     assert first.cursor == second.cursor
     assert len(db._rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_persist_signal_allows_same_idempotency_key_across_streams():
+    db = _FakeAsyncSession()
+
+    a = await persist_signal(
+        db,
+        stream="tenant.system",
+        signal_type="device.ping",
+        payload={"n": 1},
+        idempotency_key="idem-1",
+    )
+    b = await persist_signal(
+        db,
+        stream="tenant.other",
+        signal_type="device.ping",
+        payload={"n": 1},
+        idempotency_key="idem-1",
+    )
+
+    assert a.created is True
+    assert b.created is True
+    assert a.cursor != b.cursor
+    assert len(db._rows) == 2
 
 
 @pytest.mark.asyncio

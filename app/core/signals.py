@@ -27,7 +27,12 @@ async def persist_signal(
     idempotency_key: str,
     provider_instance_id: int | None = None,
 ) -> SignalPersistResult:
-    existing = await db.scalar(select(SignalV1).where(SignalV1.idempotency_key == idempotency_key))
+    existing = await db.scalar(
+        select(SignalV1).where(
+            SignalV1.stream == stream,
+            SignalV1.idempotency_key == idempotency_key,
+        )
+    )
     if existing is not None:
         return SignalPersistResult(created=False, cursor=existing.id, signal=existing)
 
@@ -43,7 +48,12 @@ async def persist_signal(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        deduped = await db.scalar(select(SignalV1).where(SignalV1.idempotency_key == idempotency_key))
+        deduped = await db.scalar(
+            select(SignalV1).where(
+                SignalV1.stream == stream,
+                SignalV1.idempotency_key == idempotency_key,
+            )
+        )
         if deduped is None:
             raise
         return SignalPersistResult(created=False, cursor=deduped.id, signal=deduped)
