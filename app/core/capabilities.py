@@ -34,6 +34,10 @@ CAPABILITY_REGISTRY: set[str] = {
     "events.emit",
     "events.ack",
     "effects.read",
+    "providers.read",
+    "providers.write",
+    "signals.read",
+    "signals.ingest",
 }
 
 # Route -> capability mapping (method, path_template)

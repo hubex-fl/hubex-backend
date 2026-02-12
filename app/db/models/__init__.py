@@ -20,6 +20,7 @@ from .audit import AuditV1Entry
 from .secrets import SecretV1
 from .config import ConfigV1
 from .effects import EffectV1
+from .providers import ProviderType, ProviderInstance
 
 __all__ = [
     "User",
@@ -46,4 +47,6 @@ __all__ = [
     "SecretV1",
     "ConfigV1",
     "EffectV1",
+    "ProviderType",
+    "ProviderInstance",
 ]
