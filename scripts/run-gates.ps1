@@ -1,41 +1,57 @@
-param()
+﻿param()
 
 $ErrorActionPreference = "Stop"
-# Native tools may write INFO to stderr; gates must fail only on exit codes.
-$PSNativeCommandUseErrorActionPreference = $false
 
 $root = (git rev-parse --show-toplevel) 2>$null
-if (-not $root) {
-  throw "Not in a git repo; run from hubex-backend repo root."
-}
-Set-Location $root
+if (-not $root) { throw "Not in a git repo; run from hubex-backend." }
+Set-Location -LiteralPath $root
 
 $py = Join-Path $root ".venv\Scripts\python.exe"
-if (-not (Test-Path $py)) {
+if (-not (Test-Path -LiteralPath $py)) {
   throw "Missing .venv python at $py. Create .venv and install deps first."
 }
 Write-Host "PY=$py"
 
-function Run-Step([string]$name, [scriptblock]$cmd, [switch]$IsAlembic) {
-  Write-Host "STEP $name"
-  if ($IsAlembic) {
-    $out = & $cmd 2>&1
-    if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "FAIL $name" }
-    Write-Host "OK  $name"
-    return
-  }
+$tmp = Join-Path $env:TEMP "hubex-gates"
+New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
-  & $cmd
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-  Write-Host "OK  $name"
+function Invoke-NativeStep(
+  [string]$Name,
+  [string]$FilePath,
+  [string[]]$Args,
+  [string]$WorkingDirectory = $root
+) {
+  Write-Host "STEP $Name"
+
+  $stamp = Get-Date -Format "yyyyMMdd-HHmmssfff"
+  $safe  = ($Name -replace '[^a-zA-Z0-9]+','_').Trim('_')
+  if ([string]::IsNullOrWhiteSpace($safe)) { $safe = "step" }
+
+  $out = Join-Path $tmp ("{0}-{1}.out.log" -f $safe, $stamp)
+  $err = Join-Path $tmp ("{0}-{1}.err.log" -f $safe, $stamp)
+
+  $p = Start-Process -FilePath $FilePath -ArgumentList $Args -WorkingDirectory $WorkingDirectory `
+        -NoNewWindow -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+
+  if (Test-Path -LiteralPath $out) { Get-Content -LiteralPath $out | ForEach-Object { Write-Host $_ } }
+  if (Test-Path -LiteralPath $err) { Get-Content -LiteralPath $err | ForEach-Object { Write-Host $_ } }
+
+  if ($p.ExitCode -ne 0) {
+    Write-Host "FAIL $Name (Exit=$($p.ExitCode))" -ForegroundColor Red
+    exit $p.ExitCode
+  }
+  Write-Host "OK  $Name"
 }
 
-Run-Step "compileall" { & $py -m compileall app -q }
-Run-Step "alembic upgrade head" { & $py -m alembic upgrade head } -IsAlembic
-Run-Step "pytest" { & $py -m pytest -q }
-Run-Step "check alembic single head" { & $py scripts\check_alembic_single_head.py }
-Run-Step "check capability coverage" { & $py scripts\check_capability_coverage.py }
-Run-Step "openapi snapshot check" { & $py scripts\gen-openapi-snapshot.py --check }
-Run-Step "frontend typecheck" { npm --prefix frontend run typecheck }
-Run-Step "frontend test" { npm --prefix frontend run test }
-Run-Step "frontend build" { npm --prefix frontend run build }
+# npm on Windows is usually npm.cmd
+$npm = (Get-Command npm -ErrorAction Stop).Source
+
+Invoke-NativeStep "compileall" $py @("-m","compileall","app","-q")
+Invoke-NativeStep "alembic upgrade head" $py @("-m","alembic","upgrade","head")
+Invoke-NativeStep "pytest" $py @("-m","pytest","-q")
+Invoke-NativeStep "check alembic single head" $py @("scripts\check_alembic_single_head.py")
+Invoke-NativeStep "check capability coverage" $py @("scripts\check_capability_coverage.py")
+Invoke-NativeStep "openapi snapshot check" $py @("scripts\gen-openapi-snapshot.py","--check")
+Invoke-NativeStep "frontend typecheck" $npm @("--prefix","frontend","run","typecheck")
+Invoke-NativeStep "frontend test" $npm @("--prefix","frontend","run","test")
+Invoke-NativeStep "frontend build" $npm @("--prefix","frontend","run","build")
