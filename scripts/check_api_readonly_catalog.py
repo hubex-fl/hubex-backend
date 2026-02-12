@@ -15,6 +15,9 @@ EXCLUDE = {
     "GET /api/v1/redoc",
     "GET /api/v1/health",
     "GET /api/v1/version",
+    # write surfaces intentionally excluded from read-only catalog
+    "POST /api/v1/executions/definitions",
+    "POST /api/v1/executions/runs",
 }
 
 

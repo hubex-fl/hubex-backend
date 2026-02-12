@@ -17,6 +17,7 @@
 - Phase-3 closeout: scope signals idempotency to stream (UNIQUE(stream, idempotency_key)).
 - Phase-4 slice 4.1: execution storage foundation (definitions + runs, deterministic cursor reads).
 - Phase-4 slice 4.2: execution read surface (cursor pagination + executions.read).
+- Phase-4 slice 4.3: execution write surface (definitions + runs, executions.write).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

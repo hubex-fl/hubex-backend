@@ -1106,6 +1106,121 @@
         "title": "EventReadOut",
         "type": "object"
       },
+      "ExecutionDefinitionIn": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": true,
+            "title": "Enabled"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "version"
+        ],
+        "title": "ExecutionDefinitionIn",
+        "type": "object"
+      },
+      "ExecutionDefinitionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "version",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExecutionDefinitionOut",
+        "type": "object"
+      },
+      "ExecutionRunIn": {
+        "properties": {
+          "definition_key": {
+            "title": "Definition Key",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "input_json": {
+            "additionalProperties": true,
+            "title": "Input Json",
+            "type": "object"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          }
+        },
+        "required": [
+          "definition_key",
+          "idempotency_key",
+          "input_json"
+        ],
+        "title": "ExecutionRunIn",
+        "type": "object"
+      },
       "ExecutionRunOut": {
         "properties": {
           "created_at": {
@@ -4893,6 +5008,56 @@
         ]
       }
     },
+    "/api/v1/executions/definitions": {
+      "post": {
+        "operationId": "create_execution_definition_api_v1_executions_definitions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionDefinitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionDefinitionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create Execution Definition",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
     "/api/v1/executions/runs": {
       "get": {
         "operationId": "list_execution_runs_api_v1_executions_runs_get",
@@ -4974,6 +5139,54 @@
           }
         ],
         "summary": "List Execution Runs",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      },
+      "post": {
+        "operationId": "create_execution_run_api_v1_executions_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionRunIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create Execution Run",
         "tags": [
           "executions",
           "executions"
