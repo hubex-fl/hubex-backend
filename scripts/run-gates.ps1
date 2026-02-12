@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 function Invoke-NativeStep(
   [string]$Name,
   [string]$FilePath,
-  [string[]]$Args,
+  [string[]]$ArgList,
   [string]$WorkingDirectory = $root
 ) {
   Write-Host "STEP $Name"
@@ -28,7 +28,7 @@ function Invoke-NativeStep(
   $out = Join-Path $tmp ("{0}-{1}.out.log" -f $safe, $stamp)
   $err = Join-Path $tmp ("{0}-{1}.err.log" -f $safe, $stamp)
 
-  $p = Start-Process -FilePath $FilePath -ArgumentList $Args -WorkingDirectory $WorkingDirectory `
+  $p = Start-Process -FilePath $FilePath -ArgumentList $ArgList -WorkingDirectory $WorkingDirectory `
         -NoNewWindow -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
 
   if (Test-Path -LiteralPath $out) { Get-Content -LiteralPath $out | ForEach-Object { Write-Host $_ } }
@@ -41,8 +41,11 @@ function Invoke-NativeStep(
   Write-Host "OK  $Name"
 }
 
-# npm on Windows is usually npm.cmd
-$npm = (Get-Command npm -ErrorAction Stop).Source
+# npm on Windows must run via npm.cmd for Start-Process
+$npm = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+if (-not $npm) {
+  $npm = (Get-Command npm -ErrorAction Stop).Source
+}
 
 Invoke-NativeStep "compileall" $py @("-m","compileall","app","-q")
 Invoke-NativeStep "alembic upgrade head" $py @("-m","alembic","upgrade","head")
