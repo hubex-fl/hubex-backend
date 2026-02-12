@@ -4,47 +4,42 @@
 - No streaming.
 - No worker/queue/background processing.
 - No UI work.
-- Deterministic execution model foundation only (storage-first).
-- No breaking changes to existing APIs/contracts.
+- Storage-first, deterministic foundation only.
+- No new public APIs/routes/contracts in Slice 4.1.
 
 ## Slice 4.1: Execution Model Foundation (Storage-First)
 
-Objective: Add minimal persistence for execution definitions and execution runs, plus deterministic read semantics (internal), without introducing background processing.
+Status set (Option A): `requested | completed | failed | canceled`.
 
-Proposed tables (storage only):
+Tables (implemented shape):
 - `execution_definitions`
   - `id` (pk)
-  - `key` (string, unique)
+  - `key` (string, UNIQUE)
   - `name` (string)
-  - `version` (int or string)
+  - `version` (string)
   - `enabled` (bool)
-  - `created_at`, `updated_at`
+  - `created_at`, `updated_at` (tz-aware)
 - `execution_runs`
   - `id` (pk, monotonic cursor)
   - `definition_id` (fk -> execution_definitions.id)
-  - `requested_by` (nullable string, e.g. user_id/device_uid)
-  - `status` (string; enum-ish)
+  - `idempotency_key` (string)
+  - `requested_by` (nullable string)
+  - `status` (string; allowed states above)
   - `input_json` (json)
   - `output_json` (nullable json)
-  - `idempotency_key` (string)
-  - `created_at`, `updated_at`
-  - Idempotency (recommended): `UNIQUE(definition_id, idempotency_key)` (scope to the definition).
+  - `error_json` (nullable json)
+  - `created_at`, `updated_at` (tz-aware)
+  - Idempotency: `UNIQUE(definition_id, idempotency_key)`
+  - Scan index: `(definition_id, id)`
 
-Deterministic read contract (internal pattern):
-- `read_execution_runs(definition_id, cursor, limit)`:
-  - exclusive cursor: only `id > cursor`
-  - deterministic ordering: `id ASC`
-  - `next_cursor` only when more rows exist (limit+1 technique)
-  - server-side clamp: default limit + max limit
+Deterministic cursor read contract (internal):
+- after_cursor semantics: only `id > cursor` (null => 0)
+- ORDER BY `id ASC`
+- limit+1 for `next_cursor`
+- `next_cursor` only if more rows exist, else `null`
+- limits clamped server-side: DEFAULT=50, MAX=200
 
-Capability placeholders (no enforcement changes required in 4.1):
-- `executions.read`
-- `executions.write`
-
-Acceptance criteria (docs / when implemented):
-- Single Alembic head after migration.
-- Deterministic pagination semantics (`exclusive after_cursor`, `id ASC`, `next_cursor` rules).
-- Limit clamped server-side (default + max cap).
-- Idempotency scoped deterministically (recommended unique scope above).
-- Gates remain green (compileall/pytest/phase1/full).
-
+Invariants (enforced in code, no DB triggers):
+- `input_json` is write-once.
+- `output_json` OR `error_json` can be set at most once (never both).
+- Final states are immutable (completed/failed/canceled cannot transition).

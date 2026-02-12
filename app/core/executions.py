@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models.executions import (
+    ExecutionDefinition,
+    ExecutionRun,
+    RUN_STATUS_REQUESTED,
+)
+
+
+DEFAULT_LIMIT = 50
+MAX_LIMIT = 200
+
+
+async def create_definition(
+    db: AsyncSession,
+    *,
+    key: str,
+    name: str,
+    version: str,
+    enabled: bool = True,
+) -> ExecutionDefinition:
+    existing = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
+    if existing is not None:
+        return existing
+
+    definition = ExecutionDefinition(key=key, name=name, version=version, enabled=enabled)
+    db.add(definition)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        deduped = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
+        if deduped is None:
+            raise
+        return deduped
+
+    await db.refresh(definition)
+    return definition
+
+
+async def create_run_idempotent(
+    db: AsyncSession,
+    *,
+    definition_id: int,
+    idempotency_key: str,
+    requested_by: str | None,
+    input_json: dict,
+) -> ExecutionRun:
+    existing = await db.scalar(
+        select(ExecutionRun).where(
+            ExecutionRun.definition_id == definition_id,
+            ExecutionRun.idempotency_key == idempotency_key,
+        )
+    )
+    if existing is not None:
+        return existing
+
+    run = ExecutionRun(
+        definition_id=definition_id,
+        idempotency_key=idempotency_key,
+        requested_by=requested_by,
+        status=RUN_STATUS_REQUESTED,
+        input_json=input_json,
+        output_json=None,
+        error_json=None,
+    )
+    db.add(run)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        deduped = await db.scalar(
+            select(ExecutionRun).where(
+                ExecutionRun.definition_id == definition_id,
+                ExecutionRun.idempotency_key == idempotency_key,
+            )
+        )
+        if deduped is None:
+            raise
+        return deduped
+
+    await db.refresh(run)
+    return run
+
+
+async def read_runs(
+    db: AsyncSession,
+    *,
+    definition_id: int,
+    cursor: int | None,
+    limit: int,
+) -> tuple[list[ExecutionRun], int | None]:
+    after = cursor or 0
+    clamped = min(max(limit, 1), MAX_LIMIT)
+
+    res = await db.execute(
+        select(ExecutionRun)
+        .where(ExecutionRun.definition_id == definition_id, ExecutionRun.id > after)
+        .order_by(ExecutionRun.id.asc())
+        .limit(clamped + 1)
+    )
+    rows = list(res.scalars().all())
+    if len(rows) <= clamped:
+        return rows, None
+
+    page = rows[:clamped]
+    next_cursor = page[-1].id
+    return page, next_cursor
+
