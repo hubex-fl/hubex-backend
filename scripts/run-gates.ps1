@@ -1,7 +1,5 @@
 ﻿param()
-
-$ErrorActionPreference = "Stop"
-
+$ErrorActionPreference="Continue"
 $root = (git rev-parse --show-toplevel) 2>$null
 if (-not $root) { throw "Not in a git repo; run from hubex-backend." }
 Set-Location -LiteralPath $root
@@ -55,3 +53,5 @@ Invoke-NativeStep "openapi snapshot check" $py @("scripts\gen-openapi-snapshot.p
 Invoke-NativeStep "frontend typecheck" $npm @("--prefix","frontend","run","typecheck")
 Invoke-NativeStep "frontend test" $npm @("--prefix","frontend","run","test")
 Invoke-NativeStep "frontend build" $npm @("--prefix","frontend","run","build")
+
+

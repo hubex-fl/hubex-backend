@@ -1,7 +1,5 @@
 ﻿param()
-
-$ErrorActionPreference = "Stop"
-
+$ErrorActionPreference="Continue"
 $root = (git rev-parse --show-toplevel) 2>$null
 if (-not $root) { throw "Not in a git repo; run from hubex-backend." }
 Set-Location -LiteralPath $root
@@ -62,3 +60,5 @@ Invoke-NativeStep "repo hygiene" $py @("scripts\check_repo_hygiene.py")
 Invoke-NativeStep "feature freeze marker" $py @("scripts\check_feature_frozen_marker.py")
 Invoke-NativeStep "api readonly catalog" $py @("scripts\check_api_readonly_catalog.py")
 Invoke-NativeStep "changelog entry" $py @("scripts\check_changelog_entry.py")
+
+

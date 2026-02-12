@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -39,3 +39,5 @@ tmp/
 Thumbs.db
 __pycache__/
 *.pyc
+
+tmp/*.log
