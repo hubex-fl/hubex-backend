@@ -16,6 +16,7 @@
 - Phase-3 slice 3.3: signal read surface (cursor-based pagination) + signals_v1 stream/id index.
 - Phase-3 closeout: scope signals idempotency to stream (UNIQUE(stream, idempotency_key)).
 - Phase-4 slice 4.1: execution storage foundation (definitions + runs, deterministic cursor reads).
+- Phase-4 slice 4.2: execution read surface (cursor pagination + executions.read).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

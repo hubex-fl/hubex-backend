@@ -1106,6 +1106,118 @@
         "title": "EventReadOut",
         "type": "object"
       },
+      "ExecutionRunOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "definition_id": {
+            "title": "Definition Id",
+            "type": "integer"
+          },
+          "error_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Json"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "input_json": {
+            "additionalProperties": true,
+            "title": "Input Json",
+            "type": "object"
+          },
+          "output_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Json"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "definition_id",
+          "idempotency_key",
+          "requested_by",
+          "status",
+          "input_json",
+          "output_json",
+          "error_json",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExecutionRunOut",
+        "type": "object"
+      },
+      "ExecutionRunReadOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutionRunOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ExecutionRunReadOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4778,6 +4890,93 @@
         "tags": [
           "events",
           "events"
+        ]
+      }
+    },
+    "/api/v1/executions/runs": {
+      "get": {
+        "operationId": "list_execution_runs_api_v1_executions_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "definition_key",
+            "required": true,
+            "schema": {
+              "maxLength": 96,
+              "minLength": 1,
+              "title": "Definition Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunReadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List Execution Runs",
+        "tags": [
+          "executions",
+          "executions"
         ]
       }
     },

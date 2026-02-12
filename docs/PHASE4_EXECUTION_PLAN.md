@@ -43,3 +43,14 @@ Invariants (enforced in code, no DB triggers):
 - `input_json` is write-once.
 - `output_json` OR `error_json` can be set at most once (never both).
 - Final states are immutable (completed/failed/canceled cannot transition).
+
+## Slice 4.2: Execution Read Surface (Read-only)
+
+Read surface:
+- GET `/api/v1/executions/runs?definition_key=<string>&cursor=<int?>&limit=<int?>`
+- Capability: `executions.read` (deny-by-default)
+
+Cursor semantics:
+1) cursor is exclusive after_cursor: only rows with id > cursor are returned (null => 0).
+2) Ordering is deterministic by id ASC; pagination uses limit+1 to avoid duplicates across pages.
+3) next_cursor is the last returned id only when more rows exist; otherwise null.

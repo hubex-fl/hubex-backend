@@ -38,6 +38,7 @@ CAPABILITY_REGISTRY: set[str] = {
     "providers.write",
     "signals.read",
     "signals.ingest",
+    "executions.read",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -99,6 +100,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/effects"): ["effects.read"],
     ("GET", "/api/v1/effects/{effect_id}"): ["effects.read"],
     ("GET", "/api/v1/signals"): ["signals.read"],
+    ("GET", "/api/v1/executions/runs"): ["executions.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).
