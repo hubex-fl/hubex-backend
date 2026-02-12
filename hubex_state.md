@@ -302,6 +302,24 @@ Capability: executions.write (deny-by-default)
 
 State note: runs are created with status="requested"; no completion/failure APIs in 4.3.
 
+8.3 Executions v1 (finalize run)
+
+POST /api/v1/executions/runs/{run_id}/finalize
+Capability: executions.write (deny-by-default)
+
+Allowed statuses: completed | failed | canceled
+
+Transition rules:
+- Only requested -> final
+- If already final:
+  - if request exactly matches stored (status + output_json + error_json) => 200 return existing
+  - else => 409 conflict
+
+Payload rules (hard):
+- completed: requires output_json, forbids error_json
+- failed: requires error_json, forbids output_json
+- canceled: forbids both output_json and error_json
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien
@@ -382,6 +400,7 @@ Initiale Erstellung
 
 | 2025-12-24 | 5, 11 | Add | Capabilities Enforcement präzisiert (deny-by-default + public whitelist); Token revoke (jti denylist) ergänzt | compatible |
 | 2026-02-12 | 8.1, 8.2 | Add | Executions v1 (read-only + write minimal) mit Cursor-Semantik und executions.read/write | compatible |
+| 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
 
 13. Entscheidungsregel (final)
 

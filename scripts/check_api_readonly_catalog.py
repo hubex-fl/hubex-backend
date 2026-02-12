@@ -18,6 +18,7 @@ EXCLUDE = {
     # write surfaces intentionally excluded from read-only catalog
     "POST /api/v1/executions/definitions",
     "POST /api/v1/executions/runs",
+    "POST /api/v1/executions/runs/{run_id}/finalize",
 }
 
 

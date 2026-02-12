@@ -13,7 +13,15 @@ from app.core.executions import (
     create_run_idempotent,
     read_runs,
 )
-from app.db.models.executions import ExecutionDefinition, ExecutionRun
+from app.db.models.executions import (
+    ExecutionDefinition,
+    ExecutionRun,
+    RUN_STATUS_CANCELED,
+    RUN_STATUS_COMPLETED,
+    RUN_STATUS_FAILED,
+    RUN_STATUS_FINAL,
+    RUN_STATUS_REQUESTED,
+)
 
 
 router = APIRouter(prefix="/executions", tags=["executions"])
@@ -65,6 +73,12 @@ class ExecutionRunIn(BaseModel):
     input_json: dict
 
 
+class ExecutionFinalizeIn(BaseModel):
+    status: str
+    output_json: dict | None = None
+    error_json: dict | None = None
+
+
 @router.get("/runs", response_model=ExecutionRunReadOut)
 async def list_execution_runs(
     definition_key: str = Query(..., min_length=1, max_length=96),
@@ -112,4 +126,51 @@ async def create_execution_run(
         requested_by=data.requested_by,
         input_json=data.input_json,
     )
+    return ExecutionRunOut.model_validate(run)
+
+
+@router.post("/runs/{run_id}/finalize", response_model=ExecutionRunOut)
+async def finalize_execution_run(
+    run_id: int,
+    data: ExecutionFinalizeIn,
+    db: AsyncSession = Depends(get_db),
+):
+    if data.status not in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED, RUN_STATUS_CANCELED}:
+        raise HTTPException(status_code=400, detail="invalid status")
+
+    if data.status == RUN_STATUS_COMPLETED:
+        if data.output_json is None:
+            raise HTTPException(status_code=400, detail="completed requires output_json")
+        if data.error_json is not None:
+            raise HTTPException(status_code=400, detail="completed forbids error_json")
+    elif data.status == RUN_STATUS_FAILED:
+        if data.error_json is None:
+            raise HTTPException(status_code=400, detail="failed requires error_json")
+        if data.output_json is not None:
+            raise HTTPException(status_code=400, detail="failed forbids output_json")
+    elif data.status == RUN_STATUS_CANCELED:
+        if data.output_json is not None or data.error_json is not None:
+            raise HTTPException(status_code=400, detail="canceled forbids output_json and error_json")
+
+    run = await db.scalar(select(ExecutionRun).where(ExecutionRun.id == run_id))
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    if run.status in RUN_STATUS_FINAL:
+        if (
+            run.status == data.status
+            and (run.output_json or None) == data.output_json
+            and (run.error_json or None) == data.error_json
+        ):
+            return ExecutionRunOut.model_validate(run)
+        raise HTTPException(status_code=409, detail="run already finalized with different payload")
+
+    if run.status != RUN_STATUS_REQUESTED:
+        raise HTTPException(status_code=409, detail="run status not finalizable")
+
+    run.output_json = data.output_json
+    run.error_json = data.error_json
+    run.status = data.status
+    await db.commit()
+    await db.refresh(run)
     return ExecutionRunOut.model_validate(run)
