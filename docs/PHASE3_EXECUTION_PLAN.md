@@ -25,15 +25,15 @@
   - Duplicate idempotency key does not create multiple rows. ✅
   - Cursor order is monotonic in tests. ✅
   - Existing event/effect endpoints remain unchanged. ✅
-- [ ] 3.3 Signal read/subscription surface.
+- [x] 3.3 Signal read/subscription surface.
   Deliverables:
   - Cursor-based read service and response schema wiring.
   - Capability-gated read mapping (`signals.read`).
   - Docs update for stream/cursor usage.
   Acceptance criteria:
-  - Deterministic pagination semantics (`next_cursor` contract).
-  - Backward compatibility for existing consumers.
-  - Gates stay green without test flakiness.
+  - Deterministic pagination semantics (`next_cursor` contract). ✅
+  - Backward compatibility for existing consumers. ✅
+  - Gates stay green without test flakiness. ✅
 
 ## Definition Of Done (Phase 3)
 - All slice acceptance criteria complete and documented.

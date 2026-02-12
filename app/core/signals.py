@@ -7,6 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.signals import SignalV1
 
 
+DEFAULT_LIMIT = 50
+MAX_LIMIT = 200
+
+
 @dataclass(slots=True)
 class SignalPersistResult:
     created: bool
@@ -46,3 +50,28 @@ async def persist_signal(
 
     await db.refresh(signal)
     return SignalPersistResult(created=True, cursor=signal.id, signal=signal)
+
+
+async def read_signals(
+    db: AsyncSession,
+    *,
+    stream: str,
+    cursor: int | None,
+    limit: int,
+) -> tuple[list[SignalV1], int | None]:
+    after = cursor or 0
+    clamped = min(max(limit, 1), MAX_LIMIT)
+
+    res = await db.execute(
+        select(SignalV1)
+        .where(SignalV1.stream == stream, SignalV1.id > after)
+        .order_by(SignalV1.id.asc())
+        .limit(clamped + 1)
+    )
+    rows = list(res.scalars().all())
+    if len(rows) <= clamped:
+        return rows, None
+
+    page = rows[:clamped]
+    next_cursor = page[-1].id
+    return page, next_cursor

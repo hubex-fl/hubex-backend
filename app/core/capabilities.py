@@ -98,6 +98,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/config/{config_id}"): ["config.read"],
     ("GET", "/api/v1/effects"): ["effects.read"],
     ("GET", "/api/v1/effects/{effect_id}"): ["effects.read"],
+    ("GET", "/api/v1/signals"): ["signals.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).

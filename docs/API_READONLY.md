@@ -60,6 +60,9 @@ This document lists read-only endpoints and required capabilities. It reflects t
 - GET /api/v1/effects - cap: effects.read - effects trace list
 - GET /api/v1/effects/{effect_id} - cap: effects.read - effect by id
 
+## Signals v1
+- GET /api/v1/signals - cap: signals.read - cursor-based signal read
+
 ## Audit v1
 - GET /api/v1/audit - cap: audit.read - audit list
 - GET /api/v1/audit/{entry_id} - cap: audit.read - audit entry
