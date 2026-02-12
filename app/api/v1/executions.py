@@ -159,8 +159,8 @@ async def finalize_execution_run(
     if run.status in RUN_STATUS_FINAL:
         if (
             run.status == data.status
-            and (run.output_json or None) == data.output_json
-            and (run.error_json or None) == data.error_json
+            and run.output_json == data.output_json
+            and run.error_json == data.error_json
         ):
             return ExecutionRunOut.model_validate(run)
         raise HTTPException(status_code=409, detail="run already finalized with different payload")
