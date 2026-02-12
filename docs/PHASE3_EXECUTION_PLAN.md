@@ -16,15 +16,15 @@
   - `python -m compileall app scripts tests` passes.
   - `pytest` passes.
   - `scripts/run-phase1-gates.ps1` passes.
-- [ ] 3.2 Signal ingestion persistence.
+- [x] 3.2 Signal ingestion persistence.
   Deliverables:
   - Signal storage schema with idempotency key and cursor fields.
   - Insert-only write path in core layer.
   - Tests for dedupe and ordering guarantees.
   Acceptance criteria:
-  - Duplicate idempotency key does not create multiple rows.
-  - Cursor order is monotonic in tests.
-  - Existing event/effect endpoints remain unchanged.
+  - Duplicate idempotency key does not create multiple rows. ✅
+  - Cursor order is monotonic in tests. ✅
+  - Existing event/effect endpoints remain unchanged. ✅
 - [ ] 3.3 Signal read/subscription surface.
   Deliverables:
   - Cursor-based read service and response schema wiring.

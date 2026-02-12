@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,8 +14,8 @@ class ProviderType(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str | None] = mapped_column(String(512), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
@@ -32,8 +34,8 @@ class ProviderInstance(Base):
     config_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
     secret_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 

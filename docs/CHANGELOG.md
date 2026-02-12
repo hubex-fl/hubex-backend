@@ -12,6 +12,7 @@
 - Phase-1.5 consolidation: gates + smokes hardened.
 - Phase-2 UI baseline frozen (System Stage, Events, Effects, Observability, Audit, Executions, TraceHub, Correlation).
 - Phase-3 kickoff slice 3.1: provider/instance storage models + migration + capability placeholders.
+- Phase-3 slice 3.2: signal ingestion persistence with idempotency dedupe + monotonic cursor tests.
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

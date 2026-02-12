@@ -21,6 +21,7 @@ from .secrets import SecretV1
 from .config import ConfigV1
 from .effects import EffectV1
 from .providers import ProviderType, ProviderInstance
+from .signals import SignalV1
 
 __all__ = [
     "User",
@@ -49,4 +50,5 @@ __all__ = [
     "EffectV1",
     "ProviderType",
     "ProviderInstance",
+    "SignalV1",
 ]
