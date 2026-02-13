@@ -216,3 +216,11 @@ Route:
 Rules:
 - Finalize allowed when unclaimed or lease expired/NULL.
 - If lease_expires_at > now, worker_id must be provided and match claimed_by.
+
+## Phase 4 DONE
+
+Delivered:
+- Executions v1 storage + read/write surfaces.
+- Claim/lease/claim-next/release with deterministic rules and ownership guard.
+- Worker registry + subscriptions + active worker filters.
+- Tests, indexes, and documentation aligned.

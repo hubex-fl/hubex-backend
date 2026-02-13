@@ -535,6 +535,11 @@ Initiale Erstellung
 | 2026-02-13 | 8.4 | Add | Executions v1 definitions read-only mit Cursor-Semantik und executions.read | compatible |
 | 2026-02-13 | 8.5 | Add | Executions v1 run read-by-id mit executions.read | compatible |
 | 2026-02-13 | 8.6 | Add | Executions v1 definition read-by-key mit executions.read | compatible |
+| 2026-02-13 | 8.7 | Add | Executions v1 claim/lease (claim/lease fields + CAS) | compatible |
+| 2026-02-13 | 8.8 | Add | Executions v1 lease extend/heartbeat | compatible |
+| 2026-02-13 | 8.9 | Add | Executions v1 claim-next (subscription-aware optional definition_key) | compatible |
+| 2026-02-13 | 8.10 | Add | Executions v1 release/unclaim | compatible |
+| 2026-02-13 | 9 | Add | MIC v1 worker registry + subscriptions + active worker filter | compatible |
 
 13. Entscheidungsregel (final)
 
