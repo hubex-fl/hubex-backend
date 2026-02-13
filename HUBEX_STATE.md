@@ -477,7 +477,7 @@ Phase 3: Providers / Signals (Mobile = Provider)
 
 Phase 4: Rules / Engine
 
-Phase 5: Observability / Support
+Phase 5: Observability / Support (Execution Worker v1 / Slice 5.1 delivered)
 
 Phase 6: Templates / Testbench
 
@@ -540,6 +540,7 @@ Initiale Erstellung
 | 2026-02-13 | 8.9 | Add | Executions v1 claim-next (subscription-aware optional definition_key) | compatible |
 | 2026-02-13 | 8.10 | Add | Executions v1 release/unclaim | compatible |
 | 2026-02-13 | 9 | Add | MIC v1 worker registry + subscriptions + active worker filter | compatible |
+| 2026-02-13 | Phase 5 | Add | Execution Worker v1 service (slice 5.1) | compatible |
 
 13. Entscheidungsregel (final)
 

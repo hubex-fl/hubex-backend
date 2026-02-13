@@ -16,6 +16,7 @@
 - Phase-3 slice 3.3: signal read surface (cursor-based pagination) + signals_v1 stream/id index.
 - Phase-3 closeout: scope signals idempotency to stream (UNIQUE(stream, idempotency_key)).
 - Phase-4 complete: executions v1 storage + read/write surfaces, claim/lease/claim-next/release, ownership guards, worker registry/subscriptions/filters, indexes, and tests.
+- Phase-5 slice 5.1: execution worker v1 service (MVP).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.
