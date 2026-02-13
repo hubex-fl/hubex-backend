@@ -27,15 +27,14 @@ async def create_definition(
     db.add(definition)
     try:
         await db.commit()
+        await db.refresh(definition)
+        return definition
     except IntegrityError:
         await db.rollback()
         existing = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
         if existing is None:
             raise
         return existing
-
-    await db.refresh(definition)
-    return definition
 
 
 async def create_run_idempotent(
@@ -58,6 +57,8 @@ async def create_run_idempotent(
     db.add(run)
     try:
         await db.commit()
+        await db.refresh(run)
+        return run
     except IntegrityError:
         await db.rollback()
         existing = await db.scalar(
@@ -69,9 +70,6 @@ async def create_run_idempotent(
         if existing is None:
             raise
         return existing
-
-    await db.refresh(run)
-    return run
 
 
 async def read_runs(

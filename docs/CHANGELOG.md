@@ -25,6 +25,7 @@
 - Phase-4 slice 4.7: execution definition read-by-key (executions.read).
 - Hotfix: finalize is atomic (CAS) to prevent concurrent overwrite of final runs.
 - Hotfix: execution definition/run creation is DB-idempotent (unique constraints + IntegrityError fallback).
+- Chore: clean up execution idempotent create helpers (no behavior change).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.
