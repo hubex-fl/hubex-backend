@@ -408,6 +408,8 @@ Payload:
 - worker_id (string 1..96)
 - lease_seconds (int 1..3600, default 60)
 
+Implementation note: index on (definition_id, status, id) supports claim-next scans.
+
 8.10 Executions v1 (run release/unclaim)
 
 POST /api/v1/executions/runs/{run_id}/release

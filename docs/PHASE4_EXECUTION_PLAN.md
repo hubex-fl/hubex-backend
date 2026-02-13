@@ -172,6 +172,11 @@ Rules:
 Worker reference:
 - docs/EXECUTION_WORKER.md + scripts/execution_worker_demo.py provide the canonical loop.
 
+## Slice 4.14: Claim-Next Index Hardening (DB only)
+
+Change:
+- Add index on `execution_runs(definition_id, status, id)` to speed claim-next.
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

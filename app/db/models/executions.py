@@ -61,6 +61,7 @@ class ExecutionRun(Base):
             name="uq_execution_runs_definition_id_idempotency_key",
         ),
         Index("ix_execution_runs_definition_id_id", "definition_id", "id"),
+        Index("ix_execution_runs_definition_status_id", "definition_id", "status", "id"),
         Index("ix_execution_runs_status_lease_id", "status", "lease_expires_at", "id"),
     )
 
