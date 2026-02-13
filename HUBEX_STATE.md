@@ -320,6 +320,16 @@ Payload rules (hard):
 - failed: requires error_json, forbids output_json
 - canceled: forbids both output_json and error_json
 
+8.4 Executions v1 (definitions read-only)
+
+GET /api/v1/executions/definitions?cursor=<int?>&limit=<int?>
+Capability: executions.read (deny-by-default)
+
+Cursor semantics:
+1) cursor is exclusive after_cursor: only rows with id > cursor are returned (null => 0).
+2) Ordering is deterministic by id ASC; pagination uses limit+1 to avoid duplicates across pages.
+3) next_cursor is the last returned id only when more rows exist; otherwise null.
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien
@@ -401,6 +411,7 @@ Initiale Erstellung
 | 2025-12-24 | 5, 11 | Add | Capabilities Enforcement präzisiert (deny-by-default + public whitelist); Token revoke (jti denylist) ergänzt | compatible |
 | 2026-02-12 | 8.1, 8.2 | Add | Executions v1 (read-only + write minimal) mit Cursor-Semantik und executions.read/write | compatible |
 | 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
+| 2026-02-13 | 8.4 | Add | Executions v1 definitions read-only mit Cursor-Semantik und executions.read | compatible |
 
 13. Entscheidungsregel (final)
 

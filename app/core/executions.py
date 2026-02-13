@@ -111,3 +111,26 @@ async def read_runs(
     next_cursor = page[-1].id
     return page, next_cursor
 
+
+async def read_definitions(
+    db: AsyncSession,
+    *,
+    cursor: int | None,
+    limit: int,
+) -> tuple[list[ExecutionDefinition], int | None]:
+    after = cursor or 0
+    clamped = min(max(limit, 1), MAX_LIMIT)
+
+    res = await db.execute(
+        select(ExecutionDefinition)
+        .where(ExecutionDefinition.id > after)
+        .order_by(ExecutionDefinition.id.asc())
+        .limit(clamped + 1)
+    )
+    rows = list(res.scalars().all())
+    if len(rows) <= clamped:
+        return rows, None
+
+    page = rows[:clamped]
+    next_cursor = page[-1].id
+    return page, next_cursor

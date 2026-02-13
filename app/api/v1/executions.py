@@ -11,6 +11,7 @@ from app.core.executions import (
     MAX_LIMIT,
     create_definition,
     create_run_idempotent,
+    read_definitions,
     read_runs,
 )
 from app.db.models.executions import (
@@ -66,6 +67,11 @@ class ExecutionDefinitionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ExecutionDefinitionReadOut(BaseModel):
+    items: list[ExecutionDefinitionOut]
+    next_cursor: int | None
+
+
 class ExecutionRunIn(BaseModel):
     definition_key: str
     idempotency_key: str
@@ -93,6 +99,17 @@ async def list_execution_runs(
     eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
     items, next_cursor = await read_runs(db, definition_id=definition.id, cursor=cursor, limit=eff_limit)
     return ExecutionRunReadOut(items=items, next_cursor=next_cursor)
+
+
+@router.get("/definitions", response_model=ExecutionDefinitionReadOut)
+async def list_execution_definitions(
+    cursor: int | None = Query(default=None, ge=0),
+    limit: int | None = Query(default=None, ge=1),
+    db: AsyncSession = Depends(get_db),
+):
+    eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
+    items, next_cursor = await read_definitions(db, cursor=cursor, limit=eff_limit)
+    return ExecutionDefinitionReadOut(items=items, next_cursor=next_cursor)
 
 
 @router.post("/definitions", response_model=ExecutionDefinitionOut)

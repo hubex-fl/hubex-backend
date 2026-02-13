@@ -21,6 +21,10 @@ EXCLUDE = {
     "POST /api/v1/executions/runs/{run_id}/finalize",
 }
 
+# Routes that must always appear in the catalog (even if removed accidentally).
+ALWAYS_REQUIRE = {
+    "GET /api/v1/executions/definitions",
+}
 
 def _catalog_entries(text: str) -> set[str]:
     entries = set()
@@ -57,7 +61,9 @@ def main() -> int:
     catalog = _catalog_entries(CATALOG_PATH.read_text(encoding="utf-8"))
     routes = _route_entries()
 
-    missing = sorted(r for r in routes if r not in catalog and r not in EXCLUDE)
+    missing = set(r for r in routes if r not in catalog and r not in EXCLUDE)
+    missing |= set(r for r in ALWAYS_REQUIRE if r not in catalog)
+    missing = sorted(missing)
     if missing:
         print("api readonly catalog missing entries:", file=sys.stderr)
         for item in missing:
