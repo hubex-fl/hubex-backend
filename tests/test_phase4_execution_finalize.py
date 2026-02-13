@@ -193,10 +193,17 @@ async def test_finalize_conflict_on_mismatch(monkeypatch):
 
     res2 = await client.post(
         f"/api/v1/executions/runs/{run.id}/finalize",
-        json={"status": "failed", "error_json": {"err": "no"}},
+        json={"status": "completed", "output_json": {"ok": False}},
         headers={"Authorization": f"Bearer {token_ok}"},
     )
     assert res2.status_code == 409
+
+    res3 = await client.post(
+        f"/api/v1/executions/runs/{run.id}/finalize",
+        json={"status": "failed", "error_json": {"err": "no"}},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res3.status_code == 409
 
     await client.aclose()
     await engine.dispose()
