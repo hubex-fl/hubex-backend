@@ -77,9 +77,8 @@ async def read_workers(
     if active_within_seconds is not None:
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=active_within_seconds)
         stmt = stmt.where(ExecutionWorker.last_seen_at >= cutoff)
-    res = await db.execute(
-        stmt.order_by(ExecutionWorker.id.asc()).limit(clamped + 1)
-    )
+    stmt = stmt.order_by(ExecutionWorker.id.asc()).limit(clamped + 1)
+    res = await db.execute(stmt)
     rows = list(res.scalars().all())
     if len(rows) <= clamped:
         return rows, None
@@ -138,14 +137,14 @@ async def read_definition_workers(
     active_within_seconds: int | None = None,
 ) -> list[str]:
     if active_within_seconds is None:
-        res = await db.execute(
+        stmt = (
             select(ExecutionWorkerDefinition.worker_id)
             .where(ExecutionWorkerDefinition.definition_id == definition_id)
             .order_by(ExecutionWorkerDefinition.worker_id.asc())
         )
     else:
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=active_within_seconds)
-        res = await db.execute(
+        stmt = (
             select(ExecutionWorkerDefinition.worker_id)
             .join(ExecutionWorker, ExecutionWorker.id == ExecutionWorkerDefinition.worker_id)
             .where(
@@ -154,4 +153,5 @@ async def read_definition_workers(
             )
             .order_by(ExecutionWorkerDefinition.worker_id.asc())
         )
+    res = await db.execute(stmt)
     return list(res.scalars().all())

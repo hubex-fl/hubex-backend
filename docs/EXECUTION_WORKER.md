@@ -4,6 +4,8 @@ This document describes a minimal, deterministic worker loop for Executions v1 u
 The run status remains `requested`; claim fields represent “in progress” (no separate running status).
 
 ## Canonical Flow
+0) Register/heartbeat worker:
+   - `POST /api/v1/executions/workers/heartbeat` (recommended cadence: same as lease heartbeat)
 1) Dequeue a run:
    - `POST /api/v1/executions/runs/claim-next` with `definition_key`, `worker_id`, `lease_seconds`
 2) Heartbeat while processing:
@@ -35,6 +37,14 @@ curl -X POST http://127.0.0.1:8000/api/v1/executions/runs/claim-next \
   -H "Authorization: Bearer $HUBEX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"definition_key":"my-def","worker_id":"worker-1","lease_seconds":60}'
+```
+
+Worker heartbeat:
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/executions/workers/heartbeat \
+  -H "Authorization: Bearer $HUBEX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"worker_id":"worker-1","meta_json":{"hostname":"worker-a"}}'
 ```
 
 Heartbeat:

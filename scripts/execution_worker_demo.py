@@ -53,6 +53,22 @@ async def _heartbeat(
             break
 
 
+async def _worker_registry_heartbeat(
+    client: httpx.AsyncClient,
+    base_url: str,
+    token: str,
+    worker_id: str,
+    heartbeat_every: int,
+    stop: asyncio.Event,
+) -> None:
+    url = f"{base_url}/api/v1/executions/workers/heartbeat"
+    while not stop.is_set():
+        resp = await _post(client, url, token, {"worker_id": worker_id})
+        if resp.status_code != 200:
+            print(f"[worker-heartbeat] status={resp.status_code} body={resp.text}")
+        await asyncio.sleep(heartbeat_every)
+
+
 async def main() -> int:
     base_url = os.getenv("HUBEX_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
     token = _env("HUBEX_TOKEN")
@@ -63,68 +79,83 @@ async def main() -> int:
     poll_delay = _env_int("POLL_DELAY", 2)
 
     async with httpx.AsyncClient() as client:
-        while True:
-            resp = await _post(
+        registry_stop = asyncio.Event()
+        registry_task = asyncio.create_task(
+            _worker_registry_heartbeat(
                 client,
-                f"{base_url}/api/v1/executions/runs/claim-next",
+                base_url,
                 token,
-                {
-                    "definition_key": definition_key,
-                    "worker_id": worker_id,
-                    "lease_seconds": lease_seconds,
-                },
+                worker_id,
+                heartbeat_every,
+                registry_stop,
             )
-
-            if resp.status_code == 404:
-                await asyncio.sleep(poll_delay)
-                continue
-            if resp.status_code != 200:
-                print(f"[claim-next] status={resp.status_code} body={resp.text}")
-                await asyncio.sleep(poll_delay)
-                continue
-
-            run = resp.json()
-            run_id = run["id"]
-            print(f"[claim-next] claimed run_id={run_id}")
-
-            stop = asyncio.Event()
-            hb_task = asyncio.create_task(
-                _heartbeat(
+        )
+        try:
+            while True:
+                resp = await _post(
                     client,
-                    base_url,
+                    f"{base_url}/api/v1/executions/runs/claim-next",
                     token,
-                    run_id,
-                    worker_id,
-                    lease_seconds,
-                    heartbeat_every,
-                    stop,
+                    {
+                        "definition_key": definition_key,
+                        "worker_id": worker_id,
+                        "lease_seconds": lease_seconds,
+                    },
                 )
-            )
 
-            try:
-                await asyncio.sleep(2)
-                finalize = await _post(
-                    client,
-                    f"{base_url}/api/v1/executions/runs/{run_id}/finalize",
-                    token,
-                    {"status": "completed", "output_json": {"ok": True}, "worker_id": worker_id},
+                if resp.status_code == 404:
+                    await asyncio.sleep(poll_delay)
+                    continue
+                if resp.status_code != 200:
+                    print(f"[claim-next] status={resp.status_code} body={resp.text}")
+                    await asyncio.sleep(poll_delay)
+                    continue
+
+                run = resp.json()
+                run_id = run["id"]
+                print(f"[claim-next] claimed run_id={run_id}")
+
+                stop = asyncio.Event()
+                hb_task = asyncio.create_task(
+                    _heartbeat(
+                        client,
+                        base_url,
+                        token,
+                        run_id,
+                        worker_id,
+                        lease_seconds,
+                        heartbeat_every,
+                        stop,
+                    )
                 )
-                if finalize.status_code != 200:
-                    print(f"[finalize] status={finalize.status_code} body={finalize.text}")
-                else:
-                    print(f"[finalize] ok run_id={run_id}")
-            except Exception as exc:
-                print(f"[worker] exception={exc!r}")
-                release = await _post(
-                    client,
-                    f"{base_url}/api/v1/executions/runs/{run_id}/release",
-                    token,
-                    {"worker_id": worker_id},
-                )
-                print(f"[release] status={release.status_code}")
-            finally:
-                stop.set()
-                await hb_task
+
+                try:
+                    await asyncio.sleep(2)
+                    finalize = await _post(
+                        client,
+                        f"{base_url}/api/v1/executions/runs/{run_id}/finalize",
+                        token,
+                        {"status": "completed", "output_json": {"ok": True}, "worker_id": worker_id},
+                    )
+                    if finalize.status_code != 200:
+                        print(f"[finalize] status={finalize.status_code} body={finalize.text}")
+                    else:
+                        print(f"[finalize] ok run_id={run_id}")
+                except Exception as exc:
+                    print(f"[worker] exception={exc!r}")
+                    release = await _post(
+                        client,
+                        f"{base_url}/api/v1/executions/runs/{run_id}/release",
+                        token,
+                        {"worker_id": worker_id},
+                    )
+                    print(f"[release] status={release.status_code}")
+                finally:
+                    stop.set()
+                    await hb_task
+        finally:
+            registry_stop.set()
+            await registry_task
 
 
 if __name__ == "__main__":
