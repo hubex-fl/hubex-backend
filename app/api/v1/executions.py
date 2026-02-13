@@ -9,6 +9,9 @@ from app.api.deps import get_db
 from app.core.executions import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
+    ClaimConflictError,
+    ClaimNotFoundError,
+    claim_run,
     create_definition,
     create_run_idempotent,
     read_definitions,
@@ -37,6 +40,9 @@ class ExecutionRunOut(BaseModel):
     input_json: dict
     output_json: dict | None
     error_json: dict | None
+    claimed_by: str | None
+    claimed_at: datetime | None
+    lease_expires_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -83,6 +89,11 @@ class ExecutionFinalizeIn(BaseModel):
     status: str
     output_json: dict | None = None
     error_json: dict | None = None
+
+
+class ExecutionClaimIn(BaseModel):
+    worker_id: str
+    lease_seconds: int | None = 60
 
 
 @router.get("/runs", response_model=ExecutionRunReadOut)
@@ -226,6 +237,33 @@ async def finalize_execution_run(
         raise HTTPException(status_code=409, detail="run already finalized with different payload")
 
     raise HTTPException(status_code=409, detail="run status not finalizable")
+
+
+@router.post("/runs/{run_id}/claim", response_model=ExecutionRunOut)
+async def claim_execution_run(
+    run_id: int,
+    data: ExecutionClaimIn,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = data.worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    lease_seconds = 60 if data.lease_seconds is None else data.lease_seconds
+    if not (1 <= lease_seconds <= 3600):
+        raise HTTPException(status_code=400, detail="invalid lease_seconds")
+
+    try:
+        run = await claim_run(
+            db,
+            run_id=run_id,
+            worker_id=worker_id,
+            lease_seconds=lease_seconds,
+        )
+    except ClaimNotFoundError:
+        raise HTTPException(status_code=404, detail="run not found")
+    except ClaimConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return ExecutionRunOut.model_validate(run)
 
 
 @router.get("/runs/{run_id}", response_model=ExecutionRunOut)

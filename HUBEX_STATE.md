@@ -348,6 +348,26 @@ Capability: executions.read (deny-by-default)
 
 Semantics: returns the single definition by key; 404 if missing; no mutation; response shape = ExecutionDefinitionOut.
 
+8.7 Executions v1 (run claim/lease)
+
+POST /api/v1/executions/runs/{run_id}/claim
+Capability: executions.write (deny-by-default)
+
+Claim semantics:
+- Only claimable when run.status == "requested".
+- A run is available if claimed_by is NULL or lease_expires_at < now.
+- Atomic claim uses a single UPDATE ... WHERE ... RETURNING.
+
+Idempotency:
+- If already claimed by the same worker_id and lease is still valid, return existing (200, no lease extension).
+- If claimed by a different worker and lease is still valid, return 409 conflict.
+
+Payload:
+- worker_id (string 1..96)
+- lease_seconds (int 1..3600, default 60)
+
+Response: ExecutionRunOut (includes claimed_by, claimed_at, lease_expires_at).
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien

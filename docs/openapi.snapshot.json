@@ -1106,6 +1106,31 @@
         "title": "EventReadOut",
         "type": "object"
       },
+      "ExecutionClaimIn": {
+        "properties": {
+          "lease_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 60,
+            "title": "Lease Seconds"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "ExecutionClaimIn",
+        "type": "object"
+      },
       "ExecutionDefinitionIn": {
         "properties": {
           "enabled": {
@@ -1288,6 +1313,29 @@
       },
       "ExecutionRunOut": {
         "properties": {
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
+          "claimed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed By"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1321,6 +1369,18 @@
             "additionalProperties": true,
             "title": "Input Json",
             "type": "object"
+          },
+          "lease_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Expires At"
           },
           "output_json": {
             "anyOf": [
@@ -1364,6 +1424,9 @@
           "input_json",
           "output_json",
           "error_json",
+          "claimed_by",
+          "claimed_at",
+          "lease_expires_at",
           "created_at",
           "updated_at"
         ],
@@ -5446,6 +5509,67 @@
           }
         ],
         "summary": "Get Execution Run",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
+    "/api/v1/executions/runs/{run_id}/claim": {
+      "post": {
+        "operationId": "claim_execution_run_api_v1_executions_runs__run_id__claim_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Claim Execution Run",
         "tags": [
           "executions",
           "executions"

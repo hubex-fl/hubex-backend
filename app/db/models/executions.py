@@ -61,6 +61,7 @@ class ExecutionRun(Base):
             name="uq_execution_runs_definition_id_idempotency_key",
         ),
         Index("ix_execution_runs_definition_id_id", "definition_id", "id"),
+        Index("ix_execution_runs_status_lease_id", "status", "lease_expires_at", "id"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -75,6 +76,9 @@ class ExecutionRun(Base):
     input_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     output_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    claimed_by: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

@@ -106,3 +106,20 @@ Route:
 Semantics:
 - Return the single definition by key; 404 if missing.
 - No mutation or side effects; response shape = ExecutionDefinitionOut.
+
+## Slice 4.8: Execution Run Claim/Lease (Write minimal)
+
+Route:
+- POST `/api/v1/executions/runs/{run_id}/claim`
+- Capability: `executions.write` (deny-by-default)
+
+Rules:
+- Claimable only when status="requested".
+- Available if claimed_by is NULL or lease_expires_at < now.
+- Atomic claim uses single UPDATE ... WHERE ... RETURNING.
+- Idempotent: same worker + valid lease returns existing (no lease extension).
+- Conflict: different worker + valid lease returns 409.
+
+Payload:
+- worker_id (1..96)
+- lease_seconds (1..3600, default 60)
