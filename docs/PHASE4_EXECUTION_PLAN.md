@@ -93,3 +93,13 @@ Route:
 Semantics:
 - Return the single run by id; 404 if missing.
 - No mutation or side effects; response shape = ExecutionRunOut.
+
+## Slice 4.7: Execution Definition Read-by-Key (Read-only)
+
+Route:
+- GET `/api/v1/executions/definitions/{definition_key}`
+- Capability: `executions.read` (deny-by-default)
+
+Semantics:
+- Return the single definition by key; 404 if missing.
+- No mutation or side effects; response shape = ExecutionDefinitionOut.

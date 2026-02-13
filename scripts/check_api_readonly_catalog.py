@@ -25,6 +25,7 @@ EXCLUDE = {
 ALWAYS_REQUIRE = {
     "GET /api/v1/executions/definitions",
     "GET /api/v1/executions/runs/{run_id}",
+    "GET /api/v1/executions/definitions/{definition_key}",
 }
 
 def _catalog_entries(text: str) -> set[str]:

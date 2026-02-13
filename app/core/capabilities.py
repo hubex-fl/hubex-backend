@@ -107,6 +107,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/executions/runs/{run_id}/finalize"): ["executions.write"],
     ("GET", "/api/v1/executions/definitions"): ["executions.read"],
     ("GET", "/api/v1/executions/runs/{run_id}"): ["executions.read"],
+    ("GET", "/api/v1/executions/definitions/{definition_key}"): ["executions.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).

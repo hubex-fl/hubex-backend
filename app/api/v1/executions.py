@@ -112,6 +112,17 @@ async def list_execution_definitions(
     return ExecutionDefinitionReadOut(items=items, next_cursor=next_cursor)
 
 
+@router.get("/definitions/{definition_key}", response_model=ExecutionDefinitionOut)
+async def get_execution_definition(
+    definition_key: str,
+    db: AsyncSession = Depends(get_db),
+):
+    definition = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == definition_key))
+    if definition is None:
+        raise HTTPException(status_code=404, detail="definition not found")
+    return ExecutionDefinitionOut.model_validate(definition)
+
+
 @router.post("/definitions", response_model=ExecutionDefinitionOut)
 async def create_execution_definition(
     data: ExecutionDefinitionIn,
