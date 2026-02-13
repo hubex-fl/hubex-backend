@@ -426,6 +426,14 @@ Payload:
 
 9. MIC v1 (Module Integration Contract)
 
+Worker Registry (minimal)
+
+POST /api/v1/executions/workers/heartbeat
+Capability: executions.write (deny-by-default)
+
+GET /api/v1/executions/workers
+Capability: executions.read (deny-by-default)
+
 Prinzipien
 
 Core ist Single Source of Truth

@@ -6,6 +6,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.core.execution_workers import read_workers, upsert_worker_heartbeat
 from app.core.executions import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
@@ -79,6 +80,26 @@ class ExecutionDefinitionOut(BaseModel):
 class ExecutionDefinitionReadOut(BaseModel):
     items: list[ExecutionDefinitionOut]
     next_cursor: int | None
+
+
+class ExecutionWorkerIn(BaseModel):
+    worker_id: str
+    meta_json: dict | None = None
+
+
+class ExecutionWorkerOut(BaseModel):
+    id: str
+    last_seen_at: datetime
+    meta_json: dict | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExecutionWorkerReadOut(BaseModel):
+    items: list[ExecutionWorkerOut]
+    next_cursor: str | None
 
 
 class ExecutionRunIn(BaseModel):
@@ -155,6 +176,29 @@ async def list_execution_definitions(
     eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
     items, next_cursor = await read_definitions(db, cursor=cursor, limit=eff_limit)
     return ExecutionDefinitionReadOut(items=items, next_cursor=next_cursor)
+
+
+@router.post("/workers/heartbeat", response_model=ExecutionWorkerOut)
+async def upsert_execution_worker_heartbeat(
+    data: ExecutionWorkerIn,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = data.worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    worker = await upsert_worker_heartbeat(db, worker_id=worker_id, meta_json=data.meta_json)
+    return ExecutionWorkerOut.model_validate(worker)
+
+
+@router.get("/workers", response_model=ExecutionWorkerReadOut)
+async def list_execution_workers(
+    cursor: str | None = Query(default=None, min_length=1, max_length=96),
+    limit: int | None = Query(default=None, ge=1),
+    db: AsyncSession = Depends(get_db),
+):
+    eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
+    items, next_cursor = await read_workers(db, cursor=cursor, limit=eff_limit)
+    return ExecutionWorkerReadOut(items=items, next_cursor=next_cursor)
 
 
 @router.get("/definitions/{definition_key}", response_model=ExecutionDefinitionOut)
@@ -414,5 +458,3 @@ async def get_execution_run(
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
     return ExecutionRunOut.model_validate(run)
-
-

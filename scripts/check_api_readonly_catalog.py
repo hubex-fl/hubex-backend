@@ -23,6 +23,7 @@ EXCLUDE = {
     "POST /api/v1/executions/runs/{run_id}/lease",
     "POST /api/v1/executions/runs/{run_id}/release",
     "POST /api/v1/executions/runs/claim-next",
+    "POST /api/v1/executions/workers/heartbeat",
 }
 
 # Routes that must always appear in the catalog (even if removed accidentally).
@@ -30,6 +31,7 @@ ALWAYS_REQUIRE = {
     "GET /api/v1/executions/definitions",
     "GET /api/v1/executions/runs/{run_id}",
     "GET /api/v1/executions/definitions/{definition_key}",
+    "GET /api/v1/executions/workers",
 }
 
 def _catalog_entries(text: str) -> set[str]:

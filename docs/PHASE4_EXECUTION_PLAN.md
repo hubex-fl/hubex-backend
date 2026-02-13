@@ -182,6 +182,12 @@ Change:
 Tests:
 - Claim-next → lease → finalize (ownership) end-to-end via HTTP.
 
+## Slice 4.16: Worker Registry (Minimal)
+
+Routes:
+- POST `/api/v1/executions/workers/heartbeat`
+- GET `/api/v1/executions/workers`
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

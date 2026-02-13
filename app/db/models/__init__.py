@@ -22,7 +22,7 @@ from .config import ConfigV1
 from .effects import EffectV1
 from .providers import ProviderType, ProviderInstance
 from .signals import SignalV1
-from .executions import ExecutionDefinition, ExecutionRun
+from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker
 
 __all__ = [
     "User",
@@ -54,4 +54,5 @@ __all__ = [
     "SignalV1",
     "ExecutionDefinition",
     "ExecutionRun",
+    "ExecutionWorker",
 ]

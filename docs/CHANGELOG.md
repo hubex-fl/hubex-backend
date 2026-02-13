@@ -37,6 +37,7 @@
 - Docs/Scripts: add worker reference flow for executions claim/lease/dequeue.
 - Perf: add claim-next dequeue index (definition_id,status,id).
 - Tests: add E2E worker flow test for claim-next/lease/finalize ownership.
+- Phase-4 slice 4.16: execution worker registry heartbeat + list (MIC v1).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

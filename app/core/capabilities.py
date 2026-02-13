@@ -109,6 +109,8 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/executions/runs/{run_id}/lease"): ["executions.write"],
     ("POST", "/api/v1/executions/runs/{run_id}/release"): ["executions.write"],
     ("POST", "/api/v1/executions/runs/claim-next"): ["executions.write"],
+    ("POST", "/api/v1/executions/workers/heartbeat"): ["executions.write"],
+    ("GET", "/api/v1/executions/workers"): ["executions.read"],
     ("GET", "/api/v1/executions/definitions"): ["executions.read"],
     ("GET", "/api/v1/executions/runs/{run_id}"): ["executions.read"],
     ("GET", "/api/v1/executions/definitions/{definition_key}"): ["executions.read"],

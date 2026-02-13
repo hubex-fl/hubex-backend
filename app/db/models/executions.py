@@ -120,3 +120,18 @@ class ExecutionRun(Base):
         if value is not None and getattr(self, "output_json", None) is not None:
             raise ValueError("cannot set error_json when output_json is set")
         return value
+
+
+class ExecutionWorker(Base):
+    __tablename__ = "execution_workers"
+    __table_args__ = (
+        Index("ix_execution_workers_last_seen_at", "last_seen_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    meta_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
