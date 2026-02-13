@@ -21,6 +21,7 @@
 - Phase-4 slice 4.4: execution run finalization surface (executions.write).
 - Hotfix 4.4: finalize idempotency exact-match handles empty JSON objects.
 - Phase-4 slice 4.5: execution definitions read surface (executions.read).
+- Phase-4 slice 4.6: execution run read-by-id (executions.read).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

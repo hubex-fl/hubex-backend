@@ -24,6 +24,7 @@ EXCLUDE = {
 # Routes that must always appear in the catalog (even if removed accidentally).
 ALWAYS_REQUIRE = {
     "GET /api/v1/executions/definitions",
+    "GET /api/v1/executions/runs/{run_id}",
 }
 
 def _catalog_entries(text: str) -> set[str]:

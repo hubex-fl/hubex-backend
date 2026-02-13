@@ -5332,6 +5332,57 @@
         ]
       }
     },
+    "/api/v1/executions/runs/{run_id}": {
+      "get": {
+        "operationId": "get_execution_run_api_v1_executions_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Execution Run",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
     "/api/v1/executions/runs/{run_id}/finalize": {
       "post": {
         "operationId": "finalize_execution_run_api_v1_executions_runs__run_id__finalize_post",

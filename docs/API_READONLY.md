@@ -63,6 +63,7 @@ This document lists read-only endpoints and required capabilities. It reflects t
 ## Executions v1
 - GET /api/v1/executions/runs - cap: executions.read - execution runs (by definition_key)
 - GET /api/v1/executions/definitions - cap: executions.read - execution definitions list
+- GET /api/v1/executions/runs/{run_id} - cap: executions.read - execution run by id
 
 ## Signals v1
 - GET /api/v1/signals - cap: signals.read - cursor-based signal read

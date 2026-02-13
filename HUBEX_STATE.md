@@ -330,6 +330,13 @@ Cursor semantics:
 2) Ordering is deterministic by id ASC; pagination uses limit+1 to avoid duplicates across pages.
 3) next_cursor is the last returned id only when more rows exist; otherwise null.
 
+8.5 Executions v1 (run read-by-id)
+
+GET /api/v1/executions/runs/{run_id}
+Capability: executions.read (deny-by-default)
+
+Semantics: returns the single run by id; 404 if missing; no mutation; response shape = ExecutionRunOut.
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien
@@ -412,6 +419,7 @@ Initiale Erstellung
 | 2026-02-12 | 8.1, 8.2 | Add | Executions v1 (read-only + write minimal) mit Cursor-Semantik und executions.read/write | compatible |
 | 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
 | 2026-02-13 | 8.4 | Add | Executions v1 definitions read-only mit Cursor-Semantik und executions.read | compatible |
+| 2026-02-13 | 8.5 | Add | Executions v1 run read-by-id mit executions.read | compatible |
 
 13. Entscheidungsregel (final)
 

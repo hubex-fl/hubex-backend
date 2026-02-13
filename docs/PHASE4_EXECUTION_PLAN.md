@@ -83,3 +83,13 @@ Cursor semantics:
 1) cursor is exclusive after_cursor: only rows with id > cursor are returned (null => 0).
 2) Ordering is deterministic by id ASC; pagination uses limit+1 to avoid duplicates across pages.
 3) next_cursor is the last returned id only when more rows exist; otherwise null.
+
+## Slice 4.6: Execution Run Read-by-ID (Read-only)
+
+Route:
+- GET `/api/v1/executions/runs/{run_id}`
+- Capability: `executions.read` (deny-by-default)
+
+Semantics:
+- Return the single run by id; 404 if missing.
+- No mutation or side effects; response shape = ExecutionRunOut.
