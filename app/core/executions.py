@@ -23,20 +23,16 @@ async def create_definition(
     version: str,
     enabled: bool = True,
 ) -> ExecutionDefinition:
-    existing = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
-    if existing is not None:
-        return existing
-
     definition = ExecutionDefinition(key=key, name=name, version=version, enabled=enabled)
     db.add(definition)
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        deduped = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
-        if deduped is None:
+        existing = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == key))
+        if existing is None:
             raise
-        return deduped
+        return existing
 
     await db.refresh(definition)
     return definition
@@ -50,15 +46,6 @@ async def create_run_idempotent(
     requested_by: str | None,
     input_json: dict,
 ) -> ExecutionRun:
-    existing = await db.scalar(
-        select(ExecutionRun).where(
-            ExecutionRun.definition_id == definition_id,
-            ExecutionRun.idempotency_key == idempotency_key,
-        )
-    )
-    if existing is not None:
-        return existing
-
     run = ExecutionRun(
         definition_id=definition_id,
         idempotency_key=idempotency_key,
@@ -73,15 +60,15 @@ async def create_run_idempotent(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        deduped = await db.scalar(
+        existing = await db.scalar(
             select(ExecutionRun).where(
                 ExecutionRun.definition_id == definition_id,
                 ExecutionRun.idempotency_key == idempotency_key,
             )
         )
-        if deduped is None:
+        if existing is None:
             raise
-        return deduped
+        return existing
 
     await db.refresh(run)
     return run
