@@ -1,11 +1,12 @@
 ﻿from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
 from fastapi import Depends, FastAPI
 from jose import jwt
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -322,6 +323,104 @@ async def test_execution_worker_definitions_unknowns(monkeypatch):
         headers={"Authorization": f"Bearer {token_read}"},
     )
     assert res4.status_code == 404
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_definition_workers_active_within_filter(monkeypatch):
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
+    CAPABILITY_MAP[("POST", "/api/v1/executions/workers/heartbeat")] = ["executions.write"]
+    CAPABILITY_MAP[("POST", "/api/v1/executions/workers/{worker_id}/definitions")] = ["executions.write"]
+    CAPABILITY_MAP[("GET", "/api/v1/executions/definitions/{definition_key}/workers")] = ["executions.read"]
+
+    engine, Session = await _mk_session()
+    async with Session() as db:
+        await create_definition(db, key="d1", name="n1", version="v1", enabled=True)
+
+    async def _get_test_db():
+        async with Session() as s:
+            yield s
+
+    app = FastAPI(dependencies=[Depends(capability_guard)])
+    app.dependency_overrides[get_db] = _get_test_db
+    app.include_router(executions_router, prefix="/api/v1")
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    now = datetime.now(timezone.utc)
+    token_write = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.write"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+    token_read = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.read"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    await client.post(
+        "/api/v1/executions/workers/heartbeat",
+        json={"worker_id": "w1"},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+    await client.post(
+        "/api/v1/executions/workers/heartbeat",
+        json={"worker_id": "w2"},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+    await client.post(
+        "/api/v1/executions/workers/w1/definitions",
+        json={"definition_keys": ["d1"]},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+    await client.post(
+        "/api/v1/executions/workers/w2/definitions",
+        json={"definition_keys": ["d1"]},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+
+    async with Session() as db:
+        await db.execute(
+            update(ExecutionWorker)
+            .where(ExecutionWorker.id == "w1")
+            .values(last_seen_at=now - timedelta(seconds=600))
+        )
+        await db.execute(
+            update(ExecutionWorker)
+            .where(ExecutionWorker.id == "w2")
+            .values(last_seen_at=now - timedelta(seconds=10))
+        )
+        await db.commit()
+
+    res = await client.get(
+        "/api/v1/executions/definitions/d1/workers",
+        headers={"Authorization": f"Bearer {token_read}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["worker_ids"] == ["w1", "w2"]
+
+    res2 = await client.get(
+        "/api/v1/executions/definitions/d1/workers",
+        params={"active_within_seconds": 120},
+        headers={"Authorization": f"Bearer {token_read}"},
+    )
+    assert res2.status_code == 200
+    assert res2.json()["worker_ids"] == ["w2"]
 
     await client.aclose()
     await engine.dispose()

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
 from fastapi import Depends, FastAPI
 from jose import jwt
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -220,6 +221,101 @@ async def test_execution_workers_heartbeat_upsert_and_list(monkeypatch):
     body2 = res4.json()
     assert [w["id"] for w in body2["items"]] == ["c"]
     assert body2["next_cursor"] is None
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_execution_workers_active_within_filter(monkeypatch):
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
+    CAPABILITY_MAP[("POST", "/api/v1/executions/workers/heartbeat")] = ["executions.write"]
+    CAPABILITY_MAP[("GET", "/api/v1/executions/workers")] = ["executions.read"]
+
+    engine, Session = await _mk_session()
+
+    async def _get_test_db():
+        async with Session() as s:
+            yield s
+
+    app = FastAPI(dependencies=[Depends(capability_guard)])
+    app.dependency_overrides[get_db] = _get_test_db
+    app.include_router(executions_router, prefix="/api/v1")
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    now = datetime.now(timezone.utc)
+    token_write = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.write"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+    token_read = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.read"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    await client.post(
+        "/api/v1/executions/workers/heartbeat",
+        json={"worker_id": "a"},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+    await client.post(
+        "/api/v1/executions/workers/heartbeat",
+        json={"worker_id": "b"},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+    await client.post(
+        "/api/v1/executions/workers/heartbeat",
+        json={"worker_id": "c"},
+        headers={"Authorization": f"Bearer {token_write}"},
+    )
+
+    async with Session() as db:
+        await db.execute(
+            update(ExecutionWorker)
+            .where(ExecutionWorker.id == "a")
+            .values(last_seen_at=now - timedelta(seconds=600))
+        )
+        await db.execute(
+            update(ExecutionWorker)
+            .where(ExecutionWorker.id == "b")
+            .values(last_seen_at=now - timedelta(seconds=60))
+        )
+        await db.execute(
+            update(ExecutionWorker)
+            .where(ExecutionWorker.id == "c")
+            .values(last_seen_at=now - timedelta(seconds=10))
+        )
+        await db.commit()
+
+    res = await client.get(
+        "/api/v1/executions/workers",
+        headers={"Authorization": f"Bearer {token_read}"},
+    )
+    assert res.status_code == 200
+    assert [w["id"] for w in res.json()["items"]] == ["a", "b", "c"]
+
+    res2 = await client.get(
+        "/api/v1/executions/workers",
+        params={"active_within_seconds": 120},
+        headers={"Authorization": f"Bearer {token_read}"},
+    )
+    assert res2.status_code == 200
+    assert [w["id"] for w in res2.json()["items"]] == ["b", "c"]
 
     await client.aclose()
     await engine.dispose()

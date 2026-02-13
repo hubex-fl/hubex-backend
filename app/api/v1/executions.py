@@ -215,10 +215,16 @@ async def upsert_execution_worker_heartbeat(
 async def list_execution_workers(
     cursor: str | None = Query(default=None, min_length=1, max_length=96),
     limit: int | None = Query(default=None, ge=1),
+    active_within_seconds: int | None = Query(default=None, ge=1, le=86400),
     db: AsyncSession = Depends(get_db),
 ):
     eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
-    items, next_cursor = await read_workers(db, cursor=cursor, limit=eff_limit)
+    items, next_cursor = await read_workers(
+        db,
+        cursor=cursor,
+        limit=eff_limit,
+        active_within_seconds=active_within_seconds,
+    )
     return ExecutionWorkerReadOut(items=items, next_cursor=next_cursor)
 
 
@@ -288,6 +294,7 @@ async def get_execution_worker_definitions(
 @router.get("/definitions/{definition_key}/workers", response_model=ExecutionDefinitionWorkersOut)
 async def get_execution_definition_workers(
     definition_key: str,
+    active_within_seconds: int | None = Query(default=None, ge=1, le=86400),
     db: AsyncSession = Depends(get_db),
 ):
     definition_key = definition_key.strip()
@@ -298,7 +305,11 @@ async def get_execution_definition_workers(
     if definition is None:
         raise HTTPException(status_code=404, detail="definition not found")
 
-    worker_ids = await read_definition_workers(db, definition_id=definition.id)
+    worker_ids = await read_definition_workers(
+        db,
+        definition_id=definition.id,
+        active_within_seconds=active_within_seconds,
+    )
     return ExecutionDefinitionWorkersOut(definition_key=definition_key, worker_ids=worker_ids)
 
 

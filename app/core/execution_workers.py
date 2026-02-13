@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
@@ -68,15 +68,17 @@ async def read_workers(
     *,
     cursor: str | None,
     limit: int,
+    active_within_seconds: int | None = None,
 ) -> tuple[list[ExecutionWorker], str | None]:
     after = cursor or ""
     clamped = min(max(limit, 1), MAX_LIMIT)
 
+    stmt = select(ExecutionWorker).where(ExecutionWorker.id > after)
+    if active_within_seconds is not None:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=active_within_seconds)
+        stmt = stmt.where(ExecutionWorker.last_seen_at >= cutoff)
     res = await db.execute(
-        select(ExecutionWorker)
-        .where(ExecutionWorker.id > after)
-        .order_by(ExecutionWorker.id.asc())
-        .limit(clamped + 1)
+        stmt.order_by(ExecutionWorker.id.asc()).limit(clamped + 1)
     )
     rows = list(res.scalars().all())
     if len(rows) <= clamped:
@@ -133,10 +135,23 @@ async def read_definition_workers(
     db: AsyncSession,
     *,
     definition_id: int,
+    active_within_seconds: int | None = None,
 ) -> list[str]:
-    res = await db.execute(
-        select(ExecutionWorkerDefinition.worker_id)
-        .where(ExecutionWorkerDefinition.definition_id == definition_id)
-        .order_by(ExecutionWorkerDefinition.worker_id.asc())
-    )
+    if active_within_seconds is None:
+        res = await db.execute(
+            select(ExecutionWorkerDefinition.worker_id)
+            .where(ExecutionWorkerDefinition.definition_id == definition_id)
+            .order_by(ExecutionWorkerDefinition.worker_id.asc())
+        )
+    else:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=active_within_seconds)
+        res = await db.execute(
+            select(ExecutionWorkerDefinition.worker_id)
+            .join(ExecutionWorker, ExecutionWorker.id == ExecutionWorkerDefinition.worker_id)
+            .where(
+                ExecutionWorkerDefinition.definition_id == definition_id,
+                ExecutionWorker.last_seen_at >= cutoff,
+            )
+            .order_by(ExecutionWorkerDefinition.worker_id.asc())
+        )
     return list(res.scalars().all())

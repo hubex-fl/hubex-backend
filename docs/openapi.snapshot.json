@@ -5557,6 +5557,24 @@
               "title": "Definition Key",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "active_within_seconds",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 86400,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active Within Seconds"
+            }
           }
         ],
         "responses": {
@@ -6131,6 +6149,24 @@
                 }
               ],
               "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active_within_seconds",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 86400,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active Within Seconds"
             }
           }
         ],

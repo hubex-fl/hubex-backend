@@ -195,6 +195,12 @@ Routes:
 - GET `/api/v1/executions/workers/{worker_id}/definitions`
 - GET `/api/v1/executions/definitions/{definition_key}/workers`
 
+## Slice 4.18: Active Worker View (Read-only filter)
+
+Routes:
+- GET `/api/v1/executions/workers?active_within_seconds=<int>`
+- GET `/api/v1/executions/definitions/{definition_key}/workers?active_within_seconds=<int>`
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:
