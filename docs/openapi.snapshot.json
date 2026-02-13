@@ -1276,6 +1276,31 @@
         "title": "ExecutionFinalizeIn",
         "type": "object"
       },
+      "ExecutionLeaseIn": {
+        "properties": {
+          "lease_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 60,
+            "title": "Lease Seconds"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id"
+        ],
+        "title": "ExecutionLeaseIn",
+        "type": "object"
+      },
       "ExecutionRunIn": {
         "properties": {
           "definition_key": {
@@ -5631,6 +5656,67 @@
           }
         ],
         "summary": "Finalize Execution Run",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
+    "/api/v1/executions/runs/{run_id}/lease": {
+      "post": {
+        "operationId": "extend_execution_run_lease_api_v1_executions_runs__run_id__lease_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionLeaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Extend Execution Run Lease",
         "tags": [
           "executions",
           "executions"

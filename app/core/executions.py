@@ -123,19 +123,16 @@ async def claim_run(
     now = datetime.now(timezone.utc)
     lease_expires_at = now + timedelta(seconds=lease_seconds)
 
-    def _as_aware(dt: datetime | None) -> datetime | None:
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt
-
     stmt = (
         update(ExecutionRun)
         .where(
             ExecutionRun.id == run_id,
             ExecutionRun.status == RUN_STATUS_REQUESTED,
-            or_(ExecutionRun.claimed_by.is_(None), ExecutionRun.lease_expires_at < now),
+            or_(
+                ExecutionRun.claimed_by.is_(None),
+                ExecutionRun.lease_expires_at.is_(None),
+                ExecutionRun.lease_expires_at < now,
+            ),
         )
         .values(
             claimed_by=worker_id,
@@ -167,7 +164,7 @@ async def claim_run(
     if run.claimed_by is not None and lease_at is not None and lease_at > now:
         raise ClaimConflictError("run already claimed")
 
-    if run.claimed_by is None or (lease_at is not None and lease_at <= now):
+    if run.claimed_by is None or lease_at is None or lease_at <= now:
         res2 = await db.execute(stmt)
         updated2 = res2.scalar_one_or_none()
         if updated2 is not None:
@@ -175,6 +172,58 @@ async def claim_run(
             return updated2
 
     raise ClaimConflictError("run not claimable")
+
+
+def _as_aware(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+async def extend_lease(
+    db: AsyncSession,
+    *,
+    run_id: int,
+    worker_id: str,
+    lease_seconds: int,
+) -> ExecutionRun:
+    now = datetime.now(timezone.utc)
+    lease_expires_at = now + timedelta(seconds=lease_seconds)
+
+    stmt = (
+        update(ExecutionRun)
+        .where(
+            ExecutionRun.id == run_id,
+            ExecutionRun.status == RUN_STATUS_REQUESTED,
+            ExecutionRun.claimed_by == worker_id,
+            ExecutionRun.lease_expires_at.is_not(None),
+            ExecutionRun.lease_expires_at > now,
+        )
+        .values(
+            lease_expires_at=lease_expires_at,
+            updated_at=now,
+        )
+        .returning(ExecutionRun)
+    )
+    res = await db.execute(stmt)
+    updated = res.scalar_one_or_none()
+    if updated is not None:
+        await db.commit()
+        return updated
+
+    run = await db.scalar(select(ExecutionRun).where(ExecutionRun.id == run_id))
+    if run is None:
+        raise ClaimNotFoundError("run not found")
+    if run.status in RUN_STATUS_FINAL or run.status != RUN_STATUS_REQUESTED:
+        raise ClaimConflictError("run status not leasable")
+
+    lease_at = _as_aware(run.lease_expires_at)
+    if run.claimed_by != worker_id and lease_at is not None and lease_at > now:
+        raise ClaimConflictError("run already claimed")
+
+    raise ClaimConflictError("lease expired or not owned")
 
 
 async def read_definitions(

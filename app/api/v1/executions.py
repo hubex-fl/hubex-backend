@@ -12,6 +12,7 @@ from app.core.executions import (
     ClaimConflictError,
     ClaimNotFoundError,
     claim_run,
+    extend_lease,
     create_definition,
     create_run_idempotent,
     read_definitions,
@@ -92,6 +93,11 @@ class ExecutionFinalizeIn(BaseModel):
 
 
 class ExecutionClaimIn(BaseModel):
+    worker_id: str
+    lease_seconds: int | None = 60
+
+
+class ExecutionLeaseIn(BaseModel):
     worker_id: str
     lease_seconds: int | None = 60
 
@@ -254,6 +260,33 @@ async def claim_execution_run(
 
     try:
         run = await claim_run(
+            db,
+            run_id=run_id,
+            worker_id=worker_id,
+            lease_seconds=lease_seconds,
+        )
+    except ClaimNotFoundError:
+        raise HTTPException(status_code=404, detail="run not found")
+    except ClaimConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return ExecutionRunOut.model_validate(run)
+
+
+@router.post("/runs/{run_id}/lease", response_model=ExecutionRunOut)
+async def extend_execution_run_lease(
+    run_id: int,
+    data: ExecutionLeaseIn,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = data.worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    lease_seconds = 60 if data.lease_seconds is None else data.lease_seconds
+    if not (1 <= lease_seconds <= 3600):
+        raise HTTPException(status_code=400, detail="invalid lease_seconds")
+
+    try:
+        run = await extend_lease(
             db,
             run_id=run_id,
             worker_id=worker_id,

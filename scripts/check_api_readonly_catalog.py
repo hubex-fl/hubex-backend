@@ -20,6 +20,7 @@ EXCLUDE = {
     "POST /api/v1/executions/runs",
     "POST /api/v1/executions/runs/{run_id}/finalize",
     "POST /api/v1/executions/runs/{run_id}/claim",
+    "POST /api/v1/executions/runs/{run_id}/lease",
 }
 
 # Routes that must always appear in the catalog (even if removed accidentally).

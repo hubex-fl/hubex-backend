@@ -123,3 +123,18 @@ Rules:
 Payload:
 - worker_id (1..96)
 - lease_seconds (1..3600, default 60)
+
+## Slice 4.9: Execution Run Lease Extend/Heartbeat (Write minimal)
+
+Route:
+- POST `/api/v1/executions/runs/{run_id}/lease`
+- Capability: `executions.write` (deny-by-default)
+
+Rules:
+- Only when status="requested" and claimed_by == worker_id.
+- Only when lease_expires_at > now (NULL treated as expired).
+- CAS update extends lease_expires_at.
+
+Payload:
+- worker_id (1..96)
+- lease_seconds (1..3600, default 60)

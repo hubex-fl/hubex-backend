@@ -368,6 +368,23 @@ Payload:
 
 Response: ExecutionRunOut (includes claimed_by, claimed_at, lease_expires_at).
 
+8.8 Executions v1 (run lease extend/heartbeat)
+
+POST /api/v1/executions/runs/{run_id}/lease
+Capability: executions.write (deny-by-default)
+
+Rules:
+- Only when status == "requested".
+- Only when claimed_by == worker_id.
+- Only when lease_expires_at > now.
+- If lease_expires_at is NULL, treat as expired (409).
+
+Payload:
+- worker_id (string 1..96)
+- lease_seconds (int 1..3600, default 60)
+
+Response: ExecutionRunOut (lease_expires_at extended).
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien
