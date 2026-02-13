@@ -1131,6 +1131,36 @@
         "title": "ExecutionClaimIn",
         "type": "object"
       },
+      "ExecutionClaimNextIn": {
+        "properties": {
+          "definition_key": {
+            "title": "Definition Key",
+            "type": "string"
+          },
+          "lease_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 60,
+            "title": "Lease Seconds"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "definition_key",
+          "worker_id"
+        ],
+        "title": "ExecutionClaimNextIn",
+        "type": "object"
+      },
       "ExecutionDefinitionIn": {
         "properties": {
           "enabled": {
@@ -5483,6 +5513,56 @@
           }
         ],
         "summary": "Create Execution Run",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
+    "/api/v1/executions/runs/claim-next": {
+      "post": {
+        "operationId": "claim_next_execution_run_api_v1_executions_runs_claim_next_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionClaimNextIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Claim Next Execution Run",
         "tags": [
           "executions",
           "executions"

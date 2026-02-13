@@ -385,6 +385,23 @@ Payload:
 
 Response: ExecutionRunOut (lease_expires_at extended).
 
+8.9 Executions v1 (run claim-next/dequeue)
+
+POST /api/v1/executions/runs/claim-next
+Capability: executions.write (deny-by-default)
+
+Rules:
+- Only runs with status="requested" are eligible.
+- Available if claimed_by is NULL or lease_expires_at is NULL or lease_expires_at < now.
+- Deterministic selection: lowest id among available for the definition.
+- Claim uses existing CAS claim rules (atomic UPDATE ... WHERE ... RETURNING).
+- If no available run exists: 404 "no run available".
+
+Payload:
+- definition_key (string 1..96)
+- worker_id (string 1..96)
+- lease_seconds (int 1..3600, default 60)
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien

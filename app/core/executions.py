@@ -140,6 +140,7 @@ async def claim_run(
             lease_expires_at=lease_expires_at,
         )
         .returning(ExecutionRun)
+        .execution_options(synchronize_session=False)
     )
     res = await db.execute(stmt)
     updated = res.scalar_one_or_none()
@@ -206,6 +207,7 @@ async def extend_lease(
             updated_at=now,
         )
         .returning(ExecutionRun)
+        .execution_options(synchronize_session=False)
     )
     res = await db.execute(stmt)
     updated = res.scalar_one_or_none()
@@ -224,6 +226,60 @@ async def extend_lease(
         raise ClaimConflictError("run already claimed")
 
     raise ClaimConflictError("lease expired or not owned")
+
+
+async def claim_next_run(
+    db: AsyncSession,
+    *,
+    definition_id: int,
+    worker_id: str,
+    lease_seconds: int,
+    max_attempts: int = 5,
+) -> ExecutionRun:
+    attempts = max(1, max_attempts)
+    for _ in range(attempts):
+        now = datetime.now(timezone.utc)
+        res = await db.execute(
+            select(ExecutionRun.id)
+            .where(
+                ExecutionRun.definition_id == definition_id,
+                ExecutionRun.status == RUN_STATUS_REQUESTED,
+                or_(
+                    ExecutionRun.claimed_by.is_(None),
+                    ExecutionRun.lease_expires_at.is_(None),
+                    ExecutionRun.lease_expires_at < now,
+                ),
+            )
+            .order_by(ExecutionRun.id.asc())
+            .limit(1)
+        )
+        candidate_id = res.scalar_one_or_none()
+        if candidate_id is None:
+            res_same = await db.execute(
+                select(ExecutionRun.id)
+                .where(
+                    ExecutionRun.definition_id == definition_id,
+                    ExecutionRun.status == RUN_STATUS_REQUESTED,
+                    ExecutionRun.claimed_by == worker_id,
+                    ExecutionRun.lease_expires_at > now,
+                )
+                .order_by(ExecutionRun.id.asc())
+                .limit(1)
+            )
+            candidate_id = res_same.scalar_one_or_none()
+        if candidate_id is None:
+            raise ClaimNotFoundError("no run available")
+        try:
+            return await claim_run(
+                db,
+                run_id=candidate_id,
+                worker_id=worker_id,
+                lease_seconds=lease_seconds,
+            )
+        except ClaimConflictError:
+            continue
+
+    raise ClaimConflictError("no run available")
 
 
 async def read_definitions(

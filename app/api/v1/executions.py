@@ -12,6 +12,7 @@ from app.core.executions import (
     ClaimConflictError,
     ClaimNotFoundError,
     claim_run,
+    claim_next_run,
     extend_lease,
     create_definition,
     create_run_idempotent,
@@ -98,6 +99,12 @@ class ExecutionClaimIn(BaseModel):
 
 
 class ExecutionLeaseIn(BaseModel):
+    worker_id: str
+    lease_seconds: int | None = 60
+
+
+class ExecutionClaimNextIn(BaseModel):
+    definition_key: str
     worker_id: str
     lease_seconds: int | None = 60
 
@@ -294,6 +301,41 @@ async def extend_execution_run_lease(
         )
     except ClaimNotFoundError:
         raise HTTPException(status_code=404, detail="run not found")
+    except ClaimConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return ExecutionRunOut.model_validate(run)
+
+
+@router.post("/runs/claim-next", response_model=ExecutionRunOut)
+async def claim_next_execution_run(
+    data: ExecutionClaimNextIn,
+    db: AsyncSession = Depends(get_db),
+):
+    definition_key = data.definition_key.strip()
+    if not (1 <= len(definition_key) <= 96):
+        raise HTTPException(status_code=400, detail="invalid definition_key")
+
+    worker_id = data.worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    lease_seconds = 60 if data.lease_seconds is None else data.lease_seconds
+    if not (1 <= lease_seconds <= 3600):
+        raise HTTPException(status_code=400, detail="invalid lease_seconds")
+
+    definition = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == definition_key))
+    if definition is None:
+        raise HTTPException(status_code=404, detail="definition not found")
+
+    try:
+        run = await claim_next_run(
+            db,
+            definition_id=definition.id,
+            worker_id=worker_id,
+            lease_seconds=lease_seconds,
+        )
+    except ClaimNotFoundError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=404, detail=detail)
     except ClaimConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     return ExecutionRunOut.model_validate(run)

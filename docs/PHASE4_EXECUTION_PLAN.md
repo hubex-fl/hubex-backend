@@ -138,3 +138,21 @@ Rules:
 Payload:
 - worker_id (1..96)
 - lease_seconds (1..3600, default 60)
+
+## Slice 4.10: Execution Run Claim-Next/Dequeue (Write minimal)
+
+Route:
+- POST `/api/v1/executions/runs/claim-next`
+- Capability: `executions.write` (deny-by-default)
+
+Rules:
+- Eligible runs: status="requested".
+- Available if claimed_by is NULL or lease_expires_at is NULL or lease_expires_at < now.
+- Deterministic selection by lowest id for the definition.
+- Uses CAS claim rules; conflict retries up to max_attempts.
+- If no available run: 404 "no run available".
+
+Payload:
+- definition_key (1..96)
+- worker_id (1..96)
+- lease_seconds (1..3600, default 60)
