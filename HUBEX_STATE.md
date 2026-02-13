@@ -324,6 +324,10 @@ Payload rules (hard):
 - failed: requires error_json, forbids output_json
 - canceled: forbids both output_json and error_json
 
+Ownership guard:
+- If claimed_by is NULL, lease_expires_at is NULL, or lease_expires_at <= now, finalize is allowed.
+- If lease_expires_at > now, finalize requires worker_id and claimed_by must match.
+
 8.4 Executions v1 (definitions read-only)
 
 GET /api/v1/executions/definitions?cursor=<int?>&limit=<int?>

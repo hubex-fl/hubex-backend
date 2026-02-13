@@ -32,6 +32,7 @@
 - Phase-4 slice 4.9: execution run lease extend/heartbeat (executions.write).
 - Hotfix: treat NULL lease_expires_at as expired in claim availability.
 - Phase-4 slice 4.10: execution run claim-next/dequeue (executions.write).
+- Phase-4 slice 4.11: finalize requires claim/lease ownership (executions.write).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

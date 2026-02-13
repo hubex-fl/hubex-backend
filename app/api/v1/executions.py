@@ -1,8 +1,8 @@
-﻿from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -91,6 +91,7 @@ class ExecutionFinalizeIn(BaseModel):
     status: str
     output_json: dict | None = None
     error_json: dict | None = None
+    worker_id: str | None = None
 
 
 class ExecutionClaimIn(BaseModel):
@@ -202,6 +203,10 @@ async def finalize_execution_run(
     data: ExecutionFinalizeIn,
     db: AsyncSession = Depends(get_db),
 ):
+    worker_id = data.worker_id.strip() if data.worker_id is not None else None
+    if worker_id is not None and not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+
     if data.status not in {RUN_STATUS_COMPLETED, RUN_STATUS_FAILED, RUN_STATUS_CANCELED}:
         raise HTTPException(status_code=400, detail="invalid status")
 
@@ -219,9 +224,27 @@ async def finalize_execution_run(
         if data.output_json is not None or data.error_json is not None:
             raise HTTPException(status_code=400, detail="canceled forbids output_json and error_json")
 
+    ownership_guard = or_(
+        ExecutionRun.claimed_by.is_(None),
+        ExecutionRun.lease_expires_at.is_(None),
+        ExecutionRun.lease_expires_at <= func.now(),
+    )
+    if worker_id is not None:
+        ownership_guard = or_(
+            ownership_guard,
+            and_(
+                ExecutionRun.claimed_by == worker_id,
+                ExecutionRun.lease_expires_at > func.now(),
+            ),
+        )
+
     stmt = (
         update(ExecutionRun)
-        .where(ExecutionRun.id == run_id, ExecutionRun.status == RUN_STATUS_REQUESTED)
+        .where(
+            ExecutionRun.id == run_id,
+            ExecutionRun.status == RUN_STATUS_REQUESTED,
+            ownership_guard,
+        )
         .values(
             status=data.status,
             output_json=data.output_json,
@@ -229,6 +252,7 @@ async def finalize_execution_run(
             updated_at=func.now(),
         )
         .returning(ExecutionRun)
+        .execution_options(synchronize_session=False)
     )
     res = await db.execute(stmt)
     updated = res.scalar_one_or_none()
@@ -248,6 +272,22 @@ async def finalize_execution_run(
         ):
             return ExecutionRunOut.model_validate(run)
         raise HTTPException(status_code=409, detail="run already finalized with different payload")
+
+    now = datetime.now(run.lease_expires_at.tzinfo) if run.lease_expires_at is not None else datetime.now()
+    lease_at = run.lease_expires_at
+    if lease_at is not None and lease_at.tzinfo is None:
+        lease_at = lease_at.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+    elif lease_at is not None and lease_at.tzinfo is not None:
+        now = datetime.now(lease_at.tzinfo)
+
+    if (
+        run.claimed_by is not None
+        and lease_at is not None
+        and lease_at > now
+        and run.claimed_by != worker_id
+    ):
+        raise HTTPException(status_code=409, detail="run already claimed")
 
     raise HTTPException(status_code=409, detail="run status not finalizable")
 
@@ -350,3 +390,6 @@ async def get_execution_run(
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
     return ExecutionRunOut.model_validate(run)
+
+
+

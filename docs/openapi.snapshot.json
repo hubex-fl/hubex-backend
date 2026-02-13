@@ -1298,6 +1298,17 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "worker_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Id"
           }
         },
         "required": [

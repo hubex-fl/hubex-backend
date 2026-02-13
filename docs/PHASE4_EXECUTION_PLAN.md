@@ -156,3 +156,12 @@ Payload:
 - definition_key (1..96)
 - worker_id (1..96)
 - lease_seconds (1..3600, default 60)
+
+## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
+
+Route:
+- POST `/api/v1/executions/runs/{run_id}/finalize`
+
+Rules:
+- Finalize allowed when unclaimed or lease expired/NULL.
+- If lease_expires_at > now, worker_id must be provided and match claimed_by.

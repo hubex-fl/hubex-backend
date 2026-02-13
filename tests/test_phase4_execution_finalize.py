@@ -1,5 +1,5 @@
 ﻿from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -326,6 +326,146 @@ async def test_finalize_failed_empty_error_idempotent(monkeypatch):
     )
     assert res2.status_code == 200
     assert res2.json()["id"] == body["id"]
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_finalize_claim_ownership_guard(monkeypatch):
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
+    CAPABILITY_MAP[("POST", "/api/v1/executions/runs/{run_id}/finalize")] = ["executions.write"]
+
+    engine, Session = await _mk_session()
+    async with Session() as db:
+        definition = await create_definition(db, key="k", name="n", version="v1", enabled=True)
+        run = await create_run_idempotent(
+            db,
+            definition_id=definition.id,
+            idempotency_key="i1",
+            requested_by=None,
+            input_json={"x": 1},
+        )
+        run.claimed_by = "worker-a"
+        run.claimed_at = datetime.now(timezone.utc)
+        run.lease_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        await db.commit()
+
+    async def _get_test_db():
+        async with Session() as s:
+            yield s
+
+    app = FastAPI(dependencies=[Depends(capability_guard)])
+    app.dependency_overrides[get_db] = _get_test_db
+    app.include_router(executions_router, prefix="/api/v1")
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    now = datetime.now(timezone.utc)
+    token_ok = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.write"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    res = await client.post(
+        f"/api/v1/executions/runs/{run.id}/finalize",
+        json={"status": "completed", "output_json": {"ok": True}},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res.status_code == 409
+
+    res2 = await client.post(
+        f"/api/v1/executions/runs/{run.id}/finalize",
+        json={"status": "completed", "output_json": {"ok": True}, "worker_id": "worker-b"},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res2.status_code == 409
+
+    res3 = await client.post(
+        f"/api/v1/executions/runs/{run.id}/finalize",
+        json={"status": "completed", "output_json": {"ok": True}, "worker_id": "worker-a"},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res3.status_code == 200
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_finalize_claim_expired_or_null_lease_allows(monkeypatch):
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
+    CAPABILITY_MAP[("POST", "/api/v1/executions/runs/{run_id}/finalize")] = ["executions.write"]
+
+    engine, Session = await _mk_session()
+    async with Session() as db:
+        definition = await create_definition(db, key="k", name="n", version="v1", enabled=True)
+        run_expired = await create_run_idempotent(
+            db,
+            definition_id=definition.id,
+            idempotency_key="i1",
+            requested_by=None,
+            input_json={"x": 1},
+        )
+        run_expired.claimed_by = "worker-a"
+        run_expired.claimed_at = datetime.now(timezone.utc) - timedelta(minutes=2)
+        run_expired.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=30)
+
+        run_null = await create_run_idempotent(
+            db,
+            definition_id=definition.id,
+            idempotency_key="i2",
+            requested_by=None,
+            input_json={"x": 2},
+        )
+        run_null.claimed_by = "worker-a"
+        run_null.claimed_at = datetime.now(timezone.utc)
+        run_null.lease_expires_at = None
+        await db.commit()
+
+    async def _get_test_db():
+        async with Session() as s:
+            yield s
+
+    app = FastAPI(dependencies=[Depends(capability_guard)])
+    app.dependency_overrides[get_db] = _get_test_db
+    app.include_router(executions_router, prefix="/api/v1")
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    now = datetime.now(timezone.utc)
+    token_ok = jwt.encode(
+        {
+            "sub": "1",
+            "iss": ISSUER,
+            "iat": int(now.timestamp()),
+            "exp": int(now.timestamp()) + 600,
+            "caps": ["executions.write"],
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+    res = await client.post(
+        f"/api/v1/executions/runs/{run_expired.id}/finalize",
+        json={"status": "completed", "output_json": {"ok": True}},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res.status_code == 200
+
+    res2 = await client.post(
+        f"/api/v1/executions/runs/{run_null.id}/finalize",
+        json={"status": "failed", "error_json": {"err": "x"}},
+        headers={"Authorization": f"Bearer {token_ok}"},
+    )
+    assert res2.status_code == 200
 
     await client.aclose()
     await engine.dispose()
