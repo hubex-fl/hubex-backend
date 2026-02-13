@@ -406,6 +406,20 @@ Payload:
 - worker_id (string 1..96)
 - lease_seconds (int 1..3600, default 60)
 
+8.10 Executions v1 (run release/unclaim)
+
+POST /api/v1/executions/runs/{run_id}/release
+Capability: executions.write (deny-by-default)
+
+Rules:
+- Only relevant when status == "requested".
+- If claimed_by is NULL, return 200 (idempotent).
+- If claimed_by != worker_id, return 409.
+- If claimed_by == worker_id, clear claimed_by/claimed_at/lease_expires_at and return 200.
+
+Payload:
+- worker_id (string 1..96)
+
 9. MIC v1 (Module Integration Contract)
 
 Prinzipien

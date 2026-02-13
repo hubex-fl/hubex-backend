@@ -21,6 +21,7 @@ EXCLUDE = {
     "POST /api/v1/executions/runs/{run_id}/finalize",
     "POST /api/v1/executions/runs/{run_id}/claim",
     "POST /api/v1/executions/runs/{run_id}/lease",
+    "POST /api/v1/executions/runs/{run_id}/release",
     "POST /api/v1/executions/runs/claim-next",
 }
 

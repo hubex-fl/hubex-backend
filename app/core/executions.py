@@ -228,6 +228,47 @@ async def extend_lease(
     raise ClaimConflictError("lease expired or not owned")
 
 
+async def release_claim(
+    db: AsyncSession,
+    *,
+    run_id: int,
+    worker_id: str,
+) -> ExecutionRun:
+    now = datetime.now(timezone.utc)
+    stmt = (
+        update(ExecutionRun)
+        .where(
+            ExecutionRun.id == run_id,
+            ExecutionRun.status == RUN_STATUS_REQUESTED,
+            ExecutionRun.claimed_by == worker_id,
+        )
+        .values(
+            claimed_by=None,
+            claimed_at=None,
+            lease_expires_at=None,
+            updated_at=now,
+        )
+        .returning(ExecutionRun)
+        .execution_options(synchronize_session=False)
+    )
+    res = await db.execute(stmt)
+    updated = res.scalar_one_or_none()
+    if updated is not None:
+        await db.commit()
+        return updated
+
+    run = await db.scalar(select(ExecutionRun).where(ExecutionRun.id == run_id))
+    if run is None:
+        raise ClaimNotFoundError("run not found")
+    if run.status != RUN_STATUS_REQUESTED:
+        raise ClaimConflictError("run status not releasable")
+    if run.claimed_by is None:
+        return run
+    if run.claimed_by != worker_id:
+        raise ClaimConflictError("run already claimed")
+    raise ClaimConflictError("run not releasable")
+
+
 async def claim_next_run(
     db: AsyncSession,
     *,

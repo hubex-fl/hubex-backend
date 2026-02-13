@@ -157,6 +157,18 @@ Payload:
 - worker_id (1..96)
 - lease_seconds (1..3600, default 60)
 
+## Slice 4.12: Execution Run Release/Unclaim (Write minimal)
+
+Route:
+- POST `/api/v1/executions/runs/{run_id}/release`
+- Capability: `executions.write` (deny-by-default)
+
+Rules:
+- Only when status="requested".
+- If unclaimed, return 200 (idempotent).
+- If claimed_by != worker_id, return 409.
+- If claimed_by == worker_id, clear claim fields.
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

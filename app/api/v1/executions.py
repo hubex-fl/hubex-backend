@@ -14,6 +14,7 @@ from app.core.executions import (
     claim_run,
     claim_next_run,
     extend_lease,
+    release_claim,
     create_definition,
     create_run_idempotent,
     read_definitions,
@@ -108,6 +109,10 @@ class ExecutionClaimNextIn(BaseModel):
     definition_key: str
     worker_id: str
     lease_seconds: int | None = 60
+
+
+class ExecutionReleaseIn(BaseModel):
+    worker_id: str
 
 
 @router.get("/runs", response_model=ExecutionRunReadOut)
@@ -381,6 +386,25 @@ async def claim_next_execution_run(
     return ExecutionRunOut.model_validate(run)
 
 
+@router.post("/runs/{run_id}/release", response_model=ExecutionRunOut)
+async def release_execution_run(
+    run_id: int,
+    data: ExecutionReleaseIn,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = data.worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+
+    try:
+        run = await release_claim(db, run_id=run_id, worker_id=worker_id)
+    except ClaimNotFoundError:
+        raise HTTPException(status_code=404, detail="run not found")
+    except ClaimConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return ExecutionRunOut.model_validate(run)
+
+
 @router.get("/runs/{run_id}", response_model=ExecutionRunOut)
 async def get_execution_run(
     run_id: int,
@@ -390,6 +414,5 @@ async def get_execution_run(
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
     return ExecutionRunOut.model_validate(run)
-
 
 
