@@ -1134,8 +1134,15 @@
       "ExecutionClaimNextIn": {
         "properties": {
           "definition_key": {
-            "title": "Definition Key",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Key"
           },
           "lease_seconds": {
             "anyOf": [
@@ -1155,7 +1162,6 @@
           }
         },
         "required": [
-          "definition_key",
           "worker_id"
         ],
         "title": "ExecutionClaimNextIn",

@@ -10,6 +10,7 @@
 - Phase-4 slice 4.17: worker definition subscriptions (executions.read/write).
 - Phase-4 slice 4.18: active worker view filter for worker lists/bindings.
 - Docs/Scripts: align worker heartbeat reference flow with registry endpoint.
+- Phase-4 slice 4.19: subscription-aware claim-next routing for workers.
 - Add app boot smoke to phase1 gate suite.
 - Add DB connectivity smoke to phase1 gate suite.
 - Phase-1.5 consolidation: gates + smokes hardened.

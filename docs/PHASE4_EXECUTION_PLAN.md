@@ -201,6 +201,13 @@ Routes:
 - GET `/api/v1/executions/workers?active_within_seconds=<int>`
 - GET `/api/v1/executions/definitions/{definition_key}/workers?active_within_seconds=<int>`
 
+## Slice 4.19: Subscription-Aware Claim-Next (Write minimal)
+
+Rules:
+- `definition_key` optional when worker has subscriptions.
+- When omitted, select oldest available run across subscribed definitions by (definition_id ASC, id ASC).
+- If worker has subscriptions and requests an unsubscribed definition, return 409.
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

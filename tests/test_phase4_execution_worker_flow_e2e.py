@@ -16,7 +16,7 @@ from app.core.capabilities import CAPABILITY_MAP
 from app.core.executions import create_definition, create_run_idempotent
 from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
 from app.db.base import Base
-from app.db.models.executions import ExecutionDefinition, ExecutionRun
+from app.db.models.executions import ExecutionDefinition, ExecutionRun, ExecutionWorker
 
 
 def _create_execution_tables(metadata, conn) -> None:
@@ -25,6 +25,7 @@ def _create_execution_tables(metadata, conn) -> None:
         tables=[
             ExecutionDefinition.__table__,
             ExecutionRun.__table__,
+            ExecutionWorker.__table__,
         ],
     )
 

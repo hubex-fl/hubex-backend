@@ -284,13 +284,51 @@ async def claim_next_run(
     lease_seconds: int,
     max_attempts: int = 5,
 ) -> ExecutionRun:
+    return await claim_next_run_for_definition(
+        db,
+        definition_id=definition_id,
+        worker_id=worker_id,
+        lease_seconds=lease_seconds,
+        max_attempts=max_attempts,
+    )
+
+
+async def claim_next_run_for_definition(
+    db: AsyncSession,
+    *,
+    definition_id: int,
+    worker_id: str,
+    lease_seconds: int,
+    max_attempts: int = 5,
+) -> ExecutionRun:
+    return await claim_next_run_for_definitions(
+        db,
+        definition_ids=[definition_id],
+        worker_id=worker_id,
+        lease_seconds=lease_seconds,
+        max_attempts=max_attempts,
+    )
+
+
+async def claim_next_run_for_definitions(
+    db: AsyncSession,
+    *,
+    definition_ids: list[int],
+    worker_id: str,
+    lease_seconds: int,
+    max_attempts: int = 5,
+) -> ExecutionRun:
+    if not definition_ids:
+        raise ClaimNotFoundError("no run available")
+
+    ids = sorted(set(definition_ids))
     attempts = max(1, max_attempts)
     for _ in range(attempts):
         now = datetime.now(timezone.utc)
         res = await db.execute(
             select(ExecutionRun.id)
             .where(
-                ExecutionRun.definition_id == definition_id,
+                ExecutionRun.definition_id.in_(ids),
                 ExecutionRun.status == RUN_STATUS_REQUESTED,
                 or_(
                     ExecutionRun.claimed_by.is_(None),
@@ -298,7 +336,7 @@ async def claim_next_run(
                     ExecutionRun.lease_expires_at < now,
                 ),
             )
-            .order_by(ExecutionRun.id.asc())
+            .order_by(ExecutionRun.definition_id.asc(), ExecutionRun.id.asc())
             .limit(1)
         )
         candidate_id = res.scalar_one_or_none()
@@ -306,12 +344,12 @@ async def claim_next_run(
             res_same = await db.execute(
                 select(ExecutionRun.id)
                 .where(
-                    ExecutionRun.definition_id == definition_id,
+                    ExecutionRun.definition_id.in_(ids),
                     ExecutionRun.status == RUN_STATUS_REQUESTED,
                     ExecutionRun.claimed_by == worker_id,
                     ExecutionRun.lease_expires_at > now,
                 )
-                .order_by(ExecutionRun.id.asc())
+                .order_by(ExecutionRun.definition_id.asc(), ExecutionRun.id.asc())
                 .limit(1)
             )
             candidate_id = res_same.scalar_one_or_none()

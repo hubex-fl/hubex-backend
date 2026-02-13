@@ -130,6 +130,14 @@ async def read_worker_definitions(
     return list(res.scalars().all())
 
 
+async def read_worker_definition_ids(
+    db: AsyncSession,
+    *,
+    worker_id: str,
+) -> list[int]:
+    return await read_worker_definitions(db, worker_id=worker_id)
+
+
 async def read_definition_workers(
     db: AsyncSession,
     *,

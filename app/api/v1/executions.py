@@ -9,6 +9,7 @@ from app.api.deps import get_db
 from app.core.execution_workers import (
     WorkerNotFoundError,
     read_definition_workers,
+    read_worker_definition_ids,
     read_worker_definitions,
     read_workers,
     set_worker_definitions,
@@ -21,6 +22,7 @@ from app.core.executions import (
     ClaimNotFoundError,
     claim_run,
     claim_next_run,
+    claim_next_run_for_definitions,
     extend_lease,
     release_claim,
     create_definition,
@@ -148,7 +150,7 @@ class ExecutionLeaseIn(BaseModel):
 
 
 class ExecutionClaimNextIn(BaseModel):
-    definition_key: str
+    definition_key: str | None = None
     worker_id: str
     lease_seconds: int | None = 60
 
@@ -512,8 +514,8 @@ async def claim_next_execution_run(
     data: ExecutionClaimNextIn,
     db: AsyncSession = Depends(get_db),
 ):
-    definition_key = data.definition_key.strip()
-    if not (1 <= len(definition_key) <= 96):
+    definition_key = data.definition_key.strip() if data.definition_key is not None else None
+    if definition_key is not None and not (1 <= len(definition_key) <= 96):
         raise HTTPException(status_code=400, detail="invalid definition_key")
 
     worker_id = data.worker_id.strip()
@@ -523,9 +525,33 @@ async def claim_next_execution_run(
     if not (1 <= lease_seconds <= 3600):
         raise HTTPException(status_code=400, detail="invalid lease_seconds")
 
+    try:
+        subscribed_ids = await read_worker_definition_ids(db, worker_id=worker_id)
+    except WorkerNotFoundError:
+        subscribed_ids = []
+
+    if definition_key is None:
+        if not subscribed_ids:
+            raise HTTPException(status_code=400, detail="definition_key required")
+        try:
+            run = await claim_next_run_for_definitions(
+                db,
+                definition_ids=subscribed_ids,
+                worker_id=worker_id,
+                lease_seconds=lease_seconds,
+            )
+        except ClaimNotFoundError as exc:
+            detail = str(exc)
+            raise HTTPException(status_code=404, detail=detail)
+        except ClaimConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        return ExecutionRunOut.model_validate(run)
+
     definition = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == definition_key))
     if definition is None:
         raise HTTPException(status_code=404, detail="definition not found")
+    if subscribed_ids and definition.id not in subscribed_ids:
+        raise HTTPException(status_code=409, detail="worker not subscribed")
 
     try:
         run = await claim_next_run(

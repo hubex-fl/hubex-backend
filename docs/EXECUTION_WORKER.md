@@ -7,7 +7,8 @@ The run status remains `requested`; claim fields represent “in progress” (no
 0) Register/heartbeat worker:
    - `POST /api/v1/executions/workers/heartbeat` (recommended cadence: same as lease heartbeat)
 1) Dequeue a run:
-   - `POST /api/v1/executions/runs/claim-next` with `definition_key`, `worker_id`, `lease_seconds`
+   - `POST /api/v1/executions/runs/claim-next` with `worker_id`, `lease_seconds`
+   - Include `definition_key` explicitly, or omit it when using worker subscriptions.
 2) Heartbeat while processing:
    - `POST /api/v1/executions/runs/{run_id}/lease` every `lease_seconds/2`
 3) Finalize on success/fail/cancel:

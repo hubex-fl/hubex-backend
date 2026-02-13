@@ -72,7 +72,7 @@ async def _worker_registry_heartbeat(
 async def main() -> int:
     base_url = os.getenv("HUBEX_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
     token = _env("HUBEX_TOKEN")
-    definition_key = _env("DEFINITION_KEY")
+    definition_key = os.getenv("DEFINITION_KEY", "").strip()
     worker_id = _env("WORKER_ID")
     lease_seconds = _env_int("LEASE_SECONDS", 60)
     heartbeat_every = _env_int("HEARTBEAT_EVERY", 30)
@@ -92,15 +92,18 @@ async def main() -> int:
         )
         try:
             while True:
+                payload: Dict[str, Any] = {
+                    "worker_id": worker_id,
+                    "lease_seconds": lease_seconds,
+                }
+                if definition_key:
+                    payload["definition_key"] = definition_key
+
                 resp = await _post(
                     client,
                     f"{base_url}/api/v1/executions/runs/claim-next",
                     token,
-                    {
-                        "definition_key": definition_key,
-                        "worker_id": worker_id,
-                        "lease_seconds": lease_seconds,
-                    },
+                    payload,
                 )
 
                 if resp.status_code == 404:

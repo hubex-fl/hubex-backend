@@ -399,12 +399,14 @@ Capability: executions.write (deny-by-default)
 Rules:
 - Only runs with status="requested" are eligible.
 - Available if claimed_by is NULL or lease_expires_at is NULL or lease_expires_at < now.
-- Deterministic selection: lowest id among available for the definition.
+- If definition_key is provided: deterministic selection is lowest id among available for that definition.
+- If definition_key is omitted: worker must have subscriptions; selection is deterministic by (definition_id ASC, id ASC).
+- If worker has subscriptions and requests a different definition_key: 409 "worker not subscribed".
 - Claim uses existing CAS claim rules (atomic UPDATE ... WHERE ... RETURNING).
 - If no available run exists: 404 "no run available".
 
 Payload:
-- definition_key (string 1..96)
+- definition_key (string 1..96, optional when worker has subscriptions)
 - worker_id (string 1..96)
 - lease_seconds (int 1..3600, default 60)
 
