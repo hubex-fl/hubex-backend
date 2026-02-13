@@ -15,7 +15,7 @@ import sqlalchemy as sa
 revision: str = "b7c9d1e2f3a4"
 down_revision: Union[str, Sequence[str], None] = "e8f13c318a91"
 branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = "801faeb5bf4b"
 
 
 def upgrade() -> None:
