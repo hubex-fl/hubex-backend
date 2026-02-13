@@ -17,6 +17,8 @@
 - Phase-3 closeout: scope signals idempotency to stream (UNIQUE(stream, idempotency_key)).
 - Phase-4 complete: executions v1 storage + read/write surfaces, claim/lease/claim-next/release, ownership guards, worker registry/subscriptions/filters, indexes, and tests.
 - Phase-5 slice 5.1: execution worker v1 service (MVP).
+- Phase-5 SSOT/plan alignment: deployable artifact + ops hardening + docs/demo alignment.
+- Phase-5 slice 5.3: worker ops hardening (shutdown/exitcodes/run_once).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

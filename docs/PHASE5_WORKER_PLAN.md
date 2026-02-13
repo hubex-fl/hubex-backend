@@ -1,4 +1,4 @@
-﻿# Phase 5 Worker Plan
+# Phase 5 Worker Plan (Execution Worker v1)
 
 ## Slice 5.1: Execution Worker v1 (MVP)
 - Service module using Phase-4 APIs only.
@@ -6,14 +6,15 @@
 - Worker registry heartbeat.
 - Deterministic run control via MAX_RUNS.
 
-## Slice 5.2: Worker Observability (minimal)
-- Structured log aggregation guidance.
-- Metrics mapping for claim/lease/finalize outcomes.
+## Slice 5.2: Deployable Artifact
+- Dockerfile/container guidance.
+- Non-root runtime and entrypoint.
+- Env contract documented.
 
-## Slice 5.3: Deployment Packaging
-- Container/Dockerfile guidance and env contract.
-- Healthcheck and runbook.
+## Slice 5.3: Ops Hardening
+- Shutdown/exitcode semantics.
+- run_once/MAX_RUNS deterministic modes.
+- Clean task cancellation (no long waits on stop).
 
-## Slice 5.4: Ops Guardrails
-- Basic backoff guidance (no retries as feature).
-- Resource limits and shutdown behavior.
+## Slice 5.4: Docs/Demo Alignment
+- Canonical docs aligned with worker demo script.

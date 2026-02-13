@@ -72,7 +72,10 @@ async def _heartbeat_loop(
         )
         if resp.status_code != 200:
             _log("worker_heartbeat_failed", status=resp.status_code, body=resp.text)
-        await asyncio.sleep(config.heartbeat_every)
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=config.heartbeat_every)
+        except asyncio.TimeoutError:
+            continue
 
 
 async def _lease_loop(
@@ -83,9 +86,6 @@ async def _lease_loop(
 ) -> None:
     url = f"{config.base_url}/api/v1/executions/runs/{run_id}/lease"
     while not stop.is_set():
-        await asyncio.sleep(config.heartbeat_every)
-        if stop.is_set():
-            break
         resp = await post_json(
             client,
             url,
@@ -96,6 +96,10 @@ async def _lease_loop(
             _log("lease_failed", run_id=run_id, status=resp.status_code, body=resp.text)
             stop.set()
             break
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=config.heartbeat_every)
+        except asyncio.TimeoutError:
+            continue
 
 
 async def run_worker(
@@ -117,7 +121,11 @@ async def run_worker(
                 continue
             if _is_misconfig(resp):
                 _log("claim_misconfig", status=resp.status_code, body=resp.text)
-                return 2
+                raise WorkerMisconfigError(resp.text)
+            if resp.status_code == 409:
+                _log("claim_conflict", status=resp.status_code, body=resp.text)
+                await asyncio.sleep(config.poll_delay)
+                continue
             if resp.status_code != 200:
                 _log("claim_error", status=resp.status_code, body=resp.text)
                 await asyncio.sleep(config.poll_delay)
@@ -166,6 +174,11 @@ async def run_worker(
             if config.max_runs is not None and runs_completed >= config.max_runs:
                 _log("worker_done", runs_completed=runs_completed)
                 return 0
+    except WorkerMisconfigError:
+        raise
+    except Exception as exc:
+        _log("worker_error", error=repr(exc))
+        return 1
     finally:
         registry_stop.set()
         await registry_task

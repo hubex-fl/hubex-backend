@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 import httpx
@@ -24,7 +25,7 @@ from app.db.models.executions import (
     ExecutionWorker,
     ExecutionWorkerDefinition,
 )
-from app.worker_v1.config import WorkerConfig
+from app.worker_v1.config import WorkerConfig, load_config_from_env
 from app.worker_v1.service import run_worker
 
 
@@ -99,7 +100,7 @@ async def test_worker_service_e2e_claim_finalize_and_subscription(monkeypatch):
         token=token,
         worker_id="w1",
         lease_seconds=60,
-        heartbeat_every=1,
+        heartbeat_every=30,
         poll_delay=0.1,
         definition_key=None,
         max_runs=1,
@@ -112,7 +113,7 @@ async def test_worker_service_e2e_claim_finalize_and_subscription(monkeypatch):
             headers={"Authorization": f"Bearer {token}"},
         )
         assert sub_resp.status_code == 200
-        code = await run_worker(config, client)
+        code = await asyncio.wait_for(run_worker(config, client), timeout=2)
 
     assert code == 0
     async with Session() as db:
@@ -125,3 +126,12 @@ async def test_worker_service_e2e_claim_finalize_and_subscription(monkeypatch):
         assert run.output_json["echo"] == {"x": 1}
 
     await engine.dispose()
+
+
+def test_worker_run_once_env_sets_max_runs(monkeypatch):
+    monkeypatch.setenv("HUBEX_TOKEN", "tok")
+    monkeypatch.setenv("WORKER_ID", "worker-1")
+    monkeypatch.setenv("RUN_ONCE", "1")
+
+    cfg = load_config_from_env()
+    assert cfg.max_runs == 1

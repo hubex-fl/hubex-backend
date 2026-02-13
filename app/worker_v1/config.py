@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 import os
@@ -49,6 +49,10 @@ def load_config_from_env() -> WorkerConfig:
         definition_key = None
     max_runs_raw = os.getenv("MAX_RUNS")
     max_runs = int(max_runs_raw) if max_runs_raw not in (None, "") else None
+    run_once_raw = os.getenv("RUN_ONCE", "")
+    run_once = run_once_raw.lower() in {"1", "true", "yes"}
+    if run_once and max_runs is None:
+        max_runs = 1
 
     if not token:
         raise ValueError("HUBEX_TOKEN is required")
