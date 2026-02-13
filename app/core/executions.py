@@ -76,18 +76,23 @@ async def read_runs(
     db: AsyncSession,
     *,
     definition_id: int,
+    status: str | None,
     cursor: int | None,
     limit: int,
 ) -> tuple[list[ExecutionRun], int | None]:
     after = cursor or 0
     clamped = min(max(limit, 1), MAX_LIMIT)
 
-    res = await db.execute(
+    stmt = (
         select(ExecutionRun)
         .where(ExecutionRun.definition_id == definition_id, ExecutionRun.id > after)
         .order_by(ExecutionRun.id.asc())
         .limit(clamped + 1)
     )
+    if status is not None:
+        stmt = stmt.where(ExecutionRun.status == status)
+
+    res = await db.execute(stmt)
     rows = list(res.scalars().all())
     if len(rows) <= clamped:
         return rows, None

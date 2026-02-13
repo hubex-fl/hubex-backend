@@ -27,6 +27,7 @@
 - Hotfix: execution definition/run creation is DB-idempotent (unique constraints + IntegrityError fallback).
 - Chore: clean up execution idempotent create helpers (no behavior change).
 - Tests: deterministic IntegrityError fallback for execution idempotency.
+- Chore: executions runs list supports optional status filter (read-only).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

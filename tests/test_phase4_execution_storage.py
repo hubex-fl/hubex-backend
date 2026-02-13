@@ -78,7 +78,7 @@ async def test_read_runs_deterministic_pagination_and_next_cursor():
         seen: list[int] = []
         cursor: int | None = None
         while True:
-            items, next_cursor = await read_runs(db, definition_id=d.id, cursor=cursor, limit=3)
+            items, next_cursor = await read_runs(db, definition_id=d.id, status=None, cursor=cursor, limit=3)
             ids = [it.id for it in items]
             assert ids == sorted(ids)
             assert not (set(ids) & set(seen))
@@ -107,7 +107,7 @@ async def test_read_runs_limit_clamped():
                 input_json={"i": i},
             )
 
-        items, next_cursor = await read_runs(db, definition_id=d.id, cursor=0, limit=MAX_LIMIT + 1000)
+        items, next_cursor = await read_runs(db, definition_id=d.id, status=None, cursor=0, limit=MAX_LIMIT + 1000)
         assert len(items) == MAX_LIMIT
         assert next_cursor is not None
     await engine.dispose()
@@ -143,4 +143,3 @@ async def test_run_invariants_write_once_and_final_immutable():
         with pytest.raises(ValueError):
             run.status = RUN_STATUS_FAILED
     await engine.dispose()
-

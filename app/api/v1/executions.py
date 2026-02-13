@@ -88,16 +88,31 @@ class ExecutionFinalizeIn(BaseModel):
 @router.get("/runs", response_model=ExecutionRunReadOut)
 async def list_execution_runs(
     definition_key: str = Query(..., min_length=1, max_length=96),
+    status: str | None = Query(default=None, min_length=1, max_length=24),
     cursor: int | None = Query(default=None, ge=0),
     limit: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
+    if status is not None and status not in {
+        RUN_STATUS_REQUESTED,
+        RUN_STATUS_COMPLETED,
+        RUN_STATUS_FAILED,
+        RUN_STATUS_CANCELED,
+    }:
+        raise HTTPException(status_code=400, detail="invalid status")
+
     definition = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == definition_key))
     if definition is None:
         raise HTTPException(status_code=404, detail="definition not found")
 
     eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
-    items, next_cursor = await read_runs(db, definition_id=definition.id, cursor=cursor, limit=eff_limit)
+    items, next_cursor = await read_runs(
+        db,
+        definition_id=definition.id,
+        status=status,
+        cursor=cursor,
+        limit=eff_limit,
+    )
     return ExecutionRunReadOut(items=items, next_cursor=next_cursor)
 
 

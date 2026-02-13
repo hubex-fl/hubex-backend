@@ -47,13 +47,16 @@ Invariants (enforced in code, no DB triggers):
 ## Slice 4.2: Execution Read Surface (Read-only)
 
 Read surface:
-- GET `/api/v1/executions/runs?definition_key=<string>&cursor=<int?>&limit=<int?>`
+- GET `/api/v1/executions/runs?definition_key=<string>&status=<string?>&cursor=<int?>&limit=<int?>`
 - Capability: `executions.read` (deny-by-default)
 
 Cursor semantics:
 1) cursor is exclusive after_cursor: only rows with id > cursor are returned (null => 0).
 2) Ordering is deterministic by id ASC; pagination uses limit+1 to avoid duplicates across pages.
 3) next_cursor is the last returned id only when more rows exist; otherwise null.
+
+Optional filter:
+- If status is provided, filter runs by exact status (requested | completed | failed | canceled).
 
 ## Slice 4.4: Execution Run Finalization (Write minimal)
 
