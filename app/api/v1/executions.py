@@ -6,7 +6,14 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.core.execution_workers import read_workers, upsert_worker_heartbeat
+from app.core.execution_workers import (
+    WorkerNotFoundError,
+    read_definition_workers,
+    read_worker_definitions,
+    read_workers,
+    set_worker_definitions,
+    upsert_worker_heartbeat,
+)
 from app.core.executions import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
@@ -100,6 +107,20 @@ class ExecutionWorkerOut(BaseModel):
 class ExecutionWorkerReadOut(BaseModel):
     items: list[ExecutionWorkerOut]
     next_cursor: str | None
+
+
+class ExecutionWorkerDefinitionsIn(BaseModel):
+    definition_keys: list[str]
+
+
+class ExecutionWorkerDefinitionsOut(BaseModel):
+    worker_id: str
+    definition_keys: list[str]
+
+
+class ExecutionDefinitionWorkersOut(BaseModel):
+    definition_key: str
+    worker_ids: list[str]
 
 
 class ExecutionRunIn(BaseModel):
@@ -199,6 +220,86 @@ async def list_execution_workers(
     eff_limit = DEFAULT_LIMIT if limit is None else min(max(limit, 1), MAX_LIMIT)
     items, next_cursor = await read_workers(db, cursor=cursor, limit=eff_limit)
     return ExecutionWorkerReadOut(items=items, next_cursor=next_cursor)
+
+
+@router.post("/workers/{worker_id}/definitions", response_model=ExecutionWorkerDefinitionsOut)
+async def set_execution_worker_definitions(
+    worker_id: str,
+    data: ExecutionWorkerDefinitionsIn,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    if not data.definition_keys or len(data.definition_keys) > 100:
+        raise HTTPException(status_code=400, detail="invalid definition_keys")
+
+    keys: list[str] = []
+    for key in data.definition_keys:
+        key = key.strip()
+        if not (1 <= len(key) <= 96):
+            raise HTTPException(status_code=400, detail="invalid definition_keys")
+        keys.append(key)
+    unique_keys = list(dict.fromkeys(keys))
+
+    res = await db.execute(
+        select(ExecutionDefinition).where(ExecutionDefinition.key.in_(unique_keys))
+    )
+    defs = res.scalars().all()
+    if len(defs) != len(unique_keys):
+        raise HTTPException(status_code=404, detail="definition not found")
+    defs_by_key = {d.key: d for d in defs}
+    definition_ids = [defs_by_key[k].id for k in unique_keys]
+
+    try:
+        await set_worker_definitions(db, worker_id=worker_id, definition_ids=definition_ids)
+    except WorkerNotFoundError:
+        raise HTTPException(status_code=404, detail="worker not found")
+
+    return ExecutionWorkerDefinitionsOut(worker_id=worker_id, definition_keys=unique_keys)
+
+
+@router.get("/workers/{worker_id}/definitions", response_model=ExecutionWorkerDefinitionsOut)
+async def get_execution_worker_definitions(
+    worker_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    worker_id = worker_id.strip()
+    if not (1 <= len(worker_id) <= 96):
+        raise HTTPException(status_code=400, detail="invalid worker_id")
+    try:
+        definition_ids = await read_worker_definitions(db, worker_id=worker_id)
+    except WorkerNotFoundError:
+        raise HTTPException(status_code=404, detail="worker not found")
+
+    if not definition_ids:
+        return ExecutionWorkerDefinitionsOut(worker_id=worker_id, definition_keys=[])
+
+    res = await db.execute(
+        select(ExecutionDefinition.id, ExecutionDefinition.key).where(
+            ExecutionDefinition.id.in_(definition_ids)
+        )
+    )
+    by_id = {row.id: row.key for row in res.all()}
+    keys = [by_id[definition_id] for definition_id in definition_ids if definition_id in by_id]
+    return ExecutionWorkerDefinitionsOut(worker_id=worker_id, definition_keys=keys)
+
+
+@router.get("/definitions/{definition_key}/workers", response_model=ExecutionDefinitionWorkersOut)
+async def get_execution_definition_workers(
+    definition_key: str,
+    db: AsyncSession = Depends(get_db),
+):
+    definition_key = definition_key.strip()
+    if not (1 <= len(definition_key) <= 96):
+        raise HTTPException(status_code=400, detail="invalid definition_key")
+
+    definition = await db.scalar(select(ExecutionDefinition).where(ExecutionDefinition.key == definition_key))
+    if definition is None:
+        raise HTTPException(status_code=404, detail="definition not found")
+
+    worker_ids = await read_definition_workers(db, definition_id=definition.id)
+    return ExecutionDefinitionWorkersOut(definition_key=definition_key, worker_ids=worker_ids)
 
 
 @router.get("/definitions/{definition_key}", response_model=ExecutionDefinitionOut)

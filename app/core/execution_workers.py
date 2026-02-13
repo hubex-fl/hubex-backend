@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.executions import ExecutionWorker
+from app.db.models.executions import ExecutionWorker, ExecutionWorkerDefinition
 
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
+
+
+class WorkerNotFoundError(RuntimeError):
+    pass
 
 
 async def upsert_worker_heartbeat(
@@ -81,3 +85,58 @@ async def read_workers(
     page = rows[:clamped]
     next_cursor = page[-1].id
     return page, next_cursor
+
+
+async def set_worker_definitions(
+    db: AsyncSession,
+    *,
+    worker_id: str,
+    definition_ids: list[int],
+) -> list[int]:
+    worker = await db.scalar(select(ExecutionWorker.id).where(ExecutionWorker.id == worker_id))
+    if worker is None:
+        raise WorkerNotFoundError("worker not found")
+
+    unique_ids = list(dict.fromkeys(definition_ids))
+    await db.execute(
+        delete(ExecutionWorkerDefinition).where(ExecutionWorkerDefinition.worker_id == worker_id)
+    )
+    if unique_ids:
+        db.add_all(
+            [
+                ExecutionWorkerDefinition(worker_id=worker_id, definition_id=definition_id)
+                for definition_id in unique_ids
+            ]
+        )
+    await db.commit()
+    return unique_ids
+
+
+async def read_worker_definitions(
+    db: AsyncSession,
+    *,
+    worker_id: str,
+) -> list[int]:
+    worker = await db.scalar(select(ExecutionWorker.id).where(ExecutionWorker.id == worker_id))
+    if worker is None:
+        raise WorkerNotFoundError("worker not found")
+
+    res = await db.execute(
+        select(ExecutionWorkerDefinition.definition_id)
+        .where(ExecutionWorkerDefinition.worker_id == worker_id)
+        .order_by(ExecutionWorkerDefinition.definition_id.asc())
+    )
+    return list(res.scalars().all())
+
+
+async def read_definition_workers(
+    db: AsyncSession,
+    *,
+    definition_id: int,
+) -> list[str]:
+    res = await db.execute(
+        select(ExecutionWorkerDefinition.worker_id)
+        .where(ExecutionWorkerDefinition.definition_id == definition_id)
+        .order_by(ExecutionWorkerDefinition.worker_id.asc())
+    )
+    return list(res.scalars().all())

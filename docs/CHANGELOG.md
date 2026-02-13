@@ -7,6 +7,7 @@
 - Docs/gates consolidation and changelog gate enforcement for Phase-1.5.
 - Add phase1 tag guard workflow and release tagging guidance.
 - Add Windows CI job for phase1 gates.
+- Phase-4 slice 4.17: worker definition subscriptions (executions.read/write).
 - Add app boot smoke to phase1 gate suite.
 - Add DB connectivity smoke to phase1 gate suite.
 - Phase-1.5 consolidation: gates + smokes hardened.

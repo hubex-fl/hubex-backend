@@ -434,6 +434,17 @@ Capability: executions.write (deny-by-default)
 GET /api/v1/executions/workers
 Capability: executions.read (deny-by-default)
 
+Worker Subscriptions (minimal)
+
+POST /api/v1/executions/workers/{worker_id}/definitions
+Capability: executions.write (deny-by-default)
+
+GET /api/v1/executions/workers/{worker_id}/definitions
+Capability: executions.read (deny-by-default)
+
+GET /api/v1/executions/definitions/{definition_key}/workers
+Capability: executions.read (deny-by-default)
+
 Prinzipien
 
 Core ist Single Source of Truth

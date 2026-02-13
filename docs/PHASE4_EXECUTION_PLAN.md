@@ -188,6 +188,13 @@ Routes:
 - POST `/api/v1/executions/workers/heartbeat`
 - GET `/api/v1/executions/workers`
 
+## Slice 4.17: Worker Subscriptions (Minimal)
+
+Routes:
+- POST `/api/v1/executions/workers/{worker_id}/definitions`
+- GET `/api/v1/executions/workers/{worker_id}/definitions`
+- GET `/api/v1/executions/definitions/{definition_key}/workers`
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

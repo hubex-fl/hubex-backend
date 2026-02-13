@@ -1269,6 +1269,27 @@
         "title": "ExecutionDefinitionReadOut",
         "type": "object"
       },
+      "ExecutionDefinitionWorkersOut": {
+        "properties": {
+          "definition_key": {
+            "title": "Definition Key",
+            "type": "string"
+          },
+          "worker_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Worker Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "definition_key",
+          "worker_ids"
+        ],
+        "title": "ExecutionDefinitionWorkersOut",
+        "type": "object"
+      },
       "ExecutionFinalizeIn": {
         "properties": {
           "error_json": {
@@ -1538,6 +1559,43 @@
           "next_cursor"
         ],
         "title": "ExecutionRunReadOut",
+        "type": "object"
+      },
+      "ExecutionWorkerDefinitionsIn": {
+        "properties": {
+          "definition_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Definition Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "definition_keys"
+        ],
+        "title": "ExecutionWorkerDefinitionsIn",
+        "type": "object"
+      },
+      "ExecutionWorkerDefinitionsOut": {
+        "properties": {
+          "definition_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Definition Keys",
+            "type": "array"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "definition_keys"
+        ],
+        "title": "ExecutionWorkerDefinitionsOut",
         "type": "object"
       },
       "ExecutionWorkerIn": {
@@ -5487,6 +5545,57 @@
         ]
       }
     },
+    "/api/v1/executions/definitions/{definition_key}/workers": {
+      "get": {
+        "operationId": "get_execution_definition_workers_api_v1_executions_definitions__definition_key__workers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "definition_key",
+            "required": true,
+            "schema": {
+              "title": "Definition Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionDefinitionWorkersOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Execution Definition Workers",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
     "/api/v1/executions/runs": {
       "get": {
         "operationId": "list_execution_runs_api_v1_executions_runs_get",
@@ -6106,6 +6215,116 @@
           }
         ],
         "summary": "Upsert Execution Worker Heartbeat",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      }
+    },
+    "/api/v1/executions/workers/{worker_id}/definitions": {
+      "get": {
+        "operationId": "get_execution_worker_definitions_api_v1_executions_workers__worker_id__definitions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "worker_id",
+            "required": true,
+            "schema": {
+              "title": "Worker Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionWorkerDefinitionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Execution Worker Definitions",
+        "tags": [
+          "executions",
+          "executions"
+        ]
+      },
+      "post": {
+        "operationId": "set_execution_worker_definitions_api_v1_executions_workers__worker_id__definitions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "worker_id",
+            "required": true,
+            "schema": {
+              "title": "Worker Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionWorkerDefinitionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionWorkerDefinitionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Set Execution Worker Definitions",
         "tags": [
           "executions",
           "executions"

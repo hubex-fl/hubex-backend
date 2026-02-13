@@ -135,3 +135,21 @@ class ExecutionWorker(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class ExecutionWorkerDefinition(Base):
+    __tablename__ = "execution_worker_defs"
+    __table_args__ = (
+        Index("ix_execution_worker_defs_definition_worker", "definition_id", "worker_id"),
+    )
+
+    worker_id: Mapped[str] = mapped_column(
+        String(96),
+        ForeignKey("execution_workers.id"),
+        primary_key=True,
+    )
+    definition_id: Mapped[int] = mapped_column(
+        ForeignKey("execution_definitions.id"),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
