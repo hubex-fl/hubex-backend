@@ -177,6 +177,11 @@ Worker reference:
 Change:
 - Add index on `execution_runs(definition_id, status, id)` to speed claim-next.
 
+## Slice 4.15: Worker Flow E2E Integration Test
+
+Tests:
+- Claim-next → lease → finalize (ownership) end-to-end via HTTP.
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:

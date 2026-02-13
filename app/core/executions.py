@@ -146,7 +146,14 @@ async def claim_run(
     updated = res.scalar_one_or_none()
     if updated is not None:
         await db.commit()
-        return updated
+        refreshed = await db.scalar(
+            select(ExecutionRun)
+            .where(ExecutionRun.id == run_id)
+            .execution_options(populate_existing=True)
+        )
+        if refreshed is None:
+            return updated
+        return refreshed
 
     run = await db.scalar(select(ExecutionRun).where(ExecutionRun.id == run_id))
     if run is None:
