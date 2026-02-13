@@ -34,6 +34,7 @@
 - Phase-4 slice 4.10: execution run claim-next/dequeue (executions.write).
 - Phase-4 slice 4.11: finalize requires claim/lease ownership (executions.write).
 - Phase-4 slice 4.12: execution run release/unclaim (executions.write).
+- Docs/Scripts: add worker reference flow for executions claim/lease/dequeue.
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

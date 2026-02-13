@@ -283,6 +283,8 @@ enabled + lowest priority wins
 
 8.1 Executions v1 (read-only)
 
+Reference flow: docs/EXECUTION_WORKER.md
+
 GET /api/v1/executions/runs?definition_key=<string>&status=<string?>&cursor=<int?>&limit=<int?>
 
 Capability: executions.read (deny-by-default)

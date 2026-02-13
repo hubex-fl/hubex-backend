@@ -169,6 +169,9 @@ Rules:
 - If claimed_by != worker_id, return 409.
 - If claimed_by == worker_id, clear claim fields.
 
+Worker reference:
+- docs/EXECUTION_WORKER.md + scripts/execution_worker_demo.py provide the canonical loop.
+
 ## Slice 4.11: Finalize Ownership Guard (Write minimal hardening)
 
 Route:
