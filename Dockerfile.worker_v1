@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+FROM python:3.11.8-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+COPY app /app/app
+
+RUN useradd -m -u 10001 worker
+USER worker
+
+ENTRYPOINT ["python", "-m", "app.worker_v1"]

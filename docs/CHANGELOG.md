@@ -19,6 +19,7 @@
 - Phase-5 slice 5.1: execution worker v1 service (MVP).
 - Phase-5 SSOT/plan alignment: deployable artifact + ops hardening + docs/demo alignment.
 - Phase-5 slice 5.3: worker ops hardening (shutdown/exitcodes/run_once).
+- Phase-5 slice 5.2: deployable artifact (container/runtime + env contract).
 
 ## 2026-01-03 (Phase-1 COMPLETE / FEATURE-FROZEN)
 - Phase-1 marked complete; feature freeze enforced.

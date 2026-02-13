@@ -11,6 +11,35 @@
 - Non-root runtime and entrypoint.
 - Env contract documented.
 
+### Env Contract
+Required:
+- HUBEX_TOKEN
+- WORKER_ID
+
+Optional:
+- HUBEX_BASE_URL (default http://127.0.0.1:8000)
+- LEASE_SECONDS (default 60)
+- HEARTBEAT_EVERY (default 20, 1..LEASE_SECONDS)
+- POLL_DELAY (default 2.0)
+- DEFINITION_KEY (optional; omit to use subscriptions)
+- MAX_RUNS (optional int)
+- RUN_ONCE (if set, max_runs=1)
+
+Exit codes:
+- 0: normal completion
+- 1: runtime error
+- 2: misconfiguration
+- 130: keyboard interrupt
+
+Example:
+- docker build -t hubex-worker-v1 -f Dockerfile.worker_v1 .
+- docker run --rm \
+    -e HUBEX_BASE_URL=http://host.docker.internal:8000 \
+    -e HUBEX_TOKEN=... \
+    -e WORKER_ID=worker-1 \
+    -e RUN_ONCE=1 \
+    hubex-worker-v1
+
 ## Slice 5.3: Ops Hardening
 - Shutdown/exitcode semantics.
 - run_once/MAX_RUNS deterministic modes.
