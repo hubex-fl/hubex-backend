@@ -1,6 +1,10 @@
 # CHANGELOG
 
 ## Unreleased
+- Fix legacy pairing status alias capability mapping + readonly catalog entries.
+- Frontend dev reachability: Vite dev host/target env alignment + UI smoke docs.
+- Phase-5 slice 5.4: runbook + demo script alignment for worker/UI/dev.
+- Module Kit scaffold + example module (MIC-compliant, no public contracts).
 - Make gate runner deterministic across platforms.
 - JWT now includes user caps claim to enable UI capability gating.
 - Reduce soft capability enforcement log noise; clarify caps flow for UI.

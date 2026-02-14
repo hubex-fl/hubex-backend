@@ -1,16 +1,19 @@
-﻿# UI Smoke Validation (HUBEX Frontend)
+# UI Smoke Validation (HUBEX Frontend)
 
 ## Prereqs
 - Backend running: http://localhost:8000
 - Frontend running (Vite): e.g. http://localhost:5173
-- Frontend API base:
-  - .env: VITE_API_BASE=http://localhost:8000/api/v1
+- Frontend API proxy target:
+  - .env: VITE_API_TARGET=http://127.0.0.1:8000
   - or run:
-    - bash: VITE_API_BASE=http://localhost:8000/api/v1 npm run dev
-    - PowerShell: $env:VITE_API_BASE="http://localhost:8000/api/v1"; npm run dev
+    - bash: VITE_API_TARGET=http://127.0.0.1:8000 npm run dev
+    - PowerShell: $env:VITE_API_TARGET="http://127.0.0.1:8000"; npm run dev
+- Dev server bind:
+  - default: VITE_DEV_HOST=0.0.0.0, VITE_DEV_PORT=5173
+  - local-only: set VITE_DEV_HOST=127.0.0.1
 
 ## Token key
-Frontend stores the user JWT in LocalStorage key: **hubex_token**
+Frontend stores the user JWT in LocalStorage key: **hubex_access_token**
 
 ## Checks
 

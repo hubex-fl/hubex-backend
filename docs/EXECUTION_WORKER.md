@@ -31,6 +31,12 @@ The run status remains `requested`; claim fields represent “in progress” (no
 - `heartbeat_every = 30` (half of lease)
 Rationale: keeps leases fresh without excessive overhead.
 
+## Demo Helper
+For a deterministic local demo (seeds a run, executes once, and verifies heartbeat):
+```
+.\scripts\demo-phase5.ps1
+```
+
 ## Minimal Curl Examples
 Claim next:
 ```bash

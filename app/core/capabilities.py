@@ -21,6 +21,7 @@ CAPABILITY_REGISTRY: set[str] = {
     "devices.write",
     "pairing.start",
     "pairing.confirm",
+    "pairing.status",
     "devices.hello",
     "telemetry.emit",
     "telemetry.read",
@@ -61,8 +62,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/devices/{device_id}/tasks/{task_id}/cancel"): ["tasks.write"],
     ("POST", "/api/v1/pairing/start"): ["pairing.start"],
     ("POST", "/api/v1/pairing/confirm"): ["pairing.confirm"],
+    ("GET", "/api/v1/pairing/status"): ["pairing.status"],
     ("POST", "/api/v1/devices/pairing/start"): ["pairing.start"],
     ("POST", "/api/v1/devices/pairing/confirm"): ["pairing.confirm"],
+    ("GET", "/api/v1/devices/pairing/status"): ["pairing.status"],
     ("POST", "/api/v1/telemetry"): ["telemetry.emit"],
     ("GET", "/api/v1/telemetry/recent"): ["telemetry.read"],
     ("POST", "/api/v1/tasks/context/heartbeat"): ["tasks.write"],
@@ -92,6 +95,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/events"): ["events.read"],
     ("GET", "/api/v1/events/{event_id}"): ["events.read"],
     ("POST", "/api/v1/events/ack"): ["events.ack"],
+    ("POST", "/api/v1/events/emit"): ["events.emit"],
     ("GET", "/api/v1/audit"): ["audit.read"],
     ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],
     ("GET", "/api/v1/secrets"): ["secrets.read"],
@@ -124,6 +128,8 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("POST", "/api/v1/devices/hello"),
     ("POST", "/api/v1/pairing/confirm"),
     ("POST", "/api/v1/devices/pairing/confirm"),
+    ("GET", "/api/v1/pairing/status"),
+    ("GET", "/api/v1/devices/pairing/status"),
 }
 
 def enforcement_enabled() -> bool:

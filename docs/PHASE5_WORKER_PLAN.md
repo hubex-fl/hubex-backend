@@ -47,3 +47,4 @@ Example:
 
 ## Slice 5.4: Docs/Demo Alignment
 - Canonical docs aligned with worker demo script.
+- See `docs/PHASE5_RUNBOOK.md` and `scripts/demo-phase5.ps1`.

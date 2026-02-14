@@ -1,0 +1,10 @@
+{
+  "key": "module_key_here",
+  "name": "Module Name",
+  "version": "0.1.0",
+  "capabilities": [
+    "module.module_key_here.read",
+    "module.module_key_here.write"
+  ],
+  "description": "Template metadata for MIC-compliant modules."
+}

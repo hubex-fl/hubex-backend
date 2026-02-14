@@ -1,0 +1,10 @@
+{
+  "key": "rules_min",
+  "name": "Rules (Minimal Example)",
+  "version": "0.1.0",
+  "capabilities": [
+    "module.rules_min.read",
+    "module.rules_min.write"
+  ],
+  "description": "Example MIC module metadata (no public contracts)."
+}

@@ -117,6 +117,19 @@ Snapshot + ACK
 
 Simulator / Smokes
 
+Pairing Status (read-only)
+
+GET /api/v1/pairing/status
+
+GET /api/v1/devices/pairing/status (legacy alias)
+
+Capability: pairing.status
+
+Semantik:
+- 404 wenn pairing_code nicht existiert
+- 410 wenn pairing_code abgelaufen
+- liefert claimed + ttl_seconds
+
 Phase 1 – Core Enablement (Pflicht, kein Modul)
 
 Diese Fähigkeiten sind Teil des Core, niemals Module:
@@ -258,6 +271,12 @@ cursor monotonic
 at-least-once
 
 idempotent subscribers
+
+Emit (device)
+
+POST /api/v1/events/emit
+
+Capability: events.emit
 
 8. Entities v1 (minimal)
 
@@ -465,6 +484,24 @@ Lifecycle
 
 install → configure → enable → disable → revoke → uninstall
 
+Module Kit (repo convention)
+
+- modules/_template (scaffold)
+- modules/rules_min (example module)
+- docs/MODULE_KIT.md (usage + rules)
+- capability prefix recommendation: module.<module_key>.*
+
+SSOT UPDATE
+Abschnitt: 9 MIC v1 (Module Integration Contract)
+Art: Add
+Breaking: No
+Begründung:
+- Standardized module scaffold reduces delivery time while staying MIC-compliant and capability-gated.
+- Adds documentation and repo structure only; no public contract changes.
+Änderung:
+- Add Module Kit repo convention: modules/_template, docs/MODULE_KIT.md
+- Define recommended capability prefix for example module (module.rules_min.*) as examples only.
+
 Gate
 
 demo_min Modul läuft auf Core N & N+1
@@ -478,6 +515,16 @@ Phase 3: Providers / Signals (Mobile = Provider)
 Phase 4: Rules / Engine
 
 Phase 5: Execution Worker v1 as deployable service artifact
+
+SSOT UPDATE
+Abschnitt: Phase 5 (Execution Worker v1)
+Art: Add
+Breaking: No
+Begründung:
+- Canonical runbook + demo helper for local Phase-5 workflows.
+Änderung:
+- Add docs/PHASE5_RUNBOOK.md
+- Add scripts/demo-phase5.ps1 and scripts/smoke-ui.ps1
 
 Phase 6: Templates / Testbench
 
@@ -532,6 +579,8 @@ Initiale Erstellung
 | 2025-12-24 | 5, 11 | Add | Capabilities Enforcement präzisiert (deny-by-default + public whitelist); Token revoke (jti denylist) ergänzt | compatible |
 | 2026-02-12 | 8.1, 8.2 | Add | Executions v1 (read-only + write minimal) mit Cursor-Semantik und executions.read/write | compatible |
 | 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
+| 2026-02-14 | 4, 7, 9 | Add | Pairing status (read-only), Events emit (device), Module Kit scaffold/docs | compatible |
+| 2026-02-14 | Phase 5 | Add | Phase-5 runbook + demo helpers (worker/UI dev flow) | compatible |
 | 2026-02-13 | 8.4 | Add | Executions v1 definitions read-only mit Cursor-Semantik und executions.read | compatible |
 | 2026-02-13 | 8.5 | Add | Executions v1 run read-by-id mit executions.read | compatible |
 | 2026-02-13 | 8.6 | Add | Executions v1 definition read-by-key mit executions.read | compatible |

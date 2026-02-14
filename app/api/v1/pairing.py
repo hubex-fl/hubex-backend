@@ -1,9 +1,9 @@
-﻿# app/api/v1/pairing.py
+# app/api/v1/pairing.py
 
 from datetime import datetime, timedelta, timezone
 import secrets
 import hashlib
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, Query
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -73,6 +73,15 @@ class PairingClaimOut(BaseModel):
     device_uid: str
     device_token: str  # nur EINMAL ausgeben
     claimed_at: datetime
+
+
+class PairingStatusOut(BaseModel):
+    pairing_code: str
+    device_uid: str
+    claimed: bool
+    claimed_at: datetime | None = None
+    expires_at: datetime
+    ttl_seconds: int
 
 
 @router.post("/start", response_model=PairingStartOut)
@@ -253,4 +262,35 @@ async def confirm_pairing(
         device_uid=persisted.device_uid,
         device_token=token_plain,
         claimed_at=now,
+    )
+
+
+@router.get("/status", response_model=PairingStatusOut)
+async def pairing_status(
+    pairing_code: str = Query(..., alias="pairingCode"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Read-only status for a pairing_code.
+    - claimed=true when code has been used/claimed by a user
+    """
+    now = _now_utc()
+    res = await db.execute(
+        select(PairingSession).where(PairingSession.pairing_code == pairing_code)
+    )
+    ps = res.scalar_one_or_none()
+    if ps is None:
+        raise_api_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
+    if ps.expires_at <= now:
+        raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
+
+    ttl_seconds = max(0, int((ps.expires_at - now).total_seconds()))
+    claimed = bool(ps.is_used)
+    return PairingStatusOut(
+        pairing_code=ps.pairing_code,
+        device_uid=ps.device_uid,
+        claimed=claimed,
+        claimed_at=None,
+        expires_at=ps.expires_at,
+        ttl_seconds=ttl_seconds,
     )

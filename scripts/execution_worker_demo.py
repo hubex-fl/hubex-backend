@@ -77,6 +77,11 @@ async def main() -> int:
     lease_seconds = _env_int("LEASE_SECONDS", 60)
     heartbeat_every = _env_int("HEARTBEAT_EVERY", 30)
     poll_delay = _env_int("POLL_DELAY", 2)
+    max_runs = _env_int("MAX_RUNS", 0)
+    run_once_raw = os.getenv("RUN_ONCE", "")
+    run_once = run_once_raw.lower() in {"1", "true", "yes"}
+    if run_once and max_runs <= 0:
+        max_runs = 1
 
     async with httpx.AsyncClient() as client:
         registry_stop = asyncio.Event()
@@ -91,6 +96,7 @@ async def main() -> int:
             )
         )
         try:
+            runs_completed = 0
             while True:
                 payload: Dict[str, Any] = {
                     "worker_id": worker_id,
@@ -156,6 +162,10 @@ async def main() -> int:
                 finally:
                     stop.set()
                     await hb_task
+
+                runs_completed += 1
+                if max_runs and runs_completed >= max_runs:
+                    return 0
         finally:
             registry_stop.set()
             await registry_task

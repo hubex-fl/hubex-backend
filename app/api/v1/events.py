@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_auth import get_current_device
+from app.db.models.device import Device
 from app.db.models.events import EventV1, EventV1Checkpoint
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -37,6 +39,19 @@ class EventAckOut(BaseModel):
     ok: bool
     stored_cursor: int
     status: str
+
+
+class EventEmitIn(BaseModel):
+    type: str = Field(min_length=1, max_length=128)
+    payload: dict
+    trace_id: str | None = Field(default=None, max_length=128)
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class EventEmitOut(BaseModel):
+    ok: bool
+    event_id: int
 
 
 @router.get("", response_model=EventReadOut)
@@ -107,3 +122,17 @@ async def ack_events(
     checkpoint.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return EventAckOut(ok=True, stored_cursor=checkpoint.cursor, status=status)
+
+
+@router.post("/emit", response_model=EventEmitOut)
+async def emit_event(
+    data: EventEmitIn,
+    db: AsyncSession = Depends(get_db),
+    device: Device = Depends(get_current_device),
+):
+    stream = f"device:{device.device_uid}"
+    event = EventV1(stream=stream, type=data.type, payload=data.payload, trace_id=data.trace_id)
+    db.add(event)
+    await db.commit()
+    await db.refresh(event)
+    return EventEmitOut(ok=True, event_id=event.id)

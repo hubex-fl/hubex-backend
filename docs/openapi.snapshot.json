@@ -1045,6 +1045,57 @@
         "title": "EventAckOut",
         "type": "object"
       },
+      "EventEmitIn": {
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "payload"
+        ],
+        "title": "EventEmitIn",
+        "type": "object"
+      },
+      "EventEmitOut": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "event_id"
+        ],
+        "title": "EventEmitOut",
+        "type": "object"
+      },
       "EventItemOut": {
         "properties": {
           "cursor": {
@@ -1812,6 +1863,52 @@
           "ttl_seconds"
         ],
         "title": "PairingStartOut",
+        "type": "object"
+      },
+      "PairingStatusOut": {
+        "properties": {
+          "claimed": {
+            "title": "Claimed",
+            "type": "boolean"
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
+          "device_uid": {
+            "title": "Device Uid",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "pairing_code": {
+            "title": "Pairing Code",
+            "type": "string"
+          },
+          "ttl_seconds": {
+            "title": "Ttl Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pairing_code",
+          "device_uid",
+          "claimed",
+          "expires_at",
+          "ttl_seconds"
+        ],
+        "title": "PairingStatusOut",
         "type": "object"
       },
       "RegisterIn": {
@@ -4337,6 +4434,57 @@
         ]
       }
     },
+    "/api/v1/devices/pairing/status": {
+      "get": {
+        "description": "Read-only status for a pairing_code.\n- claimed=true when code has been used/claimed by a user",
+        "operationId": "pairing_status_api_v1_devices_pairing_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pairingCode",
+            "required": true,
+            "schema": {
+              "title": "Pairingcode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pairing Status",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
     "/api/v1/devices/whoami": {
       "get": {
         "operationId": "whoami_api_v1_devices_whoami_get",
@@ -5319,6 +5467,56 @@
           }
         ],
         "summary": "Ack Events",
+        "tags": [
+          "events",
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/emit": {
+      "post": {
+        "operationId": "emit_event_api_v1_events_emit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventEmitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventEmitOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Emit Event",
         "tags": [
           "events",
           "events"
@@ -6468,6 +6666,57 @@
           }
         ],
         "summary": "Start Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/api/v1/pairing/status": {
+      "get": {
+        "description": "Read-only status for a pairing_code.\n- claimed=true when code has been used/claimed by a user",
+        "operationId": "pairing_status_api_v1_pairing_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pairingCode",
+            "required": true,
+            "schema": {
+              "title": "Pairingcode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pairing Status",
         "tags": [
           "pairing"
         ]

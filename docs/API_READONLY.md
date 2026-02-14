@@ -54,6 +54,7 @@ This document lists read-only endpoints and required capabilities. It reflects t
 ## Events v1
 - GET /api/v1/events - cap: events.read - cursor-based event read
 - GET /api/v1/events/{event_id} - cap: events.read - event by id
+- POST /api/v1/events/emit - cap: events.emit - emit event
 - POST /api/v1/events/ack - cap: events.ack - cursor ack
 
 ## Effects v1
@@ -87,8 +88,10 @@ This document lists read-only endpoints and required capabilities. It reflects t
 ## Pairing
 - POST /api/v1/pairing/start - cap: pairing.start - start pairing
 - POST /api/v1/pairing/confirm - cap: pairing.confirm - confirm pairing
+- GET /api/v1/pairing/status - cap: pairing.status - pairing status
 - POST /api/v1/devices/pairing/start - cap: pairing.start - legacy alias
 - POST /api/v1/devices/pairing/confirm - cap: pairing.confirm - legacy alias
+- GET /api/v1/devices/pairing/status - cap: pairing.status - legacy alias
 
 ## Telemetry
 - POST /api/v1/telemetry - cap: telemetry.emit - ingest telemetry
