@@ -8,11 +8,12 @@ class PairingSession(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     device_uid: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
-    pairing_code: Mapped[str] = mapped_column(String(16), index=True, nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    pairing_code: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
 
     # Expiry + Status
     expires_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -6,7 +6,7 @@ from app.api.deps_rate_limit import rate_limit_guard
 from .auth import router as auth_router
 from .users import router as users_router
 from .devices import router as devices_router
-from .pairing import router as pairing_router
+from .pairing import router as pairing_router, legacy_router as pairing_legacy_router
 from .telemetry import router as telemetry_router
 from .tasks import router as tasks_router
 from .variables import router as variables_router
@@ -25,8 +25,8 @@ router.include_router(auth_router, tags=["auth"])
 router.include_router(users_router, tags=["users"])
 router.include_router(devices_router, tags=["devices"])
 router.include_router(pairing_router)
-# Legacy alias for /api/v1/devices/pairing/*
-router.include_router(pairing_router, prefix="/devices")
+# Legacy alias for /api/v1/pairing/*
+router.include_router(pairing_legacy_router)
 router.include_router(telemetry_router, tags=["telemetry"])
 router.include_router(tasks_router, tags=["tasks"])
 router.include_router(variables_router, tags=["variables"])
