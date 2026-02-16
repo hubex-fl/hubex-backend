@@ -13,7 +13,6 @@ from app.core.capabilities import (
     resolve_required_caps,
     validate_caps,
 )
-from app.core.modules import sync_module_registry
 from app.api.deps import get_db
 from app.db.models.modules import ModuleRegistry
 
@@ -107,7 +106,6 @@ async def capability_guard(
 
     module_key = _module_key_from_subject(str(payload.get("sub") or ""))
     if module_key:
-        await sync_module_registry(db)
         module = await db.get(ModuleRegistry, module_key)
         if module is None:
             _http_403(_detail("MODULE_NOT_FOUND", "module not registered"))
