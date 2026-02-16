@@ -25,6 +25,8 @@ EXCLUDE = {
     "POST /api/v1/executions/runs/claim-next",
     "POST /api/v1/executions/workers/heartbeat",
     "POST /api/v1/executions/workers/{worker_id}/definitions",
+    "POST /api/v1/modules/{key}/enable",
+    "POST /api/v1/modules/{key}/disable",
 }
 
 # Routes that must always appear in the catalog (even if removed accidentally).
