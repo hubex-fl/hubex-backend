@@ -15,11 +15,12 @@ from app.api.v1.modules import router as modules_router
 from app.core.capabilities import CAPABILITY_MAP
 from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
 from app.db.base import Base
+from app.db.models.audit import AuditV1Entry
 from app.db.models.modules import ModuleRegistry
 
 
 def _create_tables(metadata, conn) -> None:
-    metadata.create_all(conn, tables=[ModuleRegistry.__table__])
+    metadata.create_all(conn, tables=[ModuleRegistry.__table__, AuditV1Entry.__table__])
 
 
 async def _mk_session():

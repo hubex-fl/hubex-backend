@@ -80,7 +80,7 @@ async def test_module_enabled_guard_and_audit(monkeypatch):
         headers={"Authorization": f"Bearer {module_token}"},
     )
     assert blocked.status_code == 403
-    assert blocked.json().get("code") == "MODULE_DISABLED"
+    assert blocked.json().get("detail", {}).get("code") == "MODULE_DISABLED"
 
     enabled = await client.post(
         "/api/v1/modules/rules_min/enable",
