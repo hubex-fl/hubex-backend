@@ -544,29 +544,14 @@ Art: Add
 Breaking: No
 Begründung:
 - Standardized module scaffold reduces delivery time while staying MIC-compliant and capability-gated.
-- Adds documentation and repo structure only; no public contract changes.
+- Provide a minimal module lifecycle registry + enable/disable surface for MIC v1.
+- Ensure disabled modules are hard-blocked from module-identity actions.
 Änderung:
 - Add Module Kit repo convention: modules/_template, docs/MODULE_KIT.md
 - Define recommended capability prefix for example module (module.rules_min.*) as examples only.
-
-SSOT UPDATE
-Abschnitt: 9 MIC v1 (Module Integration Contract)
-Art: Add
-Breaking: No
-Begründung:
-- Provide a minimal module lifecycle registry + enable/disable surface for MIC v1.
-Änderung:
 - Add /api/v1/modules (list/read) and /api/v1/modules/{key} (read) gated by modules.read.
 - Add /api/v1/modules/{key}/enable and /api/v1/modules/{key}/disable gated by modules.write.
 - Default enabled=false for newly discovered modules.
-
-SSOT UPDATE
-Abschnitt: 9 MIC v1 (Module Integration Contract)
-Art: Add
-Breaking: No
-Begründung:
-- Ensure disabled modules are hard-blocked from module-identity actions.
-Änderung:
 - Add module enabled gate for module identity (JWT sub="module:<module_key>") with MODULE_DISABLED on disabled modules.
 
 Gate
