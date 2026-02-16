@@ -15,25 +15,12 @@ from app.api.v1.modules import router as modules_router
 from app.core.capabilities import CAPABILITY_MAP
 from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
 from app.db.base import Base
+from app.db.models.audit import AuditV1Entry
 from app.db.models.modules import ModuleRegistry
 
 
 def _create_tables(metadata, conn) -> None:
-    metadata.create_all(conn, tables=[ModuleRegistry.__table__])
-    conn.exec_driver_sql(
-        """
-        CREATE TABLE audit_v1_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            actor_type VARCHAR(32) NOT NULL,
-            actor_id VARCHAR(128) NOT NULL,
-            action VARCHAR(128) NOT NULL,
-            resource VARCHAR(256) NULL,
-            metadata JSON NULL,
-            trace_id VARCHAR(128) NULL
-        )
-        """
-    )
+    metadata.create_all(conn, tables=[ModuleRegistry.__table__, AuditV1Entry.__table__])
 
 
 async def _mk_session():

@@ -16,26 +16,12 @@ from app.api.v1.modules import router as modules_router
 from app.core.capabilities import CAPABILITY_MAP
 from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
 from app.db.base import Base
-from app.db.models.audit import AuditV1Entry
 from app.db.models.modules import ModuleRegistry
+from app.db.models.audit import AuditV1Entry
 
 
 def _create_tables(metadata, conn) -> None:
-    metadata.create_all(conn, tables=[ModuleRegistry.__table__])
-    conn.exec_driver_sql(
-        """
-        CREATE TABLE audit_v1_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            actor_type VARCHAR(32) NOT NULL,
-            actor_id VARCHAR(128) NOT NULL,
-            action VARCHAR(128) NOT NULL,
-            resource VARCHAR(256) NULL,
-            metadata JSON NULL,
-            trace_id VARCHAR(128) NULL
-        )
-        """
-    )
+    metadata.create_all(conn, tables=[ModuleRegistry.__table__, AuditV1Entry.__table__])
 
 
 async def _mk_session():
@@ -88,6 +74,12 @@ async def test_module_enabled_guard_and_audit(monkeypatch):
 
     module_token = _token("module:rules_min", ["audit.read"])
     user_token = _token("1", ["modules.write", "modules.read", "audit.read"])
+
+    sync = await client.get(
+        "/api/v1/modules",
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert sync.status_code == 200
 
     blocked = await client.get(
         "/api/v1/audit",
