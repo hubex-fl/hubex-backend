@@ -18,6 +18,7 @@ from .config import router as config_router
 from .effects import router as effects_router
 from .signals import router as signals_router
 from .executions import router as executions_router
+from .modules import router as modules_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -38,3 +39,4 @@ router.include_router(config_router, tags=["config"])
 router.include_router(effects_router, tags=["effects"])
 router.include_router(signals_router, tags=["signals"])
 router.include_router(executions_router, tags=["executions"])
+router.include_router(modules_router, tags=["modules"])
