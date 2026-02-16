@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- MIC v1: module enabled gating (MODULE_DISABLED) + audit on enable/disable.
 - MIC v1: module registry + lifecycle endpoints (list/read/enable/disable) with modules.read/write.
 - Fix legacy pairing status alias capability mapping + readonly catalog entries.
 - Device-first pairing finalized: hello idempotent + single active session + invariants enforced (legacy alias retained).

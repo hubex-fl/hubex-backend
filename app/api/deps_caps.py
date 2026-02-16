@@ -13,7 +13,9 @@ from app.core.capabilities import (
     resolve_required_caps,
     validate_caps,
 )
+from app.core.modules import sync_module_registry
 from app.api.deps import get_db
+from app.db.models.modules import ModuleRegistry
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -45,6 +47,14 @@ def _detail(code: str, message: str) -> dict:
 def _has_required_caps(required: Iterable[str], caps: Iterable[str]) -> bool:
     cap_set = set(caps)
     return all(cap in cap_set for cap in required)
+
+def _module_key_from_subject(subject: str | None) -> str | None:
+    if not subject:
+        return None
+    if subject.startswith("module:"):
+        key = subject.split(":", 1)[1].strip()
+        return key or None
+    return None
 
 
 async def capability_guard(
@@ -94,6 +104,15 @@ async def capability_guard(
     jti = payload.get("jti")
     if jti and await is_token_revoked(db, str(jti)):
         _http_401(_detail("CAP_TOKEN_REVOKED", "token revoked"))
+
+    module_key = _module_key_from_subject(str(payload.get("sub") or ""))
+    if module_key:
+        await sync_module_registry(db)
+        module = await db.get(ModuleRegistry, module_key)
+        if module is None:
+            _http_403(_detail("MODULE_NOT_FOUND", "module not registered"))
+        if not module.enabled:
+            _http_403(_detail("MODULE_DISABLED", "module disabled"))
 
     caps = payload.get("caps") or []
     if not isinstance(caps, list):

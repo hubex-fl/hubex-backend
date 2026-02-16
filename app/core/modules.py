@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.audit import AuditV1Entry
 from app.db.models.modules import ModuleRegistry
 
 
@@ -113,12 +114,29 @@ async def get_module(db: AsyncSession, key: str) -> ModuleRegistry | None:
     return await db.get(ModuleRegistry, key)
 
 
-async def set_module_enabled(db: AsyncSession, key: str, enabled: bool) -> ModuleRegistry | None:
+async def set_module_enabled(
+    db: AsyncSession,
+    key: str,
+    enabled: bool,
+    *,
+    actor_type: str | None = None,
+    actor_id: str | None = None,
+) -> ModuleRegistry | None:
     await sync_module_registry(db)
     module = await db.get(ModuleRegistry, key)
     if module is None:
         return None
     module.enabled = enabled
+    if actor_type and actor_id:
+        db.add(
+            AuditV1Entry(
+                actor_type=actor_type,
+                actor_id=actor_id,
+                action="module.enable" if enabled else "module.disable",
+                resource=module.key,
+                audit_metadata={"enabled": enabled},
+            )
+        )
     await db.commit()
     await db.refresh(module)
     return module

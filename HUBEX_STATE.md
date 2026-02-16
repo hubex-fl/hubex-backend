@@ -532,6 +532,12 @@ Capability: modules.write (deny-by-default)
 Default:
 - enabled=false until explicitly enabled.
 
+Module Enabled Gate (runtime)
+
+Rule:
+- Requests with module identity (JWT sub="module:<module_key>") are allowed only when module_registry.enabled=true.
+- If disabled or missing: 403 with code MODULE_DISABLED (or MODULE_NOT_FOUND for missing).
+
 SSOT UPDATE
 Abschnitt: 9 MIC v1 (Module Integration Contract)
 Art: Add
@@ -553,6 +559,15 @@ Begründung:
 - Add /api/v1/modules (list/read) and /api/v1/modules/{key} (read) gated by modules.read.
 - Add /api/v1/modules/{key}/enable and /api/v1/modules/{key}/disable gated by modules.write.
 - Default enabled=false for newly discovered modules.
+
+SSOT UPDATE
+Abschnitt: 9 MIC v1 (Module Integration Contract)
+Art: Add
+Breaking: No
+Begründung:
+- Ensure disabled modules are hard-blocked from module-identity actions.
+Änderung:
+- Add module enabled gate for module identity (JWT sub="module:<module_key>") with MODULE_DISABLED on disabled modules.
 
 Gate
 
@@ -643,6 +658,7 @@ Initiale Erstellung
 | 2026-02-13 | 8.10 | Add | Executions v1 release/unclaim | compatible |
 | 2026-02-13 | 9 | Add | MIC v1 worker registry + subscriptions + active worker filter | compatible |
 | 2026-02-16 | 9 | Add | MIC v1 module registry + lifecycle (modules.read/write) | compatible |
+| 2026-02-16 | 9 | Add | MIC v1 module enabled gate (MODULE_DISABLED) + audit on enable/disable | compatible |
 | 2026-02-13 | Phase 5 / 5.1 | Add | Execution Worker v1 service (deployable artifact MVP) | compatible |
 | 2026-02-13 | Phase 5 / 5.2 | Add | Deployable artifact (container/runtime + env contract) | compatible |
 | 2026-02-13 | Phase 5 / 5.3 | Add | Ops hardening (shutdown/exitcodes/ci modes) | compatible |
