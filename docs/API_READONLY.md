@@ -97,6 +97,10 @@ This document lists read-only endpoints and required capabilities. It reflects t
 - POST /api/v1/pairing/confirm - cap: pairing.confirm - legacy alias
 - GET /api/v1/pairing/status - cap: pairing.status - legacy alias
 
+## Modules
+- GET /api/v1/modules - cap: modules.read - list modules
+- GET /api/v1/modules/{key} - cap: modules.read - module details
+
 ## Telemetry
 - POST /api/v1/telemetry - cap: telemetry.emit - ingest telemetry
 - GET /api/v1/telemetry/recent - cap: telemetry.read - recent telemetry

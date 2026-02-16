@@ -515,6 +515,23 @@ Module Kit (repo convention)
 - docs/MODULE_KIT.md (usage + rules)
 - capability prefix recommendation: module.<module_key>.*
 
+Module Registry + Lifecycle (minimal)
+
+GET /api/v1/modules
+Capability: modules.read (deny-by-default)
+
+GET /api/v1/modules/{key}
+Capability: modules.read (deny-by-default)
+
+POST /api/v1/modules/{key}/enable
+Capability: modules.write (deny-by-default)
+
+POST /api/v1/modules/{key}/disable
+Capability: modules.write (deny-by-default)
+
+Default:
+- enabled=false until explicitly enabled.
+
 SSOT UPDATE
 Abschnitt: 9 MIC v1 (Module Integration Contract)
 Art: Add
@@ -525,6 +542,17 @@ Begründung:
 Änderung:
 - Add Module Kit repo convention: modules/_template, docs/MODULE_KIT.md
 - Define recommended capability prefix for example module (module.rules_min.*) as examples only.
+
+SSOT UPDATE
+Abschnitt: 9 MIC v1 (Module Integration Contract)
+Art: Add
+Breaking: No
+Begründung:
+- Provide a minimal module lifecycle registry + enable/disable surface for MIC v1.
+Änderung:
+- Add /api/v1/modules (list/read) and /api/v1/modules/{key} (read) gated by modules.read.
+- Add /api/v1/modules/{key}/enable and /api/v1/modules/{key}/disable gated by modules.write.
+- Default enabled=false for newly discovered modules.
 
 Gate
 
@@ -614,6 +642,7 @@ Initiale Erstellung
 | 2026-02-13 | 8.9 | Add | Executions v1 claim-next (subscription-aware optional definition_key) | compatible |
 | 2026-02-13 | 8.10 | Add | Executions v1 release/unclaim | compatible |
 | 2026-02-13 | 9 | Add | MIC v1 worker registry + subscriptions + active worker filter | compatible |
+| 2026-02-16 | 9 | Add | MIC v1 module registry + lifecycle (modules.read/write) | compatible |
 | 2026-02-13 | Phase 5 / 5.1 | Add | Execution Worker v1 service (deployable artifact MVP) | compatible |
 | 2026-02-13 | Phase 5 / 5.2 | Add | Deployable artifact (container/runtime + env contract) | compatible |
 | 2026-02-13 | Phase 5 / 5.3 | Add | Ops hardening (shutdown/exitcodes/ci modes) | compatible |
