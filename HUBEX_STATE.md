@@ -117,6 +117,30 @@ Snapshot + ACK
 
 Simulator / Smokes
 
+Device-first Pairing (canonical)
+
+- POST /api/v1/devices/pairing/hello
+- POST /api/v1/devices/pairing/start
+- POST /api/v1/devices/pairing/claim
+- POST /api/v1/devices/pairing/confirm
+- GET /api/v1/devices/pairing/status
+- Legacy aliases: /api/v1/pairing/* (same behavior/caps)
+
+Invariants:
+- pairing_active => pairing_code != null AND expires_at != null
+- !pairing_active => pairing_code == null
+- active session => repeated hello returns same pairing_code
+
+SSOT UPDATE
+Abschnitt: 4. Phase-0 / Phase-1 Trennung (Pairing / Ownership)
+Art: Modify
+Breaking: No
+Begründung:
+- Device-first pairing makes /devices/pairing the canonical path; /pairing remains legacy alias.
+Änderung:
+- Add /api/v1/devices/pairing/hello and canonicalize pairing routes under /devices/pairing.
+- Document legacy alias behavior for /api/v1/pairing/*.
+
 Pairing Status (read-only)
 
 GET /api/v1/pairing/status
@@ -581,6 +605,7 @@ Initiale Erstellung
 | 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
 | 2026-02-14 | 4, 7, 9 | Add | Pairing status (read-only), Events emit (device), Module Kit scaffold/docs | compatible |
 | 2026-02-14 | Phase 5 | Add | Phase-5 runbook + demo helpers (worker/UI dev flow) | compatible |
+| 2026-02-16 | 4 | Modify | Device-first pairing: canonical /devices/pairing with /pairing legacy alias | compatible |
 | 2026-02-13 | 8.4 | Add | Executions v1 definitions read-only mit Cursor-Semantik und executions.read | compatible |
 | 2026-02-13 | 8.5 | Add | Executions v1 run read-by-id mit executions.read | compatible |
 | 2026-02-13 | 8.6 | Add | Executions v1 definition read-by-key mit executions.read | compatible |

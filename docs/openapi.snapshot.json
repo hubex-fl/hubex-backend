@@ -473,6 +473,40 @@
           "device_id": {
             "title": "Device Id",
             "type": "integer"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "pairing_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Code"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
           }
         },
         "required": [
@@ -1821,6 +1855,96 @@
         "title": "PairingClaimOut",
         "type": "object"
       },
+      "PairingHelloIn": {
+        "properties": {
+          "capabilities": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "device_uid": {
+            "maxLength": 128,
+            "minLength": 4,
+            "title": "Device Uid",
+            "type": "string"
+          },
+          "firmware_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Version"
+          }
+        },
+        "required": [
+          "device_uid"
+        ],
+        "title": "PairingHelloIn",
+        "type": "object"
+      },
+      "PairingHelloOut": {
+        "properties": {
+          "claimed": {
+            "title": "Claimed",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "pairing_active": {
+            "title": "Pairing Active",
+            "type": "boolean"
+          },
+          "pairing_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Code"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
+          }
+        },
+        "required": [
+          "claimed",
+          "pairing_active"
+        ],
+        "title": "PairingHelloOut",
+        "type": "object"
+      },
       "PairingStartIn": {
         "properties": {
           "device_uid": {
@@ -1909,6 +2033,56 @@
           "ttl_seconds"
         ],
         "title": "PairingStatusOut",
+        "type": "object"
+      },
+      "PairingUserClaimIn": {
+        "properties": {
+          "device_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Uid"
+          },
+          "pairing_code": {
+            "maxLength": 32,
+            "minLength": 4,
+            "title": "Pairing Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_code"
+        ],
+        "title": "PairingUserClaimIn",
+        "type": "object"
+      },
+      "PairingUserClaimOut": {
+        "properties": {
+          "claimed_at": {
+            "format": "date-time",
+            "title": "Claimed At",
+            "type": "string"
+          },
+          "device_uid": {
+            "title": "Device Uid",
+            "type": "string"
+          },
+          "pairing_code": {
+            "title": "Pairing Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_code",
+          "device_uid",
+          "claimed_at"
+        ],
+        "title": "PairingUserClaimOut",
         "type": "object"
       },
       "RegisterIn": {
@@ -4334,6 +4508,56 @@
         ]
       }
     },
+    "/api/v1/devices/pairing/claim": {
+      "post": {
+        "description": "User -> Backend:\n- binds a pairing_code to the current user (claim)",
+        "operationId": "claim_pairing_api_v1_devices_pairing_claim_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairingUserClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingUserClaimOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Claim Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
     "/api/v1/devices/pairing/confirm": {
       "post": {
         "description": "Device -> Backend (ohne JWT):\n- validiert pairing_code (existiert, nicht used, nicht expired)\n- setzt device.owner_user_id + is_claimed\n- erstellt DeviceToken (plaintext nur einmal zur\u00fcckgeben)",
@@ -4379,6 +4603,55 @@
           }
         ],
         "summary": "Confirm Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/api/v1/devices/pairing/hello": {
+      "post": {
+        "operationId": "pairing_hello_api_v1_devices_pairing_hello_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairingHelloIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingHelloOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pairing Hello",
         "tags": [
           "pairing"
         ]
@@ -6571,8 +6844,60 @@
         ]
       }
     },
+    "/api/v1/pairing/claim": {
+      "post": {
+        "deprecated": true,
+        "description": "User -> Backend:\n- binds a pairing_code to the current user (claim)",
+        "operationId": "claim_pairing_api_v1_pairing_claim_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairingUserClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingUserClaimOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Claim Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
     "/api/v1/pairing/confirm": {
       "post": {
+        "deprecated": true,
         "description": "Device -> Backend (ohne JWT):\n- validiert pairing_code (existiert, nicht used, nicht expired)\n- setzt device.owner_user_id + is_claimed\n- erstellt DeviceToken (plaintext nur einmal zur\u00fcckgeben)",
         "operationId": "confirm_pairing_api_v1_pairing_confirm_post",
         "requestBody": {
@@ -6621,8 +6946,59 @@
         ]
       }
     },
+    "/api/v1/pairing/hello": {
+      "post": {
+        "deprecated": true,
+        "operationId": "pairing_hello_api_v1_pairing_hello_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairingHelloIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingHelloOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Pairing Hello",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
     "/api/v1/pairing/start": {
       "post": {
+        "deprecated": true,
         "description": "User -> Backend:\n- stellt sicher, dass das Device existiert\n- erstellt eine PairingSession mit Ablaufzeit",
         "operationId": "start_pairing_api_v1_pairing_start_post",
         "requestBody": {
@@ -6673,6 +7049,7 @@
     },
     "/api/v1/pairing/status": {
       "get": {
+        "deprecated": true,
         "description": "Read-only status for a pairing_code.\n- claimed=true when code has been used/claimed by a user",
         "operationId": "pairing_status_api_v1_pairing_status_get",
         "parameters": [

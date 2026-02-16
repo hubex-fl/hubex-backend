@@ -2,6 +2,8 @@
 
 ## Unreleased
 - Fix legacy pairing status alias capability mapping + readonly catalog entries.
+- Device-first pairing finalized: hello idempotent + single active session + invariants enforced (legacy alias retained).
+- Device-first pairing: canonical /devices/pairing with legacy /pairing alias + hello idempotency.
 - Frontend dev reachability: Vite dev host/target env alignment + UI smoke docs.
 - Phase-5 slice 5.4: runbook + demo script alignment for worker/UI/dev.
 - Module Kit scaffold + example module (MIC-compliant, no public contracts).

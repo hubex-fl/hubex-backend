@@ -86,12 +86,16 @@ This document lists read-only endpoints and required capabilities. It reflects t
 - GET /api/v1/config/{config_id} - cap: config.read - config metadata
 
 ## Pairing
-- POST /api/v1/pairing/start - cap: pairing.start - start pairing
-- POST /api/v1/pairing/confirm - cap: pairing.confirm - confirm pairing
-- GET /api/v1/pairing/status - cap: pairing.status - pairing status
-- POST /api/v1/devices/pairing/start - cap: pairing.start - legacy alias
-- POST /api/v1/devices/pairing/confirm - cap: pairing.confirm - legacy alias
-- GET /api/v1/devices/pairing/status - cap: pairing.status - legacy alias
+- POST /api/v1/devices/pairing/hello - cap: pairing.start - device pairing hello (canonical)
+- POST /api/v1/devices/pairing/start - cap: pairing.start - start pairing (canonical)
+- POST /api/v1/devices/pairing/claim - cap: pairing.claim - claim pairing (canonical)
+- POST /api/v1/devices/pairing/confirm - cap: pairing.confirm - confirm pairing (canonical)
+- GET /api/v1/devices/pairing/status - cap: pairing.status - pairing status (canonical)
+- POST /api/v1/pairing/hello - cap: pairing.start - legacy alias
+- POST /api/v1/pairing/start - cap: pairing.start - legacy alias
+- POST /api/v1/pairing/claim - cap: pairing.claim - legacy alias
+- POST /api/v1/pairing/confirm - cap: pairing.confirm - legacy alias
+- GET /api/v1/pairing/status - cap: pairing.status - legacy alias
 
 ## Telemetry
 - POST /api/v1/telemetry - cap: telemetry.emit - ingest telemetry
