@@ -117,8 +117,9 @@ async def test_device_token_reissue_owner_success_and_audit(monkeypatch):
         )
         rows = res_audit.fetchall()
         assert rows
-        assert rows[-1].action == "device_token_reissue"
+        assert rows[-1].action == "device.token.reissue"
         assert rows[-1].metadata.get("reason") == "lost device token"
+        assert rows[-1].metadata.get("revoked_count") == 1
 
     await client.aclose()
     await engine.dispose()
