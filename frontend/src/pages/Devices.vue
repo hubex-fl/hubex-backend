@@ -362,6 +362,11 @@ function onRowAction(device: Device) {
   }
 }
 
+function onRowClick(device: Device) {
+  if (device.state !== "claimed") return;
+  router.push(`/devices/${device.id}`);
+}
+
 function rowActionLabel(device: Device) {
   switch (device.state) {
     case "unprovisioned":
@@ -508,9 +513,14 @@ onUnmounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="d in visibleDevices" :key="d.id">
+        <tr
+          v-for="d in visibleDevices"
+          :key="d.id"
+          :class="d.state === 'claimed' ? 'row-clickable' : ''"
+          @click="onRowClick(d)"
+        >
           <td>
-            <router-link :to="`/devices/${d.id}`">
+            <router-link :to="`/devices/${d.id}`" @click.stop>
               {{ d.device_uid }}
             </router-link>
           </td>
@@ -537,7 +547,7 @@ onUnmounted(() => {
             <button
               class="btn cta-btn"
               :disabled="rowActionDisabled(d)"
-              @click="onRowAction(d)"
+              @click.stop="onRowAction(d)"
             >
               {{ rowActionLabel(d) }}
             </button>
@@ -548,3 +558,9 @@ onUnmounted(() => {
     <div v-else>No devices.</div>
   </div>
 </template>
+
+<style scoped>
+.row-clickable {
+  cursor: pointer;
+}
+</style>
