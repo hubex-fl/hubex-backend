@@ -4,12 +4,12 @@
 >
 > Diese Datei ist die **verbindliche Referenz** für Architektur, Contracts, Roadmap und Entscheidungen.
 >
-> **Änderungsregel:**
-> - Jede fachliche/technische Änderung an HUBEX **MUSS** hier eingepflegt werden.
+> **nderungsregel:**
+> - Jede fachliche/technische nderung an HUBEX **MUSS** hier eingepflegt werden.
 > - Jede Chat-Ausgabe, die bestehende Punkte verändert oder ergänzt, **MUSS** explizit sagen:
 >   - **welcher Abschnitt** betroffen ist
 >   - **was konkret zu ändern ist** (Add/Modify/Deprecate)
-> - Änderungen ohne Update dieser Datei gelten als **nicht beschlossen**.
+> - nderungen ohne Update dieser Datei gelten als **nicht beschlossen**.
 
 ---
 
@@ -31,7 +31,7 @@
 
 ## 1. Core-Idee (1 Satz)
 
-> „Ein Device kann sich pairen, erhält deterministische Effective-Konfiguration (Snapshot), applied idempotent, ack’t per Revision zurück – Backend bleibt stabil, nachvollziehbar, erweiterbar.“
+> “Ein Device kann sich pairen, erhält deterministische Effective-Konfiguration (Snapshot), applied idempotent, ack’t per Revision zurück — Backend bleibt stabil, nachvollziehbar, erweiterbar.”
 
 ---
 
@@ -71,11 +71,11 @@
 
 - UI/UX “Reparatur” von Backend-Fehlzuständen
 - Automations-Logik als implizite Side-Effects im Core (Engine/Worker gehören als Services/Module)
-- Vendor-spezifische Device-Details (ESP/Arduino Code) – nur Contracts im Core
+- Vendor-spezifische Device-Details (ESP/Arduino Code) — nur Contracts im Core
 
 ### 3.3 Module sind verantwortlich für
 
-- UI/UX (consumer-first, capability-gated)
+- UI/UX “Reparatur” von Backend-Fehlzuständen
 - Provider/Signals Sources (Time/Webhook/MQTT/…)
 - Rules/Engine (deterministische Ausführung basierend auf Core-State)
 - Observability/Support Views (read-only Auswertung)
@@ -149,7 +149,7 @@ D5 Optional Arduino bridge protocol
 E1 Repro install/run (self-hosted)  
 E2 Release gates + compatibility tests (N-1)  
 E3 Support bundles + retention policy basics  
-E4 Security rollout plan (HTTPS → optional mTLS) — arch-ready, gated
+E4 Security rollout plan (HTTPS – optional mTLS) — arch-ready, gated
 
 ---
 
@@ -161,7 +161,7 @@ Webhook/Time Signal → Rule (min) → Execution Run → Worker claim/finalize �
 
 **Gate:** Demo v1 läuft reproduzierbar auf fresh setup (ohne DB-Handarbeit).
 
-Status: DONE (script + demo bridge + audit)
+Status: Delivered (code) (script + demo bridge + audit)
 
 SSOT UPDATE
 Abschnitt: 6. Vertical Demo v1
@@ -196,16 +196,13 @@ Aenderung:
 
 ---
 
-## 8. Änderungsprotokoll
+## 8. nderungsprotokoll
 
 | Datum      | Abschnitt | Art | Kurzbeschreibung |
 | ---------- | --------- | --- | ---------------- |
 | 2026-02-22 | 6 | Add | Vertical Demo v1 script + trace_id support |
 | 2026-02-22 | 7.1 | Add | Recovery Gate: device token reissue (devices.token.reissue, audited) |
 | YYYY-MM-DD | —         | —   | Initiale Erstellung |
-
-
-
 
 
 
