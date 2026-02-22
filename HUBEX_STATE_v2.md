@@ -161,6 +161,18 @@ Webhook/Time Signal → Rule (min) → Execution Run → Worker claim/finalize �
 
 **Gate:** Demo v1 läuft reproduzierbar auf fresh setup (ohne DB-Handarbeit).
 
+Status: DONE (script + demo bridge + audit)
+
+SSOT UPDATE
+Abschnitt: 6. Vertical Demo v1
+Art: Add
+Breaking: No
+Begruendung:
+- Demo trace needs correlation across events and audit without new contracts.
+Aenderung:
+- events.v1 read items include optional trace_id for correlation.
+- demo scripts: scripts/demo-vertical-v1.ps1 and app/demo/vertical_demo_v1.py (signal->execution bridge + audit).
+
 ---
 
 ## 7. Recovery Gate (produktkritisch)
@@ -188,8 +200,12 @@ Aenderung:
 
 | Datum      | Abschnitt | Art | Kurzbeschreibung |
 | ---------- | --------- | --- | ---------------- |
+| 2026-02-22 | 6 | Add | Vertical Demo v1 script + trace_id support |
 | 2026-02-22 | 7.1 | Add | Recovery Gate: device token reissue (devices.token.reissue, audited) |
 | YYYY-MM-DD | —         | —   | Initiale Erstellung |
+
+
+
 
 
 
