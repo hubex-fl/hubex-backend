@@ -20,9 +20,12 @@ DEFAULT_CAPS = [
 ]
 
 
-def _merge_caps(existing: Iterable[str] | None, required: Iterable[str]) -> list[str]:
-    merged = set(existing or [])
-    merged.update([cap for cap in required if cap])
+def _merge_caps(*groups: Iterable[str] | None) -> list[str]:
+    merged: set[str] = set()
+    for group in groups:
+        if not group:
+            continue
+        merged.update([cap for cap in group if cap])
     return sorted(merged)
 
 
@@ -74,7 +77,8 @@ async def _run(args: argparse.Namespace) -> int:
     caps = args.caps or os.getenv("HUBEX_DEV_CAPS", "")
     force_password = args.force_password or os.getenv("HUBEX_DEV_FORCE_PASSWORD", "1") == "1"
 
-    cap_list = [c.strip() for c in str(caps).split(",") if c.strip()] if caps else DEFAULT_CAPS
+    override_list = [c.strip() for c in str(caps).split(",") if c.strip()] if caps else []
+    cap_list = _merge_caps(DEFAULT_CAPS, override_list)
     user = await ensure_dev_user_caps(
         email=email,
         password=password,
