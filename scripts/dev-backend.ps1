@@ -1,5 +1,6 @@
 param(
-  [int]$Port = 8000
+  [int]$Port = 8000,
+  [int]$StartupTimeoutSeconds = 15
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,10 +63,16 @@ $proc = Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList $args
   -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 $proc.Id | Set-Content -LiteralPath $pidFile -Encoding ascii
 
-Start-Sleep -Milliseconds 700
-$listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+$deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
+$listeners = $null
+while ((Get-Date) -lt $deadline) {
+  $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+  if ($listeners) { break }
+  Start-Sleep -Milliseconds 300
+}
+
 if (-not $listeners) {
-  Write-Host "Backend did not start. Last errors:"
+  Write-Host "Backend did not start in time. Last errors:"
   if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Tail 50 | Write-Host }
   exit 1
 }

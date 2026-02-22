@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Dev: fix dev-backend.ps1 to avoid PowerShell reserved $Host variable.
+- Dev: dev-backend.ps1 startup check now polls for reload readiness.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).
 - Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
