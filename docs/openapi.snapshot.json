@@ -608,6 +608,49 @@
         "title": "DeviceLookupOut",
         "type": "object"
       },
+      "DeviceTokenReissueIn": {
+        "properties": {
+          "reason": {
+            "maxLength": 256,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DeviceTokenReissueIn",
+        "type": "object"
+      },
+      "DeviceTokenReissueOut": {
+        "properties": {
+          "device_id": {
+            "title": "Device Id",
+            "type": "integer"
+          },
+          "device_token": {
+            "title": "Device Token",
+            "type": "string"
+          },
+          "device_uid": {
+            "title": "Device Uid",
+            "type": "string"
+          },
+          "revoked_count": {
+            "title": "Revoked Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_uid",
+          "device_token",
+          "revoked_count"
+        ],
+        "title": "DeviceTokenReissueOut",
+        "type": "object"
+      },
       "DeviceVariablesOut": {
         "properties": {
           "device": {
@@ -5346,6 +5389,67 @@
           }
         ],
         "summary": "Get Device Telemetry Recent",
+        "tags": [
+          "devices",
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{device_id}/token/reissue": {
+      "post": {
+        "operationId": "reissue_device_token_api_v1_devices__device_id__token_reissue_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenReissueIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenReissueOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Reissue Device Token",
         "tags": [
           "devices",
           "devices"

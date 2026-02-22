@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- Recovery Gate v7.1: device token reissue (audited, owner/admin only).
 - MIC v1: module enabled gating (MODULE_DISABLED) + audit on enable/disable.
 - MIC v1: module registry + lifecycle endpoints (list/read/enable/disable) with modules.read/write.
 - Fix legacy pairing status alias capability mapping + readonly catalog entries.
