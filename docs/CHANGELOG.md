@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).
 - Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
 - UI: register device detail route and link devices list to /devices/:id.
 - UI: device detail recovery reissue button (devices.token.reissue) with reason + one-time token display.

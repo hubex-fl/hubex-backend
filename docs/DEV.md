@@ -16,6 +16,7 @@ python -m pip install -U -r requirements.txt -r requirements-dev.txt
 ```
 
 Note: `requirements.txt` uses `uvicorn[standard]` so local dev includes WebSocket support.
+`scripts/dev-backend.ps1` binds to `0.0.0.0` by default and avoids double-start via `.run/uvicorn.pid` (override with `HUBEX_HOST`/`HUBEX_PORT`).
 
 ## Phase-1 gates (local)
 PowerShell:
