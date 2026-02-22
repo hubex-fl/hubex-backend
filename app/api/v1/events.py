@@ -18,6 +18,7 @@ class EventItemOut(BaseModel):
     ts: datetime
     type: str
     payload: dict
+    trace_id: str | None = None
 
 
 class EventReadOut(BaseModel):
@@ -69,7 +70,13 @@ async def read_events(
     )
     rows = res.scalars().all()
     items = [
-        EventItemOut(cursor=row.id, ts=row.ts, type=row.type, payload=row.payload)
+        EventItemOut(
+            cursor=row.id,
+            ts=row.ts,
+            type=row.type,
+            payload=row.payload,
+            trace_id=row.trace_id,
+        )
         for row in rows
     ]
     next_cursor = items[-1].cursor if items else cursor
@@ -85,7 +92,13 @@ async def get_event(
     row = res.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="event not found")
-    return EventItemOut(cursor=row.id, ts=row.ts, type=row.type, payload=row.payload)
+    return EventItemOut(
+        cursor=row.id,
+        ts=row.ts,
+        type=row.type,
+        payload=row.payload,
+        trace_id=row.trace_id,
+    )
 
 
 @router.post("/ack", response_model=EventAckOut)

@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, DateTime, String, JSON, func
+from sqlalchemy import BigInteger, DateTime, Integer, String, JSON, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -7,7 +7,11 @@ from app.db.base import Base
 class EventV1(Base):
     __tablename__ = "events_v1"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     stream: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     ts: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -20,10 +24,16 @@ class EventV1(Base):
 class EventV1Checkpoint(Base):
     __tablename__ = "events_v1_checkpoints"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     stream: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     subscriber_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    cursor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    cursor: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), nullable=False
+    )
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

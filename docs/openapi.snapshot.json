@@ -1150,6 +1150,17 @@
             "title": "Payload",
             "type": "object"
           },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
           "ts": {
             "format": "date-time",
             "title": "Ts",
