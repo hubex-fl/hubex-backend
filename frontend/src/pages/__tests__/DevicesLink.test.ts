@@ -33,7 +33,10 @@ async function mountDevices() {
   const Devices = (await import("../Devices.vue")).default;
   const router = createRouter({
     history: createWebHistory(),
-    routes: [{ path: "/devices", component: Devices }],
+    routes: [
+      { path: "/devices", component: Devices },
+      { path: "/devices/:id", component: Devices },
+    ],
   });
   await router.push("/devices");
   await router.isReady();

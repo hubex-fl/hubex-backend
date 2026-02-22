@@ -54,7 +54,7 @@ async function mountRoute() {
       hasCap: () => false,
       refreshCapabilities: vi.fn(),
     };
-  }));
+  });
 
   const DeviceDetail = (await import("../DeviceDetail.vue")).default;
   const router = createRouter({
