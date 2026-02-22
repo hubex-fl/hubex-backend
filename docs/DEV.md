@@ -48,6 +48,9 @@ See `docs/ENV.md`.
 ## Local caps (dev)
 If the UI shows "Capabilities unavailable", set caps on your dev user in DB and re-login to mint a new JWT.
 Dev/test user caps include `devices.token.reissue` (see `app/scripts/seed_dev_user_caps.py`).
+If the backend runs in Docker Desktop container `hubex-backend`, seed via:
+`docker exec -it hubex-backend python -m app.scripts.seed_dev_user_caps`
+Compose `exec` only works when the backend was started via that compose project.
 ```
 UPDATE users
 SET caps = '["devices.read","events.read","effects.read","vars.read"]'::jsonb
