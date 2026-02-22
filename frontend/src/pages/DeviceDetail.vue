@@ -60,6 +60,9 @@ type TaskHistoryItemOut = {
 const deviceInfo = ref<DeviceInfo | null>(null);
 const deviceInfoError = ref<string | null>(null);
 const caps = useCapabilities();
+const deviceInfoLoading = computed(
+  () => deviceInfo.value === null && deviceInfoError.value === null
+);
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
@@ -882,6 +885,7 @@ onUnmounted(() => {
     </div>
 
     <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
+    <div v-else-if="deviceInfoLoading" style="margin-top: 6px;">Loading...</div>
     <div v-else class="info-grid">
       <div class="info-item">
         <div class="info-label">ID</div>
