@@ -1,26 +1,28 @@
-ï»¿HUBEX â€” Single Source of Truth
+HUBEX — Single Source of Truth
 
-WICHTIG â€“ GOVERNANCE-HINWEIS
+ARCHIVED — superseded by HUBEX_STATE_v2.md
 
-Diese Datei ist die verbindliche Referenz fÃ¼r Architektur, Contracts, Roadmap und Entscheidungen.
+WICHTIG – GOVERNANCE-HINWEIS
 
-ğŸ” Ã„nderungsregel:
+Diese Datei ist die verbindliche Referenz für Architektur, Contracts, Roadmap und Entscheidungen.
 
-Jede fachliche oder technische Ã„nderung an HUBEX MUSS hier eingepflegt werden.
+?? Änderungsregel:
 
-Jede Chat-Ausgabe, die bestehende Punkte verÃ¤ndert oder ergÃ¤nzt, MUSS explizit sagen:
+Jede fachliche oder technische Änderung an HUBEX MUSS hier eingepflegt werden.
+
+Jede Chat-Ausgabe, die bestehende Punkte verändert oder ergänzt, MUSS explizit sagen:
 
 welcher Abschnitt betroffen ist
 
-was konkret zu Ã¤ndern ist (Add/Modify/Deprecate)
+was konkret zu ändern ist (Add/Modify/Deprecate)
 
-Ã„nderungen ohne Update dieser Datei gelten als nicht beschlossen.
+Änderungen ohne Update dieser Datei gelten als nicht beschlossen.
 
 0. Meta
 
 Projekt: HUBEX
 
-Ziel: High-End, High-Security, deterministische Control Plane fÃ¼r Devices, Entities & Automations
+Ziel: High-End, High-Security, deterministische Control Plane für Devices, Entities & Automations
 
 Betriebsmodus: Self-hosted first, SaaS-ready ohne Architekturbruch
 
@@ -36,7 +38,7 @@ Append-only Events, kein Magic State
 
 1. Core-Idee (1-Satz-Definition)
 
-â€Ein Device kann sich pairen, erhÃ¤lt eine deterministische Effective-Konfiguration (Snapshot), applied diese idempotent, ackâ€™t per Revision zurÃ¼ck â€“ und das Backend bleibt stabil, nachvollziehbar und skalierbar.â€œ
+„Ein Device kann sich pairen, erhält eine deterministische Effective-Konfiguration (Snapshot), applied diese idempotent, ack’t per Revision zurück – und das Backend bleibt stabil, nachvollziehbar und skalierbar.“
 
 2. Public Contract Governance
 
@@ -60,9 +62,9 @@ MAJOR (breaking)
 
 Feld entfernt/umbenannt
 
-Typ geÃ¤ndert
+Typ geändert
 
-Semantik geÃ¤ndert
+Semantik geändert
 
 Pflichtfeld neu
 
@@ -86,11 +88,11 @@ Regel: Public Contracts sind append-only innerhalb einer Major-Version.
 
 3. Core-Freeze Definition
 
-Der Core gilt als freeze-fÃ¤hig, wenn:
+Der Core gilt als freeze-fähig, wenn:
 
-Pairing â†’ Snapshot â†’ Apply â†’ ACK deterministisch lÃ¤uft
+Pairing ? Snapshot ? Apply ? ACK deterministisch läuft
 
-vars.v2 & vars.v3 Smokes grÃ¼n (Prod-Profile, ohne Devtools)
+vars.v2 & vars.v3 Smokes grün (Prod-Profile, ohne Devtools)
 
 effective_rev monoton & typfest
 
@@ -103,7 +105,7 @@ Phase-1.5 is consolidation only: no new APIs, no new contracts, no semantics cha
 
 4. Phase-0 / Phase-1 Trennung
 
-Phase 0 â€“ Core-Freeze
+Phase 0 – Core-Freeze
 
 Beinhaltet:
 
@@ -135,9 +137,9 @@ SSOT UPDATE
 Abschnitt: 4. Phase-0 / Phase-1 Trennung (Pairing / Ownership)
 Art: Modify
 Breaking: No
-BegrÃ¼ndung:
+Begründung:
 - Device-first pairing makes /devices/pairing the canonical path; /pairing remains legacy alias.
-Ã„nderung:
+Änderung:
 - Add /api/v1/devices/pairing/hello and canonicalize pairing routes under /devices/pairing.
 - Document legacy alias behavior for /api/v1/pairing/*.
 
@@ -154,9 +156,9 @@ Semantik:
 - 410 wenn pairing_code abgelaufen
 - liefert claimed + ttl_seconds
 
-Phase 1 â€“ Core Enablement (Pflicht, kein Modul)
+Phase 1 – Core Enablement (Pflicht, kein Modul)
 
-Diese FÃ¤higkeiten sind Teil des Core, niemals Module:
+Diese Fähigkeiten sind Teil des Core, niemals Module:
 
 Capabilities Registry (deny-by-default)
 
@@ -200,16 +202,16 @@ module.<module_key>
 
 Enforcement-Regel (hart, deny-by-default):
 - Jede API-Route ist capability-gated.
-- Wenn fÃ¼r eine Route keine Capability definiert ist â†’ 403 (deny).
-- Die Capability-PrÃ¼fung passiert vor dem Handler (kein â€œbest effortâ€, kein UI-hide).
+- Wenn für eine Route keine Capability definiert ist ? 403 (deny).
+- Die Capability-Prüfung passiert vor dem Handler (kein “best effort”, kein UI-hide).
 
 Public Routes (auth-free whitelist, klein & statisch):
 - Es gibt eine explizite Whitelist von auth-freien Routen (z. B. health, version, pairing.hello).
 - Whitelist ist klein, statisch, dokumentiert.
-- Alles auÃŸerhalb der Whitelist bleibt capability-gated.
-- â€œpublicâ€ bedeutet auth-free, nicht capability-free (d. h. whitelisted routes sind die einzige Ausnahme; keine impliziten Ausnahmen).
+- Alles außerhalb der Whitelist bleibt capability-gated.
+- “public” bedeutet auth-free, nicht capability-free (d. h. whitelisted routes sind die einzige Ausnahme; keine impliziten Ausnahmen).
 
-Subjectâ†’Capabilities (Dokumentations-Tabelle, minimal):
+Subject?Capabilities (Dokumentations-Tabelle, minimal):
 - UI: vars.read, entities.read, events.read, audit.read
 - Device: vars.read, vars.ack, telemetry.emit
 - Admin: cap.admin, secrets.write, config.write, audit.read, audit.write, mic.admin
@@ -242,7 +244,7 @@ mindestens 2 Segmente
 
 keine IDs im Key
 
-Reservierte PrÃ¤fixe:
+Reservierte Präfixe:
 
 core.*
 
@@ -260,7 +262,7 @@ effective (read-only, deterministisch)
 
 reported (ACK/Telemetry)
 
-Runtime-ZustÃ¤nde:
+Runtime-Zustände:
 
 PENDING
 
@@ -320,7 +322,7 @@ health.status
 
 Device Binding
 
-1 Entity â†’ n Devices
+1 Entity ? n Devices
 
 enabled + lowest priority wins
 
@@ -506,7 +508,7 @@ Kein Core-Bypass
 
 Lifecycle
 
-install â†’ configure â†’ enable â†’ disable â†’ revoke â†’ uninstall
+install ? configure ? enable ? disable ? revoke ? uninstall
 
 Module Kit (repo convention)
 
@@ -542,11 +544,11 @@ SSOT UPDATE
 Abschnitt: 9 MIC v1 (Module Integration Contract)
 Art: Add
 Breaking: No
-BegrÃ¼ndung:
+Begründung:
 - Standardized module scaffold reduces delivery time while staying MIC-compliant and capability-gated.
 - Provide a minimal module lifecycle registry + enable/disable surface for MIC v1.
 - Ensure disabled modules are hard-blocked from module-identity actions.
-Ã„nderung:
+Änderung:
 - Add Module Kit repo convention: modules/_template, docs/MODULE_KIT.md
 - Define recommended capability prefix for example module (module.rules_min.*) as examples only.
 - Add /api/v1/modules (list/read) and /api/v1/modules/{key} (read) gated by modules.read.
@@ -556,7 +558,7 @@ BegrÃ¼ndung:
 
 Gate
 
-demo_min Modul lÃ¤uft auf Core N & N+1
+demo_min Modul läuft auf Core N & N+1
 
 10. Modul-Phasen-Roadmap (final)
 
@@ -572,9 +574,9 @@ SSOT UPDATE
 Abschnitt: Phase 5 (Execution Worker v1)
 Art: Add
 Breaking: No
-BegrÃ¼ndung:
+Begründung:
 - Canonical runbook + demo helper for local Phase-5 workflows.
-Ã„nderung:
+Änderung:
 - Add docs/PHASE5_RUNBOOK.md
 - Add scripts/demo-phase5.ps1 and scripts/smoke-ui.ps1
 
@@ -594,7 +596,7 @@ Capability Enforcement
 
 Keine impliziten Trusts
 
-SpÃ¤ter (arch-ready):
+Später (arch-ready):
 
 HTTPS
 
@@ -605,10 +607,10 @@ Cert Lifecycle
 Wichtig: Kein heutiger Contract darf Klartext voraussetzen.
 
 Token Revoke (Phase-1 Enablement):
-- Token-Revoke wird serverseitig unterstÃ¼tzt via jti denylist.
+- Token-Revoke wird serverseitig unterstützt via jti denylist.
 - Gate: Revoke wirkt sofort (global wirksam), ohne Neustart.
 
-12. Ã„nderungsprotokoll
+12. Änderungsprotokoll
 
 JEDER CHANGE MUSS HIER EINGETRAGEN WERDEN
 
@@ -622,13 +624,13 @@ Kurzbeschreibung
 
 YYYY-MM-DD
 
-â€”
+—
 
-â€”
+—
 
 Initiale Erstellung
 
-| 2025-12-24 | 5, 11 | Add | Capabilities Enforcement prÃ¤zisiert (deny-by-default + public whitelist); Token revoke (jti denylist) ergÃ¤nzt | compatible |
+| 2025-12-24 | 5, 11 | Add | Capabilities Enforcement präzisiert (deny-by-default + public whitelist); Token revoke (jti denylist) ergänzt | compatible |
 | 2026-02-12 | 8.1, 8.2 | Add | Executions v1 (read-only + write minimal) mit Cursor-Semantik und executions.read/write | compatible |
 | 2026-02-13 | 8.3 | Add | Executions v1 finalize run (write) mit deterministischen Regeln und executions.write | compatible |
 | 2026-02-14 | 4, 7, 9 | Add | Pairing status (read-only), Events emit (device), Module Kit scaffold/docs | compatible |
@@ -662,3 +664,4 @@ Capability statt impliziter Annahme
 Lieber ein klares Nein als ein weiches Vielleicht
 
 Ende der Datei
+
