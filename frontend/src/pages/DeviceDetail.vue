@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { apiFetch, getToken } from "../lib/api";
+import { apiFetch, getToken, reissueDeviceToken } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
+import { hasCap, useCapabilities } from "../lib/capabilities";
 import {
   getEffectiveVariables,
   putValue,
@@ -58,6 +59,7 @@ type TaskHistoryItemOut = {
 
 const deviceInfo = ref<DeviceInfo | null>(null);
 const deviceInfoError = ref<string | null>(null);
+const caps = useCapabilities();
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
@@ -109,6 +111,13 @@ let pendingRefresh = false;
 let lastRefreshRequestMs = 0;
 const editingVarKey = ref<string | null>(null);
 const editingVarValue = ref<string>("");
+const reissueBusy = ref(false);
+const reissueError = ref<string | null>(null);
+const reissueToken = ref<string | null>(null);
+const reissueRevokedCount = ref<number | null>(null);
+const reissueCopied = ref(false);
+const canReissueToken = computed(() => hasCap("devices.token.reissue"));
+const capsUnavailable = computed(() => caps.status !== "ready");
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -658,6 +667,44 @@ async function copyUid() {
   }
 }
 
+async function copyReissueToken() {
+  if (!reissueToken.value) return;
+  try {
+    await navigator.clipboard.writeText(reissueToken.value);
+    reissueCopied.value = true;
+  } catch {
+    // ignore
+  }
+}
+
+function clearReissueToken() {
+  reissueToken.value = null;
+  reissueRevokedCount.value = null;
+  reissueCopied.value = false;
+}
+
+async function handleReissueToken() {
+  if (!deviceInfo.value) return;
+  reissueError.value = null;
+  const reason = window.prompt("Reason for reissue (required)");
+  if (!reason || reason.trim().length < 3) {
+    reissueError.value = "Reason is required (min 3 characters).";
+    return;
+  }
+  if (!window.confirm("This revokes previous device tokens. Continue?")) return;
+  reissueBusy.value = true;
+  try {
+    const res = await reissueDeviceToken(deviceInfo.value.id, reason.trim());
+    reissueToken.value = res.device_token;
+    reissueRevokedCount.value = res.revoked_count;
+    reissueCopied.value = false;
+  } catch (e: any) {
+    reissueError.value = formatApiError(e, "Failed to reissue device token");
+  } finally {
+    reissueBusy.value = false;
+  }
+}
+
 function openPairingPanel() {
   const uid = deviceInfo.value?.device_uid;
   if (!uid) return;
@@ -1012,6 +1059,48 @@ onUnmounted(() => {
     </div>
 
     <div v-if="taskHistoryError" class="error">{{ taskHistoryError }}</div>
+    <div class="section-divider"></div>
+    <div style="margin-bottom: 14px;">
+      <strong>Recovery</strong>
+      <div v-if="capsUnavailable" class="muted" style="margin-top: 6px;">
+        Capabilities unavailable.
+      </div>
+      <div v-else-if="!canReissueToken" class="muted" style="margin-top: 6px;">
+        Missing cap devices.token.reissue.
+      </div>
+      <div v-else style="margin-top: 6px;">
+        <div class="row-actions">
+          <button class="btn secondary" :disabled="reissueBusy" @click="handleReissueToken">
+            {{ reissueBusy ? "Reissuing..." : "Reissue Device Token" }}
+          </button>
+        </div>
+        <div v-if="reissueError" class="error" style="margin-top: 6px;">
+          {{ reissueError }}
+        </div>
+        <div v-if="reissueToken" class="pairing-warn" style="margin-top: 10px;">
+          <div style="margin-bottom: 6px;">
+            This token is shown once. Store it securely.
+          </div>
+          <div class="info-grid" style="margin-top: 0;">
+            <div class="info-item">
+              <div class="info-label">Token</div>
+              <div class="info-value cell-mono">{{ reissueToken }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Revoked</div>
+              <div class="info-value">{{ reissueRevokedCount ?? 0 }}</div>
+            </div>
+          </div>
+          <div class="row-actions" style="margin-top: 8px;">
+            <button class="btn secondary" @click="copyReissueToken">
+              {{ reissueCopied ? "Copied" : "Copy token" }}
+            </button>
+            <button class="btn secondary" @click="clearReissueToken">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="section-divider"></div>
     <div style="margin-bottom: 14px;">
       <strong>Recent Tasks</strong>

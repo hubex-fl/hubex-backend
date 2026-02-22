@@ -40,3 +40,20 @@ export async function apiFetch<T>(
   }
   return (await res.json()) as T;
 }
+
+export type DeviceTokenReissueOut = {
+  device_id: number;
+  device_uid: string;
+  device_token: string;
+  revoked_count: number;
+};
+
+export async function reissueDeviceToken(
+  deviceId: number,
+  reason: string
+): Promise<DeviceTokenReissueOut> {
+  return apiFetch<DeviceTokenReissueOut>(`/api/v1/devices/${deviceId}/token/reissue`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
