@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
 - UI: register device detail route and link devices list to /devices/:id.
 - UI: device detail recovery reissue button (devices.token.reissue) with reason + one-time token display.
 - SSOT v2 hygiene: UTF-8/mojibake cleanup + normalize status markers; HUBEX_STATE.md archived banner.

@@ -15,6 +15,8 @@ source .venv/bin/activate
 python -m pip install -U -r requirements.txt -r requirements-dev.txt
 ```
 
+Note: `requirements.txt` uses `uvicorn[standard]` so local dev includes WebSocket support.
+
 ## Phase-1 gates (local)
 PowerShell:
 ```
