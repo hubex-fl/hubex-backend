@@ -14,8 +14,8 @@ if (-not (Test-Path ".venv")) {
 
 $envPort = $env:HUBEX_PORT
 if ($envPort) { $Port = [int]$envPort }
-$Host = $env:HUBEX_HOST
-if (-not $Host) { $Host = "0.0.0.0" }
+$BindHost = $env:HUBEX_HOST
+if (-not $BindHost) { $BindHost = "0.0.0.0" }
 $Reload = $env:HUBEX_RELOAD
 if (-not $Reload) { $Reload = "1" }
 
@@ -33,7 +33,7 @@ if (Test-Path $pidFile) {
     $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
     if ($proc) {
       Write-Host ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pid, $Port)
-      Write-Host ("URL: http://{0}:{1}" -f $Host, $Port)
+      Write-Host ("URL: http://{0}:{1}" -f $BindHost, $Port)
       exit 0
     }
   }
@@ -51,9 +51,9 @@ Write-Host "Activating venv..."
 . .\.venv\Scripts\Activate.ps1
 
 Write-Host "Tip: install deps if needed: python -m pip install -r requirements.txt"
-Write-Host ("Starting backend on http://{0}:{1} (reload={2})..." -f $Host, $Port, $Reload)
+Write-Host ("Starting backend on http://{0}:{1} (reload={2})..." -f $BindHost, $Port, $Reload)
 
-$args = @("-m", "uvicorn", "app.main:app", "--host", $Host, "--port", $Port)
+$args = @("-m", "uvicorn", "app.main:app", "--host", $BindHost, "--port", $Port)
 if ($Reload -eq "1" -or $Reload -eq "true" -or $Reload -eq "True") {
   $args += "--reload"
 }
@@ -70,4 +70,4 @@ if (-not $listeners) {
   exit 1
 }
 
-Write-Host ("Backend running: http://{0}:{1} (PID={2})" -f $Host, $Port, $proc.Id)
+Write-Host ("Backend running: http://{0}:{1} (PID={2})" -f $BindHost, $Port, $proc.Id)
