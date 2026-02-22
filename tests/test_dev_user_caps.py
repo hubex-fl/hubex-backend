@@ -12,6 +12,7 @@ from app.scripts.seed_dev_user_caps import (
     DEFAULT_EMAIL,
     DEFAULT_PASSWORD,
     ensure_dev_user_caps_db,
+    _merge_caps,
 )
 
 
@@ -46,5 +47,27 @@ async def test_seed_dev_user_caps_includes_reissue():
         assert "devices.token.reissue" in (user.caps or [])
         assert set(DEFAULT_CAPS).issubset(set(user.caps or []))
         assert verify_password(DEFAULT_PASSWORD, user.password_hash)
+
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_seed_dev_user_caps_merges_default_with_override():
+    override = ["users.read", "events.read"]
+    merged = _merge_caps(DEFAULT_CAPS, override)
+    engine, Session = await _mk_session()
+    async with Session() as db:
+        user = await ensure_dev_user_caps_db(
+            db,
+            email=DEFAULT_EMAIL,
+            password=DEFAULT_PASSWORD,
+            caps=merged,
+            force_password=True,
+        )
+        assert "devices.token.reissue" in (user.caps or [])
+        assert "users.read" in (user.caps or [])
+        assert "events.read" in (user.caps or [])
+        # Ensure defaults are not dropped by override
+        assert set(DEFAULT_CAPS).issubset(set(user.caps or []))
 
     await engine.dispose()
