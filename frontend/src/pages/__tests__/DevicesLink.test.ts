@@ -47,7 +47,7 @@ async function mountDevices() {
   app.use(router);
   app.mount(el);
   await new Promise((r) => setTimeout(r, 0));
-  return { app, el };
+  return { app, el, router };
 }
 
 afterEach(() => {
@@ -57,10 +57,13 @@ afterEach(() => {
 
 describe("Devices list link", () => {
   it("links to device detail from UID", async () => {
-    const { app, el } = await mountDevices();
+    const { app, el, router } = await mountDevices();
     const link = el.querySelector("a") as HTMLAnchorElement | null;
     expect(link).not.toBeNull();
     expect(link?.getAttribute("href")).toBe("/devices/1");
+    link?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(router.currentRoute.value.fullPath).toBe("/devices/1");
     app.unmount();
   });
 });
