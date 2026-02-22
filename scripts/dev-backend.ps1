@@ -30,10 +30,10 @@ $stderr = Join-Path $runDir "uvicorn.err.log"
 if (Test-Path $pidFile) {
   $pidText = Get-Content -LiteralPath $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($pidText) {
-    $pid = [int]$pidText
-    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    $pidValue = [int]$pidText
+    $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
     if ($proc) {
-      Write-Host ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pid, $Port)
+      Write-Host ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pidValue, $Port)
       Write-Host ("URL: http://{0}:{1}" -f $BindHost, $Port)
       exit 0
     }
@@ -44,6 +44,12 @@ $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Si
 if ($listeners) {
   $pids = $listeners | Select-Object -ExpandProperty OwningProcess -Unique
   Write-Host ("Port {0} is already in use by PID(s): {1}" -f $Port, ($pids -join ", "))
+  foreach ($pidValue in $pids) {
+    $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+    if ($proc) {
+      Write-Host ("  PID {0}: {1} ({2})" -f $pidValue, $proc.ProcessName, $proc.Path)
+    }
+  }
   Write-Host "Stop the existing process or set HUBEX_PORT to a free port."
   exit 1
 }
