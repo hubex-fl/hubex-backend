@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- SSOT v2 hygiene: UTF-8/mojibake cleanup + normalize status markers; HUBEX_STATE.md archived banner.
 - Vertical Demo v1: demo script + bridge + trace_id support for events.
 - Recovery Gate v7.1: device token reissue (audited, owner/admin only).
 - MIC v1: module enabled gating (MODULE_DISABLED) + audit on enable/disable.
