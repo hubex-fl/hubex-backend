@@ -17,6 +17,7 @@ python -m pip install -U -r requirements.txt -r requirements-dev.txt
 
 Note: `requirements.txt` uses `uvicorn[standard]` so local dev includes WebSocket support.
 `scripts/dev-backend.ps1` binds to `0.0.0.0` by default and avoids double-start via `.run/uvicorn.pid` (override with `HUBEX_HOST`/`HUBEX_PORT`).
+UI runs on http://127.0.0.1:5173 (Vite dev server). Backend API runs on http://127.0.0.1:8000.
 
 ## Phase-1 gates (local)
 PowerShell:
