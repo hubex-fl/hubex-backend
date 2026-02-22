@@ -171,7 +171,7 @@ describe("Events view", () => {
     const { app, el } = mountEvents();
     setInput(el, "tenant.system");
     await nextTick();
-    const cursorInput = el.querySelectorAll("input")[1] as HTMLInputElement;
+    const cursorInput = el.querySelector('input[type="number"]') as HTMLInputElement;
     cursorInput.value = "10";
     cursorInput.dispatchEvent(new Event("input", { bubbles: true }));
     cursorInput.dispatchEvent(new Event("change", { bubbles: true }));

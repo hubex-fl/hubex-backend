@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
@@ -10,6 +10,7 @@ type EventItem = {
   ts: string;
   type: string;
   payload: Record<string, unknown>;
+  trace_id?: string | null;
 };
 
 type EventsResponse = {
@@ -34,12 +35,18 @@ const polling = ref(false);
 const ackStatus = ref<string | null>(null);
 const ackError = ref<string | null>(null);
 const cursorInput = ref("");
+const traceFilter = ref("");
 
 const capsReady = computed(() => caps.status === "ready");
 const canReadEvents = computed(() => hasCap("events.read"));
 const canAckEvents = computed(() => hasCap("events.ack"));
 const limit = 100;
 const subscriberId = "ui.events.viewer";
+const filteredItems = computed(() => {
+  const raw = traceFilter.value.trim();
+  if (!raw) return items.value;
+  return items.value.filter((item) => String(item.trace_id ?? "").includes(raw));
+});
 
 function mapError(err: unknown): string {
   const e = err as ApiError;
@@ -252,6 +259,10 @@ onUnmounted(() => {
           <label class="muted">Stream</label>
           <input v-model="stream" class="input" placeholder="tenant.system" />
         </div>
+        <div>
+          <label class="muted">Trace ID filter</label>
+          <input v-model="traceFilter" class="input" placeholder="trace_id" />
+        </div>
         <button class="btn" @click="startPolling" :disabled="polling">Start</button>
       </div>
       <div class="form-row">
@@ -278,21 +289,23 @@ onUnmounted(() => {
 
       <div v-if="error" class="error">{{ error }}</div>
       <div v-else-if="loading" class="muted">Loading.</div>
-      <div v-else-if="items.length === 0" class="muted">No events.</div>
+      <div v-else-if="filteredItems.length === 0" class="muted">No events.</div>
       <table v-else class="table">
         <thead>
           <tr>
             <th>Cursor</th>
             <th>Time</th>
             <th>Type</th>
+            <th>Trace</th>
             <th>Payload</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in items" :key="`${item.cursor}-${item.type}`">
+          <tr v-for="item in filteredItems" :key="`${item.cursor}-${item.type}`">
             <td>{{ item.cursor }}</td>
             <td>{{ item.ts }}</td>
             <td>{{ item.type }}</td>
+            <td>{{ item.trace_id ?? "-" }}</td>
             <td><pre class="muted">{{ item.payload }}</pre></td>
           </tr>
         </tbody>
