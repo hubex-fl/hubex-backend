@@ -326,12 +326,12 @@ async def reissue_device_token(
         AuditV1Entry(
             actor_type="user",
             actor_id=str(user.id),
-            action="device_token_reissue",
+            action="device.token.reissue",
             resource=device.device_uid,
             audit_metadata={
                 "device_uid": device.device_uid,
                 "reason": reason,
-                "prior_token_revoked_count": revoked_count,
+                "revoked_count": revoked_count,
             },
             trace_id=None,
         )
@@ -600,7 +600,6 @@ async def cancel_task_for_device(
     task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
     await db.commit()
     return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)
-
 
 
 
