@@ -5,6 +5,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Log([string]$Message) { Write-Output $Message }
+function Warn([string]$Message) { Write-Warning $Message }
+function Err([string]$Message) { Write-Error $Message }
+
 if (-not (Test-Path ".venv")) {
   Write-Host "Missing .venv. Create it with:" -ForegroundColor Yellow
   Write-Host "  python -m venv .venv"
@@ -33,8 +37,8 @@ if (Test-Path $pidFile) {
     $pidValue = [int]$pidText
     $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
     if ($proc) {
-      Write-Host ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pidValue, $Port)
-      Write-Host ("URL: http://{0}:{1}" -f $BindHost, $Port)
+      Log ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pidValue, $Port)
+      Log ("URL: http://{0}:{1}" -f $BindHost, $Port)
       exit 0
     }
   }
@@ -43,14 +47,14 @@ if (Test-Path $pidFile) {
 $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($listeners) {
   $pids = $listeners | Select-Object -ExpandProperty OwningProcess -Unique
-  Write-Host ("Port {0} is already in use by PID(s): {1}" -f $Port, ($pids -join ", "))
+  Log ("Port {0} is already in use by PID(s): {1}" -f $Port, ($pids -join ", "))
   foreach ($pidValue in $pids) {
     $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
     if ($proc) {
-      Write-Host ("  PID {0}: {1} ({2})" -f $pidValue, $proc.ProcessName, $proc.Path)
+      Log ("  PID {0}: {1} ({2})" -f $pidValue, $proc.ProcessName, $proc.Path)
     }
   }
-  Write-Host "Stop the existing process or set HUBEX_PORT to a free port."
+  Log "Stop the existing process or set HUBEX_PORT to a free port."
   exit 1
 }
 
@@ -78,9 +82,9 @@ while ((Get-Date) -lt $deadline) {
 }
 
 if (-not $listeners) {
-  Write-Host "Backend did not start in time. Last errors:"
-  if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Tail 50 | Write-Host }
+  Log "Backend did not start in time. Last errors:"
+  if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Tail 50 | Write-Output }
   exit 1
 }
 
-Write-Host ("Backend running: http://{0}:{1} (PID={2})" -f $BindHost, $Port, $proc.Id)
+Log ("Backend running: http://{0}:{1} (PID={2})" -f $BindHost, $Port, $proc.Id)

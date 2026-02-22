@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Dev: fix dev-backend.ps1 to avoid PowerShell reserved $Host variable.
+- Dev: make dev-backend.ps1 logs pipeline-friendly (Tee-Object support).
 - Dev: improve dev-backend.ps1 port-in-use diagnostics (process name/path).
 - Dev: dev-backend.ps1 startup check now polls for reload readiness.
 - UI: devices list rows are clickable (route to /devices/:id).
