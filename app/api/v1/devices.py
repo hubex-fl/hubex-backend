@@ -1,9 +1,11 @@
-﻿from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
+import hashlib
+import secrets
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -15,6 +17,8 @@ from app.api.v1.error_utils import raise_api_error
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 from app.db.models.pairing import PairingSession
+from app.db.models.pairing import DeviceToken
+from app.db.models.audit import AuditV1Entry
 from app.schemas.device import DeviceListItem, DeviceDetailItem
 from app.api.v1.device_state import (
     derive_state,
@@ -57,6 +61,17 @@ class DeviceOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DeviceTokenReissueIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=256)
+
+
+class DeviceTokenReissueOut(BaseModel):
+    device_id: int
+    device_uid: str
+    device_token: str
+    revoked_count: int
 
 
 class UserTelemetryOut(BaseModel):
@@ -259,6 +274,75 @@ async def get_device(
         state=state,
         pairing_active=pairing_active,
         busy=busy,
+    )
+
+
+def _gen_device_token_plain() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def _hash_token(token_plain: str) -> str:
+    return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
+
+
+def _is_admin(user: User) -> bool:
+    if not user.caps:
+        return False
+    return "cap.admin" in user.caps or "mic.admin" in user.caps
+
+
+@router.post("/{device_id}/token/reissue", response_model=DeviceTokenReissueOut)
+async def reissue_device_token(
+    device_id: int,
+    data: DeviceTokenReissueIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    reason = data.reason.strip()
+    if not (3 <= len(reason) <= 256):
+        raise_api_error(400, "INVALID_REASON", "reason is required")
+
+    res = await db.execute(select(Device).where(Device.id == device_id))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_NOT_FOUND", "device not found")
+    if device.owner_user_id is None:
+        raise_api_error(409, "DEVICE_NOT_CLAIMED", "device not claimed")
+    if device.owner_user_id != user.id and not _is_admin(user):
+        raise_api_error(403, "DEVICE_NOT_OWNER", "not device owner")
+
+    token_plain = _gen_device_token_plain()
+    token_hash = _hash_token(token_plain)
+
+    revoked = await db.execute(
+        update(DeviceToken)
+        .where(DeviceToken.device_id == device.id, DeviceToken.is_active.is_(True))
+        .values(is_active=False)
+    )
+    revoked_count = int(revoked.rowcount or 0)
+
+    db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
+    db.add(
+        AuditV1Entry(
+            actor_type="user",
+            actor_id=str(user.id),
+            action="device_token_reissue",
+            resource=device.device_uid,
+            audit_metadata={
+                "device_uid": device.device_uid,
+                "reason": reason,
+                "prior_token_revoked_count": revoked_count,
+            },
+            trace_id=None,
+        )
+    )
+    await db.commit()
+
+    return DeviceTokenReissueOut(
+        device_id=device.id,
+        device_uid=device.device_uid,
+        device_token=token_plain,
+        revoked_count=revoked_count,
     )
 
 
@@ -516,3 +600,7 @@ async def cancel_task_for_device(
     task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
     await db.commit()
     return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)
+
+
+
+
