@@ -5,6 +5,9 @@ BASE="${HUBEX_BASE:-http://127.0.0.1:8000}"
 EMAIL="${HUBEX_EMAIL:-dev@example.com}"
 PASSWORD="${HUBEX_PASSWORD:-devdevdev}"
 
+echo "Seeding dev user caps (dev-only)..."
+python -m app.scripts.seed_dev_user_caps
+
 fail() {
   echo "FAIL: $1"
   if [ -n "${2:-}" ]; then

@@ -7,6 +7,10 @@ if (-not $Email) { $Email = "dev@example.com" }
 $Password = $env:HUBEX_PASSWORD
 if (-not $Password) { $Password = "devdevdev" }
 
+Write-Host "Seeding dev user caps (dev-only)..."
+python -m app.scripts.seed_dev_user_caps | Write-Host
+if ($LASTEXITCODE -ne 0) { throw "seed_dev_user_caps failed" }
+
 function Fail {
     param([string]$Message, [hashtable]$Resp)
     Write-Host "FAIL: $Message"
