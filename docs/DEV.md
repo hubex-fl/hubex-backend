@@ -18,6 +18,13 @@ python -m pip install -U -r requirements.txt -r requirements-dev.txt
 Note: `requirements.txt` uses `uvicorn[standard]` so local dev includes WebSocket support.
 `scripts/dev-backend.ps1` binds to `0.0.0.0` by default and avoids double-start via `.run/uvicorn.pid` (override with `HUBEX_HOST`/`HUBEX_PORT`).
 Startup verification polls for a listening port because `uvicorn --reload` starts a reloader process first.
+Detached start and logs:
+- Start: `.\scripts\dev-backend.ps1`
+- Start + follow logs: `.\scripts\dev-backend.ps1 -Follow`
+- Follow only: `.\scripts\dev-backend.ps1 -Action follow`
+- Follow stderr only: `.\scripts\dev-backend.ps1 -Action follow -StderrOnly`
+- Status: `.\scripts\dev-backend.ps1 -Action status`
+- Stop: `.\scripts\dev-backend.ps1 -Action stop`
 UI runs on http://127.0.0.1:5173 (Vite dev server). Backend API runs on http://127.0.0.1:8000.
 
 ## Phase-1 gates (local)

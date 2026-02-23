@@ -1,6 +1,10 @@
 param(
   [int]$Port = 8000,
-  [int]$StartupTimeoutSeconds = 15
+  [int]$StartupTimeoutSeconds = 15,
+  [ValidateSet("start", "follow", "stop", "status")]
+  [string]$Action = "start",
+  [switch]$Follow,
+  [switch]$StderrOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,6 +12,34 @@ $ErrorActionPreference = "Stop"
 function Log([string]$Message) { Write-Output $Message }
 function Warn([string]$Message) { Write-Warning $Message }
 function Err([string]$Message) { Write-Error $Message }
+function ReadPid([string]$Path) {
+  if (-not (Test-Path $Path)) { return $null }
+  $pidText = Get-Content -LiteralPath $Path -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $pidText) { return $null }
+  return [int]$pidText
+}
+function GetListeners([int]$ListenPort) {
+  return Get-NetTCPConnection -LocalPort $ListenPort -State Listen -ErrorAction SilentlyContinue
+}
+function PrintPortOwners($Listeners) {
+  if (-not $Listeners) { return }
+  $pids = $Listeners | Select-Object -ExpandProperty OwningProcess -Unique
+  Log ("Port {0} is already in use by PID(s): {1}" -f $Port, ($pids -join ", "))
+  foreach ($pidValue in $pids) {
+    $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+    if ($proc) {
+      Log ("  PID {0}: {1} ({2})" -f $pidValue, $proc.ProcessName, $proc.Path)
+    }
+  }
+  Log "Stop the existing process or set HUBEX_PORT to a free port."
+}
+function TailFile([string]$Path) {
+  if (-not (Test-Path $Path)) {
+    Log ("Log not found: {0}" -f $Path)
+    return
+  }
+  Get-Content -LiteralPath $Path -Tail 50 -Wait
+}
 
 if (-not (Test-Path ".venv")) {
   Write-Host "Missing .venv. Create it with:" -ForegroundColor Yellow
@@ -31,30 +63,79 @@ $pidFile = Join-Path $runDir "uvicorn.pid"
 $stdout = Join-Path $runDir "uvicorn.out.log"
 $stderr = Join-Path $runDir "uvicorn.err.log"
 
-if (Test-Path $pidFile) {
-  $pidText = Get-Content -LiteralPath $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($pidText) {
-    $pidValue = [int]$pidText
+if ($Action -eq "status") {
+  $pidValue = ReadPid $pidFile
+  if ($pidValue) {
     $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
     if ($proc) {
-      Log ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pidValue, $Port)
-      Log ("URL: http://{0}:{1}" -f $BindHost, $Port)
-      exit 0
+      Log ("PID file: {0} (alive)" -f $pidValue)
+    } else {
+      Log ("PID file: {0} (not running)" -f $pidValue)
     }
+  } else {
+    Log "PID file: missing"
+  }
+  $listeners = GetListeners $Port
+  if ($listeners) {
+    PrintPortOwners $listeners
+  } else {
+    Log ("Port {0} is not listening." -f $Port)
+  }
+  Log ("Logs: {0} , {1}" -f $stdout, $stderr)
+  exit 0
+}
+
+if ($Action -eq "stop") {
+  $pidValue = ReadPid $pidFile
+  if ($pidValue) {
+    Stop-Process -Id $pidValue -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 300
+  }
+  $listeners = GetListeners $Port
+  if ($listeners) {
+    PrintPortOwners $listeners
+    exit 1
+  }
+  Log "Backend stopped."
+  exit 0
+}
+
+if ($Action -eq "follow") {
+  if ($StderrOnly) {
+    TailFile $stderr
+    exit 0
+  }
+  $stdoutJob = Start-Job -ScriptBlock { param($p) Get-Content -LiteralPath $p -Tail 50 -Wait } -ArgumentList $stdout
+  TailFile $stderr
+  Stop-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+  Remove-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+  exit 0
+}
+
+$pidValue = ReadPid $pidFile
+if ($pidValue) {
+  $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+  if ($proc) {
+    Log ("Backend already running (PID={0}, port={1}). Not starting another instance." -f $pidValue, $Port)
+    Log ("URL: http://{0}:{1}" -f $BindHost, $Port)
+    if ($Follow) {
+      if ($StderrOnly) {
+        TailFile $stderr
+      } else {
+        $stdoutJob = Start-Job -ScriptBlock { param($p) Get-Content -LiteralPath $p -Tail 50 -Wait } -ArgumentList $stdout
+        TailFile $stderr
+        Stop-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+        Remove-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+      }
+    }
+    exit 0
   }
 }
 
-$listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+$listeners = GetListeners $Port
 if ($listeners) {
-  $pids = $listeners | Select-Object -ExpandProperty OwningProcess -Unique
-  Log ("Port {0} is already in use by PID(s): {1}" -f $Port, ($pids -join ", "))
-  foreach ($pidValue in $pids) {
-    $proc = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
-    if ($proc) {
-      Log ("  PID {0}: {1} ({2})" -f $pidValue, $proc.ProcessName, $proc.Path)
-    }
-  }
-  Log "Stop the existing process or set HUBEX_PORT to a free port."
+  PrintPortOwners $listeners
   exit 1
 }
 
@@ -70,13 +151,13 @@ if ($Reload -eq "1" -or $Reload -eq "true" -or $Reload -eq "True") {
 }
 
 $proc = Start-Process -FilePath ".\.venv\Scripts\python.exe" -ArgumentList $args `
-  -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+  -RedirectStandardOutput $stdout -RedirectStandardError $stderr -NoNewWindow -WorkingDirectory $repo -PassThru
 $proc.Id | Set-Content -LiteralPath $pidFile -Encoding ascii
 
 $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
 $listeners = $null
 while ((Get-Date) -lt $deadline) {
-  $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+  $listeners = GetListeners $Port
   if ($listeners) { break }
   Start-Sleep -Milliseconds 300
 }
@@ -88,3 +169,13 @@ if (-not $listeners) {
 }
 
 Log ("Backend running: http://{0}:{1} (PID={2})" -f $BindHost, $Port, $proc.Id)
+if ($Follow) {
+  if ($StderrOnly) {
+    TailFile $stderr
+  } else {
+    $stdoutJob = Start-Job -ScriptBlock { param($p) Get-Content -LiteralPath $p -Tail 50 -Wait } -ArgumentList $stdout
+    TailFile $stderr
+    Stop-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+    Remove-Job $stdoutJob -Force -ErrorAction SilentlyContinue
+  }
+}

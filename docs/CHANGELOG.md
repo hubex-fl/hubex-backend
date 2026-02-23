@@ -5,6 +5,7 @@
 - Dev: make dev-backend.ps1 logs pipeline-friendly (Tee-Object support).
 - Dev: improve dev-backend.ps1 port-in-use diagnostics (process name/path).
 - Dev: dev-backend.ps1 startup check now polls for reload readiness.
+- Dev: dev-backend.ps1 supports follow/stop/status actions and avoids extra windows.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).
 - Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
