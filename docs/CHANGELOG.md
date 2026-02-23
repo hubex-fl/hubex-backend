@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- Dev: pin bcrypt==3.2.2 to silence passlib bcrypt.__about__ warning.
 - Dev: fix dev-backend.ps1 to avoid PowerShell reserved $Host variable.
 - Dev: make dev-backend.ps1 logs pipeline-friendly (Tee-Object support).
 - Dev: improve dev-backend.ps1 port-in-use diagnostics (process name/path).
