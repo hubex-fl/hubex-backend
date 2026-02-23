@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
+import { useCapabilities, hasCap } from "../lib/capabilities";
 
 type Device = {
   id: number;
@@ -29,6 +30,7 @@ const pairingSection = ref<HTMLElement | null>(null);
 const pairingConfirmInput = ref<HTMLInputElement | null>(null);
 const route = useRoute();
 const router = useRouter();
+const caps = useCapabilities();
 
 const pairingDeviceUid = ref("");
 const pairingStartCode = ref("");
@@ -36,6 +38,9 @@ const pairingConfirmCode = ref("");
 const pairingExpiresAt = ref<string | null>(null);
 const startingPairing = ref(false);
 const confirmingPairing = ref(false);
+const claimingPairing = ref(false);
+const pairingClaimCode = ref("");
+const pairingClaimStatus = ref<string | null>(null);
 const pairingRemainingSeconds = ref<number | null>(null);
 const pairingExpired = ref(false);
 const searchQuery = ref("");
@@ -91,6 +96,13 @@ const canConfirmPairing = computed(() => {
   }
   if (pairingLookupStatus.value !== "found") return false;
   return pairingLookup.value?.claimed === false;
+});
+
+const canClaimPairing = computed(() => {
+  if (claimingPairing.value) return false;
+  if (caps.status !== "ready") return false;
+  if (!hasCap("pairing.claim")) return false;
+  return pairingClaimCode.value.trim().length > 0;
 });
 
 const visibleDevices = computed(() => {
@@ -315,6 +327,33 @@ async function confirmPairing() {
   }
 }
 
+async function claimPairing() {
+  const code = pairingClaimCode.value.trim();
+  if (!code) {
+    error.value = "pairing_code required";
+    return;
+  }
+  if (caps.status !== "ready" || !hasCap("pairing.claim")) {
+    error.value = "Missing capability: pairing.claim";
+    return;
+  }
+  claimingPairing.value = true;
+  pairingClaimStatus.value = null;
+  try {
+    const res: any = await apiFetch("/api/v1/devices/pairing/claim", {
+      method: "POST",
+      body: JSON.stringify({ pairing_code: code }),
+    });
+    pairingClaimStatus.value = res?.device_uid ? `Claimed ${res.device_uid}` : "Claimed";
+    pairingClaimCode.value = "";
+    await load({ silent: true });
+  } catch (err: any) {
+    error.value = formatPairingError(err, "Failed to claim pairing");
+  } finally {
+    claimingPairing.value = false;
+  }
+}
+
 function fmtTime(iso: string | null) {
   if (!iso) return "-";
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -475,6 +514,22 @@ onUnmounted(() => {
         <button class="btn secondary" :disabled="!canConfirmPairing" @click="confirmPairing">
           {{ confirmingPairing ? "Confirming..." : "Confirm" }}
         </button>
+      </div>
+      <div class="pairing-row">
+        <input
+          v-model="pairingClaimCode"
+          class="input pairing-input"
+          placeholder="Pairing code (claim)"
+        />
+        <button class="btn secondary" :disabled="!canClaimPairing" @click="claimPairing">
+          {{ claimingPairing ? "Claiming..." : "Claim" }}
+        </button>
+      </div>
+      <div v-if="caps.status === 'ready' && !hasCap('pairing.claim')" class="muted">
+        Missing capability: pairing.claim
+      </div>
+      <div v-if="pairingClaimStatus" class="pairing-help">
+        {{ pairingClaimStatus }}
       </div>
       <div v-if="pairingStartCode && !pairingExpired" class="pairing-countdown">
         <span>Expires in: {{ fmtRemaining(pairingRemainingSeconds) }}</span>

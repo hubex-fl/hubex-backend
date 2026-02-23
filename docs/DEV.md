@@ -27,6 +27,10 @@ Detached start and logs:
 - Stop: `.\scripts\dev-backend.ps1 -Action stop`
 UI runs on http://127.0.0.1:5173 (Vite dev server). Backend API runs on http://127.0.0.1:8000.
 
+## Claim a device (UI)
+Open the Devices page, enter the pairing code in "Pairing code (claim)", and click Claim.
+On success the devices list refreshes and the claimed device is visible for detail view.
+
 ## Phase-1 gates (local)
 PowerShell:
 ```
