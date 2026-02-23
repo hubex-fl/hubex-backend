@@ -1,14 +1,25 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createApp } from "vue";
+import { createApp, nextTick } from "vue";
+import { createRouter, createWebHistory } from "vue-router";
 import SystemStage from "../SystemStage.vue";
 import { useCapabilities } from "../../lib/capabilities";
+
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function mountSystemStage() {
   const el = document.createElement("div");
   document.body.appendChild(el);
   const app = createApp(SystemStage);
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+      { path: "/system-stage", component: SystemStage },
+      { path: "/devices/:id", component: { template: "<div>Device</div>" } },
+    ],
+  });
+  app.use(router);
   app.mount(el);
-  return { app, el };
+  return { app, el, router };
 }
 
 describe("SystemStage", () => {
@@ -16,8 +27,13 @@ describe("SystemStage", () => {
 
   beforeEach(() => {
     caps.status = "ready";
-    caps.caps = new Set(["devices.read"]);
+    caps.caps = new Set(["devices.read", "vars.read"]);
     caps.error = null;
+    (window as Window & { scrollTo?: () => void }).scrollTo = () => undefined;
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -106,5 +122,49 @@ describe("SystemStage", () => {
 
     app.unmount();
     vi.useRealTimers();
+  });
+
+  it("links device UID to detail route", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response('[{"id":1,"device_uid":"dev-1","state":"claimed"}]', {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    const { app, el, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await router.isReady();
+    await nextTick();
+    await flushPromises();
+    const link = el.querySelector('a[href="/devices/1"]') as HTMLAnchorElement | null;
+    expect(link).toBeTruthy();
+    link?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/devices/1");
+    expect(fetchSpy).toHaveBeenCalled();
+    app.unmount();
+  });
+
+  it("preserves scroll position on refresh", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response('[{"id":1,"device_uid":"dev-1","state":"claimed"}]', {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    const scrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      get() {
+        return 120;
+      },
+    });
+    const { app, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await nextTick();
+    await flushPromises();
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(scrollToSpy).toHaveBeenCalledWith({ top: 120 });
+    app.unmount();
   });
 });

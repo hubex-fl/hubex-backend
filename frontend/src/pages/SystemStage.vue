@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -27,6 +28,7 @@ type EntityRow = {
 
 const caps = useCapabilities();
 const { signal } = useAbortHandle();
+const router = useRouter();
 
 const devices = ref<DeviceRow[]>([]);
 const entities = ref<EntityRow[]>([]);
@@ -87,6 +89,11 @@ function runtimeBadges(device: DeviceRow): RuntimeBadge[] {
   ];
 }
 
+function onRowClick(device: DeviceRow): void {
+  if (device.state !== "claimed") return;
+  router.push(`/devices/${device.id}`);
+}
+
 function deviceLabel(deviceId: number): string {
   const found = devices.value.find((device) => device.id === deviceId);
   return found ? found.device_uid : `device#${deviceId}`;
@@ -108,20 +115,24 @@ function capsStatusMessage(): string {
 
 async function refreshDevices() {
   if (!capsReady.value) {
-    devices.value = [];
     devicesError.value = capsStatusMessage();
     return;
   }
   if (!canReadDevices.value) {
-    devices.value = [];
     devicesError.value = "Missing capability: devices.read";
     return;
   }
   if (devicesInflight) return;
   devicesInflight = true;
   devicesError.value = null;
+  const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
   try {
-    devices.value = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
+    const next = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
+    devices.value.splice(0, devices.value.length, ...next);
+    await nextTick();
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: scrollY });
+    }
   } finally {
     devicesInflight = false;
   }
@@ -327,9 +338,18 @@ onUnmounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="device in devices" :key="device.id">
+          <tr
+            v-for="device in devices"
+            :key="device.id"
+            :class="device.state === 'claimed' ? 'row-clickable' : ''"
+            @click="onRowClick(device)"
+          >
             <td>{{ device.id }}</td>
-            <td>{{ device.device_uid }}</td>
+            <td>
+              <router-link :to="`/devices/${device.id}`" @click.stop>
+                {{ device.device_uid }}
+              </router-link>
+            </td>
             <td>
               <span :class="['pill', statusClass(device)]">
                 {{ statusLabel(device) }}
@@ -355,5 +375,11 @@ onUnmounted(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+.row-clickable {
+  cursor: pointer;
+}
+</style>
 
 
