@@ -8,6 +8,7 @@
 - Dev: dev-backend.ps1 supports follow/stop/status actions and avoids extra windows.
 - Dev: refactor dev-backend.ps1 to a single action flow (start/follow/stop/status).
 - Fix: telemetry websocket auth uses query token (no HTTPBearer dependency).
+- Dev: pin passlib/bcrypt versions to avoid bcrypt __about__ errors.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).
 - Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
