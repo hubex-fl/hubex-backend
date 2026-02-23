@@ -15,6 +15,7 @@ from app.api.v1.error_utils import raise_api_error
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.tasks import Task
+from app.db.models.audit import AuditV1Entry
 
 # Canonical pairing routes live under /api/v1/devices/pairing
 router = APIRouter(prefix="/devices/pairing", tags=["pairing"])
@@ -353,14 +354,43 @@ async def claim_pairing(
     if _ensure_utc(ps.expires_at) <= now:
         raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
     if ps.is_used:
-        raise_api_error(409, "PAIRING_CODE_ALREADY_USED", "pairing code already used")
+        res = await db.execute(select(Device).where(Device.device_uid == ps.device_uid))
+        device = res.scalar_one_or_none()
+        if device and device.owner_user_id == current_user.id:
+            return PairingUserClaimOut(
+                pairing_code=ps.pairing_code,
+                device_uid=ps.device_uid,
+                claimed_at=ps.claimed_at,
+            )
+        raise_api_error(403, "PAIRING_CODE_ALREADY_CLAIMED", "pairing code already claimed")
     if data.device_uid and ps.device_uid != data.device_uid:
         raise_api_error(409, "PAIRING_CODE_DEVICE_MISMATCH", "pairing code device mismatch")
     if ps.user_id is not None and ps.user_id != current_user.id:
-        raise_api_error(409, "PAIRING_CODE_ALREADY_CLAIMED", "pairing code already claimed")
+        raise_api_error(403, "PAIRING_CODE_ALREADY_CLAIMED", "pairing code already claimed")
+
+    res = await db.execute(select(Device).where(Device.device_uid == ps.device_uid))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_UNKNOWN_UID", "Unknown device UID")
+    if device.owner_user_id is not None and device.owner_user_id != current_user.id:
+        raise_api_error(403, "DEVICE_ALREADY_CLAIMED", "device already claimed")
 
     ps.user_id = current_user.id
     ps.claimed_at = now
+    db.add(
+        AuditV1Entry(
+            actor_type="user",
+            actor_id=str(current_user.id),
+            action="device.claim",
+            resource=device.device_uid,
+            audit_metadata={
+                "device_uid": device.device_uid,
+                "device_id": device.id,
+                "pairing_code_hash": hashlib.sha256(data.pairing_code.encode("utf-8")).hexdigest(),
+            },
+            trace_id=None,
+        )
+    )
     await db.commit()
 
     return PairingUserClaimOut(

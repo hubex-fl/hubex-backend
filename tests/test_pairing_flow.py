@@ -6,6 +6,7 @@ import httpx
 import pytest
 from fastapi import Depends, FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import select
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db
@@ -15,6 +16,7 @@ from app.db.base import Base
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.user import User
+from app.db.models.audit import AuditV1Entry
 
 
 def _create_tables(metadata, conn) -> None:
@@ -25,6 +27,7 @@ def _create_tables(metadata, conn) -> None:
             PairingSession.__table__,
             DeviceToken.__table__,
             User.__table__,
+            AuditV1Entry.__table__,
         ],
     )
     # confirm/claim paths reference tasks; create a minimal table for sqlite tests
@@ -231,6 +234,116 @@ async def test_post_confirm_hello_returns_no_pairing_code():
     assert data.get("claimed") is True
     assert data.get("pairing_active") is False
     assert data.get("pairing_code") is None
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_pairing_claim_requires_auth():
+    engine, Session = await _mk_session()
+    app = await _mk_app(Session)
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    res = await client.post(
+        "/api/v1/devices/pairing/claim",
+        json={"pairing_code": "NOPE1234"},
+    )
+    assert res.status_code == 401
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_pairing_claim_idempotent_and_audit():
+    engine, Session = await _mk_session()
+
+    async with Session() as db:
+        user = User(email="claim@example.com", password_hash="x", caps=None)
+        db.add(user)
+        await db.commit()
+
+    async def _get_user():
+        async with Session() as db:
+            return await db.get(User, 1)
+
+    app = await _mk_app(Session)
+    app.dependency_overrides[get_current_user] = _get_user
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    hello = await client.post(
+        "/api/v1/devices/pairing/hello",
+        json={"device_uid": "dev-claim"},
+    )
+    assert hello.status_code == 200
+    pairing_code = hello.json()["pairing_code"]
+
+    claim = await client.post(
+        "/api/v1/devices/pairing/claim",
+        json={"pairing_code": pairing_code},
+    )
+    assert claim.status_code == 200
+
+    claim_again = await client.post(
+        "/api/v1/devices/pairing/claim",
+        json={"pairing_code": pairing_code},
+    )
+    assert claim_again.status_code == 200
+
+    async with Session() as db:
+        res = await db.execute(
+            select(AuditV1Entry).where(AuditV1Entry.action == "device.claim")
+        )
+        entries = res.scalars().all()
+        assert len(entries) >= 1
+
+    await client.aclose()
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_pairing_claim_other_user_forbidden():
+    engine, Session = await _mk_session()
+
+    async with Session() as db:
+        user1 = User(email="u1@example.com", password_hash="x", caps=None)
+        user2 = User(email="u2@example.com", password_hash="x", caps=None)
+        db.add_all([user1, user2])
+        await db.commit()
+
+    current_user_id = {"value": 1}
+
+    async def _get_user():
+        async with Session() as db:
+            return await db.get(User, current_user_id["value"])
+
+    app = await _mk_app(Session)
+    app.dependency_overrides[get_current_user] = _get_user
+    transport = httpx.ASGITransport(app=app)
+    client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    hello = await client.post(
+        "/api/v1/devices/pairing/hello",
+        json={"device_uid": "dev-claim-2"},
+    )
+    assert hello.status_code == 200
+    pairing_code = hello.json()["pairing_code"]
+
+    claim = await client.post(
+        "/api/v1/devices/pairing/claim",
+        json={"pairing_code": pairing_code},
+    )
+    assert claim.status_code == 200
+
+    current_user_id["value"] = 2
+    claim_other = await client.post(
+        "/api/v1/devices/pairing/claim",
+        json={"pairing_code": pairing_code},
+    )
+    assert claim_other.status_code == 403
 
     await client.aclose()
     await engine.dispose()
