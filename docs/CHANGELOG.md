@@ -6,6 +6,7 @@
 - Dev: improve dev-backend.ps1 port-in-use diagnostics (process name/path).
 - Dev: dev-backend.ps1 startup check now polls for reload readiness.
 - Dev: dev-backend.ps1 supports follow/stop/status actions and avoids extra windows.
+- Dev: refactor dev-backend.ps1 to a single action flow (start/follow/stop/status).
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).
 - Dev: include uvicorn[standard] so local WebSocket upgrades are supported.
