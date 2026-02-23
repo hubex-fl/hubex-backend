@@ -21,6 +21,7 @@ from app.db.models.user import User
 from app.db.session import AsyncSessionLocal
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
+ws_router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 logger = logging.getLogger("uvicorn.error")
 
 MAX_PAYLOAD_BYTES = 16 * 1024
@@ -131,16 +132,12 @@ async def recent_telemetry(
     return list(res.scalars().all())
 
 
-@router.websocket("/devices/{device_id}/telemetry/ws")
+@ws_router.websocket("/devices/{device_id}/telemetry/ws")
 async def telemetry_ws(
     websocket: WebSocket,
     device_id: int,
+    token: str = Query(...),
 ):
-    token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=1008)
-        return
-
     try:
         payload = decode_access_token(token)
         user_id = int(payload.get("sub"))
