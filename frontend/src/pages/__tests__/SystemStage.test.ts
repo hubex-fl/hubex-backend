@@ -30,6 +30,10 @@ describe("SystemStage", () => {
     caps.caps = new Set(["devices.read", "vars.read"]);
     caps.error = null;
     (window as Window & { scrollTo?: () => void }).scrollTo = () => undefined;
+    window.requestAnimationFrame = (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    };
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
       configurable: true,

@@ -68,6 +68,7 @@ If the backend runs in Docker Desktop container `hubex-backend`, seed via:
 `docker exec -it hubex-backend python -m app.scripts.seed_dev_user_caps`
 Compose `exec` only works when the backend was started via that compose project.
 Device detail shows the Recovery section when `devices.token.reissue` is present in the JWT.
+Devices/System Stage refresh preserves scroll; polling pauses when the tab is hidden.
 ```
 UPDATE users
 SET caps = '["devices.read","events.read","effects.read","vars.read"]'::jsonb

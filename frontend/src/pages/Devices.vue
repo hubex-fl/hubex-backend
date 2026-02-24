@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
@@ -144,12 +144,29 @@ let timer: number | null = null;
 let pairingTimer: number | null = null;
 let lookupTimer: number | null = null;
 
+function scheduleScrollRestore(y: number) {
+  if (typeof window === "undefined") return;
+  const schedule = typeof window.requestAnimationFrame === "function"
+    ? window.requestAnimationFrame.bind(window)
+    : (cb: FrameRequestCallback) => window.setTimeout(cb, 0);
+  schedule(() => window.scrollTo({ top: y }));
+}
+
 async function load(opts?: { silent?: boolean }) {
   if (opts?.silent !== true) {
     error.value = "";
   }
+  if (opts?.silent && document.visibilityState !== "visible") {
+    return;
+  }
+  const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
   try {
-    devices.value = await apiFetch<Device[]>("/api/v1/devices");
+    const next = await apiFetch<Device[]>("/api/v1/devices");
+    devices.value.splice(0, devices.value.length, ...next);
+    if (opts?.silent) {
+      await nextTick();
+      scheduleScrollRestore(scrollY);
+    }
   } catch (err: any) {
     error.value = formatPairingError(err, "Failed to load devices");
   }
@@ -478,7 +495,9 @@ onUnmounted(() => {
 <template>
   <div class="card">
     <h2>Devices</h2>
-    <div v-if="error" class="error">{{ error }}</div>
+    <div class="status-line">
+      <span v-if="error" class="error">{{ error }}</span>
+    </div>
 
     <div ref="pairingSection" class="pairing-section">
       <div class="pairing-row">
@@ -556,7 +575,7 @@ onUnmounted(() => {
       </label>
     </div>
 
-    <table v-if="visibleDevices.length" class="table">
+    <table v-if="visibleDevices.length" class="table table-fixed devices-table">
       <thead>
         <tr>
           <th>UID</th>
@@ -617,5 +636,38 @@ onUnmounted(() => {
 <style scoped>
 .row-clickable {
   cursor: pointer;
+}
+.status-line {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
+.devices-table th:nth-child(1),
+.devices-table td:nth-child(1) {
+  width: 240px;
+}
+.devices-table th:nth-child(2),
+.devices-table td:nth-child(2) {
+  width: 90px;
+}
+.devices-table th:nth-child(3),
+.devices-table td:nth-child(3) {
+  width: 140px;
+}
+.devices-table th:nth-child(4),
+.devices-table td:nth-child(4) {
+  width: 90px;
+}
+.devices-table th:nth-child(5),
+.devices-table td:nth-child(5) {
+  width: 180px;
+}
+.devices-table th:nth-child(6),
+.devices-table td:nth-child(6) {
+  width: 140px;
 }
 </style>

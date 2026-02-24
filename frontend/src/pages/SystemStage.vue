@@ -107,6 +107,14 @@ function mapError(err: unknown): string {
   return (e && "message" in e) ? String(e.message) : "request_failed";
 }
 
+function scheduleScrollRestore(y: number) {
+  if (typeof window === "undefined") return;
+  const schedule = typeof window.requestAnimationFrame === "function"
+    ? window.requestAnimationFrame.bind(window)
+    : (cb: FrameRequestCallback) => window.setTimeout(cb, 0);
+  schedule(() => window.scrollTo({ top: y }));
+}
+
 function capsStatusMessage(): string {
   if (caps.status === "loading") return "Capabilities loading.";
   if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
@@ -114,6 +122,7 @@ function capsStatusMessage(): string {
 }
 
 async function refreshDevices() {
+  if (document.visibilityState !== "visible") return;
   if (!capsReady.value) {
     devicesError.value = capsStatusMessage();
     return;
@@ -130,9 +139,7 @@ async function refreshDevices() {
     const next = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
     devices.value.splice(0, devices.value.length, ...next);
     await nextTick();
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: scrollY });
-    }
+    scheduleScrollRestore(scrollY);
   } finally {
     devicesInflight = false;
   }
@@ -153,7 +160,8 @@ async function refreshEntities() {
   entitiesInflight = true;
   entitiesError.value = null;
   try {
-    entities.value = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
+    const next = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
+    entities.value.splice(0, entities.value.length, ...next);
     bindingsError.value = null;
   } catch (err) {
     const e = err as ApiError;
@@ -275,17 +283,24 @@ onUnmounted(() => {
       <button class="btn secondary" @click="retryAll">Retry</button>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
+    <div class="status-line">
+      <span v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</span>
+      <span v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</span>
+      <span v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</span>
+    </div>
 
     <section class="card">
       <h3>Entities</h3>
-      <div v-if="entitiesError" class="error">{{ entitiesError }}</div>
-      <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
-      <div v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</div>
-      <div v-else-if="loading" class="muted">Loading.</div>
-      <table v-else-if="entities.length" class="table">
+      <div class="section-status">
+        <span v-if="entitiesError" class="error">{{ entitiesError }}</span>
+        <span v-else-if="!capsReady" class="muted">Capabilities unavailable</span>
+        <span v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</span>
+        <span v-else-if="loading" class="muted">Loading.</span>
+      </div>
+      <table
+        v-if="entities.length && !entitiesError && capsReady && canReadEntities && !loading"
+        class="table table-fixed entities-table"
+      >
         <thead>
           <tr>
             <th>ID</th>
@@ -314,19 +329,29 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
-      <div v-else class="muted">No entities.</div>
+      <div
+        v-else-if="!entitiesError && capsReady && canReadEntities && !loading"
+        class="muted"
+      >
+        No entities.
+      </div>
     </section>
 
     <section class="card">
       <h3>Devices</h3>
-      <div v-if="devicesError" class="error">{{ devicesError }}</div>
-      <div v-else-if="!capsReady" class="muted">Capabilities unavailable</div>
-      <div v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</div>
-      <div v-else-if="!canReadVars" class="muted">
-        Missing capability: vars.read (runtime states unavailable)
+      <div class="section-status">
+        <span v-if="devicesError" class="error">{{ devicesError }}</span>
+        <span v-else-if="!capsReady" class="muted">Capabilities unavailable</span>
+        <span v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
+        <span v-else-if="!canReadVars" class="muted">
+          Missing capability: vars.read (runtime states unavailable)
+        </span>
+        <span v-else-if="loading" class="muted">Loading.</span>
       </div>
-      <div v-else-if="loading" class="muted">Loading.</div>
-      <table v-else-if="devices.length" class="table">
+      <table
+        v-if="devices.length && !devicesError && capsReady && canReadDevices && !loading"
+        class="table table-fixed devices-table"
+      >
         <thead>
           <tr>
             <th>ID</th>
@@ -371,7 +396,12 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
-      <div v-else class="muted">No devices.</div>
+      <div
+        v-else-if="!devicesError && capsReady && canReadDevices && !loading"
+        class="muted"
+      >
+        No devices.
+      </div>
     </section>
   </div>
 </template>
@@ -379,6 +409,56 @@ onUnmounted(() => {
 <style scoped>
 .row-clickable {
   cursor: pointer;
+}
+.status-line,
+.section-status {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
+.entities-table th:nth-child(1),
+.entities-table td:nth-child(1) {
+  width: 140px;
+}
+.entities-table th:nth-child(2),
+.entities-table td:nth-child(2) {
+  width: 120px;
+}
+.entities-table th:nth-child(3),
+.entities-table td:nth-child(3) {
+  width: 220px;
+}
+.entities-table th:nth-child(4),
+.entities-table td:nth-child(4) {
+  width: auto;
+}
+.devices-table th:nth-child(1),
+.devices-table td:nth-child(1) {
+  width: 70px;
+}
+.devices-table th:nth-child(2),
+.devices-table td:nth-child(2) {
+  width: 220px;
+}
+.devices-table th:nth-child(3),
+.devices-table td:nth-child(3) {
+  width: 110px;
+}
+.devices-table th:nth-child(4),
+.devices-table td:nth-child(4) {
+  width: 260px;
+}
+.devices-table th:nth-child(5),
+.devices-table td:nth-child(5) {
+  width: 120px;
+}
+.devices-table th:nth-child(6),
+.devices-table td:nth-child(6) {
+  width: 160px;
 }
 </style>
 
