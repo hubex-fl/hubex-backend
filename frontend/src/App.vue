@@ -32,8 +32,12 @@ onMounted(() => {
       <router-link to="/settings/auth">Auth</router-link>
       <router-link to="/token">Token</router-link>
       <div class="spacer"></div>
-      <div class="nav-status">Token: {{ hasToken() ? 'present' : 'missing' }}</div>
-      <div class="nav-status">Caps: {{ caps.status }}</div>
+      <div class="nav-status">
+        <span class="nav-status-text">Token: {{ hasToken() ? 'present' : 'missing' }}</span>
+      </div>
+      <div class="nav-status" :class="{ 'is-empty': !caps.status }">
+        <span class="nav-status-text">Caps: {{ caps.status }}</span>
+      </div>
     </aside>
     <main class="content">
       <router-view />

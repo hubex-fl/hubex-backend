@@ -82,6 +82,17 @@ a {
 .nav-status {
   color: #6b7280;
   font-size: 12px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-status.is-empty {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .content {
