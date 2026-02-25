@@ -16,6 +16,7 @@
 - UI: keep devices and system stage tables mounted to eliminate refresh CLS spikes.
 - UI: reconcile polled lists in-place to reduce repaint during refresh.
 - UI: add row signatures + v-memo to skip unchanged DOM patches during polling.
+- UI: stabilize table rows with nowrap + fixed height to prevent refresh breathing.
 - Pairing: add claim-by-code UI and audit-backed claim semantics.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).

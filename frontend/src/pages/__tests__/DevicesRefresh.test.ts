@@ -178,6 +178,7 @@ describe("Devices refresh behavior", () => {
     const beforeText = el.textContent || "";
 
     await vi.advanceTimersByTimeAsync(6000);
+    await vi.advanceTimersByTimeAsync(400);
     await flushPromises();
     expect(el.textContent).toContain("Refreshing...");
 

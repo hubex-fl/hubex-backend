@@ -146,6 +146,7 @@ const visibleDevices = computed(() => {
 let timer: number | null = null;
 let pairingTimer: number | null = null;
 let lookupTimer: number | null = null;
+let refreshTimer: number | null = null;
 
 function scheduleScrollRestore(y: number) {
   if (typeof window === "undefined") return;
@@ -200,9 +201,20 @@ async function load(opts?: { silent?: boolean }) {
     error.value = "";
     loading.value = true;
   } else {
-    refreshing.value = true;
+    refreshing.value = false;
+    if (refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    refreshTimer = window.setTimeout(() => {
+      refreshing.value = true;
+    }, 350);
   }
   if (opts?.silent && document.visibilityState !== "visible") {
+    if (refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
     refreshing.value = false;
     return;
   }
@@ -218,6 +230,10 @@ async function load(opts?: { silent?: boolean }) {
     error.value = formatPairingError(err, "Failed to load devices");
   } finally {
     loading.value = false;
+    if (refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
     refreshing.value = false;
   }
 }
@@ -677,10 +693,10 @@ onUnmounted(() => {
                 {{ d.online ? "online" : "offline" }}
               </span>
             </td>
-            <td>
-              {{ fmtTime(d.last_seen) }}
-              <span v-if="d.last_seen_age_seconds !== null">({{ fmtAge(d.last_seen_age_seconds) }})</span>
-            </td>
+          <td>
+            {{ fmtTime(d.last_seen) }}
+            <span v-if="d.last_seen_age_seconds !== null" class="age">({{ fmtAge(d.last_seen_age_seconds) }})</span>
+          </td>
             <td>
               <button
                 class="btn cta-btn"
@@ -733,5 +749,28 @@ onUnmounted(() => {
 .devices-table th:nth-child(6),
 .devices-table td:nth-child(6) {
   width: 140px;
+}
+.devices-table th,
+.devices-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.devices-table tbody tr {
+  height: 36px;
+}
+.devices-table td {
+  line-height: 36px;
+}
+.devices-table .pill {
+  display: inline-block;
+  white-space: nowrap;
+}
+.age {
+  display: inline-block;
+  min-width: 80px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  text-align: right;
 }
 </style>

@@ -523,6 +523,34 @@ onUnmounted(() => {
   table-layout: fixed;
   width: 100%;
 }
+.entities-table th,
+.entities-table td,
+.devices-table th,
+.devices-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.entities-table tbody tr,
+.devices-table tbody tr {
+  height: 36px;
+}
+.entities-table td,
+.devices-table td {
+  line-height: 36px;
+}
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow: hidden;
+}
+.row .pill {
+  flex: 0 0 auto;
+  display: inline-block;
+  white-space: nowrap;
+}
 .entities-table th:nth-child(1),
 .entities-table td:nth-child(1) {
   width: 140px;
