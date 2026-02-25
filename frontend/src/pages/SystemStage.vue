@@ -115,6 +115,43 @@ function scheduleScrollRestore(y: number) {
   schedule(() => window.scrollTo({ top: y }));
 }
 
+function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
+  const byId = new Map<number, T>();
+  for (const item of target) {
+    byId.set(item.id, item);
+  }
+  const ordered: T[] = [];
+  for (const item of next) {
+    const existing = byId.get(item.id);
+    if (existing) {
+      Object.assign(existing, item);
+      ordered.push(existing);
+    } else {
+      ordered.push(item);
+    }
+  }
+  target.splice(0, target.length, ...ordered);
+}
+
+function reconcileByKey<T>(target: T[], next: T[], keyFn: (item: T) => string) {
+  const byKey = new Map<string, T>();
+  for (const item of target) {
+    byKey.set(keyFn(item), item);
+  }
+  const ordered: T[] = [];
+  for (const item of next) {
+    const key = keyFn(item);
+    const existing = byKey.get(key);
+    if (existing) {
+      Object.assign(existing, item);
+      ordered.push(existing);
+    } else {
+      ordered.push(item);
+    }
+  }
+  target.splice(0, target.length, ...ordered);
+}
+
 function capsStatusMessage(): string {
   if (caps.status === "loading") return "Capabilities loading.";
   if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
@@ -137,7 +174,7 @@ async function refreshDevices() {
   const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
   try {
     const next = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
-    devices.value.splice(0, devices.value.length, ...next);
+    reconcileById(devices.value, next);
     await nextTick();
     scheduleScrollRestore(scrollY);
   } finally {
@@ -159,12 +196,11 @@ async function refreshEntities() {
   entitiesError.value = null;
   try {
     const next = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
-    entities.value.splice(0, entities.value.length, ...next);
+    reconcileByKey(entities.value, next, (item) => item.entity_id);
     bindingsError.value = null;
   } catch (err) {
     const e = err as ApiError;
     if (e?.status === 404) {
-      entities.value = [];
       entitiesError.value = null;
     } else {
       entitiesError.value = mapError(err);
@@ -203,7 +239,15 @@ async function refreshBindings() {
         }
       })
     );
-    bindingsByEntity.value = next;
+    const current = bindingsByEntity.value;
+    for (const key of Object.keys(current)) {
+      if (!(key in next)) {
+        delete current[key];
+      }
+    }
+    for (const key of Object.keys(next)) {
+      current[key] = next[key];
+    }
   } finally {
     bindingsInflight = false;
   }

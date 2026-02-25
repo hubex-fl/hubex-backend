@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "vue";
+import { createApp, nextTick } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 
 const flushPromises = () => Promise.resolve();
@@ -70,6 +70,8 @@ describe("Devices refresh behavior", () => {
       value: "visible",
       configurable: true,
     });
+    window.scrollTo = () => undefined;
+    vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
     document.dispatchEvent(new Event("visibilitychange"));
     await flushPromises();
     expect(apiFetch).toHaveBeenCalledTimes(2);
@@ -131,5 +133,76 @@ describe("Devices refresh behavior", () => {
     expect(table).toBeTruthy();
     expect(el.textContent).toContain("No devices.");
     app.unmount();
+  });
+
+  it("keeps table element across refresh and shows refreshing indicator", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+    window.requestAnimationFrame = (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    };
+
+    let resolveSecond: ((value: unknown) => void) | null = null;
+    let callCount = 0;
+    const apiFetch = vi.fn((path: string) => {
+      if (path !== "/api/v1/devices") return Promise.resolve([]);
+      callCount += 1;
+      if (callCount === 1) {
+        return Promise.resolve([
+          {
+            id: 1,
+            device_uid: "dev-1",
+            claimed: false,
+            last_seen: null,
+            online: false,
+            health: "ok",
+            last_seen_age_seconds: 10,
+            state: "provisioned_unclaimed",
+            pairing_active: false,
+            busy: false,
+          },
+        ]);
+      }
+      return new Promise((resolve) => {
+        resolveSecond = resolve;
+      });
+    });
+
+    const { app, el } = await mountDevices(apiFetch);
+    const tableBefore = el.querySelector("table");
+    expect(tableBefore).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await flushPromises();
+    expect(el.textContent).toContain("Refreshing...");
+
+    resolveSecond?.([
+      {
+        id: 1,
+        device_uid: "dev-1",
+        claimed: false,
+        last_seen: null,
+        online: false,
+        health: "ok",
+        last_seen_age_seconds: 9,
+        state: "provisioned_unclaimed",
+        pairing_active: false,
+        busy: false,
+      },
+    ]);
+    await flushPromises();
+    await nextTick();
+    await flushPromises();
+
+    const tableAfter = el.querySelector("table");
+    expect(tableAfter).toBe(tableBefore);
+    expect(el.textContent).not.toContain("Refreshing...");
+
+    app.unmount();
+    vi.useRealTimers();
   });
 });

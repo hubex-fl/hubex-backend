@@ -154,6 +154,24 @@ function scheduleScrollRestore(y: number) {
   schedule(() => window.scrollTo({ top: y }));
 }
 
+function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
+  const byId = new Map<number, T>();
+  for (const item of target) {
+    byId.set(item.id, item);
+  }
+  const ordered: T[] = [];
+  for (const item of next) {
+    const existing = byId.get(item.id);
+    if (existing) {
+      Object.assign(existing, item);
+      ordered.push(existing);
+    } else {
+      ordered.push(item);
+    }
+  }
+  target.splice(0, target.length, ...ordered);
+}
+
 async function load(opts?: { silent?: boolean }) {
   if (opts?.silent !== true) {
     error.value = "";
@@ -168,7 +186,7 @@ async function load(opts?: { silent?: boolean }) {
   const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
   try {
     const next = await apiFetch<Device[]>("/api/v1/devices");
-    devices.value.splice(0, devices.value.length, ...next);
+    reconcileById(devices.value, next);
     if (opts?.silent) {
       await nextTick();
       scheduleScrollRestore(scrollY);
@@ -506,6 +524,7 @@ onUnmounted(() => {
     <h2>Devices</h2>
     <div class="status-line">
       <span v-if="error" class="error">{{ error }}</span>
+      <span v-else-if="refreshing" class="muted">Refreshing...</span>
     </div>
 
     <div ref="pairingSection" class="pairing-section">
@@ -584,7 +603,7 @@ onUnmounted(() => {
       </label>
     </div>
 
-    <table class="table table-fixed devices-table" :class="{ 'is-refreshing': refreshing }">
+    <table class="table table-fixed devices-table">
       <thead>
         <tr>
           <th>UID</th>
@@ -657,10 +676,6 @@ onUnmounted(() => {
 <style scoped>
 .row-clickable {
   cursor: pointer;
-}
-.is-refreshing {
-  opacity: 0.7;
-  pointer-events: none;
 }
 .status-line {
   min-height: 24px;

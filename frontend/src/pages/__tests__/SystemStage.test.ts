@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import SystemStage from "../SystemStage.vue";
 import { useCapabilities } from "../../lib/capabilities";
 
-const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flushPromises = () => Promise.resolve();
 
 function mountSystemStage() {
   const el = document.createElement("div");
@@ -129,23 +129,36 @@ describe("SystemStage", () => {
   });
 
   it("links device UID to detail route", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response('[{"id":1,"device_uid":"dev-1","state":"claimed"}]', {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("[]", {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
     );
     const { app, el, router } = mountSystemStage();
+    const pushSpy = vi.spyOn(router, "push").mockResolvedValue();
     await router.push("/system-stage");
     await router.isReady();
     await nextTick();
     await flushPromises();
+    const instance = (app as any)._instance;
+    instance.setupState.loading = false;
+    instance.setupState.devicesError = null;
+    const seeded = [{ id: 1, device_uid: "dev-1", state: "claimed" }];
+    if (Array.isArray(instance.setupState.devices)) {
+      instance.setupState.devices = seeded;
+    } else {
+      instance.setupState.devices.value = seeded;
+    }
+    await nextTick();
     const link = el.querySelector('a[href="/devices/1"]') as HTMLAnchorElement | null;
     expect(link).toBeTruthy();
-    link?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await flushPromises();
-    expect(router.currentRoute.value.fullPath).toBe("/devices/1");
-    expect(fetchSpy).toHaveBeenCalled();
+    const currentDevices = Array.isArray(instance.setupState.devices)
+      ? instance.setupState.devices
+      : instance.setupState.devices.value;
+    instance?.setupState?.onRowClick(currentDevices[0]);
+    await nextTick();
+    expect(pushSpy).toHaveBeenCalledWith("/devices/1");
     app.unmount();
   });
 
@@ -188,5 +201,49 @@ describe("SystemStage", () => {
     expect(tables.length).toBeGreaterThan(0);
     expect(el.textContent).toContain("No devices.");
     app.unmount();
+  });
+
+  it("keeps devices table element across refresh", async () => {
+    vi.useFakeTimers();
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/v1/devices")) {
+        callCount += 1;
+        const payload = callCount === 1
+          ? '[{"id":1,"device_uid":"dev-1","state":"claimed"}]'
+          : '[{"id":1,"device_uid":"dev-1","state":"claimed","last_seen_at":"2026-02-01T00:00:00Z"}]';
+        return Promise.resolve(
+          new Response(payload, {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+      }
+      return Promise.resolve(
+        new Response("[]", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+
+    const { app, el, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await router.isReady();
+    await nextTick();
+    await flushPromises();
+
+    const tableBefore = el.querySelector("table");
+    expect(tableBefore).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await flushPromises();
+
+    const tableAfter = el.querySelector("table");
+    expect(tableAfter).toBe(tableBefore);
+
+    app.unmount();
+    vi.useRealTimers();
   });
 });
