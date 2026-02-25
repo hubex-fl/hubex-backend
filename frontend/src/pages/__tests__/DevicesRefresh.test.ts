@@ -119,4 +119,17 @@ describe("Devices refresh behavior", () => {
     app.unmount();
     vi.useRealTimers();
   });
+
+  it("keeps table mounted when device list is empty", async () => {
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+    const apiFetch = vi.fn(async () => []);
+    const { app, el } = await mountDevices(apiFetch);
+    const table = el.querySelector("table");
+    expect(table).toBeTruthy();
+    expect(el.textContent).toContain("No devices.");
+    app.unmount();
+  });
 });

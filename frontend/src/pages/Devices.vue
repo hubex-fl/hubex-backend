@@ -26,6 +26,8 @@ type DeviceLookup = {
 };
 
 const error = ref("");
+const loading = ref(false);
+const refreshing = ref(false);
 const pairingSection = ref<HTMLElement | null>(null);
 const pairingConfirmInput = ref<HTMLInputElement | null>(null);
 const route = useRoute();
@@ -155,8 +157,12 @@ function scheduleScrollRestore(y: number) {
 async function load(opts?: { silent?: boolean }) {
   if (opts?.silent !== true) {
     error.value = "";
+    loading.value = true;
+  } else {
+    refreshing.value = true;
   }
   if (opts?.silent && document.visibilityState !== "visible") {
+    refreshing.value = false;
     return;
   }
   const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
@@ -169,6 +175,9 @@ async function load(opts?: { silent?: boolean }) {
     }
   } catch (err: any) {
     error.value = formatPairingError(err, "Failed to load devices");
+  } finally {
+    loading.value = false;
+    refreshing.value = false;
   }
 }
 
@@ -575,7 +584,7 @@ onUnmounted(() => {
       </label>
     </div>
 
-    <table v-if="visibleDevices.length" class="table table-fixed devices-table">
+    <table class="table table-fixed devices-table" :class="{ 'is-refreshing': refreshing }">
       <thead>
         <tr>
           <th>UID</th>
@@ -587,55 +596,71 @@ onUnmounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="d in visibleDevices"
-          :key="d.id"
-          :class="d.state === 'claimed' ? 'row-clickable' : ''"
-          @click="onRowClick(d)"
-        >
-          <td>
-            <router-link :to="`/devices/${d.id}`" @click.stop>
-              {{ d.device_uid }}
-            </router-link>
-          </td>
-          <td>
-            <span :class="['pill', healthClass(d.health)]">
-              {{ d.health }}
-            </span>
-          </td>
-          <td>
-            <span :class="['pill', stateClass(d.state)]">
-              {{ d.state }}
-            </span>
-          </td>
-          <td>
-            <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
-              {{ d.online ? "online" : "offline" }}
-            </span>
-          </td>
-          <td>
-            {{ fmtTime(d.last_seen) }}
-            <span v-if="d.last_seen_age_seconds !== null">({{ fmtAge(d.last_seen_age_seconds) }})</span>
-          </td>
-          <td>
-            <button
-              class="btn cta-btn"
-              :disabled="rowActionDisabled(d)"
-              @click.stop="onRowAction(d)"
-            >
-              {{ rowActionLabel(d) }}
-            </button>
-          </td>
+        <tr v-if="error">
+          <td colspan="6" class="muted">{{ error }}</td>
         </tr>
+        <template v-else-if="loading && !visibleDevices.length">
+          <tr v-for="n in 5" :key="`loading-${n}`">
+            <td colspan="6" class="muted">Loading...</td>
+          </tr>
+        </template>
+        <tr v-else-if="!visibleDevices.length">
+          <td colspan="6" class="muted">No devices.</td>
+        </tr>
+        <template v-else>
+          <tr
+            v-for="d in visibleDevices"
+            :key="d.id"
+            :class="d.state === 'claimed' ? 'row-clickable' : ''"
+            @click="onRowClick(d)"
+          >
+            <td>
+              <router-link :to="`/devices/${d.id}`" @click.stop>
+                {{ d.device_uid }}
+              </router-link>
+            </td>
+            <td>
+              <span :class="['pill', healthClass(d.health)]">
+                {{ d.health }}
+              </span>
+            </td>
+            <td>
+              <span :class="['pill', stateClass(d.state)]">
+                {{ d.state }}
+              </span>
+            </td>
+            <td>
+              <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
+                {{ d.online ? "online" : "offline" }}
+              </span>
+            </td>
+            <td>
+              {{ fmtTime(d.last_seen) }}
+              <span v-if="d.last_seen_age_seconds !== null">({{ fmtAge(d.last_seen_age_seconds) }})</span>
+            </td>
+            <td>
+              <button
+                class="btn cta-btn"
+                :disabled="rowActionDisabled(d)"
+                @click.stop="onRowAction(d)"
+              >
+                {{ rowActionLabel(d) }}
+              </button>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
-    <div v-else>No devices.</div>
   </div>
 </template>
 
 <style scoped>
 .row-clickable {
   cursor: pointer;
+}
+.is-refreshing {
+  opacity: 0.7;
+  pointer-events: none;
 }
 .status-line {
   min-height: 24px;

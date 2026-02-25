@@ -13,6 +13,7 @@
 - UI: System Stage device rows link to detail and preserve scroll on refresh.
 - UI: stabilize nav status bar to reduce CLS during refresh.
 - UI: preserve scroll and reduce layout shift on device list refresh (Devices/System Stage).
+- UI: keep devices and system stage tables mounted to eliminate refresh CLS spikes.
 - Pairing: add claim-by-code UI and audit-backed claim semantics.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).

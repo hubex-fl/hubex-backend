@@ -171,4 +171,22 @@ describe("SystemStage", () => {
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 120 });
     app.unmount();
   });
+
+  it("keeps devices table mounted when empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("[]", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    const { app, el, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await router.isReady();
+    await nextTick();
+    await flushPromises();
+    const tables = el.querySelectorAll("table");
+    expect(tables.length).toBeGreaterThan(0);
+    expect(el.textContent).toContain("No devices.");
+    app.unmount();
+  });
 });

@@ -147,12 +147,10 @@ async function refreshDevices() {
 
 async function refreshEntities() {
   if (!capsReady.value) {
-    entities.value = [];
     entitiesError.value = capsStatusMessage();
     return;
   }
   if (!canReadEntities.value) {
-    entities.value = [];
     entitiesError.value = "Missing capability: entities.read";
     return;
   }
@@ -178,12 +176,10 @@ async function refreshEntities() {
 
 async function refreshBindings() {
   if (!capsReady.value) {
-    bindingsByEntity.value = {};
     bindingsError.value = capsStatusMessage();
     return;
   }
   if (!canReadEntities.value) {
-    bindingsByEntity.value = {};
     bindingsError.value = "Missing capability: entities.read";
     return;
   }
@@ -297,10 +293,7 @@ onUnmounted(() => {
         <span v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</span>
         <span v-else-if="loading" class="muted">Loading.</span>
       </div>
-      <table
-        v-if="entities.length && !entitiesError && capsReady && canReadEntities && !loading"
-        class="table table-fixed entities-table"
-      >
+      <table class="table table-fixed entities-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -310,7 +303,22 @@ onUnmounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entity in entities" :key="entity.entity_id">
+          <tr v-if="entitiesError">
+            <td colspan="4" class="muted">{{ entitiesError }}</td>
+          </tr>
+          <tr v-else-if="!capsReady">
+            <td colspan="4" class="muted">Capabilities unavailable</td>
+          </tr>
+          <tr v-else-if="!canReadEntities">
+            <td colspan="4" class="muted">Missing capability: entities.read</td>
+          </tr>
+          <tr v-else-if="loading">
+            <td colspan="4" class="muted">Loading.</td>
+          </tr>
+          <tr v-else-if="!entities.length">
+            <td colspan="4" class="muted">No entities.</td>
+          </tr>
+          <tr v-else v-for="entity in entities" :key="entity.entity_id">
             <td>{{ entity.entity_id }}</td>
             <td>{{ entity.type }}</td>
             <td>{{ entity.name }}</td>
@@ -329,12 +337,6 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
-      <div
-        v-else-if="!entitiesError && capsReady && canReadEntities && !loading"
-        class="muted"
-      >
-        No entities.
-      </div>
     </section>
 
     <section class="card">
@@ -348,10 +350,7 @@ onUnmounted(() => {
         </span>
         <span v-else-if="loading" class="muted">Loading.</span>
       </div>
-      <table
-        v-if="devices.length && !devicesError && capsReady && canReadDevices && !loading"
-        class="table table-fixed devices-table"
-      >
+      <table class="table table-fixed devices-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -363,7 +362,28 @@ onUnmounted(() => {
           </tr>
         </thead>
         <tbody>
+          <tr v-if="devicesError">
+            <td colspan="6" class="muted">{{ devicesError }}</td>
+          </tr>
+          <tr v-else-if="!capsReady">
+            <td colspan="6" class="muted">Capabilities unavailable</td>
+          </tr>
+          <tr v-else-if="!canReadDevices">
+            <td colspan="6" class="muted">Missing capability: devices.read</td>
+          </tr>
+          <tr v-else-if="!canReadVars">
+            <td colspan="6" class="muted">
+              Missing capability: vars.read (runtime states unavailable)
+            </td>
+          </tr>
+          <tr v-else-if="loading">
+            <td colspan="6" class="muted">Loading.</td>
+          </tr>
+          <tr v-else-if="!devices.length">
+            <td colspan="6" class="muted">No devices.</td>
+          </tr>
           <tr
+            v-else
             v-for="device in devices"
             :key="device.id"
             :class="device.state === 'claimed' ? 'row-clickable' : ''"
@@ -396,12 +416,6 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
-      <div
-        v-else-if="!devicesError && capsReady && canReadDevices && !loading"
-        class="muted"
-      >
-        No devices.
-      </div>
     </section>
   </div>
 </template>
