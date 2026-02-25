@@ -175,6 +175,7 @@ describe("Devices refresh behavior", () => {
     const { app, el } = await mountDevices(apiFetch);
     const tableBefore = el.querySelector("table");
     expect(tableBefore).toBeTruthy();
+    const beforeText = el.textContent || "";
 
     await vi.advanceTimersByTimeAsync(6000);
     await flushPromises();
@@ -201,6 +202,9 @@ describe("Devices refresh behavior", () => {
     const tableAfter = el.querySelector("table");
     expect(tableAfter).toBe(tableBefore);
     expect(el.textContent).not.toContain("Refreshing...");
+    expect(el.textContent).toContain("10s ago");
+    expect(el.textContent).not.toContain("9s ago");
+    expect(el.textContent?.replace("Refreshing...", "")).toContain(beforeText.replace("Refreshing...", ""));
 
     app.unmount();
     vi.useRealTimers();

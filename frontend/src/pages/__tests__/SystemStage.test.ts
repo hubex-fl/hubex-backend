@@ -142,15 +142,24 @@ describe("SystemStage", () => {
     await nextTick();
     await flushPromises();
     const instance = (app as any)._instance;
-    instance.setupState.loading = false;
-    instance.setupState.devicesError = null;
-    const seeded = [{ id: 1, device_uid: "dev-1", state: "claimed" }];
+    if (instance.setupState.loading && "value" in instance.setupState.loading) {
+      instance.setupState.loading.value = false;
+    } else {
+      instance.setupState.loading = false;
+    }
+    if (instance.setupState.devicesError && "value" in instance.setupState.devicesError) {
+      instance.setupState.devicesError.value = null;
+    } else {
+      instance.setupState.devicesError = null;
+    }
+    const seeded = [{ id: 1, device_uid: "dev-1", state: "claimed", __sig: "1|dev-1|claimed|" }];
     if (Array.isArray(instance.setupState.devices)) {
       instance.setupState.devices = seeded;
     } else {
       instance.setupState.devices.value = seeded;
     }
     await nextTick();
+    await flushPromises();
     const link = el.querySelector('a[href="/devices/1"]') as HTMLAnchorElement | null;
     expect(link).toBeTruthy();
     const currentDevices = Array.isArray(instance.setupState.devices)

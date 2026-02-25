@@ -18,12 +18,14 @@ type DeviceRow = {
   last_seen_at?: string | null;
   last_seen?: string | null;
   state?: string | null;
+  __sig?: string;
 };
 
 type EntityRow = {
   entity_id: string;
   type: string;
   name: string;
+  __sig?: string;
 };
 
 const caps = useCapabilities();
@@ -48,6 +50,7 @@ const offlineThresholdMs = 5 * 60 * 1000;
 
 const bindingsByEntity = ref<Record<string, { device_id: number; enabled: boolean; priority: number }[]>>({});
 const bindingsError = ref<string | null>(null);
+const bindingsSigByEntity = ref<Record<string, string>>({});
 
 let devicesInflight = false;
 let entitiesInflight = false;
@@ -115,7 +118,24 @@ function scheduleScrollRestore(y: number) {
   schedule(() => window.scrollTo({ top: y }));
 }
 
-function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
+function deviceSig(device: DeviceRow): string {
+  return [
+    device.id,
+    device.device_uid,
+    device.state ?? "",
+    device.last_seen_at ?? device.last_seen ?? "",
+  ].join("|");
+}
+
+function entitySig(entity: EntityRow): string {
+  return [entity.entity_id, entity.type, entity.name].join("|");
+}
+
+function reconcileById<T extends { id: number; __sig?: string }>(
+  target: T[],
+  next: T[],
+  sigFn: (item: T) => string
+) {
   const byId = new Map<number, T>();
   for (const item of target) {
     byId.set(item.id, item);
@@ -124,16 +144,26 @@ function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
   for (const item of next) {
     const existing = byId.get(item.id);
     if (existing) {
-      Object.assign(existing, item);
+      const nextSig = sigFn(item);
+      if (existing.__sig !== nextSig) {
+        Object.assign(existing, item);
+        existing.__sig = nextSig;
+      }
       ordered.push(existing);
     } else {
+      item.__sig = sigFn(item);
       ordered.push(item);
     }
   }
   target.splice(0, target.length, ...ordered);
 }
 
-function reconcileByKey<T>(target: T[], next: T[], keyFn: (item: T) => string) {
+function reconcileByKey<T extends { __sig?: string }>(
+  target: T[],
+  next: T[],
+  keyFn: (item: T) => string,
+  sigFn: (item: T) => string
+) {
   const byKey = new Map<string, T>();
   for (const item of target) {
     byKey.set(keyFn(item), item);
@@ -143,9 +173,14 @@ function reconcileByKey<T>(target: T[], next: T[], keyFn: (item: T) => string) {
     const key = keyFn(item);
     const existing = byKey.get(key);
     if (existing) {
-      Object.assign(existing, item);
+      const nextSig = sigFn(item);
+      if (existing.__sig !== nextSig) {
+        Object.assign(existing, item);
+        existing.__sig = nextSig;
+      }
       ordered.push(existing);
     } else {
+      item.__sig = sigFn(item);
       ordered.push(item);
     }
   }
@@ -174,7 +209,7 @@ async function refreshDevices() {
   const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
   try {
     const next = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
-    reconcileById(devices.value, next);
+    reconcileById(devices.value, next, deviceSig);
     await nextTick();
     scheduleScrollRestore(scrollY);
   } finally {
@@ -196,7 +231,7 @@ async function refreshEntities() {
   entitiesError.value = null;
   try {
     const next = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
-    reconcileByKey(entities.value, next, (item) => item.entity_id);
+    reconcileByKey(entities.value, next, (item) => item.entity_id, entitySig);
     bindingsError.value = null;
   } catch (err) {
     const e = err as ApiError;
@@ -248,6 +283,15 @@ async function refreshBindings() {
     for (const key of Object.keys(next)) {
       current[key] = next[key];
     }
+    const sigs: Record<string, string> = {};
+    for (const key of Object.keys(current)) {
+      const list = current[key] ?? [];
+      sigs[key] = list
+        .map((b) => `${b.device_id}:${b.enabled}:${b.priority}`)
+        .sort()
+        .join("|");
+    }
+    bindingsSigByEntity.value = sigs;
   } finally {
     bindingsInflight = false;
   }
@@ -362,13 +406,13 @@ onUnmounted(() => {
           <tr v-else-if="!entities.length">
             <td colspan="4" class="muted">No entities.</td>
           </tr>
-          <tr v-else v-for="entity in entities" :key="entity.entity_id">
+          <tr v-else v-for="entity in entities" :key="entity.entity_id" v-memo="[entity.__sig]">
             <td>{{ entity.entity_id }}</td>
             <td>{{ entity.type }}</td>
             <td>{{ entity.name }}</td>
             <td>
               <div v-if="bindingsError" class="error">{{ bindingsError }}</div>
-              <ul v-else class="muted">
+              <ul v-else class="muted" v-memo="[bindingsSigByEntity[entity.entity_id] || '']">
                 <li
                   v-for="binding in bindingsByEntity[entity.entity_id] || []"
                   :key="`${entity.entity_id}-${binding.device_id}`"
@@ -430,6 +474,7 @@ onUnmounted(() => {
             v-else
             v-for="device in devices"
             :key="device.id"
+            v-memo="[device.__sig]"
             :class="device.state === 'claimed' ? 'row-clickable' : ''"
             @click="onRowClick(device)"
           >

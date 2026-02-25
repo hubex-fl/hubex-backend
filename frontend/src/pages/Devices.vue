@@ -16,6 +16,7 @@ type Device = {
   state: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
   pairing_active: boolean;
   busy: boolean;
+  __sig?: string;
 };
 
 const devices = ref<Device[]>([]);
@@ -154,7 +155,24 @@ function scheduleScrollRestore(y: number) {
   schedule(() => window.scrollTo({ top: y }));
 }
 
-function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
+function deviceSig(d: Device): string {
+  return [
+    d.id,
+    d.device_uid,
+    d.health,
+    d.state,
+    d.online,
+    d.last_seen ?? "",
+    d.pairing_active,
+    d.busy,
+  ].join("|");
+}
+
+function reconcileById<T extends { id: number; __sig?: string }>(
+  target: T[],
+  next: T[],
+  sigFn: (item: T) => string
+) {
   const byId = new Map<number, T>();
   for (const item of target) {
     byId.set(item.id, item);
@@ -163,9 +181,14 @@ function reconcileById<T extends { id: number }>(target: T[], next: T[]) {
   for (const item of next) {
     const existing = byId.get(item.id);
     if (existing) {
-      Object.assign(existing, item);
+      const nextSig = sigFn(item);
+      if (existing.__sig !== nextSig) {
+        Object.assign(existing, item);
+        existing.__sig = nextSig;
+      }
       ordered.push(existing);
     } else {
+      item.__sig = sigFn(item);
       ordered.push(item);
     }
   }
@@ -186,7 +209,7 @@ async function load(opts?: { silent?: boolean }) {
   const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
   try {
     const next = await apiFetch<Device[]>("/api/v1/devices");
-    reconcileById(devices.value, next);
+    reconcileById(devices.value, next, deviceSig);
     if (opts?.silent) {
       await nextTick();
       scheduleScrollRestore(scrollY);
@@ -630,6 +653,7 @@ onUnmounted(() => {
           <tr
             v-for="d in visibleDevices"
             :key="d.id"
+            v-memo="[d.__sig]"
             :class="d.state === 'claimed' ? 'row-clickable' : ''"
             @click="onRowClick(d)"
           >
