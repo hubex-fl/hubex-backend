@@ -23,6 +23,7 @@ type DeviceInfo = {
   state?: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
   pairing_active?: boolean;
   busy?: boolean;
+  __sig?: string;
 };
 
 type TelemetryItem = {
@@ -286,7 +287,13 @@ function connectWs() {
       if (Array.isArray(data)) {
         reconcileById(telemetry.value, data as TelemetryItem[], telemetrySig);
       } else if (data && typeof data === "object") {
-        const next = [...telemetry.value, data as TelemetryItem];
+        const item = data as TelemetryItem;
+        const nextSig = telemetrySig(item);
+        const existing = telemetry.value.find((t) => t.id === item.id);
+        if (existing && existing.__sig === nextSig) {
+          return;
+        }
+        const next = [...telemetry.value, item];
         if (next.length > 5) {
           next.splice(0, next.length - 5);
         }
@@ -309,19 +316,6 @@ function connectWs() {
   };
 }
 
-function isSameDeviceInfo(a: DeviceInfo | null, b: DeviceInfo | null) {
-  if (!a || !b) return false;
-  return (
-    a.id === b.id &&
-    a.device_uid === b.device_uid &&
-    a.last_seen_at === b.last_seen_at &&
-    a.health === b.health &&
-    a.state === b.state &&
-    a.pairing_active === b.pairing_active &&
-    a.busy === b.busy
-  );
-}
-
 function isSameCurrentTask(a: CurrentTaskOut | null, b: CurrentTaskOut | null) {
   if (!a || !b) return false;
   return (
@@ -339,6 +333,22 @@ function bucketSeconds(diffSeconds: number): number {
   return Math.floor(safe / 60) * 60;
 }
 
+function deviceInfoSig(info: DeviceInfo): string {
+  const ageBucket = info.last_seen_age_seconds === null
+    ? ""
+    : bucketSeconds(info.last_seen_age_seconds);
+  return [
+    info.id,
+    info.device_uid,
+    info.health,
+    info.state ?? "",
+    info.pairing_active ? "1" : "0",
+    info.busy ? "1" : "0",
+    info.last_seen_at ?? "",
+    ageBucket,
+  ].join("|");
+}
+
 function taskHistorySig(item: TaskHistoryItemOut): string {
   return [
     item.task_id,
@@ -351,12 +361,13 @@ function taskHistorySig(item: TaskHistoryItemOut): string {
 }
 
 function telemetrySig(item: TelemetryItem): string {
-  const payloadText = item.payload ? JSON.stringify(item.payload) : "";
+  const keys = item.payload ? Object.keys(item.payload).sort() : [];
+  const keySig = keys.length ? `k:${keys.length}|${keys.join(",")}` : "k:0";
   return [
     item.id,
     item.received_at ?? item.created_at ?? "",
     item.event_type ?? "",
-    payloadText,
+    keySig,
   ].join("|");
 }
 
@@ -424,7 +435,16 @@ async function loadDeviceInfo(): Promise<boolean> {
       apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId.value}`, { signal })
     );
     if (!res) return true;
-    if (!isSameDeviceInfo(deviceInfo.value, res)) {
+    const sig = deviceInfoSig(res);
+    const current = deviceInfo.value;
+    if (current && current.__sig === sig) {
+      return true;
+    }
+    if (current) {
+      Object.assign(current, res);
+      current.__sig = sig;
+    } else {
+      res.__sig = sig;
       deviceInfo.value = res;
     }
     return true;

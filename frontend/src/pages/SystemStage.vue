@@ -146,6 +146,33 @@ function entitySig(entity: EntityRow): string {
   return [entity.entity_id, entity.type, entity.name].join("|");
 }
 
+function bindingsEqual(
+  a: { device_id: number; enabled: boolean; priority: number }[] | undefined,
+  b: { device_id: number; enabled: boolean; priority: number }[] | undefined
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (!right) return false;
+    if (
+      left.device_id !== right.device_id ||
+      left.enabled !== right.enabled ||
+      left.priority !== right.priority
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function bindingsSig(list: { device_id: number; enabled: boolean; priority: number }[]): string {
+  if (!list.length) return "";
+  return list.map((b) => `${b.device_id}:${b.enabled}:${b.priority}`).join("|");
+}
+
 function reconcileById<T extends { id: number; __sig?: string }>(
   target: T[],
   next: T[],
@@ -290,31 +317,26 @@ async function refreshBindings() {
       })
     );
     const current = bindingsByEntity.value;
+    const currentSigs = bindingsSigByEntity.value;
     for (const key of Object.keys(current)) {
       if (!(key in next)) {
         delete current[key];
-      }
-    }
-    for (const key of Object.keys(next)) {
-      current[key] = next[key];
-    }
-    const sigs: Record<string, string> = {};
-    for (const key of Object.keys(current)) {
-      const list = current[key] ?? [];
-      sigs[key] = list
-        .map((b) => `${b.device_id}:${b.enabled}:${b.priority}`)
-        .sort()
-        .join("|");
-    }
-    const currentSigs = bindingsSigByEntity.value;
-    for (const key of Object.keys(currentSigs)) {
-      if (!(key in sigs)) {
         delete currentSigs[key];
       }
     }
-    for (const key of Object.keys(sigs)) {
-      if (currentSigs[key] !== sigs[key]) {
-        currentSigs[key] = sigs[key];
+    for (const key of Object.keys(next)) {
+      const nextList = next[key] ?? [];
+      const currentList = current[key];
+      if (bindingsEqual(currentList, nextList)) {
+        if (!(key in currentSigs)) {
+          currentSigs[key] = bindingsSig(currentList ?? []);
+        }
+        continue;
+      }
+      current[key] = nextList;
+      const sig = bindingsSig(nextList);
+      if (currentSigs[key] !== sig) {
+        currentSigs[key] = sig;
       }
     }
   } finally {

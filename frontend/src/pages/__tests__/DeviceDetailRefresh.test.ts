@@ -86,10 +86,11 @@ async function mountDetail() {
   const app = createApp(DeviceDetail);
   app.use(router);
   app.mount(el);
+  const instance = (app as any)._instance;
 
   await nextTick();
   await flushPromises();
-  return { app, el };
+  return { app, el, instance };
 }
 
 function findTaskTable(el: HTMLElement): HTMLTableElement | null {
@@ -141,8 +142,7 @@ describe("DeviceDetail refresh", () => {
 
   it("buckets relative time output", async () => {
     vi.useFakeTimers();
-    const { app } = await mountDetail();
-    const instance = (app as any)._instance;
+    const { app, instance } = await mountDetail();
     const fmtAgoFromIso = instance?.setupState?.fmtAgoFromIso as (iso: string | null) => string;
     expect(typeof fmtAgoFromIso).toBe("function");
 
@@ -154,6 +154,40 @@ describe("DeviceDetail refresh", () => {
     const second = fmtAgoFromIso(iso);
 
     expect(first).toBe(second);
+    app.unmount();
+  });
+
+  it("keeps deviceInfo reference when unchanged", async () => {
+    vi.useFakeTimers();
+    const { app, instance } = await mountDetail();
+    await nextTick();
+    await flushPromises();
+    const deviceInfoRef = instance?.setupState?.deviceInfo;
+    const getInfo = () =>
+      deviceInfoRef && "value" in deviceInfoRef ? deviceInfoRef.value : deviceInfoRef;
+    const first = getInfo();
+    expect(first).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(2600);
+    await flushPromises();
+
+    const second = getInfo();
+    expect(second).toBe(first);
+    app.unmount();
+  });
+
+  it("telemetrySig ignores payload values", async () => {
+    const { app, instance } = await mountDetail();
+    const telemetrySig = instance?.setupState?.telemetrySig as (item: any) => string;
+    expect(typeof telemetrySig).toBe("function");
+    const sig = telemetrySig({
+      id: 1,
+      received_at: "2026-02-01T00:00:00Z",
+      event_type: "demo",
+      payload: { foo: "VALUE-123", bar: 1 },
+    });
+    expect(sig).not.toContain("VALUE-123");
+    expect(sig).toContain("foo");
     app.unmount();
   });
 });
