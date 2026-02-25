@@ -19,6 +19,7 @@
 - UI: stabilize table rows with nowrap + fixed height to prevent refresh breathing.
 - UI: bucket device age display to reduce churn during polling refresh.
 - UI: allow System Stage runtime pills to wrap; avoid bindings signature churn.
+- UI: quiet Device Detail/System Stage polling via bucketed time + memoized rows.
 - Pairing: add claim-by-code UI and audit-backed claim semantics.
 - UI: devices list rows are clickable (route to /devices/:id).
 - Dev: harden dev-backend.ps1 (0.0.0.0 default, pidfile guard, log redirection).

@@ -31,6 +31,7 @@ type TelemetryItem = {
   created_at?: string;
   event_type?: string | null;
   payload?: Record<string, any> | null;
+  __sig?: string;
 };
 
 type CurrentTaskOut = {
@@ -55,6 +56,7 @@ type TaskHistoryItemOut = {
   claimed_at: string | null;
   finished_at: string | null;
   last_seen_at: string | null;
+  __sig?: string;
 };
 
 const deviceInfo = ref<DeviceInfo | null>(null);
@@ -282,9 +284,13 @@ function connectWs() {
     try {
       const data = JSON.parse(ev.data);
       if (Array.isArray(data)) {
-        telemetry.value = data;
+        reconcileById(telemetry.value, data as TelemetryItem[], telemetrySig);
       } else if (data && typeof data === "object") {
-        telemetry.value = [...telemetry.value, data].slice(-5);
+        const next = [...telemetry.value, data as TelemetryItem];
+        if (next.length > 5) {
+          next.splice(0, next.length - 5);
+        }
+        reconcileById(telemetry.value, next, telemetrySig);
         requestRefreshAllThrottled();
       }
     } catch {
@@ -326,10 +332,73 @@ function isSameCurrentTask(a: CurrentTaskOut | null, b: CurrentTaskOut | null) {
   );
 }
 
-function isSameTaskHistory(a: TaskHistoryItemOut[], b: TaskHistoryItemOut[]) {
-  if (a.length !== b.length) return false;
-  if (a.length === 0) return true;
-  return a[0].task_id === b[0].task_id;
+function bucketSeconds(diffSeconds: number): number {
+  const safe = Math.max(0, diffSeconds);
+  if (safe < 60) return Math.floor(safe / 5) * 5;
+  if (safe < 600) return Math.floor(safe / 30) * 30;
+  return Math.floor(safe / 60) * 60;
+}
+
+function taskHistorySig(item: TaskHistoryItemOut): string {
+  return [
+    item.task_id,
+    item.task_status,
+    item.finished_at ?? "",
+    item.claimed_at ?? "",
+    item.task_type ?? "",
+    item.task_name ?? "",
+  ].join("|");
+}
+
+function telemetrySig(item: TelemetryItem): string {
+  const payloadText = item.payload ? JSON.stringify(item.payload) : "";
+  return [
+    item.id,
+    item.received_at ?? item.created_at ?? "",
+    item.event_type ?? "",
+    payloadText,
+  ].join("|");
+}
+
+function reconcileById<T extends { id: number; __sig?: string }>(
+  target: T[],
+  next: T[],
+  sigFn: (item: T) => string
+) {
+  const byId = new Map<number, T>();
+  for (const item of target) {
+    byId.set(item.id, item);
+  }
+  const ordered: T[] = [];
+  let changed = false;
+  for (const item of next) {
+    const existing = byId.get(item.id);
+    if (existing) {
+      const nextSig = sigFn(item);
+      if (existing.__sig !== nextSig) {
+        Object.assign(existing, item);
+        existing.__sig = nextSig;
+        changed = true;
+      }
+      ordered.push(existing);
+    } else {
+      item.__sig = sigFn(item);
+      ordered.push(item);
+      changed = true;
+    }
+  }
+  if (target.length !== ordered.length) {
+    changed = true;
+  } else if (!changed) {
+    for (let i = 0; i < target.length; i += 1) {
+      if (target[i] !== ordered[i]) {
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (!changed) return;
+  target.splice(0, target.length, ...ordered);
 }
 
 function hasVariablesChanged(next: EffectiveVariableOut[], snapshotId: string | null) {
@@ -422,9 +491,7 @@ async function loadTaskHistory(): Promise<boolean> {
       )
     );
     if (!res) return true;
-    if (!isSameTaskHistory(taskHistory.value, res)) {
-      taskHistory.value = res;
-    }
+    reconcileById(taskHistory.value, res, taskHistorySig);
     return true;
   } catch (e: any) {
     taskHistoryError.value = formatApiError(e, "Failed to load task history");
@@ -593,9 +660,10 @@ function stateClass(state: DeviceInfo["state"]) {
 
 function fmtAge(ageSeconds: number | null) {
   if (ageSeconds === null) return "-";
-  if (ageSeconds < 60) return `${ageSeconds}s ago`;
-  if (ageSeconds < 3600) return `${Math.floor(ageSeconds / 60)}m ago`;
-  return `${Math.floor(ageSeconds / 3600)}h ago`;
+  const bucketed = bucketSeconds(ageSeconds);
+  if (bucketed < 60) return `${bucketed}s ago`;
+  if (bucketed < 3600) return `${Math.floor(bucketed / 60)}m ago`;
+  return `${Math.floor(bucketed / 3600)}h ago`;
 }
 
 function fmtRemaining(seconds: number | null) {
@@ -611,6 +679,13 @@ function fmtAgoFromIso(iso: string | null) {
   if (!Number.isFinite(dt.getTime())) return "-";
   const diffSeconds = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
   return fmtAge(diffSeconds);
+}
+
+function fmtDeviceLastSeen(info: DeviceInfo | null) {
+  if (!info) return "-";
+  if (info.last_seen_at) return fmtAgoFromIso(info.last_seen_at);
+  if (info.last_seen_age_seconds !== null) return fmtAge(info.last_seen_age_seconds);
+  return "-";
 }
 
 function historyStatusClass(status: string) {
@@ -897,7 +972,7 @@ onUnmounted(() => {
       </div>
       <div class="info-item">
         <div class="info-label">Last seen</div>
-        <div class="info-value">{{ fmtAge(deviceInfo?.last_seen_age_seconds ?? null) }}</div>
+        <div class="info-value">{{ fmtDeviceLastSeen(deviceInfo) }}</div>
       </div>
       <div class="info-item">
         <div class="info-label">Lease expires in</div>
@@ -1118,7 +1193,7 @@ onUnmounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in taskHistory" :key="t.task_id">
+          <tr v-for="t in taskHistory" :key="t.task_id" v-memo="[t.__sig]">
             <td>
               {{ t.task_name }}
               <span v-if="t.task_type !== t.task_name">({{ t.task_type }})</span>
@@ -1150,7 +1225,11 @@ onUnmounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="t in telemetry" :key="t.id">
+        <tr
+          v-for="t in telemetry"
+          :key="t.id"
+          v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
+        >
           <td :title="fmtTime(t.received_at || t.created_at || '')">
             {{ fmtRelative(t.received_at || t.created_at) }}
           </td>

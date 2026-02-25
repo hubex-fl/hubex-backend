@@ -19,6 +19,8 @@ type DeviceRow = {
   last_seen?: string | null;
   state?: string | null;
   __sig?: string;
+  __runtimeSig?: string;
+  __runtimeBadges?: RuntimeBadge[];
 };
 
 type EntityRow = {
@@ -77,19 +79,32 @@ function statusClass(device: DeviceRow): string {
   return isOffline(device) ? "pill-bad" : "pill-ok";
 }
 
+function runtimeSig(device: DeviceRow): string {
+  const seen = lastSeen(device);
+  const offlineValue = seen ? (isOffline(device) ? "offline" : "online") : "unknown";
+  return [canReadVars.value ? "vars" : "novars", offlineValue].join("|");
+}
+
 function runtimeBadges(device: DeviceRow): RuntimeBadge[] {
+  const sig = runtimeSig(device);
+  if (device.__runtimeSig === sig && device.__runtimeBadges) {
+    return device.__runtimeBadges;
+  }
   const unknown = !canReadVars.value;
   const offlineValue = lastSeen(device) ? (isOffline(device) ? "Offline" : "Online") : "Unknown";
   const offlineClass = lastSeen(device)
     ? (isOffline(device) ? "pill-bad" : "pill-ok")
     : "pill-warn";
   const unknownValue = unknown ? "N/A" : "Unknown";
-  return [
+  const badges = [
     { label: "Pending", value: unknownValue, className: "pill-warn" },
     { label: "Ack", value: unknownValue, className: "pill-warn" },
     { label: "Stale", value: unknownValue, className: "pill-warn" },
     { label: "Offline", value: offlineValue, className: offlineClass },
   ];
+  device.__runtimeSig = sig;
+  device.__runtimeBadges = badges;
+  return badges;
 }
 
 function onRowClick(device: DeviceRow): void {
