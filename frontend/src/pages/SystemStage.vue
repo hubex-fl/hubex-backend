@@ -291,7 +291,17 @@ async function refreshBindings() {
         .sort()
         .join("|");
     }
-    bindingsSigByEntity.value = sigs;
+    const currentSigs = bindingsSigByEntity.value;
+    for (const key of Object.keys(currentSigs)) {
+      if (!(key in sigs)) {
+        delete currentSigs[key];
+      }
+    }
+    for (const key of Object.keys(sigs)) {
+      if (currentSigs[key] !== sigs[key]) {
+        currentSigs[key] = sigs[key];
+      }
+    }
   } finally {
     bindingsInflight = false;
   }
@@ -537,17 +547,19 @@ onUnmounted(() => {
 }
 .entities-table tbody tr,
 .devices-table tbody tr {
-  height: 36px;
+  min-height: 36px;
 }
 .entities-table td,
 .devices-table td {
-  line-height: 36px;
+  padding: 8px 10px;
+  line-height: 1.2;
+  vertical-align: middle;
 }
 .row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow: hidden;
+  overflow: visible;
 }
 .row .pill {
   flex: 0 0 auto;
