@@ -518,6 +518,9 @@ onUnmounted(() => {
   min-height: 24px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .table-fixed {
   table-layout: fixed;

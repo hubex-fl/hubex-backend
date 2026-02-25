@@ -449,9 +449,17 @@ function fmtIso(iso: string | null) {
 
 function fmtAge(seconds: number | null) {
   if (seconds === null || seconds === undefined) return "-";
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  return `${Math.floor(seconds / 3600)}h ago`;
+  let bucket = seconds;
+  if (seconds < 60) {
+    bucket = Math.floor(seconds / 5) * 5;
+  } else if (seconds < 600) {
+    bucket = Math.floor(seconds / 30) * 30;
+  } else {
+    bucket = Math.floor(seconds / 60) * 60;
+  }
+  if (bucket < 60) return `${bucket}s ago`;
+  if (bucket < 3600) return `${Math.floor(bucket / 60)}m ago`;
+  return `${Math.floor(bucket / 3600)}h ago`;
 }
 
 function healthClass(health: Device["health"]) {
@@ -721,6 +729,9 @@ onUnmounted(() => {
   min-height: 24px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .table-fixed {
   table-layout: fixed;

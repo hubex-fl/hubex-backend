@@ -210,4 +210,34 @@ describe("Devices refresh behavior", () => {
     app.unmount();
     vi.useRealTimers();
   });
+
+  it("does not show refreshing indicator for fast poll", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+    const apiFetch = vi.fn(async () => [
+      {
+        id: 1,
+        device_uid: "dev-1",
+        claimed: false,
+        last_seen: null,
+        online: false,
+        health: "ok",
+        last_seen_age_seconds: 10,
+        state: "provisioned_unclaimed",
+        pairing_active: false,
+        busy: false,
+      },
+    ]);
+
+    const { app, el } = await mountDevices(apiFetch);
+    await vi.advanceTimersByTimeAsync(6000);
+    await flushPromises();
+    expect(el.textContent).not.toContain("Refreshing...");
+
+    app.unmount();
+    vi.useRealTimers();
+  });
 });
