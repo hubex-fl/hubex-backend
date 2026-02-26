@@ -60,6 +60,13 @@ type TaskHistoryItemOut = {
   __sig?: string;
 };
 
+type UserTelemetryOut = {
+  id: number;
+  created_at: string;
+  event_type?: string | null;
+  payload?: Record<string, any> | null;
+};
+
 const deviceInfo = ref<DeviceInfo | null>(null);
 const deviceInfoError = ref<string | null>(null);
 const caps = useCapabilities();
@@ -124,6 +131,8 @@ const reissueRevokedCount = ref<number | null>(null);
 const reissueCopied = ref(false);
 const canReissueToken = computed(() => hasCap("devices.token.reissue"));
 const capsUnavailable = computed(() => caps.status !== "ready");
+const canReadTelemetry = computed(() => hasCap("telemetry.read"));
+const telemetryLoading = ref(false);
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -253,8 +262,41 @@ function startPolling() {
   scheduleNextPoll();
 }
 
+function telemetryAllowed(): boolean {
+  return caps.status === "ready" && canReadTelemetry.value;
+}
+
+async function loadTelemetry(): Promise<boolean> {
+  if (!telemetryAllowed()) return true;
+  telemetryError.value = null;
+  telemetryLoading.value = true;
+  try {
+    const res = await guardedFetch("telemetry", (signal) =>
+      apiFetch<UserTelemetryOut[]>(
+        `/api/v1/devices/${deviceId.value}/telemetry?limit=50`,
+        { signal }
+      )
+    );
+    if (!res) return true;
+    const next = res.map((row) => ({
+      id: row.id,
+      received_at: row.created_at,
+      event_type: row.event_type ?? null,
+      payload: row.payload ?? null,
+    }));
+    reconcileById(telemetry.value, next, telemetrySig);
+    return true;
+  } catch (e: any) {
+    telemetryError.value = formatApiError(e, "Failed to load telemetry");
+    return false;
+  } finally {
+    telemetryLoading.value = false;
+  }
+}
+
 function connectWs() {
   if (!mounted) return;
+  if (!telemetryAllowed()) return;
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
@@ -753,6 +795,7 @@ function upsertEffectiveItems(next: EffectiveVariableOut[]) {
 
 function refreshNow() {
   refreshAll("manual");
+  loadTelemetry();
 }
 
 async function copyUid() {
@@ -882,8 +925,10 @@ function onVisibilityChange() {
     return;
   }
   refreshAll("visible");
+  loadTelemetry();
   startPolling();
   startLeaseCountdown();
+  connectWs();
 }
 
 function resetForDeviceChange(nextId: string) {
@@ -905,10 +950,23 @@ function resetForDeviceChange(nextId: string) {
   abortInflight();
   stopPolling();
   cleanupWs();
+  loadTelemetry();
   connectWs();
   refreshAll("route");
   startPolling();
 }
+
+watch(
+  () => [caps.status, canReadTelemetry.value],
+  ([status, canRead]) => {
+    if (status === "ready" && canRead) {
+      loadTelemetry();
+      connectWs();
+    } else {
+      cleanupWs();
+    }
+  }
+);
 
 watch(
   () => route.params.id,
@@ -921,6 +979,7 @@ watch(
 
 onMounted(() => {
   mounted = true;
+  loadTelemetry();
   connectWs();
   document.addEventListener("visibilitychange", onVisibilityChange);
   refreshAll("mount");
@@ -1234,37 +1293,61 @@ onUnmounted(() => {
     </div>
 
     <div class="section-divider"></div>
-    <strong>Telemetry</strong>
-    <div v-if="telemetryError" class="error" style="margin-top: 6px;">{{ telemetryError }}</div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Type</th>
-          <th>Payload</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="t in telemetry"
-          :key="t.id"
-          v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
-        >
-          <td :title="fmtTime(t.received_at || t.created_at || '')">
-            {{ fmtRelative(t.received_at || t.created_at) }}
-          </td>
-          <td>{{ t.event_type || "-" }}</td>
-          <td>
-            <span class="payload-preview">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
-            <button class="link-button" @click="toggleTelemetry(t.id)">
-              {{ isTelemetryExpanded(t.id) ? "Collapse" : "Expand" }}
-            </button>
-          </td>
-        </tr>
-        <tr v-if="telemetry.length === 0">
-          <td colspan="3">No telemetry yet</td>
-        </tr>
-      </tbody>
-    </table>
+    <div style="margin-bottom: 14px;">
+      <div class="card-header-row">
+        <strong>Telemetry</strong>
+        <div class="row-actions">
+          <button
+            class="btn secondary"
+            :disabled="telemetryLoading || caps.status !== 'ready' || !canReadTelemetry"
+            @click="loadTelemetry"
+          >
+            {{ telemetryLoading ? "Refreshing..." : "Refresh telemetry" }}
+          </button>
+        </div>
+      </div>
+      <div class="section-status">
+        <span v-if="capsUnavailable" class="muted">Capabilities unavailable.</span>
+        <span v-else-if="!canReadTelemetry" class="muted">Missing capability: telemetry.read.</span>
+        <span v-else-if="telemetryError" class="error">{{ telemetryError }}</span>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="capsUnavailable">
+            <td colspan="3" class="muted">Capabilities unavailable.</td>
+          </tr>
+          <tr v-else-if="!canReadTelemetry">
+            <td colspan="3" class="muted">Missing capability: telemetry.read.</td>
+          </tr>
+          <tr v-else-if="telemetry.length === 0">
+            <td colspan="3">No telemetry yet</td>
+          </tr>
+          <tr
+            v-else
+            v-for="t in telemetry"
+            :key="t.id"
+            v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
+          >
+            <td :title="fmtTime(t.received_at || t.created_at || '')">
+              {{ fmtRelative(t.received_at || t.created_at) }}
+            </td>
+            <td>{{ t.event_type || "-" }}</td>
+            <td>
+              <span class="payload-preview">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
+              <button class="link-button" @click="toggleTelemetry(t.id)">
+                {{ isTelemetryExpanded(t.id) ? "Collapse" : "Expand" }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>

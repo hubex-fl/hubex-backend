@@ -31,6 +31,16 @@ UI runs on http://127.0.0.1:5173 (Vite dev server). Backend API runs on http://1
 Open the Devices page, enter the pairing code in "Pairing code (claim)", and click Claim.
 On success the devices list refreshes and the claimed device is visible for detail view.
 
+## Telemetry MVP
+Device POST (requires device token):
+```
+curl -X POST http://127.0.0.1:8000/api/v1/telemetry \
+  -H "X-Device-Token: <device_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"event_type":"demo","payload":{"temp_c":22.5}}'
+```
+UI: open Device Detail and use the Telemetry section (requires `telemetry.read` cap).
+
 ## Phase-1 gates (local)
 PowerShell:
 ```

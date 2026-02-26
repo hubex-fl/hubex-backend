@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from "vue-router";
 
 const flushPromises = () => Promise.resolve();
 
-async function mountDetail() {
+async function mountDetail(capsList: string[] = []) {
   vi.resetModules();
   const apiFetch = vi.fn(async (path: string) => {
     if (path.includes("/current-task")) {
@@ -32,6 +32,16 @@ async function mountDetail() {
           claimed_at: "2026-02-01T00:00:00Z",
           finished_at: "2026-02-01T00:00:10Z",
           last_seen_at: null,
+        },
+      ];
+    }
+    if (path.includes("/telemetry")) {
+      return [
+        {
+          id: 201,
+          created_at: "2026-02-01T00:00:05Z",
+          event_type: "demo",
+          payload: { k: "v" },
         },
       ];
     }
@@ -65,10 +75,10 @@ async function mountDetail() {
     parseApiError: () => ({}),
   }));
   vi.doMock("../../lib/capabilities", () => {
-    const state = { status: "ready", caps: new Set<string>(), error: null };
+    const state = { status: "ready", caps: new Set<string>(capsList), error: null };
     return {
       useCapabilities: () => state,
-      hasCap: () => false,
+      hasCap: (cap: string) => state.caps.has(cap),
       refreshCapabilities: vi.fn(),
     };
   });
@@ -90,7 +100,7 @@ async function mountDetail() {
 
   await nextTick();
   await flushPromises();
-  return { app, el, instance };
+  return { app, el, instance, apiFetch };
 }
 
 function findTaskTable(el: HTMLElement): HTMLTableElement | null {
@@ -188,6 +198,24 @@ describe("DeviceDetail refresh", () => {
     });
     expect(sig).not.toContain("VALUE-123");
     expect(sig).toContain("foo");
+    app.unmount();
+  });
+
+  it("telemetry refresh calls apiFetch", async () => {
+    const { app, el, apiFetch } = await mountDetail(["telemetry.read"]);
+    await nextTick();
+    await flushPromises();
+    const button = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Refresh telemetry")
+    ) as HTMLButtonElement | undefined;
+    expect(button).toBeTruthy();
+    button?.click();
+    await nextTick();
+    await flushPromises();
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/v1/devices/1/telemetry?limit=50",
+      expect.any(Object)
+    );
     app.unmount();
   });
 });

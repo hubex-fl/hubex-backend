@@ -396,7 +396,7 @@ async def get_device_telemetry(
     user: User = Depends(get_current_user),
 ):
     await _get_owned_device(device_id, db, user)
-    limit = max(1, min(200, limit))
+    limit = max(1, min(100, limit))
     stmt = select(DeviceTelemetry).where(DeviceTelemetry.device_id == device_id)
     if before is not None:
         stmt = stmt.where(DeviceTelemetry.received_at < before)
@@ -600,6 +600,5 @@ async def cancel_task_for_device(
     task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
     await db.commit()
     return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)
-
 
 

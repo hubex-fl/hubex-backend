@@ -1,12 +1,16 @@
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey, DateTime, String, func, Index
+from sqlalchemy import ForeignKey, DateTime, String, func, Index, JSON
 
 from app.db.base import Base
 
 try:
     from sqlalchemy.dialects.postgresql import JSONB as _JSON_TYPE
 except Exception:
-    from sqlalchemy import JSON as _JSON_TYPE
+    _JSON_TYPE = JSON
+
+_PAYLOAD_TYPE = _JSON_TYPE
+if _JSON_TYPE is not JSON:
+    _PAYLOAD_TYPE = _JSON_TYPE().with_variant(JSON, "sqlite")
 
 
 class DeviceTelemetry(Base):
@@ -23,4 +27,4 @@ class DeviceTelemetry(Base):
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
     event_type: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
-    payload: Mapped[dict] = mapped_column(_JSON_TYPE, nullable=False)
+    payload: Mapped[dict] = mapped_column(_PAYLOAD_TYPE, nullable=False)
