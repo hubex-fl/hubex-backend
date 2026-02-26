@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { apiFetch, getToken, reissueDeviceToken } from "../lib/api";
+import { apiFetch, getToken, reissueDeviceToken, unclaimDevice } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { hasCap, useCapabilities } from "../lib/capabilities";
 import {
@@ -133,6 +133,11 @@ const canReissueToken = computed(() => hasCap("devices.token.reissue"));
 const capsUnavailable = computed(() => caps.status !== "ready");
 const canReadTelemetry = computed(() => hasCap("telemetry.read"));
 const telemetryLoading = ref(false);
+const canUnclaim = computed(() => hasCap("devices.unclaim"));
+const unclaimBusy = ref(false);
+const unclaimConfirm = ref(false);
+const unclaimError = ref<string | null>(null);
+const unclaimStatus = ref<string | null>(null);
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -846,6 +851,33 @@ async function handleReissueToken() {
   }
 }
 
+function startUnclaimConfirm() {
+  unclaimError.value = null;
+  unclaimStatus.value = null;
+  unclaimConfirm.value = true;
+}
+
+function cancelUnclaimConfirm() {
+  unclaimConfirm.value = false;
+}
+
+async function confirmUnclaim() {
+  if (!deviceInfo.value) return;
+  unclaimError.value = null;
+  unclaimStatus.value = null;
+  unclaimBusy.value = true;
+  try {
+    const res = await unclaimDevice(deviceInfo.value.id);
+    unclaimStatus.value = `Unclaimed. Revoked ${res.revoked_count} tokens.`;
+    unclaimConfirm.value = false;
+    refreshAll("manual");
+  } catch (e: any) {
+    unclaimError.value = formatApiError(e, "Failed to unclaim device");
+  } finally {
+    unclaimBusy.value = false;
+  }
+}
+
 function openPairingPanel() {
   const uid = deviceInfo.value?.device_uid;
   if (!uid) return;
@@ -1255,6 +1287,54 @@ onUnmounted(() => {
             </button>
             <button class="btn secondary" @click="clearReissueToken">Close</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+    <div style="margin-bottom: 14px;">
+      <strong>Danger zone</strong>
+      <div v-if="capsUnavailable" class="muted" style="margin-top: 6px;">
+        Capabilities unavailable.
+      </div>
+      <div v-else-if="!canUnclaim" class="muted" style="margin-top: 6px;">
+        Missing cap devices.unclaim.
+      </div>
+      <div v-else style="margin-top: 6px;">
+        <div class="pairing-warn" style="margin-bottom: 6px;">
+          Detaches ownership and revokes all device tokens.
+        </div>
+        <div class="row-actions">
+          <button
+            v-if="!unclaimConfirm"
+            class="btn secondary"
+            :disabled="unclaimBusy"
+            @click="startUnclaimConfirm"
+          >
+            Unclaim device
+          </button>
+          <button
+            v-else
+            class="btn secondary"
+            :disabled="unclaimBusy"
+            @click="confirmUnclaim"
+          >
+            {{ unclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
+          </button>
+          <button
+            v-if="unclaimConfirm"
+            class="btn secondary"
+            :disabled="unclaimBusy"
+            @click="cancelUnclaimConfirm"
+          >
+            Cancel
+          </button>
+        </div>
+        <div v-if="unclaimError" class="error" style="margin-top: 6px;">
+          {{ unclaimError }}
+        </div>
+        <div v-if="unclaimStatus" class="muted" style="margin-top: 6px;">
+          {{ unclaimStatus }}
         </div>
       </div>
     </div>

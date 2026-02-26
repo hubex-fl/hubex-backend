@@ -61,10 +61,17 @@ async function mountDetail(capsList: string[] = []) {
     return {};
   });
 
+  const unclaimDevice = vi.fn().mockResolvedValue({
+    device_id: 1,
+    device_uid: "dev-1",
+    revoked_count: 2,
+    unclaimed: true,
+  });
   vi.doMock("../../lib/api", () => ({
     apiFetch,
     getToken: () => null,
     reissueDeviceToken: vi.fn(),
+    unclaimDevice,
   }));
   vi.doMock("../../lib/variables", () => ({
     getEffectiveVariables: vi.fn().mockResolvedValue({ items: [], snapshot_id: null }),
@@ -100,7 +107,7 @@ async function mountDetail(capsList: string[] = []) {
 
   await nextTick();
   await flushPromises();
-  return { app, el, instance, apiFetch };
+  return { app, el, instance, apiFetch, unclaimDevice };
 }
 
 function findTaskTable(el: HTMLElement): HTMLTableElement | null {
@@ -216,6 +223,32 @@ describe("DeviceDetail refresh", () => {
       "/api/v1/devices/1/telemetry?limit=50",
       expect.any(Object)
     );
+    app.unmount();
+  });
+
+  it("unclaim calls api and shows status", async () => {
+    const { app, el, unclaimDevice } = await mountDetail(["devices.unclaim"]);
+    await nextTick();
+    await flushPromises();
+    const initial = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Unclaim device")
+    ) as HTMLButtonElement | undefined;
+    expect(initial).toBeTruthy();
+    initial?.click();
+    await nextTick();
+    await flushPromises();
+
+    const confirm = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Confirm unclaim")
+    ) as HTMLButtonElement | undefined;
+    expect(confirm).toBeTruthy();
+    confirm?.click();
+    await flushPromises();
+    await nextTick();
+    await flushPromises();
+
+    expect(unclaimDevice).toHaveBeenCalledWith(1);
+    expect(el.textContent).toContain("Revoked 2 tokens");
     app.unmount();
   });
 });

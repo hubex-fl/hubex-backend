@@ -57,3 +57,16 @@ export async function reissueDeviceToken(
     body: JSON.stringify({ reason }),
   });
 }
+
+export type DeviceUnclaimOut = {
+  device_id: number;
+  device_uid: string;
+  revoked_count: number;
+  unclaimed: boolean;
+};
+
+export async function unclaimDevice(deviceId: number): Promise<DeviceUnclaimOut> {
+  return apiFetch<DeviceUnclaimOut>(`/api/v1/devices/${deviceId}/unclaim`, {
+    method: "POST",
+  });
+}
