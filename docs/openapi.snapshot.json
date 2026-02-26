@@ -651,6 +651,34 @@
         "title": "DeviceTokenReissueOut",
         "type": "object"
       },
+      "DeviceUnclaimOut": {
+        "properties": {
+          "device_id": {
+            "title": "Device Id",
+            "type": "integer"
+          },
+          "device_uid": {
+            "title": "Device Uid",
+            "type": "string"
+          },
+          "revoked_count": {
+            "title": "Revoked Count",
+            "type": "integer"
+          },
+          "unclaimed": {
+            "title": "Unclaimed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_uid",
+          "revoked_count",
+          "unclaimed"
+        ],
+        "title": "DeviceUnclaimOut",
+        "type": "object"
+      },
       "DeviceVariablesOut": {
         "properties": {
           "device": {
@@ -5461,6 +5489,57 @@
           }
         ],
         "summary": "Reissue Device Token",
+        "tags": [
+          "devices",
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{device_id}/unclaim": {
+      "post": {
+        "operationId": "unclaim_device_api_v1_devices__device_id__unclaim_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceUnclaimOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Unclaim Device",
         "tags": [
           "devices",
           "devices"

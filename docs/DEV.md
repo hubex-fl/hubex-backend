@@ -31,6 +31,9 @@ UI runs on http://127.0.0.1:5173 (Vite dev server). Backend API runs on http://1
 Open the Devices page, enter the pairing code in "Pairing code (claim)", and click Claim.
 On success the devices list refreshes and the claimed device is visible for detail view.
 
+## Device cleanup (UI)
+Device Detail -> Danger zone -> Unclaim device (requires `devices.unclaim`). This revokes all device tokens.
+
 ## Telemetry MVP
 Device POST (requires device token):
 ```

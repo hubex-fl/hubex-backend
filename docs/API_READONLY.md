@@ -11,6 +11,7 @@ This document lists read-only endpoints and required capabilities. It reflects t
 - GET /api/v1/devices/{device_id}/telemetry - cap: telemetry.read - telemetry list (if enabled)
 - POST /api/v1/devices/hello - cap: devices.hello - device hello/provision
 - POST /api/v1/devices/{device_id}/token/reissue - cap: devices.token.reissue - reissue device token (owner/admin)
+- POST /api/v1/devices/{device_id}/unclaim - cap: devices.unclaim - unclaim device (owner/admin)
 - POST /api/v1/devices/{device_id}/tasks - cap: tasks.write - enqueue task
 - POST /api/v1/devices/{device_id}/tasks/{task_id}/cancel - cap: tasks.write - cancel task
 
