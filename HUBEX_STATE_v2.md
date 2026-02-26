@@ -102,8 +102,19 @@ Domains: core, vars, entities, events, audit, secrets, config, mic, modules, mod
 - audit.read
 - modules.read / modules.write
 - devices.token.reissue
+- devices.unclaim
 
 **Verboten:** `effects.invoke:*`
+
+SSOT UPDATE
+Abschnitt: 4. Capability-Modell
+Art: Add
+Breaking: No
+Begruendung:
+- Device lifecycle hygiene requires audited unclaim and token revoke.
+Aenderung:
+- Add capability `devices.unclaim`.
+- Add POST /api/v1/devices/{device_id}/unclaim (owner/admin), audit action `device.unclaim` with revoked_count/device_id/device_uid.
 
 ---
 
@@ -203,7 +214,6 @@ Aenderung:
 | 2026-02-22 | 6 | Add | Vertical Demo v1 script + trace_id support |
 | 2026-02-22 | 7.1 | Add | Recovery Gate: device token reissue (devices.token.reissue, audited) |
 | YYYY-MM-DD | —         | —   | Initiale Erstellung |
-
 
 
 

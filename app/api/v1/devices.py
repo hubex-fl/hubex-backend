@@ -74,6 +74,13 @@ class DeviceTokenReissueOut(BaseModel):
     revoked_count: int
 
 
+class DeviceUnclaimOut(BaseModel):
+    device_id: int
+    device_uid: str
+    revoked_count: int
+    unclaimed: bool
+
+
 class UserTelemetryOut(BaseModel):
     id: int
     created_at: datetime
@@ -346,6 +353,55 @@ async def reissue_device_token(
     )
 
 
+@router.post("/{device_id}/unclaim", response_model=DeviceUnclaimOut)
+async def unclaim_device(
+    device_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Device).where(Device.id == device_id))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_NOT_FOUND", "device not found")
+    if device.owner_user_id is None:
+        raise_api_error(409, "DEVICE_NOT_CLAIMED", "device not claimed")
+    if device.owner_user_id != user.id and not _is_admin(user):
+        raise_api_error(403, "DEVICE_NOT_OWNER", "not device owner")
+
+    revoked = await db.execute(
+        update(DeviceToken)
+        .where(DeviceToken.device_id == device.id, DeviceToken.is_active.is_(True))
+        .values(is_active=False)
+    )
+    revoked_count = int(revoked.rowcount or 0)
+
+    device.owner_user_id = None
+    device.is_claimed = False
+
+    db.add(
+        AuditV1Entry(
+            actor_type="user",
+            actor_id=str(user.id),
+            action="device.unclaim",
+            resource=device.device_uid,
+            audit_metadata={
+                "device_id": device.id,
+                "device_uid": device.device_uid,
+                "revoked_count": revoked_count,
+            },
+            trace_id=None,
+        )
+    )
+    await db.commit()
+
+    return DeviceUnclaimOut(
+        device_id=device.id,
+        device_uid=device.device_uid,
+        revoked_count=revoked_count,
+        unclaimed=True,
+    )
+
+
 async def _get_owned_device(
     device_id: int, db: AsyncSession, user: User
 ) -> Device:
@@ -600,5 +656,4 @@ async def cancel_task_for_device(
     task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
     await db.commit()
     return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)
-
 
