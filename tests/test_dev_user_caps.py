@@ -8,11 +8,10 @@ from app.core.security import verify_password
 from app.db.base import Base
 from app.db.models.user import User
 from app.scripts.seed_dev_user_caps import (
-    DEFAULT_CAPS,
     DEFAULT_EMAIL,
     DEFAULT_PASSWORD,
+    _all_caps,
     ensure_dev_user_caps_db,
-    _merge_caps,
 )
 
 
@@ -36,16 +35,19 @@ async def _mk_session():
 async def test_seed_dev_user_caps_includes_reissue():
     engine, Session = await _mk_session()
     async with Session() as db:
-        user = await ensure_dev_user_caps_db(
+        user, updated = await ensure_dev_user_caps_db(
             db,
             email=DEFAULT_EMAIL,
             password=DEFAULT_PASSWORD,
-            caps=DEFAULT_CAPS,
+            caps=_all_caps(),
             force_password=True,
         )
         assert user.email == DEFAULT_EMAIL
         assert "devices.token.reissue" in (user.caps or [])
-        assert set(DEFAULT_CAPS).issubset(set(user.caps or []))
+        assert "devices.unclaim" in (user.caps or [])
+        assert "telemetry.read" in (user.caps or [])
+        assert "pairing.claim" in (user.caps or [])
+        assert updated
         assert verify_password(DEFAULT_PASSWORD, user.password_hash)
 
     await engine.dispose()
@@ -54,20 +56,19 @@ async def test_seed_dev_user_caps_includes_reissue():
 @pytest.mark.asyncio
 async def test_seed_dev_user_caps_merges_default_with_override():
     override = ["users.read", "events.read"]
-    merged = _merge_caps(DEFAULT_CAPS, override)
     engine, Session = await _mk_session()
     async with Session() as db:
-        user = await ensure_dev_user_caps_db(
+        user, _ = await ensure_dev_user_caps_db(
             db,
             email=DEFAULT_EMAIL,
             password=DEFAULT_PASSWORD,
-            caps=merged,
+            caps=_all_caps(override),
             force_password=True,
         )
         assert "devices.token.reissue" in (user.caps or [])
+        assert "devices.unclaim" in (user.caps or [])
         assert "users.read" in (user.caps or [])
         assert "events.read" in (user.caps or [])
-        # Ensure defaults are not dropped by override
-        assert set(DEFAULT_CAPS).issubset(set(user.caps or []))
+        assert "pairing.claim" in (user.caps or [])
 
     await engine.dispose()
