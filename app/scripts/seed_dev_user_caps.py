@@ -9,6 +9,7 @@ from app.core.security import hash_password, verify_password
 from app.core.capabilities import CAPABILITY_MAP, CAPABILITY_REGISTRY
 from app.db.models.user import User
 from app.db.session import AsyncSessionLocal
+from app.scripts.wait_for_db import wait_for_db
 
 DEFAULT_EMAIL = "codex+20251219002029@example.com"
 DEFAULT_PASSWORD = "Test1234!"
@@ -86,6 +87,15 @@ async def _run(args: argparse.Namespace) -> int:
     password = args.password or os.getenv("HUBEX_DEV_PASSWORD", DEFAULT_PASSWORD)
     caps = args.caps or os.getenv("HUBEX_DEV_CAPS", "")
     force_password = args.force_password or os.getenv("HUBEX_DEV_FORCE_PASSWORD", "1") == "1"
+    wait = args.wait or os.getenv("HUBEX_DEV_WAIT_DB", "1") == "1"
+    wait_timeout = args.wait_timeout or int(os.getenv("HUBEX_DEV_WAIT_TIMEOUT", "60"))
+
+    if wait:
+        db_url = os.getenv("HUBEX_DATABASE_URL", "")
+        ok = await wait_for_db(db_url, timeout_seconds=wait_timeout, interval_seconds=1.0)
+        if not ok:
+            print("ERROR: database not ready; aborting caps seed.")
+            return 1
 
     override_list = [c.strip() for c in str(caps).split(",") if c.strip()] if caps else []
     cap_list = _all_caps(override_list)
@@ -114,6 +124,8 @@ def main() -> int:
     parser.add_argument("--password", help="Dev user password", default=None)
     parser.add_argument("--caps", help="Comma-separated caps list", default=None)
     parser.add_argument("--force-password", action="store_true", help="Always reset password hash")
+    parser.add_argument("--wait", action="store_true", help="Wait for DB before seeding")
+    parser.add_argument("--wait-timeout", type=int, default=None, help="DB wait timeout (seconds)")
     args = parser.parse_args()
     return asyncio.run(_run(args))
 
