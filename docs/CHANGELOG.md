@@ -1,7 +1,8 @@
 # CHANGELOG
 
 ## Unreleased
-- UI: pairing claim clears inputs; add bulk claim selection on Devices list.
+- UI: show unclaimed devices; add bulk unclaim cleanup and filter dropdown on Devices list.
+- UI: pairing claim clears inputs; devices list supports cleanup selections.
 - UI: render /devices page via route + sidebar nav link.
 - Dev: pin bcrypt==3.2.2 to silence passlib bcrypt.__about__ warning.
 - Dev: seed dev/test user caps from current capability map.

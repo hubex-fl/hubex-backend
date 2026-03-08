@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, desc, update
+from sqlalchemy import select, desc, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -198,7 +198,9 @@ async def list_devices(
     now = datetime.now(timezone.utc)
     online_window = timedelta(seconds=30)
     res = await db.execute(
-        select(Device).where(Device.owner_user_id == user.id).order_by(Device.id)
+        select(Device)
+        .where(or_(Device.owner_user_id == user.id, Device.owner_user_id.is_(None)))
+        .order_by(Device.id)
     )
     devices = res.scalars().all()
     device_uids = [device.device_uid for device in devices]
@@ -656,4 +658,3 @@ async def cancel_task_for_device(
     task.error = "canceled by owner (force)" if was_in_flight and force else "canceled by owner"
     await db.commit()
     return UserTaskCancelOut(id=task.id, status=task.status, completed_at=task.completed_at)
-

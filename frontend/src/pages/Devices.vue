@@ -48,11 +48,11 @@ const pairingRemainingSeconds = ref<number | null>(null);
 const pairingExpired = ref(false);
 const searchQuery = ref("");
 const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
-const actionableOnly = ref(false);
+const filterBy = ref<"all" | "claimed" | "unclaimed" | "claimable" | "offline">("all");
 const selectedIds = ref<number[]>([]);
-const bulkClaimBusy = ref(false);
-const bulkClaimStatus = ref<Record<number, string>>({});
-const bulkClaimCodes = ref<Record<number, string>>({});
+const bulkUnclaimBusy = ref(false);
+const bulkUnclaimConfirm = ref(false);
+const bulkUnclaimStatus = ref<Record<number, string>>({});
 
 const pairingLookup = ref<DeviceLookup | null>(null);
 const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
@@ -113,9 +113,7 @@ const canClaimPairing = computed(() => {
 });
 
 const selectableIds = computed(() => {
-  return visibleDevices.value
-    .filter((d) => ["provisioned_unclaimed", "pairing_active"].includes(d.state))
-    .map((d) => d.id);
+  return visibleDevices.value.filter(isBulkUnclaimable).map((d) => d.id);
 });
 
 const allSelected = computed(() => {
@@ -124,10 +122,10 @@ const allSelected = computed(() => {
   return ids.every((id) => selectedIds.value.includes(id));
 });
 
-const canBulkClaim = computed(() => {
-  if (bulkClaimBusy.value) return false;
+const canBulkUnclaim = computed(() => {
+  if (bulkUnclaimBusy.value) return false;
   if (caps.status !== "ready") return false;
-  if (!hasCap("pairing.claim")) return false;
+  if (!hasCap("devices.unclaim")) return false;
   return selectedIds.value.length > 0;
 });
 
@@ -137,8 +135,14 @@ const visibleDevices = computed(() => {
   if (q) {
     list = list.filter((d) => d.device_uid.toLowerCase().includes(q));
   }
-  if (actionableOnly.value) {
-    list = list.filter((d) => ["provisioned_unclaimed", "pairing_active"].includes(d.state));
+  if (filterBy.value === "claimed") {
+    list = list.filter((d) => d.state === "claimed");
+  } else if (filterBy.value === "unclaimed") {
+    list = list.filter((d) => d.state !== "claimed");
+  } else if (filterBy.value === "claimable") {
+    list = list.filter((d) => !d.claimed && d.pairing_active);
+  } else if (filterBy.value === "offline") {
+    list = list.filter((d) => !d.online);
   }
   const statePriority: Record<Device["state"], number> = {
     busy: 5,
@@ -269,8 +273,10 @@ function isSelected(id: number) {
   return selectedIds.value.includes(id);
 }
 
-function isBulkSelectable(d: Device) {
-  return ["provisioned_unclaimed", "pairing_active"].includes(d.state);
+function isBulkUnclaimable(d: Device) {
+  if (caps.status !== "ready") return false;
+  if (!hasCap("devices.unclaim")) return false;
+  return d.state === "claimed";
 }
 
 function toggleSelectAll() {
@@ -282,7 +288,7 @@ function toggleSelectAll() {
 }
 
 function toggleRow(d: Device) {
-  if (!isBulkSelectable(d)) return;
+  if (!isBulkUnclaimable(d)) return;
   const ids = new Set(selectedIds.value);
   if (ids.has(d.id)) {
     ids.delete(d.id);
@@ -501,31 +507,35 @@ async function claimPairing() {
   }
 }
 
-async function bulkClaim() {
-  if (selectedIds.value.length === 0 && Object.keys(bulkClaimCodes.value).length === 0) return;
-  bulkClaimBusy.value = true;
-  bulkClaimStatus.value = {};
-  const ids = selectedIds.value.length
-    ? selectedIds.value.slice()
-    : Object.keys(bulkClaimCodes.value).map((id) => Number(id));
+function startBulkUnclaimConfirm() {
+  bulkUnclaimConfirm.value = true;
+}
+
+function cancelBulkUnclaimConfirm() {
+  bulkUnclaimConfirm.value = false;
+}
+
+async function bulkUnclaim() {
+  if (selectedIds.value.length === 0) return;
+  bulkUnclaimBusy.value = true;
+  bulkUnclaimStatus.value = {};
+  const ids = selectedIds.value.slice();
   for (const id of ids) {
-    const code = (bulkClaimCodes.value[id] || "").trim();
-    if (!code) {
-      bulkClaimStatus.value[id] = "Missing pairing code";
-      continue;
-    }
     try {
-      const res: any = await apiFetch("/api/v1/devices/pairing/claim", {
+      const res: any = await apiFetch(`/api/v1/devices/${id}/unclaim`, {
         method: "POST",
-        body: JSON.stringify({ pairing_code: code }),
       });
-      bulkClaimStatus.value[id] = res?.device_uid ? `Claimed ${res.device_uid}` : "Claimed";
+      bulkUnclaimStatus.value[id] = res?.device_uid
+        ? `Unclaimed ${res.device_uid}`
+        : "Unclaimed";
     } catch (err: any) {
-      bulkClaimStatus.value[id] = formatPairingError(err, "Claim failed");
+      bulkUnclaimStatus.value[id] = formatPairingError(err, "Unclaim failed");
     }
   }
+  selectedIds.value = [];
+  bulkUnclaimConfirm.value = false;
   await load({ silent: true });
-  bulkClaimBusy.value = false;
+  bulkUnclaimBusy.value = false;
 }
 
 function fmtTime(iso: string | null) {
@@ -735,19 +745,46 @@ onUnmounted(() => {
         <option value="state">State priority</option>
         <option value="health">Health</option>
       </select>
-      <label class="toolbar-toggle">
-        <input type="checkbox" v-model="actionableOnly" />
-        Show only actionable
-      </label>
+      <select v-model="filterBy" class="input toolbar-select" data-testid="devices-filter">
+        <option value="all">All</option>
+        <option value="claimed">Claimed</option>
+        <option value="unclaimed">Unclaimed</option>
+        <option value="claimable">Claimable</option>
+        <option value="offline">Offline</option>
+      </select>
     </div>
     <div class="bulk-toolbar">
       <label class="toolbar-toggle">
         <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
         Select all
       </label>
-      <button class="btn secondary" :disabled="!canBulkClaim" @click="bulkClaim">
-        {{ bulkClaimBusy ? "Claiming..." : "Bulk claim" }}
+      <button
+        v-if="!bulkUnclaimConfirm"
+        class="btn secondary"
+        :disabled="!canBulkUnclaim"
+        @click="startBulkUnclaimConfirm"
+      >
+        Bulk unclaim
       </button>
+      <button
+        v-else
+        class="btn danger"
+        :disabled="bulkUnclaimBusy"
+        @click="bulkUnclaim"
+      >
+        {{ bulkUnclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
+      </button>
+      <button
+        v-if="bulkUnclaimConfirm"
+        class="btn ghost"
+        :disabled="bulkUnclaimBusy"
+        @click="cancelBulkUnclaimConfirm"
+      >
+        Cancel
+      </button>
+      <span v-if="bulkUnclaimConfirm" class="muted">
+        Unclaim {{ selectedIds.length }} devices? This revokes all device tokens.
+      </span>
     </div>
 
     <table class="table table-fixed devices-table">
@@ -759,21 +796,20 @@ onUnmounted(() => {
           <th>State</th>
           <th>Online</th>
           <th>Last seen</th>
-          <th>Claim code</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="error">
-          <td colspan="8" class="muted">{{ error }}</td>
+          <td colspan="7" class="muted">{{ error }}</td>
         </tr>
         <template v-else-if="loading && !visibleDevices.length">
           <tr v-for="n in 5" :key="`loading-${n}`">
-            <td colspan="8" class="muted">Loading...</td>
+            <td colspan="7" class="muted">Loading...</td>
           </tr>
         </template>
         <tr v-else-if="!visibleDevices.length">
-          <td colspan="8" class="muted">No devices.</td>
+          <td colspan="7" class="muted">No devices.</td>
         </tr>
         <template v-else>
           <tr
@@ -787,7 +823,7 @@ onUnmounted(() => {
               <input
                 type="checkbox"
                 :checked="isSelected(d.id)"
-                :disabled="!isBulkSelectable(d)"
+                :disabled="!isBulkUnclaimable(d)"
                 @change="toggleRow(d)"
                 @click.stop
               />
@@ -819,16 +855,6 @@ onUnmounted(() => {
               >
             </td>
             <td>
-              <input
-                v-if="isSelected(d.id)"
-                v-model="bulkClaimCodes[d.id]"
-                class="input bulk-code"
-                placeholder="Pairing code"
-                @click.stop
-              />
-              <span v-else class="muted">-</span>
-            </td>
-            <td>
               <button
                 class="btn cta-btn"
                 :disabled="rowActionDisabled(d)"
@@ -836,8 +862,8 @@ onUnmounted(() => {
               >
                 {{ rowActionLabel(d) }}
               </button>
-              <div v-if="bulkClaimStatus[d.id]" class="muted bulk-status">
-                {{ bulkClaimStatus[d.id] }}
+              <div v-if="bulkUnclaimStatus[d.id]" class="muted bulk-status">
+                {{ bulkUnclaimStatus[d.id] }}
               </div>
             </td>
           </tr>
@@ -888,24 +914,17 @@ onUnmounted(() => {
 }
 .devices-table th:nth-child(6),
 .devices-table td:nth-child(6) {
-  width: 180px;
+  width: 200px;
 }
 .devices-table th:nth-child(7),
 .devices-table td:nth-child(7) {
   width: 180px;
-}
-.devices-table th:nth-child(8),
-.devices-table td:nth-child(8) {
-  width: 160px;
 }
 .bulk-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
   margin: 8px 0 12px;
-}
-.bulk-code {
-  width: 160px;
 }
 .bulk-status {
   margin-top: 4px;

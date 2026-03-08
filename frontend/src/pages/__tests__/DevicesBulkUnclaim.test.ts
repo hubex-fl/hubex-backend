@@ -6,40 +6,40 @@ const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function mountDevices() {
   vi.resetModules();
-  const callCodes: string[] = [];
-  const apiFetch = vi.fn(async (path: string, opts?: any) => {
+  const callIds: number[] = [];
+  const apiFetch = vi.fn(async (path: string) => {
     if (path === "/api/v1/devices") {
       return [
         {
           id: 1,
           device_uid: "dev-1",
-          claimed: false,
+          claimed: true,
           last_seen: null,
           online: false,
           health: "ok",
           last_seen_age_seconds: 10,
-          state: "pairing_active",
-          pairing_active: true,
+          state: "claimed",
+          pairing_active: false,
           busy: false,
         },
         {
           id: 2,
           device_uid: "dev-2",
-          claimed: false,
+          claimed: true,
           last_seen: null,
           online: false,
           health: "ok",
           last_seen_age_seconds: 12,
-          state: "pairing_active",
-          pairing_active: true,
+          state: "claimed",
+          pairing_active: false,
           busy: false,
         },
       ];
     }
-    if (path === "/api/v1/devices/pairing/claim") {
-      const body = JSON.parse(opts?.body || "{}");
-      callCodes.push(body.pairing_code);
-      return { device_uid: "dev" };
+    if (path.startsWith("/api/v1/devices/") && path.endsWith("/unclaim")) {
+      const id = Number(path.split("/")[4]);
+      callIds.push(id);
+      return { device_uid: `dev-${id}` };
     }
     return {};
   });
@@ -71,12 +71,12 @@ async function mountDevices() {
 
   const caps = useCapabilities();
   caps.status = "ready";
-  caps.caps = new Set(["pairing.claim"]);
+  caps.caps = new Set(["devices.unclaim"]);
   caps.error = null;
 
   await nextTick();
   await flushPromises();
-  return { app, el, apiFetch, callCodes };
+  return { app, el, callIds };
 }
 
 afterEach(() => {
@@ -84,33 +84,28 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Devices bulk claim", () => {
-  it("claims selected devices sequentially", async () => {
-    const { app, callCodes } = await mountDevices();
+describe("Devices bulk unclaim", () => {
+  it("unclaims selected devices sequentially", async () => {
+    const { app, callIds } = await mountDevices();
     const instance = (app as any)._instance;
     const selected = instance?.setupState?.selectedIds;
-    const codes = instance?.setupState?.bulkClaimCodes;
-    if (!selected || !codes) {
-      throw new Error("Bulk claim state not available on Devices component");
+    if (!selected) {
+      throw new Error("selectedIds not available");
     }
     if (Array.isArray(selected)) {
       selected.splice(0, selected.length, 1, 2);
     } else {
       selected.value = [1, 2];
     }
-    if (typeof codes === "object" && !("value" in codes)) {
-      codes[1] = "CODE1";
-      codes[2] = "CODE2";
-    } else {
-      codes.value = { 1: "CODE1", 2: "CODE2" };
-    }
 
     await nextTick();
     await flushPromises();
 
-    await instance.setupState.bulkClaim();
+    if (instance?.setupState?.bulkUnclaim) {
+      await instance.setupState.bulkUnclaim();
+    }
 
-    expect(callCodes).toEqual(["CODE1", "CODE2"]);
+    expect(callIds).toEqual([1, 2]);
     app.unmount();
   });
 });
