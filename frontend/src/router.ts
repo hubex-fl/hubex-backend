@@ -10,6 +10,7 @@ import Executions from "./pages/Executions.vue";
 import Correlation from "./pages/Correlation.vue";
 import TokenInspector from "./pages/TokenInspector.vue";
 import DeviceDetail from "./pages/DeviceDetail.vue";
+import Devices from "./pages/Devices.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -25,6 +26,7 @@ const router = createRouter({
     { path: "/correlation", component: Correlation },
     { path: "/token", component: TokenInspector },
     { path: "/settings/auth", component: SettingsAuth },
+    { path: "/devices", component: Devices },
     { path: "/devices/:id", name: "device-detail", component: DeviceDetail },
   ],
 });

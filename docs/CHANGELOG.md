@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- UI: render /devices page via route + sidebar nav link.
 - Dev: pin bcrypt==3.2.2 to silence passlib bcrypt.__about__ warning.
 - Dev: seed dev/test user caps from current capability map.
 - Dev: add wait_for_db helper to avoid seeding hangs.
