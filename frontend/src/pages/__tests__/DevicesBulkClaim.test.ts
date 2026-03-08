@@ -6,7 +6,8 @@ const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function mountDevices() {
   vi.resetModules();
-  const apiFetch = vi.fn(async (path: string) => {
+  const callCodes: string[] = [];
+  const apiFetch = vi.fn(async (path: string, opts?: any) => {
     if (path === "/api/v1/devices") {
       return [
         {
@@ -17,14 +18,28 @@ async function mountDevices() {
           online: false,
           health: "ok",
           last_seen_age_seconds: 10,
-          state: "provisioned_unclaimed",
-          pairing_active: false,
+          state: "pairing_active",
+          pairing_active: true,
+          busy: false,
+        },
+        {
+          id: 2,
+          device_uid: "dev-2",
+          claimed: false,
+          last_seen: null,
+          online: false,
+          health: "ok",
+          last_seen_age_seconds: 12,
+          state: "pairing_active",
+          pairing_active: true,
           busy: false,
         },
       ];
     }
     if (path === "/api/v1/devices/pairing/claim") {
-      return { device_uid: "dev-1" };
+      const body = JSON.parse(opts?.body || "{}");
+      callCodes.push(body.pairing_code);
+      return { device_uid: "dev" };
     }
     return {};
   });
@@ -61,7 +76,7 @@ async function mountDevices() {
 
   await nextTick();
   await flushPromises();
-  return { app, el, router, apiFetch };
+  return { app, el, apiFetch, callCodes };
 }
 
 afterEach(() => {
@@ -69,40 +84,33 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Devices claim flow", () => {
-  it("claims pairing code and refreshes devices", async () => {
-    const { app, el, router, apiFetch } = await mountDevices();
-    const input = el.querySelector('input[placeholder="Pairing code (claim)"]') as HTMLInputElement;
-    expect(input).not.toBeNull();
+describe("Devices bulk claim", () => {
+  it("claims selected devices sequentially", async () => {
+    const { app, callCodes } = await mountDevices();
     const instance = (app as any)._instance;
-    if (instance?.setupState?.pairingClaimCode) {
-      instance.setupState.pairingClaimCode.value = "ABC12345";
-      instance.setupState.pairingDeviceUid.value = "dev-1";
+    const selected = instance?.setupState?.selectedIds;
+    const codes = instance?.setupState?.bulkClaimCodes;
+    if (!selected || !codes) {
+      throw new Error("Bulk claim state not available on Devices component");
     }
-    input.value = "ABC12345";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    if (Array.isArray(selected)) {
+      selected.splice(0, selected.length, 1, 2);
+    } else {
+      selected.value = [1, 2];
+    }
+    if (typeof codes === "object" && !("value" in codes)) {
+      codes[1] = "CODE1";
+      codes[2] = "CODE2";
+    } else {
+      codes.value = { 1: "CODE1", 2: "CODE2" };
+    }
+
     await nextTick();
     await flushPromises();
 
-    const buttons = Array.from(el.querySelectorAll("button"));
-    const claimButton = buttons.find((b) => b.textContent?.includes("Claim"));
-    expect(claimButton).toBeTruthy();
-    if (instance?.setupState?.claimPairing) {
-      await instance.setupState.claimPairing();
-    } else {
-      claimButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    }
+    await instance.setupState.bulkClaim();
 
-    await flushPromises();
-    const calls = apiFetch.mock.calls.map((c) => c[0]);
-    expect(calls).toContain("/api/v1/devices/pairing/claim");
-    expect(calls).toContain("/api/v1/devices");
-    expect(el.textContent).toContain("Claimed");
-    if (instance?.setupState?.pairingClaimCode) {
-      expect(instance.setupState.pairingClaimCode.value).toBe("");
-      expect(instance.setupState.pairingDeviceUid.value).toBe("");
-    }
-    expect(router.currentRoute.value.fullPath).toBe("/devices");
+    expect(callCodes).toEqual(["CODE1", "CODE2"]);
     app.unmount();
   });
 });

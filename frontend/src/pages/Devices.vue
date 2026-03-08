@@ -49,6 +49,10 @@ const pairingExpired = ref(false);
 const searchQuery = ref("");
 const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
 const actionableOnly = ref(false);
+const selectedIds = ref<number[]>([]);
+const bulkClaimBusy = ref(false);
+const bulkClaimStatus = ref<Record<number, string>>({});
+const bulkClaimCodes = ref<Record<number, string>>({});
 
 const pairingLookup = ref<DeviceLookup | null>(null);
 const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
@@ -106,6 +110,25 @@ const canClaimPairing = computed(() => {
   if (caps.status !== "ready") return false;
   if (!hasCap("pairing.claim")) return false;
   return pairingClaimCode.value.trim().length > 0;
+});
+
+const selectableIds = computed(() => {
+  return visibleDevices.value
+    .filter((d) => ["provisioned_unclaimed", "pairing_active"].includes(d.state))
+    .map((d) => d.id);
+});
+
+const allSelected = computed(() => {
+  const ids = selectableIds.value;
+  if (!ids.length) return false;
+  return ids.every((id) => selectedIds.value.includes(id));
+});
+
+const canBulkClaim = computed(() => {
+  if (bulkClaimBusy.value) return false;
+  if (caps.status !== "ready") return false;
+  if (!hasCap("pairing.claim")) return false;
+  return selectedIds.value.length > 0;
 });
 
 const visibleDevices = computed(() => {
@@ -222,6 +245,10 @@ async function load(opts?: { silent?: boolean }) {
   try {
     const next = await apiFetch<Device[]>("/api/v1/devices");
     reconcileById(devices.value, next, deviceSig);
+    const nextIds = new Set(next.map((d) => d.id));
+    if (selectedIds.value.length) {
+      selectedIds.value = selectedIds.value.filter((id) => nextIds.has(id));
+    }
     if (opts?.silent) {
       await nextTick();
       scheduleScrollRestore(scrollY);
@@ -236,6 +263,33 @@ async function load(opts?: { silent?: boolean }) {
     }
     refreshing.value = false;
   }
+}
+
+function isSelected(id: number) {
+  return selectedIds.value.includes(id);
+}
+
+function isBulkSelectable(d: Device) {
+  return ["provisioned_unclaimed", "pairing_active"].includes(d.state);
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value = [];
+    return;
+  }
+  selectedIds.value = selectableIds.value.slice();
+}
+
+function toggleRow(d: Device) {
+  if (!isBulkSelectable(d)) return;
+  const ids = new Set(selectedIds.value);
+  if (ids.has(d.id)) {
+    ids.delete(d.id);
+  } else {
+    ids.add(d.id);
+  }
+  selectedIds.value = Array.from(ids);
 }
 
 async function lookupDevice(uid: string) {
@@ -429,12 +483,49 @@ async function claimPairing() {
     });
     pairingClaimStatus.value = res?.device_uid ? `Claimed ${res.device_uid}` : "Claimed";
     pairingClaimCode.value = "";
+    pairingDeviceUid.value = "";
+    pairingStartCode.value = "";
+    pairingConfirmCode.value = "";
+    pairingExpiresAt.value = null;
+    pairingExpired.value = false;
+    pairingRemainingSeconds.value = null;
+    pairingLookupStatus.value = "idle";
+    pairingLookup.value = null;
+    stopPairingCountdown();
     await load({ silent: true });
+    await router.replace("/devices");
   } catch (err: any) {
     error.value = formatPairingError(err, "Failed to claim pairing");
   } finally {
     claimingPairing.value = false;
   }
+}
+
+async function bulkClaim() {
+  if (selectedIds.value.length === 0 && Object.keys(bulkClaimCodes.value).length === 0) return;
+  bulkClaimBusy.value = true;
+  bulkClaimStatus.value = {};
+  const ids = selectedIds.value.length
+    ? selectedIds.value.slice()
+    : Object.keys(bulkClaimCodes.value).map((id) => Number(id));
+  for (const id of ids) {
+    const code = (bulkClaimCodes.value[id] || "").trim();
+    if (!code) {
+      bulkClaimStatus.value[id] = "Missing pairing code";
+      continue;
+    }
+    try {
+      const res: any = await apiFetch("/api/v1/devices/pairing/claim", {
+        method: "POST",
+        body: JSON.stringify({ pairing_code: code }),
+      });
+      bulkClaimStatus.value[id] = res?.device_uid ? `Claimed ${res.device_uid}` : "Claimed";
+    } catch (err: any) {
+      bulkClaimStatus.value[id] = formatPairingError(err, "Claim failed");
+    }
+  }
+  await load({ silent: true });
+  bulkClaimBusy.value = false;
 }
 
 function fmtTime(iso: string | null) {
@@ -649,29 +740,40 @@ onUnmounted(() => {
         Show only actionable
       </label>
     </div>
+    <div class="bulk-toolbar">
+      <label class="toolbar-toggle">
+        <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+        Select all
+      </label>
+      <button class="btn secondary" :disabled="!canBulkClaim" @click="bulkClaim">
+        {{ bulkClaimBusy ? "Claiming..." : "Bulk claim" }}
+      </button>
+    </div>
 
     <table class="table table-fixed devices-table">
       <thead>
         <tr>
+          <th class="col-select"></th>
           <th>UID</th>
           <th>Health</th>
           <th>State</th>
           <th>Online</th>
           <th>Last seen</th>
+          <th>Claim code</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="error">
-          <td colspan="6" class="muted">{{ error }}</td>
+          <td colspan="8" class="muted">{{ error }}</td>
         </tr>
         <template v-else-if="loading && !visibleDevices.length">
           <tr v-for="n in 5" :key="`loading-${n}`">
-            <td colspan="6" class="muted">Loading...</td>
+            <td colspan="8" class="muted">Loading...</td>
           </tr>
         </template>
         <tr v-else-if="!visibleDevices.length">
-          <td colspan="6" class="muted">No devices.</td>
+          <td colspan="8" class="muted">No devices.</td>
         </tr>
         <template v-else>
           <tr
@@ -681,6 +783,15 @@ onUnmounted(() => {
             :class="d.state === 'claimed' ? 'row-clickable' : ''"
             @click="onRowClick(d)"
           >
+            <td>
+              <input
+                type="checkbox"
+                :checked="isSelected(d.id)"
+                :disabled="!isBulkSelectable(d)"
+                @change="toggleRow(d)"
+                @click.stop
+              />
+            </td>
             <td>
               <router-link :to="`/devices/${d.id}`" @click.stop>
                 {{ d.device_uid }}
@@ -701,10 +812,22 @@ onUnmounted(() => {
                 {{ d.online ? "online" : "offline" }}
               </span>
             </td>
-          <td>
-            {{ fmtTime(d.last_seen) }}
-            <span v-if="d.last_seen_age_seconds !== null" class="age">({{ fmtAge(d.last_seen_age_seconds) }})</span>
-          </td>
+            <td>
+              {{ fmtTime(d.last_seen) }}
+              <span v-if="d.last_seen_age_seconds !== null" class="age"
+                >({{ fmtAge(d.last_seen_age_seconds) }})</span
+              >
+            </td>
+            <td>
+              <input
+                v-if="isSelected(d.id)"
+                v-model="bulkClaimCodes[d.id]"
+                class="input bulk-code"
+                placeholder="Pairing code"
+                @click.stop
+              />
+              <span v-else class="muted">-</span>
+            </td>
             <td>
               <button
                 class="btn cta-btn"
@@ -713,6 +836,9 @@ onUnmounted(() => {
               >
                 {{ rowActionLabel(d) }}
               </button>
+              <div v-if="bulkClaimStatus[d.id]" class="muted bulk-status">
+                {{ bulkClaimStatus[d.id] }}
+              </div>
             </td>
           </tr>
         </template>
@@ -737,29 +863,53 @@ onUnmounted(() => {
   table-layout: fixed;
   width: 100%;
 }
+.col-select {
+  width: 40px;
+}
 .devices-table th:nth-child(1),
 .devices-table td:nth-child(1) {
-  width: 240px;
+  width: 40px;
 }
 .devices-table th:nth-child(2),
 .devices-table td:nth-child(2) {
-  width: 90px;
+  width: 240px;
 }
 .devices-table th:nth-child(3),
 .devices-table td:nth-child(3) {
-  width: 140px;
+  width: 90px;
 }
 .devices-table th:nth-child(4),
 .devices-table td:nth-child(4) {
-  width: 90px;
+  width: 140px;
 }
 .devices-table th:nth-child(5),
 .devices-table td:nth-child(5) {
-  width: 180px;
+  width: 90px;
 }
 .devices-table th:nth-child(6),
 .devices-table td:nth-child(6) {
-  width: 140px;
+  width: 180px;
+}
+.devices-table th:nth-child(7),
+.devices-table td:nth-child(7) {
+  width: 180px;
+}
+.devices-table th:nth-child(8),
+.devices-table td:nth-child(8) {
+  width: 160px;
+}
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+.bulk-code {
+  width: 160px;
+}
+.bulk-status {
+  margin-top: 4px;
+  font-size: 12px;
 }
 .devices-table th,
 .devices-table td {
