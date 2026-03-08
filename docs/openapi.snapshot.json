@@ -4500,6 +4500,18 @@
     "/api/v1/devices": {
       "get": {
         "operationId": "list_devices_api_v1_devices_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_unclaimed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Unclaimed",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -4514,6 +4526,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

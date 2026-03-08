@@ -49,6 +49,7 @@ const pairingExpired = ref(false);
 const searchQuery = ref("");
 const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
 const filterBy = ref<"all" | "claimed" | "unclaimed" | "claimable" | "offline">("all");
+const selectMode = ref<"cleanup" | "pairing">("cleanup");
 const selectedIds = ref<number[]>([]);
 const bulkUnclaimBusy = ref(false);
 const bulkUnclaimConfirm = ref(false);
@@ -113,7 +114,10 @@ const canClaimPairing = computed(() => {
 });
 
 const selectableIds = computed(() => {
-  return visibleDevices.value.filter(isBulkUnclaimable).map((d) => d.id);
+  const mode = selectMode.value;
+  return visibleDevices.value
+    .filter((d) => (mode === "cleanup" ? isBulkUnclaimable(d) : isBulkClaimable(d)))
+    .map((d) => d.id);
 });
 
 const allSelected = computed(() => {
@@ -124,6 +128,7 @@ const allSelected = computed(() => {
 
 const canBulkUnclaim = computed(() => {
   if (bulkUnclaimBusy.value) return false;
+  if (selectMode.value !== "cleanup") return false;
   if (caps.status !== "ready") return false;
   if (!hasCap("devices.unclaim")) return false;
   return selectedIds.value.length > 0;
@@ -247,7 +252,9 @@ async function load(opts?: { silent?: boolean }) {
   }
   const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
   try {
-    const next = await apiFetch<Device[]>("/api/v1/devices");
+    const includeUnclaimed = caps.status === "ready" && hasCap("cap.admin");
+    const path = includeUnclaimed ? "/api/v1/devices?include_unclaimed=1" : "/api/v1/devices";
+    const next = await apiFetch<Device[]>(path);
     reconcileById(devices.value, next, deviceSig);
     const nextIds = new Set(next.map((d) => d.id));
     if (selectedIds.value.length) {
@@ -279,6 +286,12 @@ function isBulkUnclaimable(d: Device) {
   return d.state === "claimed";
 }
 
+function isBulkClaimable(d: Device) {
+  if (caps.status !== "ready") return false;
+  if (!hasCap("pairing.claim")) return false;
+  return !d.claimed && d.pairing_active;
+}
+
 function toggleSelectAll() {
   if (allSelected.value) {
     selectedIds.value = [];
@@ -288,7 +301,8 @@ function toggleSelectAll() {
 }
 
 function toggleRow(d: Device) {
-  if (!isBulkUnclaimable(d)) return;
+  const selectable = selectMode.value === "cleanup" ? isBulkUnclaimable(d) : isBulkClaimable(d);
+  if (!selectable) return;
   const ids = new Set(selectedIds.value);
   if (ids.has(d.id)) {
     ids.delete(d.id);
@@ -629,6 +643,11 @@ watch(pairingDeviceUid, () => {
   scheduleLookup(pairingDeviceUid.value);
 });
 
+watch(selectMode, () => {
+  selectedIds.value = [];
+  bulkUnclaimConfirm.value = false;
+});
+
 function onVisibilityChange() {
   if (document.visibilityState === "visible") {
     updatePairingCountdown();
@@ -755,6 +774,13 @@ onUnmounted(() => {
     </div>
     <div class="bulk-toolbar">
       <label class="toolbar-toggle">
+        Mode:
+        <select v-model="selectMode" class="input toolbar-select">
+          <option value="cleanup">Cleanup (Unclaim)</option>
+          <option value="pairing">Pairing (Claim)</option>
+        </select>
+      </label>
+      <label class="toolbar-toggle">
         <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
         Select all
       </label>
@@ -784,6 +810,9 @@ onUnmounted(() => {
       </button>
       <span v-if="bulkUnclaimConfirm" class="muted">
         Unclaim {{ selectedIds.length }} devices? This revokes all device tokens.
+      </span>
+      <span v-else-if="selectMode === 'pairing'" class="muted">
+        Bulk claim requires per-device codes (not available here).
       </span>
     </div>
 
@@ -823,7 +852,7 @@ onUnmounted(() => {
               <input
                 type="checkbox"
                 :checked="isSelected(d.id)"
-                :disabled="!isBulkUnclaimable(d)"
+                :disabled="selectMode === 'cleanup' ? !isBulkUnclaimable(d) : !isBulkClaimable(d)"
                 @change="toggleRow(d)"
                 @click.stop
               />

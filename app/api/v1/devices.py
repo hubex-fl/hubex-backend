@@ -30,6 +30,12 @@ from app.schemas.taskcam import CurrentTaskOut, TaskHistoryItemOut
 router = APIRouter(prefix="/devices", tags=["devices"])
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 class DeviceHelloIn(BaseModel):
     device_uid: str = Field(min_length=4, max_length=128)
     firmware_version: Optional[str] = None
@@ -194,14 +200,22 @@ async def lookup_device(
 async def list_devices(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
+    include_unclaimed: bool = Query(False),
 ):
     now = datetime.now(timezone.utc)
     online_window = timedelta(seconds=30)
-    res = await db.execute(
-        select(Device)
-        .where(or_(Device.owner_user_id == user.id, Device.owner_user_id.is_(None)))
-        .order_by(Device.id)
-    )
+    if include_unclaimed:
+        if not _is_admin(user):
+            raise_api_error(403, "DEVICE_LIST_FORBIDDEN", "include_unclaimed requires admin")
+        res = await db.execute(
+            select(Device)
+            .where(or_(Device.owner_user_id == user.id, Device.owner_user_id.is_(None)))
+            .order_by(Device.id)
+        )
+    else:
+        res = await db.execute(
+            select(Device).where(Device.owner_user_id == user.id).order_by(Device.id)
+        )
     devices = res.scalars().all()
     device_uids = [device.device_uid for device in devices]
     device_ids = [device.id for device in devices]
@@ -213,6 +227,7 @@ async def list_devices(
         age_seconds: Optional[int] = None
         health = "dead"
         if last_seen:
+            last_seen = _ensure_utc(last_seen)
             age_seconds = max(0, int((now - last_seen).total_seconds()))
             if age_seconds <= 30:
                 health = "ok"
@@ -256,6 +271,7 @@ async def get_device(
     age_seconds: Optional[int] = None
     health = "dead"
     if last_seen:
+        last_seen = _ensure_utc(last_seen)
         age_seconds = max(0, int((now - last_seen).total_seconds()))
         if age_seconds <= 30:
             health = "ok"

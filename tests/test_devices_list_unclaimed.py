@@ -85,10 +85,12 @@ async def _make_app(Session):
 async def test_list_devices_includes_unclaimed_after_hello(monkeypatch):
     monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
     CAPABILITY_MAP[("GET", "/api/v1/devices")] = ["devices.read"]
+    CAPABILITY_MAP[("POST", "/devices/hello")] = ["devices.hello"]
+    CAPABILITY_MAP[("GET", "/devices")] = ["devices.read"]
 
     engine, Session = await _mk_session()
     async with Session() as db:
-        user = User(id=1, email="user@example.com", password_hash="x", caps=["devices.read"])
+        user = User(id=1, email="user@example.com", password_hash="x", caps=["devices.read", "cap.admin"])
         db.add(user)
         await db.commit()
 
@@ -96,15 +98,13 @@ async def test_list_devices_includes_unclaimed_after_hello(monkeypatch):
     transport = httpx.ASGITransport(app=app)
     client = httpx.AsyncClient(transport=transport, base_url="http://test")
 
-    async with Session() as db:
-        device = Device(
-            device_uid="dev-unc",
-            owner_user_id=None,
-            is_claimed=False,
-            last_seen_at=None,
-        )
-        db.add(device)
-        await db.commit()
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "0")
+    res_hello = await client.post(
+        "/api/v1/devices/hello",
+        json={"device_uid": "dev-unc", "firmware_version": "dev", "capabilities": {}},
+    )
+    assert res_hello.status_code == 200
+    monkeypatch.setenv("HUBEX_CAPS_ENFORCE", "1")
 
     res_list = await client.get(
         "/api/v1/devices",
@@ -112,8 +112,16 @@ async def test_list_devices_includes_unclaimed_after_hello(monkeypatch):
     )
     assert res_list.status_code == 200
     data = res_list.json()
-    assert any(d["device_uid"] == "dev-unc" for d in data)
-    unclaimed = next(d for d in data if d["device_uid"] == "dev-unc")
+    assert not any(d["device_uid"] == "dev-unc" for d in data)
+
+    res_list_all = await client.get(
+        "/api/v1/devices?include_unclaimed=1",
+        headers={"Authorization": f"Bearer {_token('1', ['devices.read', 'cap.admin'])}"},
+    )
+    assert res_list_all.status_code == 200
+    data_all = res_list_all.json()
+    assert any(d["device_uid"] == "dev-unc" for d in data_all)
+    unclaimed = next(d for d in data_all if d["device_uid"] == "dev-unc")
     assert unclaimed["claimed"] is False
 
     await client.aclose()

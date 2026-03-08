@@ -1,8 +1,8 @@
 # CHANGELOG
 
 ## Unreleased
-- UI: show unclaimed devices; add bulk unclaim cleanup and filter dropdown on Devices list.
-- UI: pairing claim clears inputs; devices list supports cleanup selections.
+- Devices: dev-safe include_unclaimed gating (admin-only) and list unclaimed when allowed.
+- UI: bulk unclaim cleanup + filter dropdown on Devices list; pairing claim clears inputs.
 - UI: render /devices page via route + sidebar nav link.
 - Dev: pin bcrypt==3.2.2 to silence passlib bcrypt.__about__ warning.
 - Dev: seed dev/test user caps from current capability map.
