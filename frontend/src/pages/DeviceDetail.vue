@@ -85,6 +85,9 @@ const deviceInfoLoading = computed(
   () => deviceInfo.value === null && deviceInfoError.value === null
 );
 const deviceInfoUpdatedAt = ref<string | null>(null);
+const deviceCardRef = ref<HTMLElement | null>(null);
+const telemetryTableRef = ref<HTMLTableElement | null>(null);
+const DEBUG_REFRESH = false;
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
@@ -233,6 +236,24 @@ function requestRefreshAllThrottled() {
   refreshAll("ws");
 }
 
+function logRefresh(phase: "start" | "end") {
+  if (!DEBUG_REFRESH) return;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[device-detail] refresh:${phase}`,
+    "deviceInfo=",
+    deviceInfo.value?.id ?? "-",
+    "telemetry=",
+    telemetry.value.length,
+    "audit=",
+    auditEntries.value.length,
+    "card=",
+    deviceCardRef.value,
+    "telemetryTable=",
+    telemetryTableRef.value
+  );
+}
+
 function stopPolling() {
   if (pollTimer !== null) {
     window.clearTimeout(pollTimer);
@@ -258,6 +279,7 @@ async function refreshAll(reason: string) {
     pendingRefresh = true;
     return;
   }
+  logRefresh("start");
   pollInFlight = true;
   let hadError = false;
   const [deviceOk, taskOk, historyOk, varsOk] = await Promise.all([
@@ -277,6 +299,7 @@ async function refreshAll(reason: string) {
     pendingRefresh = false;
     refreshAll("queued");
   }
+  logRefresh("end");
 }
 
 function startPolling() {
@@ -335,7 +358,7 @@ async function loadAuditEntries(): Promise<boolean> {
   if (res === null) return false;
   const uid = deviceInfo.value?.device_uid;
   const filtered = uid ? res.filter((entry) => entry.resource === uid) : [];
-  auditEntries.value = filtered.slice(0, 5);
+  reconcileById(auditEntries.value, filtered.slice(0, 5), auditSig);
   return true;
 }
 
@@ -434,6 +457,11 @@ function deviceInfoSig(info: DeviceInfo): string {
     info.last_seen_at ?? "",
     ageBucket,
   ].join("|");
+}
+
+function auditSig(entry: AuditEntry): string {
+  const revoked = entry.metadata?.revoked_count ?? "";
+  return [entry.id, entry.ts, entry.actor_id, entry.action, entry.resource ?? "", revoked].join("|");
 }
 
 function taskHistorySig(item: TaskHistoryItemOut): string {
@@ -1090,7 +1118,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="card">
+  <div class="card" ref="deviceCardRef">
     <div class="card-header-row">
       <h2>Device Detail</h2>
       <div class="pill-group">
@@ -1128,12 +1156,12 @@ onUnmounted(() => {
     </div>
 
     <div class="status-line">
-      <span class="muted">Last updated: {{ deviceInfoUpdatedAt ?? "-" }}</span>
+      <span v-if="deviceInfoError" class="error">{{ deviceInfoError }}</span>
+      <span v-else-if="deviceInfoLoading" class="muted">Loading...</span>
+      <span v-else class="muted">Last updated: {{ deviceInfoUpdatedAt ?? "-" }}</span>
     </div>
 
-    <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
-    <div v-else-if="deviceInfoLoading" style="margin-top: 6px;">Loading...</div>
-    <div v-else class="info-grid">
+    <div class="info-grid">
       <div class="info-item">
         <div class="info-label">ID</div>
         <div class="info-value">{{ deviceInfo?.id ?? deviceId }}</div>
@@ -1479,7 +1507,7 @@ onUnmounted(() => {
         · {{ fmtRelative(latestTelemetry.received_at || "") }}
         <span v-if="latestTelemetry.payload">· {{ payloadPreview(latestTelemetry.payload, false) }}</span>
       </div>
-      <table class="table">
+      <table ref="telemetryTableRef" class="table">
         <thead>
           <tr>
             <th>Time</th>

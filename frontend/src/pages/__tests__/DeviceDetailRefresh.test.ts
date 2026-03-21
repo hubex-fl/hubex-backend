@@ -228,6 +228,24 @@ describe("DeviceDetail refresh", () => {
     app.unmount();
   });
 
+  it("keeps device card mounted on refresh now", async () => {
+    const { app, el } = await mountDetail();
+    await nextTick();
+    await flushPromises();
+    const cardBefore = el.querySelector(".card");
+    expect(cardBefore).toBeTruthy();
+    const refreshBtn = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Refresh now")
+    ) as HTMLButtonElement | undefined;
+    expect(refreshBtn).toBeTruthy();
+    refreshBtn?.click();
+    await nextTick();
+    await flushPromises();
+    const cardAfter = el.querySelector(".card");
+    expect(cardAfter).toBe(cardBefore);
+    app.unmount();
+  });
+
   it("buckets relative time output", async () => {
     vi.useFakeTimers();
     const { app, instance } = await mountDetail();

@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## Unreleased
+- UI: prevent refresh flicker via in-place updates (Device Detail/System Stage).
 - UI: stabilize System Stage/Device Detail refresh; telemetry summary + recovery audit list; add Windows dev runbook.
 - Devices: dev-safe include_unclaimed gating (admin-only) and list unclaimed when allowed.
 - UI: bulk unclaim cleanup + filter dropdown on Devices list; pairing claim clears inputs.

@@ -42,6 +42,25 @@ const entitiesError = ref<string | null>(null);
 const loading = ref(false);
 const stoppedOnError = ref(false);
 const lastUpdated = ref<string | null>(null);
+const devicesTableRef = ref<HTMLTableElement | null>(null);
+const entitiesTableRef = ref<HTMLTableElement | null>(null);
+const DEBUG_REFRESH = false;
+
+function logRefresh(phase: "start" | "end") {
+  if (!DEBUG_REFRESH) return;
+  // eslint-disable-next-line no-console
+  console.log(
+    `[system-stage] refresh:${phase}`,
+    "devices=",
+    devices.value.length,
+    "entities=",
+    entities.value.length,
+    "devicesTable=",
+    devicesTableRef.value,
+    "entitiesTable=",
+    entitiesTableRef.value
+  );
+}
 
 const capsReady = computed(() => caps.status === "ready");
 const canReadDevices = computed(() => hasCap("devices.read"));
@@ -238,6 +257,7 @@ function capsStatusMessage(): string {
 }
 
 async function refreshDevices() {
+  logRefresh("start");
   if (document.visibilityState !== "visible") return;
   if (!capsReady.value) {
     devicesError.value = capsStatusMessage();
@@ -260,10 +280,12 @@ async function refreshDevices() {
   reconcileById(devices.value, next, deviceSig);
   await nextTick();
   scheduleScrollRestore(scrollY);
+  logRefresh("end");
   return true;
 }
 
 async function refreshEntities() {
+  logRefresh("start");
   if (!capsReady.value) {
     entitiesError.value = capsStatusMessage();
     return false;
@@ -291,6 +313,7 @@ async function refreshEntities() {
   if (!next) return true;
   reconcileByKey(entities.value, next, (item) => item.entity_id, entitySig);
   bindingsError.value = null;
+  logRefresh("end");
   return true;
 }
 
@@ -444,7 +467,7 @@ onUnmounted(() => {
         <span v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</span>
         <span v-else-if="loading" class="muted">Loading.</span>
       </div>
-      <table class="table table-fixed entities-table">
+      <table ref="entitiesTableRef" class="table table-fixed entities-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -501,7 +524,7 @@ onUnmounted(() => {
         </span>
         <span v-else-if="loading" class="muted">Loading.</span>
       </div>
-      <table class="table table-fixed devices-table">
+      <table ref="devicesTableRef" class="table table-fixed devices-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -671,5 +694,4 @@ onUnmounted(() => {
   width: 160px;
 }
 </style>
-
 
