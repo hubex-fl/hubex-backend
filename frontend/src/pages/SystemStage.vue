@@ -277,7 +277,11 @@ async function refreshDevices() {
   });
   if (next == null) return false;
   if (!next) return true;
-  reconcileById(devices.value, next, deviceSig);
+  const ordered = [...next].sort((a, b) => {
+    if (a.device_uid !== b.device_uid) return a.device_uid.localeCompare(b.device_uid);
+    return a.id - b.id;
+  });
+  reconcileById(devices.value, ordered, deviceSig);
   await nextTick();
   scheduleScrollRestore(scrollY);
   logRefresh("end");
@@ -311,7 +315,8 @@ async function refreshEntities() {
   });
   if (next == null) return false;
   if (!next) return true;
-  reconcileByKey(entities.value, next, (item) => item.entity_id, entitySig);
+  const ordered = [...next].sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+  reconcileByKey(entities.value, ordered, (item) => item.entity_id, entitySig);
   bindingsError.value = null;
   logRefresh("end");
   return true;
@@ -486,9 +491,6 @@ onUnmounted(() => {
           <tr v-else-if="!canReadEntities">
             <td colspan="4" class="muted">Missing capability: entities.read</td>
           </tr>
-          <tr v-else-if="loading">
-            <td colspan="4" class="muted">Loading.</td>
-          </tr>
           <tr v-else-if="!entities.length">
             <td colspan="4" class="muted">No entities.</td>
           </tr>
@@ -549,9 +551,6 @@ onUnmounted(() => {
             <td colspan="6" class="muted">
               Missing capability: vars.read (runtime states unavailable)
             </td>
-          </tr>
-          <tr v-else-if="loading">
-            <td colspan="6" class="muted">Loading.</td>
           </tr>
           <tr v-else-if="!devices.length">
             <td colspan="6" class="muted">No devices.</td>
@@ -694,4 +693,3 @@ onUnmounted(() => {
   width: 160px;
 }
 </style>
-

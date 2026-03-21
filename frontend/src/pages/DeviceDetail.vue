@@ -88,6 +88,7 @@ const deviceInfoUpdatedAt = ref<string | null>(null);
 const deviceCardRef = ref<HTMLElement | null>(null);
 const telemetryTableRef = ref<HTMLTableElement | null>(null);
 const DEBUG_REFRESH = false;
+const nowBucket = ref(Math.floor(Date.now() / 30000));
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
@@ -138,6 +139,7 @@ let pollBackoffMs = 0;
 let pollInFlight = false;
 let pendingRefresh = false;
 let lastRefreshRequestMs = 0;
+let nowBucketTimer: number | null = null;
 const editingVarKey = ref<string | null>(null);
 const editingVarValue = ref<string>("");
 const reissueBusy = ref(false);
@@ -444,9 +446,6 @@ function bucketSeconds(diffSeconds: number): number {
 }
 
 function deviceInfoSig(info: DeviceInfo): string {
-  const ageBucket = info.last_seen_age_seconds === null
-    ? ""
-    : bucketSeconds(info.last_seen_age_seconds);
   return [
     info.id,
     info.device_uid,
@@ -455,7 +454,6 @@ function deviceInfoSig(info: DeviceInfo): string {
     info.pairing_active ? "1" : "0",
     info.busy ? "1" : "0",
     info.last_seen_at ?? "",
-    ageBucket,
   ].join("|");
 }
 
@@ -812,7 +810,8 @@ function fmtAgoFromIso(iso: string | null) {
   if (!iso) return "-";
   const dt = new Date(iso);
   if (!Number.isFinite(dt.getTime())) return "-";
-  const diffSeconds = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
+  const nowMs = nowBucket.value * 30000;
+  const diffSeconds = Math.max(0, Math.floor((nowMs - dt.getTime()) / 1000));
   return fmtAge(diffSeconds);
 }
 
@@ -1095,6 +1094,9 @@ watch(
 
 onMounted(() => {
   mounted = true;
+  nowBucketTimer = window.setInterval(() => {
+    nowBucket.value = Math.floor(Date.now() / 30000);
+  }, 30000);
   loadTelemetry();
   connectWs();
   document.addEventListener("visibilitychange", onVisibilityChange);
@@ -1105,6 +1107,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   mounted = false;
+  if (nowBucketTimer !== null) {
+    window.clearInterval(nowBucketTimer);
+    nowBucketTimer = null;
+  }
   if (reconnectTimer !== null) {
     window.clearTimeout(reconnectTimer);
     reconnectTimer = null;

@@ -110,6 +110,117 @@ async function mountDetail(capsList: string[] = []) {
   return { app, el, instance, apiFetch, unclaimDevice };
 }
 
+async function mountDetailWithTelemetrySequence() {
+  vi.resetModules();
+  let telemetryCalls = 0;
+  const apiFetch = vi.fn(async (path: string) => {
+    if (path.includes("/current-task")) {
+      return {
+        has_active_lease: false,
+        device_id: 1,
+        task_id: null,
+        task_name: null,
+        task_type: null,
+        task_status: null,
+        claimed_at: null,
+        lease_expires_at: null,
+        lease_seconds_remaining: null,
+        lease_token_hint: null,
+        context_key: null,
+      };
+    }
+    if (path.includes("/task-history")) {
+      return [];
+    }
+    if (path.includes("/telemetry")) {
+      telemetryCalls += 1;
+      return telemetryCalls === 1
+        ? [
+            {
+              id: 201,
+              created_at: "2026-02-01T00:00:05Z",
+              event_type: "demo-a",
+              payload: { k: "v" },
+            },
+            {
+              id: 202,
+              created_at: "2026-02-01T00:00:06Z",
+              event_type: "demo-b",
+              payload: { k: "v2" },
+            },
+          ]
+        : [
+            {
+              id: 201,
+              created_at: "2026-02-01T00:00:05Z",
+              event_type: "demo-a",
+              payload: { k: "v3" },
+            },
+            {
+              id: 202,
+              created_at: "2026-02-01T00:00:06Z",
+              event_type: "demo-b",
+              payload: { k: "v4" },
+            },
+          ];
+    }
+    if (path.includes("/variables/applied")) return [];
+    if (path.startsWith("/api/v1/devices/")) {
+      return {
+        id: 1,
+        device_uid: "dev-1",
+        last_seen_at: "2026-02-01T00:00:00Z",
+        health: "ok",
+        last_seen_age_seconds: 10,
+        state: "claimed",
+        pairing_active: false,
+        busy: false,
+      };
+    }
+    return {};
+  });
+
+  vi.doMock("../../lib/api", () => ({
+    apiFetch,
+    getToken: () => null,
+    reissueDeviceToken: vi.fn(),
+    unclaimDevice: vi.fn(),
+  }));
+  vi.doMock("../../lib/variables", () => ({
+    getEffectiveVariables: vi.fn().mockResolvedValue({ items: [], snapshot_id: null }),
+    putValue: vi.fn(),
+  }));
+  vi.doMock("../../lib/errors", () => ({
+    mapErrorToUserText: (_info: any, fallback: string) => fallback,
+    parseApiError: () => ({}),
+  }));
+  vi.doMock("../../lib/capabilities", () => {
+    const state = { status: "ready", caps: new Set<string>(["telemetry.read"]), error: null };
+    return {
+      useCapabilities: () => state,
+      hasCap: (cap: string) => state.caps.has(cap),
+      refreshCapabilities: vi.fn(),
+    };
+  });
+
+  const DeviceDetail = (await import("../DeviceDetail.vue")).default;
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [{ path: "/devices/:id", component: DeviceDetail }],
+  });
+  await router.push("/devices/1");
+  await router.isReady();
+
+  const el = document.createElement("div");
+  document.body.appendChild(el);
+  const app = createApp(DeviceDetail);
+  app.use(router);
+  app.mount(el);
+  await nextTick();
+  await flushPromises();
+  return { app, el };
+}
+
 async function mountDetailWithDeviceError() {
   vi.resetModules();
   const apiFetch = vi.fn(async (path: string) => {
@@ -312,6 +423,37 @@ describe("DeviceDetail refresh", () => {
       "/api/v1/devices/1/telemetry?limit=50",
       expect.any(Object)
     );
+    app.unmount();
+  });
+
+  it("keeps telemetry row order stable across refresh", async () => {
+    const { app, el } = await mountDetailWithTelemetrySequence();
+    const table = findTelemetryTable(el);
+    expect(table).toBeTruthy();
+    let rowsBefore: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      rowsBefore = Array.from(table?.querySelectorAll("tbody tr") || [])
+        .map((row) => row.textContent || "")
+        .filter((text) => text.includes("demo-"));
+      if (rowsBefore.length >= 2) break;
+      await nextTick();
+      await flushPromises();
+    }
+    expect(rowsBefore[0]).toContain("demo-a");
+    expect(rowsBefore[1]).toContain("demo-b");
+
+    const refresh = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Refresh telemetry")
+    ) as HTMLButtonElement | undefined;
+    refresh?.click();
+    await nextTick();
+    await flushPromises();
+
+    const rowsAfter = Array.from(table?.querySelectorAll("tbody tr") || [])
+      .map((row) => row.textContent || "")
+      .filter((text) => text.includes("demo-"));
+    expect(rowsAfter[0]).toContain("demo-a");
+    expect(rowsAfter[1]).toContain("demo-b");
     app.unmount();
   });
 

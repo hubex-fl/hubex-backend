@@ -274,4 +274,60 @@ describe("SystemStage", () => {
     app.unmount();
     vi.useRealTimers();
   });
+
+  it("keeps row order stable when volatile fields change", async () => {
+    vi.useFakeTimers();
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/v1/devices")) {
+        callCount += 1;
+        const payload = callCount === 1
+          ? '[{\"id\":1,\"device_uid\":\"dev-1\",\"state\":\"claimed\",\"last_seen_at\":\"2026-02-01T00:00:00Z\"},' +
+            '{\"id\":2,\"device_uid\":\"dev-2\",\"state\":\"claimed\",\"last_seen_at\":\"2026-02-01T00:00:10Z\"}]'
+          : '[{\"id\":1,\"device_uid\":\"dev-1\",\"state\":\"claimed\",\"last_seen_at\":\"2026-02-01T00:00:05Z\"},' +
+            '{\"id\":2,\"device_uid\":\"dev-2\",\"state\":\"claimed\",\"last_seen_at\":\"2026-02-01T00:00:15Z\"}]';
+        return Promise.resolve(
+          new Response(payload, {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+      }
+      return Promise.resolve(
+        new Response("[]", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+
+    const { app, el, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await router.isReady();
+    await nextTick();
+    await flushPromises();
+
+    const rowsBefore = Array.from(el.querySelectorAll("tbody tr"))
+      .map((row) => row.textContent || "")
+      .filter((text) => text.includes("dev-"));
+    expect(rowsBefore[0]).toContain("dev-1");
+    expect(rowsBefore[1]).toContain("dev-2");
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await flushPromises();
+
+    const rowsAfter = Array.from(el.querySelectorAll("tbody tr"))
+      .map((row) => row.textContent || "")
+      .filter((text) => text.includes("dev-"));
+    expect(rowsAfter[0]).toContain("dev-1");
+    expect(rowsAfter[1]).toContain("dev-2");
+    const tbodyText = Array.from(el.querySelectorAll("tbody"))
+      .map((tbody) => tbody.textContent || "")
+      .join(" ");
+    expect(tbodyText).not.toContain("Loading.");
+
+    app.unmount();
+    vi.useRealTimers();
+  });
 });
