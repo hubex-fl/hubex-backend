@@ -89,6 +89,25 @@ describe("SystemStage", () => {
     app.unmount();
   });
 
+  it("renders device error without crashing on refresh", async () => {
+    caps.caps = new Set(["devices.read", "vars.read"]);
+    vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/v1/devices")) {
+        return Promise.resolve(new Response("boom", { status: 500, statusText: "Server Error" }));
+      }
+      return Promise.resolve(new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } }));
+    });
+
+    const { app, el, router } = mountSystemStage();
+    await router.push("/system-stage");
+    await router.isReady();
+    await nextTick();
+    await flushPromises();
+    expect(el.textContent).toContain("Failed to load devices");
+    app.unmount();
+  });
+
   it("pauses polling when hidden and resumes on visible", async () => {
     vi.useFakeTimers();
     caps.caps = new Set(["devices.read"]);

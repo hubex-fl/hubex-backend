@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
+import { runRefresh } from "../lib/refresh";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
 
@@ -40,6 +41,7 @@ const devicesError = ref<string | null>(null);
 const entitiesError = ref<string | null>(null);
 const loading = ref(false);
 const stoppedOnError = ref(false);
+const lastUpdated = ref<string | null>(null);
 
 const capsReady = computed(() => caps.status === "ready");
 const canReadDevices = computed(() => hasCap("devices.read"));
@@ -239,52 +241,57 @@ async function refreshDevices() {
   if (document.visibilityState !== "visible") return;
   if (!capsReady.value) {
     devicesError.value = capsStatusMessage();
-    return;
+    return false;
   }
   if (!canReadDevices.value) {
     devicesError.value = "Missing capability: devices.read";
-    return;
+    return false;
   }
   if (devicesInflight) return;
-  devicesInflight = true;
-  devicesError.value = null;
   const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
-  try {
-    const next = await fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal);
-    reconcileById(devices.value, next, deviceSig);
-    await nextTick();
-    scheduleScrollRestore(scrollY);
-  } finally {
-    devicesInflight = false;
-  }
+  const next = await runRefresh<DeviceRow[] | undefined>({
+    fallback: "Failed to load devices",
+    setBusy: (value) => { devicesInflight = value; },
+    setError: (value) => { devicesError.value = value; },
+    action: () => fetchJson<DeviceRow[]>(DEVICES_PATH, { method: "GET" }, signal),
+  });
+  if (next == null) return false;
+  if (!next) return true;
+  reconcileById(devices.value, next, deviceSig);
+  await nextTick();
+  scheduleScrollRestore(scrollY);
+  return true;
 }
 
 async function refreshEntities() {
   if (!capsReady.value) {
     entitiesError.value = capsStatusMessage();
-    return;
+    return false;
   }
   if (!canReadEntities.value) {
     entitiesError.value = "Missing capability: entities.read";
-    return;
+    return false;
   }
   if (entitiesInflight) return;
-  entitiesInflight = true;
-  entitiesError.value = null;
-  try {
-    const next = await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
-    reconcileByKey(entities.value, next, (item) => item.entity_id, entitySig);
-    bindingsError.value = null;
-  } catch (err) {
-    const e = err as ApiError;
-    if (e?.status === 404) {
-      entitiesError.value = null;
-    } else {
-      entitiesError.value = mapError(err);
-    }
-  } finally {
-    entitiesInflight = false;
-  }
+  const next = await runRefresh<EntityRow[] | undefined>({
+    fallback: "Failed to load entities",
+    setBusy: (value) => { entitiesInflight = value; },
+    setError: (value) => { entitiesError.value = value; },
+    action: async () => {
+      try {
+        return await fetchJson<EntityRow[]>(ENTITIES_PATH, { method: "GET" }, signal);
+      } catch (err) {
+        const e = err as ApiError;
+        if (e?.status === 404) return [];
+        throw err;
+      }
+    },
+  });
+  if (next == null) return false;
+  if (!next) return true;
+  reconcileByKey(entities.value, next, (item) => item.entity_id, entitySig);
+  bindingsError.value = null;
+  return true;
 }
 
 async function refreshBindings() {
@@ -348,8 +355,11 @@ async function refreshAll() {
   if (stoppedOnError.value) return;
   loading.value = true;
   try {
-    await Promise.all([refreshDevices(), refreshEntities()]);
+    const [devicesOk, entitiesOk] = await Promise.all([refreshDevices(), refreshEntities()]);
     await refreshBindings();
+    if (devicesOk && entitiesOk) {
+      lastUpdated.value = new Date().toLocaleTimeString();
+    }
   } catch (err) {
     if (!devicesError.value) devicesError.value = mapError(err);
     stoppedOnError.value = true;
@@ -411,7 +421,13 @@ onUnmounted(() => {
   <div class="page">
     <div class="page-header">
       <h2>System Stage (read-only)</h2>
-      <button class="btn secondary" @click="retryAll">Retry</button>
+      <div class="page-meta">
+        <span v-if="loading" class="muted">Refreshing...</span>
+        <span v-else class="muted">Last updated: {{ lastUpdated ?? "-" }}</span>
+      </div>
+      <button class="btn secondary" :disabled="caps.status !== 'ready'" @click="retryAll">
+        Retry
+      </button>
     </div>
 
     <div class="status-line">
@@ -559,6 +575,17 @@ onUnmounted(() => {
 <style scoped>
 .row-clickable {
   cursor: pointer;
+}
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 .status-line,
 .section-status {

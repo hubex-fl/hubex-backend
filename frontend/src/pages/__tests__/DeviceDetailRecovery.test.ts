@@ -35,11 +35,17 @@ async function loadPage(caps: string[]) {
     }
     return {};
   });
+  const reissueDeviceToken = vi.fn().mockResolvedValue({
+    device_id: 1,
+    device_uid: "dev-1",
+    device_token: "token-123",
+    revoked_count: 1,
+  });
 
   vi.doMock("../../lib/api", () => ({
     apiFetch,
     getToken: () => null,
-    reissueDeviceToken: vi.fn(),
+    reissueDeviceToken,
     setToken: vi.fn(),
     clearToken: vi.fn(),
   }));
@@ -76,7 +82,7 @@ async function loadPage(caps: string[]) {
 
   await new Promise((r) => setTimeout(r, 0));
   await new Promise((r) => setTimeout(r, 0));
-  return { app, el };
+  return { app, el, reissueDeviceToken };
 }
 
 afterEach(() => {
@@ -96,5 +102,25 @@ describe("DeviceDetail Recovery", () => {
     expect(el.textContent).toContain("Missing cap devices.token.reissue");
     expect(el.textContent).not.toContain("Reissue Device Token");
     app.unmount();
+  });
+
+  it("shows token once and clears on remount", async () => {
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("valid reason");
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, el } = await loadPage(["devices.token.reissue"]);
+    const button = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Reissue Device Token")
+    ) as HTMLButtonElement | undefined;
+    expect(button).toBeTruthy();
+    button?.click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(el.textContent).toContain("token-123");
+    app.unmount();
+
+    const { app: app2, el: el2 } = await loadPage(["devices.token.reissue"]);
+    expect(el2.textContent).not.toContain("token-123");
+    app2.unmount();
+    promptSpy.mockRestore();
+    confirmSpy.mockRestore();
   });
 });

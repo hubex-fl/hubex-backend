@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { apiFetch, getToken, reissueDeviceToken, unclaimDevice } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { hasCap, useCapabilities } from "../lib/capabilities";
+import { runRefresh } from "../lib/refresh";
 import {
   getEffectiveVariables,
   putValue,
@@ -67,15 +68,27 @@ type UserTelemetryOut = {
   payload?: Record<string, any> | null;
 };
 
+type AuditEntry = {
+  id: number;
+  ts: string;
+  actor_type: string;
+  actor_id: string;
+  action: string;
+  resource: string | null;
+  metadata?: Record<string, any> | null;
+};
+
 const deviceInfo = ref<DeviceInfo | null>(null);
 const deviceInfoError = ref<string | null>(null);
 const caps = useCapabilities();
 const deviceInfoLoading = computed(
   () => deviceInfo.value === null && deviceInfoError.value === null
 );
+const deviceInfoUpdatedAt = ref<string | null>(null);
 
 const telemetry = ref<TelemetryItem[]>([]);
 const telemetryError = ref<string | null>(null);
+const latestTelemetry = computed(() => telemetry.value[0] ?? null);
 
 const currentTask = ref<CurrentTaskOut | null>(null);
 const currentTaskError = ref<string | null>(null);
@@ -133,6 +146,10 @@ const canReissueToken = computed(() => hasCap("devices.token.reissue"));
 const capsUnavailable = computed(() => caps.status !== "ready");
 const canReadTelemetry = computed(() => hasCap("telemetry.read"));
 const telemetryLoading = ref(false);
+const canReadAudit = computed(() => hasCap("audit.read"));
+const auditEntries = ref<AuditEntry[]>([]);
+const auditError = ref<string | null>(null);
+const auditLoading = ref(false);
 const canUnclaim = computed(() => hasCap("devices.unclaim"));
 const unclaimBusy = ref(false);
 const unclaimConfirm = ref(false);
@@ -273,30 +290,53 @@ function telemetryAllowed(): boolean {
 
 async function loadTelemetry(): Promise<boolean> {
   if (!telemetryAllowed()) return true;
-  telemetryError.value = null;
-  telemetryLoading.value = true;
-  try {
-    const res = await guardedFetch("telemetry", (signal) =>
+  const res = await runRefresh<UserTelemetryOut[] | undefined>({
+    fallback: "Failed to load telemetry",
+    setBusy: (value) => { telemetryLoading.value = value; },
+    setError: (value) => { telemetryError.value = value; },
+    action: () => guardedFetch("telemetry", (signal) =>
       apiFetch<UserTelemetryOut[]>(
         `/api/v1/devices/${deviceId.value}/telemetry?limit=50`,
         { signal }
       )
-    );
-    if (!res) return true;
-    const next = res.map((row) => ({
-      id: row.id,
-      received_at: row.created_at,
-      event_type: row.event_type ?? null,
-      payload: row.payload ?? null,
-    }));
-    reconcileById(telemetry.value, next, telemetrySig);
-    return true;
-  } catch (e: any) {
-    telemetryError.value = formatApiError(e, "Failed to load telemetry");
+    ),
+  });
+  if (res === null) return false;
+  if (!res) return true;
+  const next = res.map((row) => ({
+    id: row.id,
+    received_at: row.created_at,
+    event_type: row.event_type ?? null,
+    payload: row.payload ?? null,
+  }));
+  reconcileById(telemetry.value, next, telemetrySig);
+  return true;
+}
+
+async function loadAuditEntries(): Promise<boolean> {
+  if (caps.status !== "ready") {
+    auditError.value = null;
+    auditLoading.value = false;
     return false;
-  } finally {
-    telemetryLoading.value = false;
   }
+  if (!canReadAudit.value) {
+    auditError.value = null;
+    auditLoading.value = false;
+    return false;
+  }
+  const res = await runRefresh<AuditEntry[] | undefined>({
+    fallback: "Failed to load audit",
+    setBusy: (value) => { auditLoading.value = value; },
+    setError: (value) => { auditError.value = value; },
+    action: () => apiFetch<AuditEntry[]>(
+      "/api/v1/audit?action=device.token.reissue&limit=50"
+    ),
+  });
+  if (res === null) return false;
+  const uid = deviceInfo.value?.device_uid;
+  const filtered = uid ? res.filter((entry) => entry.resource === uid) : [];
+  auditEntries.value = filtered.slice(0, 5);
+  return true;
 }
 
 function connectWs() {
@@ -476,29 +516,29 @@ function hasVariablesChanged(next: EffectiveVariableOut[], snapshotId: string | 
 }
 
 async function loadDeviceInfo(): Promise<boolean> {
-  deviceInfoError.value = null;
-  try {
-    const res = await guardedFetch("deviceInfo", (signal) =>
+  const res = await runRefresh<DeviceInfo | undefined>({
+    fallback: "Failed to load device",
+    setError: (value) => { deviceInfoError.value = value; },
+    action: () => guardedFetch("deviceInfo", (signal) =>
       apiFetch<DeviceInfo>(`/api/v1/devices/${deviceId.value}`, { signal })
-    );
-    if (!res) return true;
-    const sig = deviceInfoSig(res);
-    const current = deviceInfo.value;
-    if (current && current.__sig === sig) {
-      return true;
-    }
-    if (current) {
-      Object.assign(current, res);
-      current.__sig = sig;
-    } else {
-      res.__sig = sig;
-      deviceInfo.value = res;
-    }
+    ),
+  });
+  if (res === null) return false;
+  if (!res) return true;
+  const sig = deviceInfoSig(res);
+  const current = deviceInfo.value;
+  if (current && current.__sig === sig) {
     return true;
-  } catch (e: any) {
-    deviceInfoError.value = formatApiError(e, "Failed to load device");
-    return false;
   }
+  if (current) {
+    Object.assign(current, res);
+    current.__sig = sig;
+  } else {
+    res.__sig = sig;
+    deviceInfo.value = res;
+  }
+  deviceInfoUpdatedAt.value = new Date().toLocaleTimeString();
+  return true;
 }
 
 function stopLeaseCountdown() {
@@ -799,8 +839,10 @@ function upsertEffectiveItems(next: EffectiveVariableOut[]) {
 }
 
 function refreshNow() {
+  if (capsUnavailable.value) return;
   refreshAll("manual");
   loadTelemetry();
+  loadAuditEntries();
 }
 
 async function copyUid() {
@@ -844,6 +886,7 @@ async function handleReissueToken() {
     reissueToken.value = res.device_token;
     reissueRevokedCount.value = res.revoked_count;
     reissueCopied.value = false;
+    loadAuditEntries();
   } catch (e: any) {
     reissueError.value = formatApiError(e, "Failed to reissue device token");
   } finally {
@@ -966,6 +1009,7 @@ function onVisibilityChange() {
 function resetForDeviceChange(nextId: string) {
   deviceId.value = nextId;
   deviceInfo.value = null;
+  deviceInfoUpdatedAt.value = null;
   currentTask.value = null;
   taskHistory.value = [];
   telemetry.value = [];
@@ -977,6 +1021,9 @@ function resetForDeviceChange(nextId: string) {
   variablesAppliedSummary.value = null;
   revealVariableKeys.value = new Set();
   expandedTelemetry.value = new Set();
+  clearReissueToken();
+  auditEntries.value = [];
+  auditError.value = null;
 
   stopLeaseCountdown();
   abortInflight();
@@ -1001,6 +1048,15 @@ watch(
 );
 
 watch(
+  () => [caps.status, canReadAudit.value, deviceInfo.value?.device_uid],
+  ([status, canRead, uid]) => {
+    if (status === "ready" && canRead && uid) {
+      loadAuditEntries();
+    }
+  }
+);
+
+watch(
   () => route.params.id,
   (next) => {
     if (!next) return;
@@ -1015,6 +1071,7 @@ onMounted(() => {
   connectWs();
   document.addEventListener("visibilitychange", onVisibilityChange);
   refreshAll("mount");
+  loadAuditEntries();
   startPolling();
 });
 
@@ -1057,7 +1114,7 @@ onUnmounted(() => {
     </div>
 
     <div class="card-actions">
-      <button class="btn secondary" @click="refreshNow">Refresh now</button>
+      <button class="btn secondary" :disabled="capsUnavailable" @click="refreshNow">Refresh now</button>
       <button class="btn secondary" :disabled="!deviceInfo?.device_uid" @click="copyUid">
         Copy UID
       </button>
@@ -1068,6 +1125,10 @@ onUnmounted(() => {
       >
         Open pairing panel
       </button>
+    </div>
+
+    <div class="status-line">
+      <span class="muted">Last updated: {{ deviceInfoUpdatedAt ?? "-" }}</span>
     </div>
 
     <div v-if="deviceInfoError" class="error">{{ deviceInfoError }}</div>
@@ -1288,6 +1349,24 @@ onUnmounted(() => {
             <button class="btn secondary" @click="clearReissueToken">Close</button>
           </div>
         </div>
+
+        <div class="section-status" style="margin-top: 12px;">
+          <span v-if="auditError" class="error">{{ auditError }}</span>
+          <span v-else-if="!canReadAudit" class="muted">Missing capability: audit.read.</span>
+          <span v-else-if="auditLoading" class="muted">Loading audit...</span>
+        </div>
+        <div v-if="canReadAudit && !auditError" style="margin-top: 6px;">
+          <div class="muted" style="margin-bottom: 4px;">
+            Recent reissue audit
+            <router-link to="/audit" class="link">Open audit</router-link>
+          </div>
+          <ul class="audit-list" v-if="auditEntries.length">
+            <li v-for="entry in auditEntries" :key="entry.id">
+              {{ fmtRelative(entry.ts) }} · {{ entry.actor_id }} · revoked {{ entry.metadata?.revoked_count ?? 0 }}
+            </li>
+          </ul>
+          <div v-else class="muted">No recent audit entries.</div>
+        </div>
       </div>
     </div>
 
@@ -1391,6 +1470,15 @@ onUnmounted(() => {
         <span v-else-if="!canReadTelemetry" class="muted">Missing capability: telemetry.read.</span>
         <span v-else-if="telemetryError" class="error">{{ telemetryError }}</span>
       </div>
+      <div
+        v-if="latestTelemetry && !telemetryError"
+        class="muted"
+        style="margin: 6px 0;"
+      >
+        Latest: <strong>{{ latestTelemetry.event_type || "unknown" }}</strong>
+        · {{ fmtRelative(latestTelemetry.received_at || "") }}
+        <span v-if="latestTelemetry.payload">· {{ payloadPreview(latestTelemetry.payload, false) }}</span>
+      </div>
       <table class="table">
         <thead>
           <tr>
@@ -1407,7 +1495,7 @@ onUnmounted(() => {
             <td colspan="3" class="muted">Missing capability: telemetry.read.</td>
           </tr>
           <tr v-else-if="telemetry.length === 0">
-            <td colspan="3">No telemetry yet</td>
+            <td colspan="3">No telemetry yet. Device must POST /api/v1/telemetry.</td>
           </tr>
           <tr
             v-else
@@ -1431,3 +1519,18 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.status-line {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+.audit-list {
+  margin: 0;
+  padding-left: 16px;
+}
+.link {
+  margin-left: 6px;
+}
+</style>
