@@ -426,6 +426,25 @@ describe("DeviceDetail refresh", () => {
     app.unmount();
   });
 
+  it("keeps telemetry table node stable across refresh", async () => {
+    const { app, el } = await mountDetailWithTelemetrySequence();
+    const tableBefore = findTelemetryTable(el);
+    expect(tableBefore).toBeTruthy();
+
+    const refresh = Array.from(el.querySelectorAll("button")).find((btn) =>
+      btn.textContent?.includes("Refresh telemetry")
+    ) as HTMLButtonElement | undefined;
+    refresh?.click();
+    await nextTick();
+    await flushPromises();
+
+    const tableAfter = findTelemetryTable(el);
+    expect(tableAfter).toBe(tableBefore);
+    const tbodyText = tableAfter?.querySelector("tbody")?.textContent || "";
+    expect(tbodyText).not.toContain("Loading");
+    app.unmount();
+  });
+
   it("keeps telemetry row order stable across refresh", async () => {
     const { app, el } = await mountDetailWithTelemetrySequence();
     const table = findTelemetryTable(el);

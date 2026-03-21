@@ -1228,10 +1228,10 @@ onUnmounted(() => {
         <span v-if="variablesSnapshotId && variablesAppliedSummary"> • </span>
         <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
       </div>
-      <div v-if="variablesError" class="error" style="margin-top: 6px;">
-        {{ variablesError }}
+      <div class="section-status" style="margin-top: 6px;">
+        <span v-if="variablesError" class="error">{{ variablesError }}</span>
+        <span v-else-if="variablesLoading" class="muted">Loading variables...</span>
       </div>
-      <div v-else-if="variablesLoading" style="margin-top: 6px;">Loading...</div>
       <div v-if="addOverrideOpen" class="action-strip">
         <div class="info-grid" style="margin-top: 0;">
           <div class="info-item">
@@ -1263,7 +1263,7 @@ onUnmounted(() => {
           <button class="btn secondary" @click="closeAddOverride">Cancel</button>
         </div>
       </div>
-      <table v-if="!variablesLoading" class="table table-fixed" style="margin-top: 6px;">
+      <table class="table table-fixed variables-table" style="margin-top: 6px;">
         <thead>
           <tr>
             <th class="ev-col-key">Key</th>
@@ -1287,7 +1287,7 @@ onUnmounted(() => {
             <td class="ev-cell ev-col-version">
               <span class="cell-mono">{{ row.version ?? "-" }}</span>
             </td>
-            <td class="ev-cell ev-col-updated">
+            <td class="ev-cell ev-col-updated tabular-nums">
               <span class="cell-mono">{{ row.updated_at ? fmtTime(row.updated_at) : "-" }}</span>
             </td>
             <td class="ev-cell ev-col-actions">
@@ -1455,8 +1455,12 @@ onUnmounted(() => {
     <div class="section-divider"></div>
     <div style="margin-bottom: 14px;">
       <strong>Recent Tasks</strong>
-      <div v-if="taskHistory.length === 0" style="margin-top: 6px;">No recent tasks</div>
-      <table v-else class="table" style="margin-top: 6px;">
+      <table class="table table-fixed history-table" style="margin-top: 6px;">
+        <colgroup>
+          <col style="width: 260px;">
+          <col style="width: 140px;">
+          <col>
+        </colgroup>
         <thead>
           <tr>
             <th>Task</th>
@@ -1465,7 +1469,10 @@ onUnmounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in taskHistory" :key="t.task_id" v-memo="[t.__sig]">
+          <tr v-if="taskHistory.length === 0">
+            <td colspan="3">No recent tasks</td>
+          </tr>
+          <tr v-else v-for="t in taskHistory" :key="t.task_id" v-memo="[t.__sig]">
             <td>
               {{ t.task_name }}
               <span v-if="t.task_type !== t.task_name">({{ t.task_type }})</span>
@@ -1475,7 +1482,7 @@ onUnmounted(() => {
                 {{ t.task_status }}
               </span>
             </td>
-            <td>
+            <td class="tabular-nums">
               <span v-if="t.finished_at">finished {{ fmtAgoFromIso(t.finished_at) }}</span>
               <span v-else-if="t.claimed_at">claimed {{ fmtAgoFromIso(t.claimed_at) }}</span>
               <span v-else>-</span>
@@ -1513,7 +1520,12 @@ onUnmounted(() => {
         · {{ fmtRelative(latestTelemetry.received_at || "") }}
         <span v-if="latestTelemetry.payload">· {{ payloadPreview(latestTelemetry.payload, false) }}</span>
       </div>
-      <table ref="telemetryTableRef" class="table">
+      <table ref="telemetryTableRef" class="table table-fixed telemetry-table">
+        <colgroup>
+          <col style="width: 160px;">
+          <col style="width: 140px;">
+          <col>
+        </colgroup>
         <thead>
           <tr>
             <th>Time</th>
@@ -1537,7 +1549,7 @@ onUnmounted(() => {
             :key="t.id"
             v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
           >
-            <td :title="fmtTime(t.received_at || t.created_at || '')">
+            <td class="tabular-nums" :title="fmtTime(t.received_at || t.created_at || '')">
               {{ fmtRelative(t.received_at || t.created_at) }}
             </td>
             <td>{{ t.event_type || "-" }}</td>
@@ -1559,6 +1571,32 @@ onUnmounted(() => {
   min-height: 24px;
   display: flex;
   align-items: center;
+}
+.section-status {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-fixed {
+  table-layout: fixed;
+  width: 100%;
+}
+.telemetry-table th,
+.telemetry-table td,
+.history-table th,
+.history-table td,
+.variables-table th,
+.variables-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 .audit-list {
   margin: 0;

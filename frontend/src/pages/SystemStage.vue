@@ -44,7 +44,7 @@ const stoppedOnError = ref(false);
 const lastUpdated = ref<string | null>(null);
 const devicesTableRef = ref<HTMLTableElement | null>(null);
 const entitiesTableRef = ref<HTMLTableElement | null>(null);
-const DEBUG_REFRESH = false;
+const DEBUG_REFRESH = false; // set true locally to verify DOM stability
 
 function logRefresh(phase: "start" | "end") {
   if (!DEBUG_REFRESH) return;
@@ -563,7 +563,7 @@ onUnmounted(() => {
             :class="device.state === 'claimed' ? 'row-clickable' : ''"
             @click="onRowClick(device)"
           >
-            <td>{{ device.id }}</td>
+            <td class="tabular-nums">{{ device.id }}</td>
             <td>
               <router-link :to="`/devices/${device.id}`" @click.stop>
                 {{ device.device_uid }}
@@ -586,7 +586,7 @@ onUnmounted(() => {
               </div>
             </td>
             <td>{{ device.state ?? "Unknown" }}</td>
-            <td>{{ lastSeen(device) ?? "-" }}</td>
+            <td class="tabular-nums">{{ lastSeen(device) ?? "-" }}</td>
           </tr>
         </tbody>
       </table>
@@ -621,6 +621,9 @@ onUnmounted(() => {
 .table-fixed {
   table-layout: fixed;
   width: 100%;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 .entities-table th,
 .entities-table td,
