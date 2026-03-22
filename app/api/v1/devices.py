@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device, get_current_user
 from app.core.security import hash_device_token
+from app.core.system_events import emit_system_event
 from app.db.models.device import Device
 from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
@@ -457,6 +458,10 @@ async def unclaim_device(
             trace_id=None,
         )
     )
+    await emit_system_event(db, "device.unclaimed", {
+        "device_id": device.id,
+        "device_uid": device.device_uid,
+    })
     await db.commit()
 
     return DeviceUnclaimOut(
@@ -737,6 +742,12 @@ async def create_task_for_device(
         idempotency_key=data.idempotency_key,
     )
     db.add(task)
+    await db.flush()
+    await emit_system_event(db, "task.queued", {
+        "task_id": task.id,
+        "task_type": data.type,
+        "device_id": device_id,
+    })
     await db.commit()
     await db.refresh(task)
     return UserTaskCreateOut(id=task.id, status=task.status, created_at=task.created_at)

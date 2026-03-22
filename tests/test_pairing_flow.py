@@ -14,6 +14,7 @@ from app.api.deps_auth import get_current_user
 from app.api.v1.pairing import router as pairing_router, legacy_router as pairing_legacy_router
 from app.db.base import Base
 from app.db.models.device import Device
+from app.db.models.events import EventV1
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.user import User
 from app.db.models.audit import AuditV1Entry
@@ -28,6 +29,7 @@ def _create_tables(metadata, conn) -> None:
             DeviceToken.__table__,
             User.__table__,
             AuditV1Entry.__table__,
+            EventV1.__table__,
         ],
     )
     # confirm/claim paths reference tasks; create a minimal table for sqlite tests

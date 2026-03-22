@@ -49,6 +49,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "signals.ingest",
     "executions.read",
     "executions.write",
+    "webhooks.read",
+    "webhooks.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -142,6 +144,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/executions/definitions"): ["executions.read"],
     ("GET", "/api/v1/executions/runs/{run_id}"): ["executions.read"],
     ("GET", "/api/v1/executions/definitions/{definition_key}"): ["executions.read"],
+    ("POST", "/api/v1/webhooks"): ["webhooks.write"],
+    ("GET", "/api/v1/webhooks"): ["webhooks.read"],
+    ("GET", "/api/v1/webhooks/{webhook_id}"): ["webhooks.read"],
+    ("DELETE", "/api/v1/webhooks/{webhook_id}"): ["webhooks.write"],
 }
 
 # Public whitelist (auth-free, minimal, static).

@@ -11,6 +11,7 @@ from app.api.v1.telemetry import ws_router as telemetry_ws_router
 from app.core.config import settings
 from app.core.modules import sync_module_registry
 from app.core.token_revoke import cleanup_expired_revocations
+from app.core.webhook_dispatcher import webhook_dispatcher_loop
 from app.db.session import AsyncSessionLocal
 
 logger = logging.getLogger("uvicorn.error")
@@ -36,15 +37,18 @@ async def lifespan(app: FastAPI):
         await sync_module_registry(db)
 
     cleanup_task = asyncio.create_task(_token_cleanup_loop())
+    dispatcher_task = asyncio.create_task(webhook_dispatcher_loop())
 
     yield
 
     # Shutdown
     cleanup_task.cancel()
-    try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
+    dispatcher_task.cancel()
+    for task in (cleanup_task, dispatcher_task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(lifespan=lifespan)

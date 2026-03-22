@@ -17,6 +17,7 @@ from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
 from app.db.base import Base
 from app.db.models.audit import AuditV1Entry
 from app.db.models.device import Device
+from app.db.models.events import EventV1
 from app.db.models.pairing import DeviceToken
 from app.db.models.user import User
 
@@ -29,6 +30,7 @@ def _create_tables(metadata, conn) -> None:
             Device.__table__,
             DeviceToken.__table__,
             AuditV1Entry.__table__,
+            EventV1.__table__,
         ],
     )
 

@@ -13,6 +13,7 @@ from app.api.deps_auth import get_current_user
 from app.api.deps_rate_limit import FixedWindowLimiter
 from app.api.v1.error_utils import raise_api_error
 from app.core.security import hash_device_token
+from app.core.system_events import emit_system_event
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.tasks import Task
@@ -492,6 +493,11 @@ async def confirm_pairing(
             token_plain = _gen_device_token_plain()
             token_hash = _hash_token(token_plain)
             db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
+            await emit_system_event(db, "device.paired", {
+                "device_id": device.id,
+                "device_uid": device.device_uid,
+                "owner_user_id": ps.user_id,
+            })
         await db.commit()
     except Exception:
         await db.rollback()

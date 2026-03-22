@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device
 from app.api.v1.validators import validate_json_object
+from app.core.system_events import emit_system_event
 from app.db.models.device import Device
 from app.db.models.tasks import ExecutionContext, Task
 
@@ -197,6 +198,14 @@ async def complete_task(
     task.completed_at = now
     task.result = data.result
     task.error = data.error
+    event_type = "task.completed" if data.status == "done" else "task.failed"
+    await emit_system_event(db, event_type, {
+        "task_id": task.id,
+        "task_type": task.type,
+        "device_id": device.id,
+        "device_uid": device.device_uid,
+        "status": data.status,
+    })
     await db.commit()
     return TaskCompleteOut(id=task.id, status=task.status, completed_at=task.completed_at)
 

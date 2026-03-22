@@ -15,6 +15,7 @@ from app.api.deps_auth import (
 )
 from app.api.v1.error_utils import raise_api_error
 from app.core import variables as vars_core
+from app.core.system_events import emit_system_event
 from app.core.variable_effects import run_effects_once
 from app.schemas.variables import (
     VariableDefinitionIn,
@@ -190,6 +191,12 @@ async def put_value(
             actor_user_id=current_user.id,
             actor_device_id=None,
         )
+        await emit_system_event(db, "variable.changed", {
+            "key": data.key,
+            "scope": data.scope,
+            "device_uid": data.device_uid,
+            "version": value.version,
+        })
         await db.commit()
     except Exception:
         await db.rollback()

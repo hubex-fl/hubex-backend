@@ -14,6 +14,7 @@ from sqlalchemy import select, desc
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device
 from app.core.security import decode_access_token
+from app.core.system_events import emit_system_event
 from app.realtime import hub
 from app.db.models.device import Device
 from app.db.models.telemetry import DeviceTelemetry
@@ -110,6 +111,15 @@ async def ingest_telemetry(
         payload=data.payload,
     )
     db.add(telemetry)
+    await emit_system_event(db, "telemetry.received", {
+        "device_uid": device.device_uid,
+        "device_id": device.id,
+        "event_type": data.event_type,
+    })
+    await emit_system_event(db, "device.online", {
+        "device_uid": device.device_uid,
+        "device_id": device.id,
+    })
     await db.commit()
     await db.refresh(telemetry)
     await hub.broadcast(device.id, _serialize_telemetry(telemetry))

@@ -24,6 +24,7 @@ from .providers import ProviderType, ProviderInstance
 from .signals import SignalV1
 from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker, ExecutionWorkerDefinition
 from .modules import ModuleRegistry
+from .webhooks import WebhookSubscription, WebhookDelivery
 
 __all__ = [
     "User",
@@ -58,4 +59,6 @@ __all__ = [
     "ExecutionWorker",
     "ExecutionWorkerDefinition",
     "ModuleRegistry",
+    "WebhookSubscription",
+    "WebhookDelivery",
 ]
