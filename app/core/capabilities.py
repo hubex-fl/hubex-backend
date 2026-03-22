@@ -146,6 +146,8 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
 
 # Public whitelist (auth-free, minimal, static).
 PUBLIC_WHITELIST: set[tuple[str, str]] = {
+    ("POST", "/api/v1/auth/register"),
+    ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/devices/hello"),
     ("POST", "/api/v1/devices/pairing/hello"),
     ("POST", "/api/v1/pairing/hello"),
