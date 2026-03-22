@@ -150,6 +150,7 @@ const reissueCopied = ref(false);
 const canReissueToken = computed(() => hasCap("devices.token.reissue"));
 const capsUnavailable = computed(() => caps.status !== "ready");
 const canReadTelemetry = computed(() => hasCap("telemetry.read"));
+const canAdmin = computed(() => hasCap("cap.admin"));
 const telemetryLoading = ref(false);
 const canReadAudit = computed(() => hasCap("audit.read"));
 const auditEntries = ref<AuditEntry[]>([]);
@@ -160,6 +161,12 @@ const unclaimBusy = ref(false);
 const unclaimConfirm = ref(false);
 const unclaimError = ref<string | null>(null);
 const unclaimStatus = ref<string | null>(null);
+
+const isUnclaimed = computed(() => {
+  const state = deviceInfo.value?.state;
+  return state === "provisioned_unclaimed" || state === "pairing_active" || state === "unprovisioned";
+});
+const restrictUnclaimed = computed(() => isUnclaimed.value && !canAdmin.value);
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -931,6 +938,46 @@ function cancelUnclaimConfirm() {
   unclaimConfirm.value = false;
 }
 
+function resetForExit() {
+  deviceInfo.value = null;
+  deviceInfoUpdatedAt.value = null;
+  deviceInfoError.value = null;
+  currentTask.value = null;
+  currentTaskError.value = null;
+  taskHistory.value = [];
+  taskHistoryError.value = null;
+  telemetry.value = [];
+  telemetryError.value = null;
+  telemetryLoading.value = false;
+  variables.value = [];
+  variablesSnapshotId.value = null;
+  variablesAppliedSummary.value = null;
+  variablesError.value = null;
+  variablesLoading.value = false;
+  addOverrideOpen.value = false;
+  addOverrideKey.value = "";
+  addOverrideValue.value = "";
+  addOverrideError.value = null;
+  revealVariableKeys.value = new Set();
+  expandedTelemetry.value = new Set();
+  clearReissueToken();
+  auditEntries.value = [];
+  auditError.value = null;
+  auditLoading.value = false;
+  unclaimStatus.value = null;
+  unclaimError.value = null;
+  unclaimConfirm.value = false;
+
+  if (reconnectTimer !== null) {
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  stopLeaseCountdown();
+  abortInflight();
+  stopPolling();
+  cleanupWs();
+}
+
 async function confirmUnclaim() {
   if (!deviceInfo.value) return;
   unclaimError.value = null;
@@ -939,8 +986,8 @@ async function confirmUnclaim() {
   try {
     const res = await unclaimDevice(deviceInfo.value.id);
     unclaimStatus.value = `Unclaimed. Revoked ${res.revoked_count} tokens.`;
-    unclaimConfirm.value = false;
-    refreshAll("manual");
+    resetForExit();
+    await router.push("/devices");
   } catch (e: any) {
     unclaimError.value = formatApiError(e, "Failed to unclaim device");
   } finally {
@@ -1141,7 +1188,7 @@ onUnmounted(() => {
           {{
             currentTask?.has_active_lease && !isLeaseExpiredLocally
               ? (currentTask?.task_status ?? "active")
-              : "no lease"
+              : "idle"
           }}
         </span>
       </div>
@@ -1200,6 +1247,14 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <div v-if="isUnclaimed" class="pairing-warn" style="margin-top: 8px;">
+      Device is unclaimed.
+    </div>
+    <div v-if="restrictUnclaimed" class="muted" style="margin-top: 6px;">
+      Claim this device to view telemetry, tasks, variables, and recovery tools.
+    </div>
+
+    <template v-if="!restrictUnclaimed">
     <div class="section-divider"></div>
     <div style="margin-bottom: 14px;">
       <div class="card-header-row">
@@ -1338,7 +1393,7 @@ onUnmounted(() => {
         {{ currentTaskError }}
       </div>
       <div style="margin-top: 6px;">
-        <div><strong>Status:</strong> {{ currentTask?.task_status ?? "no lease" }}</div>
+        <div><strong>Status:</strong> {{ currentTask?.task_status ?? "idle" }}</div>
         <div><strong>Lease expires in:</strong> {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}</div>
       </div>
     </div>
@@ -1563,6 +1618,7 @@ onUnmounted(() => {
         </tbody>
       </table>
     </div>
+    </template>
   </div>
 </template>
 

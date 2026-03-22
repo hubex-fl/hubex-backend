@@ -402,6 +402,9 @@ async function claimPairing() {
     pairingDeviceUid.value = "";
     pairingLookupStatus.value = "idle";
     pairingLookup.value = null;
+    if (filterBy.value !== "all") {
+      filterBy.value = "all";
+    }
     await load({ silent: true });
     await router.replace("/devices");
   } catch (err: any) {

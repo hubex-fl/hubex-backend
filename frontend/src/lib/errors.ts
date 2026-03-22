@@ -85,7 +85,7 @@ export function mapErrorToUserText(
   if (msg.includes("403")) return "Forbidden.";
   if (msg.includes("404")) return "Not found.";
   if (msg.includes("409")) return "Conflict.";
-  if (msg.includes("410")) return "Expired. Start pairing again.";
+  if (msg.includes("410")) return "Expired. Get a new pairing code from the device.";
 
   return fallback;
 }
