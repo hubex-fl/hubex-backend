@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Integer, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Integer, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -18,6 +18,9 @@ class Entity(Base):
 
 class EntityDeviceBinding(Base):
     __tablename__ = "entity_device_bindings"
+    __table_args__ = (
+        UniqueConstraint("entity_id", "device_id", name="uq_entity_device_binding"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[str] = mapped_column(ForeignKey("entities.entity_id"), index=True, nullable=False)

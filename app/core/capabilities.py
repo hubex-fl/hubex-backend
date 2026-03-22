@@ -51,6 +51,9 @@ CAPABILITY_REGISTRY: set[str] = {
     "executions.write",
     "webhooks.read",
     "webhooks.write",
+    "entities.write",
+    "groups.read",
+    "groups.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -148,6 +151,18 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/webhooks"): ["webhooks.read"],
     ("GET", "/api/v1/webhooks/{webhook_id}"): ["webhooks.read"],
     ("DELETE", "/api/v1/webhooks/{webhook_id}"): ["webhooks.write"],
+    ("POST", "/api/v1/entities"): ["entities.write"],
+    ("PUT", "/api/v1/entities/{entity_id}"): ["entities.write"],
+    ("DELETE", "/api/v1/entities/{entity_id}"): ["entities.write"],
+    ("POST", "/api/v1/entities/{entity_id}/devices"): ["entities.write"],
+    ("DELETE", "/api/v1/entities/{entity_id}/devices/{device_id}"): ["entities.write"],
+    ("PUT", "/api/v1/entities/{entity_id}/devices/{device_id}"): ["entities.write"],
+    ("POST", "/api/v1/entities/{entity_id}/devices/bulk-bind"): ["entities.write"],
+    ("POST", "/api/v1/entities/{entity_id}/devices/bulk-unbind"): ["entities.write"],
+    ("GET", "/api/v1/entities/{entity_id}/health"): ["entities.read"],
+    ("GET", "/api/v1/groups"): ["groups.read"],
+    ("POST", "/api/v1/groups"): ["groups.write"],
+    ("GET", "/api/v1/groups/{group_id}/devices"): ["groups.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).
