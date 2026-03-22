@@ -25,6 +25,7 @@ from .signals import SignalV1
 from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker, ExecutionWorkerDefinition
 from .modules import ModuleRegistry
 from .webhooks import WebhookSubscription, WebhookDelivery
+from .alerts import AlertRule, AlertEvent
 
 __all__ = [
     "User",
@@ -61,4 +62,6 @@ __all__ = [
     "ModuleRegistry",
     "WebhookSubscription",
     "WebhookDelivery",
+    "AlertRule",
+    "AlertEvent",
 ]

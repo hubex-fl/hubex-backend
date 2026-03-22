@@ -12,6 +12,8 @@ from app.core.config import settings
 from app.core.modules import sync_module_registry
 from app.core.token_revoke import cleanup_expired_revocations
 from app.core.webhook_dispatcher import webhook_dispatcher_loop
+from app.core.alert_worker import alert_worker_loop
+from app.core.health_worker import health_worker_loop
 from app.db.session import AsyncSessionLocal
 
 logger = logging.getLogger("uvicorn.error")
@@ -38,13 +40,17 @@ async def lifespan(app: FastAPI):
 
     cleanup_task = asyncio.create_task(_token_cleanup_loop())
     dispatcher_task = asyncio.create_task(webhook_dispatcher_loop())
+    alert_task = asyncio.create_task(alert_worker_loop())
+    health_task = asyncio.create_task(health_worker_loop())
 
     yield
 
     # Shutdown
     cleanup_task.cancel()
     dispatcher_task.cancel()
-    for task in (cleanup_task, dispatcher_task):
+    alert_task.cancel()
+    health_task.cancel()
+    for task in (cleanup_task, dispatcher_task, alert_task, health_task):
         try:
             await task
         except asyncio.CancelledError:

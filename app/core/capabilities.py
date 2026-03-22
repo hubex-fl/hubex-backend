@@ -54,6 +54,9 @@ CAPABILITY_REGISTRY: set[str] = {
     "entities.write",
     "groups.read",
     "groups.write",
+    "alerts.read",
+    "alerts.write",
+    "metrics.read",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -163,6 +166,16 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/groups"): ["groups.read"],
     ("POST", "/api/v1/groups"): ["groups.write"],
     ("GET", "/api/v1/groups/{group_id}/devices"): ["groups.read"],
+    ("POST", "/api/v1/alerts/rules"): ["alerts.write"],
+    ("GET", "/api/v1/alerts/rules"): ["alerts.read"],
+    ("GET", "/api/v1/alerts/rules/{rule_id}"): ["alerts.read"],
+    ("PUT", "/api/v1/alerts/rules/{rule_id}"): ["alerts.write"],
+    ("DELETE", "/api/v1/alerts/rules/{rule_id}"): ["alerts.write"],
+    ("GET", "/api/v1/alerts"): ["alerts.read"],
+    ("GET", "/api/v1/alerts/{event_id}"): ["alerts.read"],
+    ("POST", "/api/v1/alerts/{event_id}/ack"): ["alerts.write"],
+    ("POST", "/api/v1/alerts/{event_id}/resolve"): ["alerts.write"],
+    ("GET", "/api/v1/metrics"): ["metrics.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).
