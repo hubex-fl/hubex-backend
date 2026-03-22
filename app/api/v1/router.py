@@ -23,6 +23,7 @@ from .webhooks import router as webhooks_router
 from .groups import router as groups_router
 from .alerts import router as alerts_router
 from .metrics import router as metrics_router
+from .orgs import router as orgs_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -48,3 +49,4 @@ router.include_router(webhooks_router, tags=["webhooks"])
 router.include_router(groups_router, tags=["groups"])
 router.include_router(alerts_router, tags=["alerts"])
 router.include_router(metrics_router, tags=["metrics"])
+router.include_router(orgs_router, tags=["orgs"])

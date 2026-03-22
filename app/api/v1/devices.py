@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device, get_current_user
+from app.api.deps_org import get_current_org_id
 from app.core.security import hash_device_token
 from app.core.system_events import emit_system_event
 from app.db.models.device import Device
@@ -165,18 +166,30 @@ class UserTaskCancelOut(BaseModel):
 
 
 @router.post("/hello", response_model=DeviceHelloOut)
-async def hello(data: DeviceHelloIn, db: AsyncSession = Depends(get_db)):
+async def hello(
+    data: DeviceHelloIn,
+    db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
+):
     res = await db.execute(select(Device).where(Device.device_uid == data.device_uid))
     device = res.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
 
     if device is None:
+        # Enforce device plan limit when org context is available
+        if org_id is not None:
+            from app.db.models.orgs import Organization
+            from app.api.v1.orgs import check_device_limit
+            org = await db.get(Organization, org_id)
+            if org is not None:
+                await check_device_limit(db, org)
         device = Device(
             device_uid=data.device_uid,
             firmware_version=data.firmware_version,
             capabilities=data.capabilities,
             last_seen_at=now,
+            org_id=org_id,
         )
         db.add(device)
     else:

@@ -26,6 +26,7 @@ from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker, Exec
 from .modules import ModuleRegistry
 from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
+from .orgs import Organization, OrganizationUser
 
 __all__ = [
     "User",
@@ -64,4 +65,6 @@ __all__ = [
     "WebhookDelivery",
     "AlertRule",
     "AlertEvent",
+    "Organization",
+    "OrganizationUser",
 ]

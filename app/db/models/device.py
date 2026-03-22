@@ -26,4 +26,6 @@ class Device(Base):
 
     is_claimed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
+
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

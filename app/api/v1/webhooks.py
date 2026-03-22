@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_org import get_current_org_id
 from app.db.models.webhooks import WebhookSubscription
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -33,11 +34,13 @@ class WebhookOut(BaseModel):
 async def create_webhook(
     data: WebhookCreateIn,
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     sub = WebhookSubscription(
         url=data.url,
         secret=data.secret,
         event_filter=data.event_filter,
+        org_id=org_id,
     )
     db.add(sub)
     await db.commit()
@@ -46,10 +49,14 @@ async def create_webhook(
 
 
 @router.get("", response_model=list[WebhookOut])
-async def list_webhooks(db: AsyncSession = Depends(get_db)):
-    res = await db.execute(
-        select(WebhookSubscription).order_by(WebhookSubscription.id)
-    )
+async def list_webhooks(
+    db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
+):
+    stmt = select(WebhookSubscription).order_by(WebhookSubscription.id)
+    if org_id is not None:
+        stmt = stmt.where(WebhookSubscription.org_id == org_id)
+    res = await db.execute(stmt)
     return list(res.scalars().all())
 
 

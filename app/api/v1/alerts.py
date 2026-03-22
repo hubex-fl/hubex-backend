@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_org import get_current_org_id
 from app.core.system_events import emit_system_event
 from app.db.models.alerts import AlertEvent, AlertRule
 
@@ -111,6 +112,7 @@ async def _get_event_or_404(event_id: int, db: AsyncSession) -> AlertEvent:
 async def create_alert_rule(
     data: AlertRuleCreateIn,
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     if data.condition_type not in VALID_CONDITION_TYPES:
         raise HTTPException(status_code=422, detail=f"unknown condition_type '{data.condition_type}'")
@@ -123,6 +125,7 @@ async def create_alert_rule(
         condition_type=data.condition_type,
         condition_config=data.condition_config,
         entity_id=data.entity_id,
+        org_id=org_id,
         severity=data.severity,
         enabled=data.enabled,
         cooldown_seconds=data.cooldown_seconds,
@@ -139,10 +142,13 @@ async def create_alert_rule(
 async def list_alert_rules(
     enabled: bool | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     stmt = select(AlertRule).order_by(AlertRule.id)
     if enabled is not None:
         stmt = stmt.where(AlertRule.enabled.is_(enabled))
+    if org_id is not None:
+        stmt = stmt.where(AlertRule.org_id == org_id)
     res = await db.execute(stmt)
     return list(res.scalars().all())
 
@@ -198,12 +204,17 @@ async def list_alert_events(
     status: str | None = Query(default=None),
     rule_id: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     stmt = select(AlertEvent).order_by(AlertEvent.triggered_at.desc())
     if status is not None:
         stmt = stmt.where(AlertEvent.status == status)
     if rule_id is not None:
         stmt = stmt.where(AlertEvent.rule_id == rule_id)
+    if org_id is not None:
+        stmt = stmt.join(AlertRule, AlertRule.id == AlertEvent.rule_id).where(
+            AlertRule.org_id == org_id
+        )
     res = await db.execute(stmt)
     return list(res.scalars().all())
 

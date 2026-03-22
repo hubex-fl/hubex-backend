@@ -6,6 +6,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_org import get_current_org_id
 from app.core.system_events import emit_system_event
 from app.db.models.device import Device
 from app.db.models.entities import Entity, EntityDeviceBinding
@@ -159,10 +160,13 @@ _HEALTH_RANK = {"offline": 0, "stale": 1, "ok": 2}
 async def list_entities(
     type: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     stmt = select(Entity)
     if type:
         stmt = stmt.where(Entity.type == type)
+    if org_id is not None:
+        stmt = stmt.where(Entity.org_id == org_id)
     res = await db.execute(stmt.order_by(Entity.entity_id))
     return list(res.scalars().all())
 
@@ -240,6 +244,7 @@ async def create_entity(
     data: EntityCreateIn,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     res = await db.execute(select(Entity).where(Entity.entity_id == data.entity_id))
     existing = res.scalar_one_or_none()
@@ -252,6 +257,7 @@ async def create_entity(
         type=data.type,
         name=data.name,
         tags=data.tags,
+        org_id=org_id,
     )
     db.add(entity)
     await emit_system_event(db, "entity.created", {

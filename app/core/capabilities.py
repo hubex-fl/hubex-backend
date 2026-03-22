@@ -57,6 +57,11 @@ CAPABILITY_REGISTRY: set[str] = {
     "alerts.read",
     "alerts.write",
     "metrics.read",
+    "org.read",
+    "org.write",
+    "org.admin",
+    "org.members.read",
+    "org.members.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -176,6 +181,16 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/alerts/{event_id}/ack"): ["alerts.write"],
     ("POST", "/api/v1/alerts/{event_id}/resolve"): ["alerts.write"],
     ("GET", "/api/v1/metrics"): ["metrics.read"],
+    ("POST", "/api/v1/auth/switch-org"): ["core.auth.login"],
+    ("POST", "/api/v1/orgs"): ["org.write"],
+    ("GET", "/api/v1/orgs"): ["org.read"],
+    ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
+    ("PUT", "/api/v1/orgs/{org_id}"): ["org.write"],
+    ("DELETE", "/api/v1/orgs/{org_id}"): ["org.admin"],
+    ("GET", "/api/v1/orgs/{org_id}/members"): ["org.members.read"],
+    ("POST", "/api/v1/orgs/{org_id}/members"): ["org.members.write"],
+    ("PUT", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
+    ("DELETE", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
 }
 
 # Public whitelist (auth-free, minimal, static).

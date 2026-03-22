@@ -14,6 +14,7 @@ class AlertRule(Base):
     condition_type: Mapped[str] = mapped_column(String(64), nullable=False)
     condition_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
     severity: Mapped[str] = mapped_column(String(16), nullable=False, default="warning")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     cooldown_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=300, server_default="300")
