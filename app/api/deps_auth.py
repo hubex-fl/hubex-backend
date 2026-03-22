@@ -1,12 +1,10 @@
-import hashlib
-
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.api.deps import get_db
-from app.core.security import decode_access_token, AuthTokenError
+from app.core.security import decode_access_token, AuthTokenError, hash_device_token
 from app.core.token_revoke import is_token_revoked
 from app.db.models.user import User
 from app.db.models.device import Device
@@ -55,7 +53,7 @@ async def get_current_device(
     if not device_token:
         _auth_error("missing device token")
 
-    token_hash = hashlib.sha256(device_token.encode("utf-8")).hexdigest()
+    token_hash = hash_device_token(device_token)
     res = await db.execute(
         select(Device)
         .join(DeviceToken, DeviceToken.device_id == Device.id)

@@ -1,6 +1,8 @@
-import os
 import logging
+import os
 from typing import Iterable
+
+from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -154,7 +156,11 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
 }
 
 def enforcement_enabled() -> bool:
-    return os.getenv("HUBEX_CAPS_ENFORCE", "0") == "1"
+    # Env override takes precedence (for tests), otherwise use settings.
+    env = os.getenv("HUBEX_CAPS_ENFORCE")
+    if env is not None:
+        return env == "1"
+    return settings.caps_enforce
 
 def validate_caps(caps: Iterable[str]) -> list[str]:
     unknown = [cap for cap in caps if cap not in CAPABILITY_REGISTRY]

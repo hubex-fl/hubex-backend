@@ -1,8 +1,8 @@
 # app/api/v1/pairing.py
 
 from datetime import datetime, timedelta, timezone
-import secrets
 import hashlib
+import secrets
 from fastapi import APIRouter, Depends, Body, Query, Request
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
 from app.api.deps_rate_limit import FixedWindowLimiter
 from app.api.v1.error_utils import raise_api_error
+from app.core.security import hash_device_token
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.tasks import Task
@@ -50,8 +51,7 @@ def _gen_device_token_plain() -> str:
 
 
 def _hash_token(token_plain: str) -> str:
-    # für DeviceToken: stabil, schnell, keine bcrypt-72byte-Problematik
-    return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
+    return hash_device_token(token_plain)
 
 
 def _client_ip(request: Request) -> str:

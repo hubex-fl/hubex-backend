@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import hashlib
 import httpx
 import pytest
 from fastapi import Depends, FastAPI
@@ -14,7 +13,7 @@ from app.api.deps import get_db
 from app.api.deps_caps import capability_guard
 from app.api.v1.events import router as events_router
 from app.core.capabilities import CAPABILITY_MAP
-from app.core.security import ALGORITHM, ISSUER, SECRET_KEY
+from app.core.security import ALGORITHM, ISSUER, SECRET_KEY, hash_device_token
 from app.db.base import Base
 from app.db.models.audit import AuditV1Entry
 from app.db.models.device import Device
@@ -78,7 +77,7 @@ async def test_vertical_demo_signal_creates_execution_run_and_audit(monkeypatch)
         await db.commit()
         await db.refresh(device)
         token_plain = "plain-token"
-        token_hash = hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
+        token_hash = hash_device_token(token_plain)
         db.add(DeviceToken(device_id=device.id, token_hash=token_hash, is_active=True))
         await db.commit()
 

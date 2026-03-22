@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
-import hashlib
+from app.core.security import hash_device_token
 
 import httpx
 import pytest
@@ -82,7 +82,7 @@ async def test_telemetry_post_and_get(monkeypatch):
 
     engine, Session = await _mk_session()
     token_plain = "device-token"
-    token_hash = hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
+    token_hash = hash_device_token(token_plain)
 
     async with Session() as db:
         user = User(id=1, email="owner@example.com", password_hash="x", caps=["telemetry.read"])

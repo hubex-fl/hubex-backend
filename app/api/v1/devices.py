@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-import hashlib
 import secrets
 from typing import Any, Dict, Optional
 
@@ -10,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_device, get_current_user
-from app.db.models.device import Device  # NUR das echte Model importieren
+from app.core.security import hash_device_token
+from app.db.models.device import Device
 from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
 from app.api.v1.error_utils import raise_api_error
@@ -343,7 +343,7 @@ def _gen_device_token_plain() -> str:
 
 
 def _hash_token(token_plain: str) -> str:
-    return hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
+    return hash_device_token(token_plain)
 
 
 def _is_admin(user: User) -> bool:
@@ -586,43 +586,43 @@ async def purge_devices_bulk(
     requested_count = len(data.device_ids)
     for device_id in data.device_ids:
         try:
-            res = await db.execute(select(Device).where(Device.id == device_id))
-            device = res.scalar_one_or_none()
-            if device is None:
-                results.append(
-                    DevicePurgeBulkResult(id=device_id, ok=False, error="not_found")
+            async with db.begin_nested():
+                res = await db.execute(select(Device).where(Device.id == device_id))
+                device = res.scalar_one_or_none()
+                if device is None:
+                    results.append(
+                        DevicePurgeBulkResult(id=device_id, ok=False, error="not_found")
+                    )
+                    continue
+                deleted_counts = await _purge_device_rows(db, device)
+                db.add(
+                    AuditV1Entry(
+                        actor_type="user",
+                        actor_id=str(user.id),
+                        action="device.purge",
+                        resource=str(device.id),
+                        audit_metadata={
+                            "device_id": device.id,
+                            "device_uid": device.device_uid,
+                            "deleted_counts": deleted_counts,
+                            "reason": data.reason,
+                            "bulk": True,
+                            "requested_device_ids_count": requested_count,
+                            "deleted_device": deleted_counts.get("devices", 0) > 0,
+                        },
+                        trace_id=None,
+                    )
                 )
-                continue
-            deleted_counts = await _purge_device_rows(db, device)
-            db.add(
-                AuditV1Entry(
-                    actor_type="user",
-                    actor_id=str(user.id),
-                    action="device.purge",
-                    resource=str(device.id),
-                    audit_metadata={
-                        "device_id": device.id,
-                        "device_uid": device.device_uid,
-                        "deleted_counts": deleted_counts,
-                        "reason": data.reason,
-                        "bulk": True,
-                        "requested_device_ids_count": requested_count,
-                        "deleted_device": deleted_counts.get("devices", 0) > 0,
-                    },
-                    trace_id=None,
-                )
-            )
-            await db.commit()
             results.append(
                 DevicePurgeBulkResult(
                     id=device_id, ok=True, deleted_counts=deleted_counts
                 )
             )
         except Exception as exc:
-            await db.rollback()
             results.append(
                 DevicePurgeBulkResult(id=device_id, ok=False, error=str(exc))
             )
+    await db.commit()
     return DevicePurgeBulkOut(results=results)
 
 
