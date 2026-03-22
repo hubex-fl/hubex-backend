@@ -73,7 +73,9 @@ describe("Devices claim flow", () => {
   it("claims pairing code and refreshes devices", async () => {
     const { app, el, router, apiFetch } = await mountDevices();
     const input = el.querySelector('input[placeholder="Pairing code (claim)"]') as HTMLInputElement;
+    const uidInput = el.querySelector('input[placeholder="Device UID"]') as HTMLInputElement;
     expect(input).not.toBeNull();
+    expect(uidInput).not.toBeNull();
     const instance = (app as any)._instance;
     if (instance?.setupState?.pairingClaimCode) {
       instance.setupState.pairingClaimCode.value = "ABC12345";
@@ -81,6 +83,8 @@ describe("Devices claim flow", () => {
     }
     input.value = "ABC12345";
     input.dispatchEvent(new Event("input", { bubbles: true }));
+    uidInput.value = "dev-1";
+    uidInput.dispatchEvent(new Event("input", { bubbles: true }));
     await nextTick();
     await flushPromises();
 
@@ -103,6 +107,49 @@ describe("Devices claim flow", () => {
       expect(instance.setupState.pairingDeviceUid.value).toBe("");
     }
     expect(router.currentRoute.value.fullPath).toBe("/devices");
+    app.unmount();
+  });
+
+  it("fills device UID from row action", async () => {
+    const { app, el } = await mountDevices();
+    const useButton = Array.from(el.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Use UID")
+    ) as HTMLButtonElement | undefined;
+    expect(useButton).toBeTruthy();
+    useButton?.click();
+    await nextTick();
+    await flushPromises();
+    const uidInput = el.querySelector('input[placeholder="Device UID"]') as HTMLInputElement | null;
+    expect(uidInput?.value).toBe("dev-1");
+    app.unmount();
+  });
+
+  it("uses include_unclaimed when admin toggle enabled", async () => {
+    const { app, apiFetch } = await mountDevices();
+    const { useCapabilities } = await import("../../lib/capabilities");
+    const caps = useCapabilities();
+    caps.status = "ready";
+    caps.caps = new Set(["pairing.claim", "cap.admin"]);
+    caps.error = null;
+    const instance = (app as any)._instance;
+    if (instance?.setupState?.showUnclaimedAdmin !== undefined) {
+      instance.setupState.showUnclaimedAdmin = true;
+    }
+    await nextTick();
+    await flushPromises();
+    const calls = apiFetch.mock.calls.map((c) => c[0]);
+    expect(calls).toContain("/api/v1/devices?include_unclaimed=1");
+    app.unmount();
+  });
+
+  it("does not render Start Pairing controls", async () => {
+    const { app, el } = await mountDevices();
+    await nextTick();
+    await flushPromises();
+    const startButtons = Array.from(el.querySelectorAll("button")).filter((b) =>
+      b.textContent?.includes("Start pairing")
+    );
+    expect(startButtons.length).toBe(0);
     app.unmount();
   });
 });

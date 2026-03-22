@@ -30,33 +30,39 @@ const error = ref("");
 const loading = ref(false);
 const refreshing = ref(false);
 const pairingSection = ref<HTMLElement | null>(null);
-const pairingConfirmInput = ref<HTMLInputElement | null>(null);
+const pairingClaimInput = ref<HTMLInputElement | null>(null);
 const route = useRoute();
 const router = useRouter();
 const caps = useCapabilities();
 
 const pairingDeviceUid = ref("");
-const pairingStartCode = ref("");
-const pairingConfirmCode = ref("");
-const pairingExpiresAt = ref<string | null>(null);
-const startingPairing = ref(false);
-const confirmingPairing = ref(false);
 const claimingPairing = ref(false);
 const pairingClaimCode = ref("");
 const pairingClaimStatus = ref<string | null>(null);
-const pairingRemainingSeconds = ref<number | null>(null);
-const pairingExpired = ref(false);
+const showUnclaimedAdmin = ref(false);
 const searchQuery = ref("");
 const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
-const filterBy = ref<"all" | "claimed" | "unclaimed" | "claimable" | "offline">("all");
-const selectMode = ref<"cleanup" | "pairing">("cleanup");
+const filterBy = ref<
+  "all" | "recent" | "claimed" | "unclaimed" | "claimable" | "offline" | "offline_old"
+>("all");
+const RECENT_SECONDS = 300;
+const OFFLINE_OLD_SECONDS = 7 * 24 * 60 * 60;
+const selectMode = ref<"unclaim" | "purge">("unclaim");
 const selectedIds = ref<number[]>([]);
 const bulkUnclaimBusy = ref(false);
 const bulkUnclaimConfirm = ref(false);
 const bulkUnclaimStatus = ref<Record<number, string>>({});
+const bulkPurgeBusy = ref(false);
+const bulkPurgeConfirm = ref(false);
+const bulkPurgeConfirmText = ref("");
+const bulkPurgeStatus = ref<Record<number, string>>({});
 
 const pairingLookup = ref<DeviceLookup | null>(null);
 const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
+const includeUnclaimed = computed(
+  () => caps.status === "ready" && hasCap("cap.admin") && showUnclaimedAdmin.value
+);
+const canShowPurge = computed(() => caps.status === "ready" && hasCap("devices.purge"));
 
 const pairingDevice = computed(() => {
   const uid = pairingDeviceUid.value.trim();
@@ -73,6 +79,9 @@ const pairingStateWarning = computed(() => {
     }
     return null;
   }
+  if (!pairingDevice.value.online) {
+    return "Device offline; pairing code will be visible on device dashboard when online.";
+  }
   switch (pairingDevice.value.state) {
     case "unprovisioned":
       return "Device not provisioned (never seen)";
@@ -81,42 +90,24 @@ const pairingStateWarning = computed(() => {
     case "claimed":
       return "Device already claimed";
     case "pairing_active":
-      return "Pairing already active";
+      return "Pairing already active (check device dashboard)";
     default:
       return null;
   }
-});
-
-const canStartPairing = computed(() => {
-  if (startingPairing.value) return false;
-  if (!pairingDeviceUid.value.trim()) return false;
-  if (pairingDevice.value) return pairingDevice.value.state === "provisioned_unclaimed";
-  if (pairingLookupStatus.value !== "found") return false;
-  return pairingLookup.value?.claimed === false;
-});
-
-const canConfirmPairing = computed(() => {
-  if (confirmingPairing.value) return false;
-  if (!pairingStartCode.value || !pairingConfirmCode.value) return false;
-  if (pairingExpired.value) return false;
-  if (pairingDevice.value) {
-    return !["busy", "claimed", "unprovisioned"].includes(pairingDevice.value.state);
-  }
-  if (pairingLookupStatus.value !== "found") return false;
-  return pairingLookup.value?.claimed === false;
 });
 
 const canClaimPairing = computed(() => {
   if (claimingPairing.value) return false;
   if (caps.status !== "ready") return false;
   if (!hasCap("pairing.claim")) return false;
+  if (!pairingDeviceUid.value.trim()) return false;
   return pairingClaimCode.value.trim().length > 0;
 });
 
 const selectableIds = computed(() => {
   const mode = selectMode.value;
   return visibleDevices.value
-    .filter((d) => (mode === "cleanup" ? isBulkUnclaimable(d) : isBulkClaimable(d)))
+    .filter((d) => (mode === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d)))
     .map((d) => d.id);
 });
 
@@ -128,9 +119,17 @@ const allSelected = computed(() => {
 
 const canBulkUnclaim = computed(() => {
   if (bulkUnclaimBusy.value) return false;
-  if (selectMode.value !== "cleanup") return false;
+  if (selectMode.value !== "unclaim") return false;
   if (caps.status !== "ready") return false;
   if (!hasCap("devices.unclaim")) return false;
+  return selectedIds.value.length > 0;
+});
+
+const canBulkPurge = computed(() => {
+  if (bulkPurgeBusy.value) return false;
+  if (selectMode.value !== "purge") return false;
+  if (caps.status !== "ready") return false;
+  if (!hasCap("devices.purge")) return false;
   return selectedIds.value.length > 0;
 });
 
@@ -142,12 +141,23 @@ const visibleDevices = computed(() => {
   }
   if (filterBy.value === "claimed") {
     list = list.filter((d) => d.state === "claimed");
+  } else if (filterBy.value === "recent") {
+    list = list.filter(
+      (d) => d.last_seen_age_seconds !== null && d.last_seen_age_seconds <= RECENT_SECONDS
+    );
   } else if (filterBy.value === "unclaimed") {
     list = list.filter((d) => d.state !== "claimed");
   } else if (filterBy.value === "claimable") {
     list = list.filter((d) => !d.claimed && d.pairing_active);
   } else if (filterBy.value === "offline") {
     list = list.filter((d) => !d.online);
+  } else if (filterBy.value === "offline_old") {
+    list = list.filter(
+      (d) =>
+        !d.online &&
+        d.last_seen_age_seconds !== null &&
+        d.last_seen_age_seconds > OFFLINE_OLD_SECONDS
+    );
   }
   const statePriority: Record<Device["state"], number> = {
     busy: 5,
@@ -176,7 +186,6 @@ const visibleDevices = computed(() => {
 });
 
 let timer: number | null = null;
-let pairingTimer: number | null = null;
 let lookupTimer: number | null = null;
 let refreshTimer: number | null = null;
 
@@ -252,8 +261,9 @@ async function load(opts?: { silent?: boolean }) {
   }
   const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
   try {
-    const includeUnclaimed = caps.status === "ready" && hasCap("cap.admin");
-    const path = includeUnclaimed ? "/api/v1/devices?include_unclaimed=1" : "/api/v1/devices";
+    const path = includeUnclaimed.value
+      ? "/api/v1/devices?include_unclaimed=1"
+      : "/api/v1/devices";
     const next = await apiFetch<Device[]>(path);
     reconcileById(devices.value, next, deviceSig);
     const nextIds = new Set(next.map((d) => d.id));
@@ -286,10 +296,10 @@ function isBulkUnclaimable(d: Device) {
   return d.state === "claimed";
 }
 
-function isBulkClaimable(d: Device) {
+function isBulkPurgeable(d: Device) {
   if (caps.status !== "ready") return false;
-  if (!hasCap("pairing.claim")) return false;
-  return !d.claimed && d.pairing_active;
+  if (!canShowPurge.value) return false;
+  return true;
 }
 
 function toggleSelectAll() {
@@ -301,7 +311,7 @@ function toggleSelectAll() {
 }
 
 function toggleRow(d: Device) {
-  const selectable = selectMode.value === "cleanup" ? isBulkUnclaimable(d) : isBulkClaimable(d);
+  const selectable = selectMode.value === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d);
   if (!selectable) return;
   const ids = new Set(selectedIds.value);
   if (ids.has(d.id)) {
@@ -365,127 +375,13 @@ function formatPairingError(err: any, fallback: string): string {
   return `${fallback} (${suffix}${codeText}${metaText})`;
 }
 
-function stopPairingCountdown() {
-  if (pairingTimer !== null) {
-    window.clearInterval(pairingTimer);
-    pairingTimer = null;
-  }
-}
-
-function updatePairingCountdown() {
-  if (!pairingStartCode.value || !pairingExpiresAt.value) {
-    pairingRemainingSeconds.value = null;
-    pairingExpired.value = false;
-    stopPairingCountdown();
-    return;
-  }
-  const now = Date.now();
-  const expiresMs = new Date(pairingExpiresAt.value).getTime();
-  if (!Number.isFinite(expiresMs)) {
-    pairingRemainingSeconds.value = null;
-    pairingExpired.value = false;
-    stopPairingCountdown();
-    return;
-  }
-  const remaining = Math.floor((expiresMs - now) / 1000);
-  if (remaining <= 0) {
-    pairingRemainingSeconds.value = 0;
-    pairingExpired.value = true;
-    stopPairingCountdown();
-    pairingStartCode.value = "";
-    pairingExpiresAt.value = null;
-    return;
-  }
-  pairingRemainingSeconds.value = remaining;
-  pairingExpired.value = false;
-}
-
-function startPairingCountdown() {
-  stopPairingCountdown();
-  updatePairingCountdown();
-  if (pairingExpiresAt.value && pairingStartCode.value && !pairingExpired.value) {
-    pairingTimer = window.setInterval(updatePairingCountdown, 1000);
-  }
-}
-
-function fmtRemaining(seconds: number | null) {
-  if (seconds === null) return "-";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-async function startPairing() {
-  error.value = "";
-  pairingStartCode.value = "";
-  pairingConfirmCode.value = "";
-  pairingExpiresAt.value = null;
-  pairingExpired.value = false;
-  pairingRemainingSeconds.value = null;
-  stopPairingCountdown();
-  const uid = pairingDeviceUid.value.trim();
-  if (!uid) {
-    error.value = "device_uid required";
-    return;
-  }
-  if (!canStartPairing.value) return;
-  startingPairing.value = true;
-  try {
-    const res: any = await apiFetch("/api/v1/devices/pairing/start", {
-      method: "POST",
-      body: JSON.stringify({ device_uid: uid }),
-    });
-    if (!res?.pairing_code) {
-      throw new Error("pairing/start did not return pairing_code");
-    }
-    pairingStartCode.value = res.pairing_code;
-    pairingConfirmCode.value = "";
-    pairingExpiresAt.value = res.expires_at ?? null;
-    pairingExpired.value = false;
-    startPairingCountdown();
-  } catch (err: any) {
-    error.value = formatPairingError(err, "Failed to start pairing");
-  } finally {
-    startingPairing.value = false;
-  }
-}
-
-async function confirmPairing() {
-  error.value = "";
-  const uid = pairingDeviceUid.value.trim();
-  const code = pairingConfirmCode.value.trim();
-  if (!uid) {
-    error.value = "device_uid required";
-    return;
-  }
-  if (!code) {
-    error.value = "pairing_code required";
-    return;
-  }
-  if (!canConfirmPairing.value) return;
-  confirmingPairing.value = true;
-  try {
-    await apiFetch("/api/v1/devices/pairing/confirm", {
-      method: "POST",
-      body: JSON.stringify({ device_uid: uid, pairing_code: code }),
-    });
-    pairingDeviceUid.value = "";
-    pairingStartCode.value = "";
-    pairingConfirmCode.value = "";
-    pairingExpiresAt.value = null;
-    pairingExpired.value = false;
-    pairingRemainingSeconds.value = null;
-    stopPairingCountdown();
-    await load();
-  } catch (err: any) {
-    error.value = formatPairingError(err, "Failed to confirm pairing");
-  } finally {
-    confirmingPairing.value = false;
-  }
-}
-
 async function claimPairing() {
   const code = pairingClaimCode.value.trim();
+  const uid = pairingDeviceUid.value.trim();
+  if (!uid) {
+    error.value = "device_uid required";
+    return;
+  }
   if (!code) {
     error.value = "pairing_code required";
     return;
@@ -504,14 +400,8 @@ async function claimPairing() {
     pairingClaimStatus.value = res?.device_uid ? `Claimed ${res.device_uid}` : "Claimed";
     pairingClaimCode.value = "";
     pairingDeviceUid.value = "";
-    pairingStartCode.value = "";
-    pairingConfirmCode.value = "";
-    pairingExpiresAt.value = null;
-    pairingExpired.value = false;
-    pairingRemainingSeconds.value = null;
     pairingLookupStatus.value = "idle";
     pairingLookup.value = null;
-    stopPairingCountdown();
     await load({ silent: true });
     await router.replace("/devices");
   } catch (err: any) {
@@ -523,6 +413,7 @@ async function claimPairing() {
 
 function startBulkUnclaimConfirm() {
   bulkUnclaimConfirm.value = true;
+  bulkPurgeConfirm.value = false;
 }
 
 function cancelBulkUnclaimConfirm() {
@@ -550,6 +441,65 @@ async function bulkUnclaim() {
   bulkUnclaimConfirm.value = false;
   await load({ silent: true });
   bulkUnclaimBusy.value = false;
+}
+
+function startBulkPurgeConfirm() {
+  bulkPurgeConfirm.value = true;
+  bulkPurgeConfirmText.value = "";
+  bulkUnclaimConfirm.value = false;
+}
+
+function cancelBulkPurgeConfirm() {
+  bulkPurgeConfirm.value = false;
+  bulkPurgeConfirmText.value = "";
+}
+
+async function bulkPurge() {
+  if (selectedIds.value.length === 0) return;
+  if (bulkPurgeConfirmText.value !== "PURGE") return;
+  bulkPurgeBusy.value = true;
+  bulkPurgeStatus.value = {};
+  try {
+    const res: any = await apiFetch("/api/v1/devices/purge", {
+      method: "POST",
+      body: JSON.stringify({ device_ids: selectedIds.value, reason: "ui" }),
+    });
+    const results = Array.isArray(res?.results) ? res.results : [];
+    for (const item of results) {
+      if (!item || typeof item.id !== "number") continue;
+      bulkPurgeStatus.value[item.id] = item.ok ? "Purged" : item.error || "Purge failed";
+    }
+  } catch (err: any) {
+    error.value = formatPairingError(err, "Bulk purge failed");
+  } finally {
+    selectedIds.value = [];
+    bulkPurgeConfirm.value = false;
+    bulkPurgeConfirmText.value = "";
+    await load({ silent: true });
+    bulkPurgeBusy.value = false;
+  }
+}
+
+async function purgeDevice(device: Device) {
+  if (caps.status !== "ready") return;
+  if (!hasCap("devices.purge")) {
+    error.value = "Missing capability: devices.purge";
+    return;
+  }
+  const confirmText = window.prompt(
+    `Permanently delete ${device.device_uid}? Type PURGE to confirm.`
+  );
+  if (confirmText !== "PURGE") return;
+  try {
+    await apiFetch(`/api/v1/devices/${device.id}/purge`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "ui" }),
+    });
+    bulkPurgeStatus.value[device.id] = "Purged";
+    await load({ silent: true });
+  } catch (err: any) {
+    bulkPurgeStatus.value[device.id] = formatPairingError(err, "Purge failed");
+  }
 }
 
 function fmtTime(iso: string | null) {
@@ -590,21 +540,28 @@ function stateClass(state: Device["state"]) {
   return "pill-warn";
 }
 
+function stateLabel(device: Device) {
+  if (!includeUnclaimed.value && device.state === "claimed") return "ready";
+  return device.state;
+}
+
+function useUidFromRow(device: Device) {
+  pairingDeviceUid.value = device.device_uid;
+  const el = pairingSection.value;
+  if (el && typeof el.scrollIntoView === "function") {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function onRowAction(device: Device) {
   if (device.state === "claimed") {
     router.push(`/devices/${device.id}`);
     return;
   }
-  pairingDeviceUid.value = device.device_uid;
-  pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-  if (device.state === "pairing_active") {
-    requestAnimationFrame(() => {
-      pairingConfirmInput.value?.focus();
-    });
-  }
-  if (device.state === "provisioned_unclaimed") {
-    startPairing();
-  }
+  useUidFromRow(device);
+  requestAnimationFrame(() => {
+    pairingClaimInput.value?.focus();
+  });
 }
 
 function onRowClick(device: Device) {
@@ -615,11 +572,11 @@ function onRowClick(device: Device) {
 function rowActionLabel(device: Device) {
   switch (device.state) {
     case "unprovisioned":
-      return "Waiting for first contact";
+      return "Use UID";
     case "provisioned_unclaimed":
-      return "Start pairing";
+      return "Use UID";
     case "pairing_active":
-      return "Continue pairing";
+      return "Use UID";
     case "claimed":
       return "Open";
     case "busy":
@@ -630,30 +587,37 @@ function rowActionLabel(device: Device) {
 }
 
 function rowActionDisabled(device: Device) {
-  return device.state === "unprovisioned" || device.state === "busy";
+  return device.state === "busy";
 }
 
 watch(pairingDeviceUid, () => {
-  pairingStartCode.value = "";
-  pairingConfirmCode.value = "";
-  pairingExpiresAt.value = null;
-  pairingRemainingSeconds.value = null;
-  pairingExpired.value = false;
-  stopPairingCountdown();
   scheduleLookup(pairingDeviceUid.value);
 });
 
 watch(selectMode, () => {
   selectedIds.value = [];
   bulkUnclaimConfirm.value = false;
+  bulkPurgeConfirm.value = false;
+  bulkPurgeConfirmText.value = "";
+});
+
+watch(canShowPurge, () => {
+  if (!canShowPurge.value && selectMode.value === "purge") {
+    selectMode.value = "unclaim";
+  }
+});
+
+watch(showUnclaimedAdmin, () => {
+  if (!showUnclaimedAdmin.value) {
+    if (filterBy.value === "unclaimed" || filterBy.value === "claimable" || filterBy.value === "claimed") {
+      filterBy.value = "all";
+    }
+  }
+  load();
 });
 
 function onVisibilityChange() {
   if (document.visibilityState === "visible") {
-    updatePairingCountdown();
-    if (pairingStartCode.value && !pairingExpired.value) {
-      startPairingCountdown();
-    }
     load({ silent: true });
   }
 }
@@ -663,9 +627,6 @@ onMounted(() => {
   if (uid) {
     pairingDeviceUid.value = uid;
     pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-    requestAnimationFrame(() => {
-      pairingConfirmInput.value?.focus();
-    });
   }
   load();
   timer = window.setInterval(() => load({ silent: true }), 5000);
@@ -682,7 +643,6 @@ onUnmounted(() => {
     window.clearTimeout(lookupTimer);
     lookupTimer = null;
   }
-  stopPairingCountdown();
 });
 </script>
 
@@ -701,37 +661,14 @@ onUnmounted(() => {
           class="input pairing-input"
           placeholder="Device UID"
         />
-        <button class="btn" :disabled="!canStartPairing" @click="startPairing">
-          {{ startingPairing ? "Starting..." : "Start pairing" }}
-        </button>
       </div>
       <div v-if="pairingStateWarning" class="pairing-warn">
         {{ pairingStateWarning }}
       </div>
-      <div v-if="pairingExpired" class="pairing-expired">
-        Expired. Start pairing again.
-      </div>
-
-      <div v-if="pairingStartCode" class="pairing-row">
-        <span class="code-badge">
-          {{ pairingStartCode }}
-          <span v-if="pairingRemainingSeconds !== null" class="pairing-countdown-inline">
-            {{ fmtRemaining(pairingRemainingSeconds) }}
-          </span>
-        </span>
-        <input
-          v-model="pairingConfirmCode"
-          ref="pairingConfirmInput"
-          class="input pairing-input"
-          placeholder="Pairing code"
-        />
-        <button class="btn secondary" :disabled="!canConfirmPairing" @click="confirmPairing">
-          {{ confirmingPairing ? "Confirming..." : "Confirm" }}
-        </button>
-      </div>
       <div class="pairing-row">
         <input
           v-model="pairingClaimCode"
+          ref="pairingClaimInput"
           class="input pairing-input"
           placeholder="Pairing code (claim)"
         />
@@ -744,12 +681,6 @@ onUnmounted(() => {
       </div>
       <div v-if="pairingClaimStatus" class="pairing-help">
         {{ pairingClaimStatus }}
-      </div>
-      <div v-if="pairingStartCode && !pairingExpired" class="pairing-countdown">
-        <span>Expires in: {{ fmtRemaining(pairingRemainingSeconds) }}</span>
-      </div>
-      <div v-if="pairingExpiresAt" class="pairing-help">
-        Expires: {{ fmtIso(pairingExpiresAt) }}
       </div>
     </div>
 
@@ -766,54 +697,96 @@ onUnmounted(() => {
       </select>
       <select v-model="filterBy" class="input toolbar-select" data-testid="devices-filter">
         <option value="all">All</option>
-        <option value="claimed">Claimed</option>
-        <option value="unclaimed">Unclaimed</option>
-        <option value="claimable">Claimable</option>
+        <option value="recent">Active recently</option>
+        <option v-if="includeUnclaimed" value="claimed">Claimed</option>
+        <option v-if="includeUnclaimed" value="unclaimed">Unclaimed</option>
+        <option v-if="includeUnclaimed" value="claimable">Claimable</option>
         <option value="offline">Offline</option>
+        <option value="offline_old">Offline old</option>
       </select>
+      <label
+        v-if="caps.status === 'ready' && hasCap('cap.admin')"
+        class="toolbar-toggle"
+      >
+        <input type="checkbox" v-model="showUnclaimedAdmin" />
+        Show unclaimed (admin)
+      </label>
+      <span v-if="includeUnclaimed" class="muted">
+        Admin view: including unclaimed devices.
+      </span>
     </div>
     <div class="bulk-toolbar">
       <label class="toolbar-toggle">
         Mode:
         <select v-model="selectMode" class="input toolbar-select">
-          <option value="cleanup">Cleanup (Unclaim)</option>
-          <option value="pairing">Pairing (Claim)</option>
+          <option value="unclaim">Cleanup (Unclaim)</option>
+          <option v-if="canShowPurge" value="purge">Cleanup (Purge)</option>
         </select>
       </label>
       <label class="toolbar-toggle">
         <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
         Select all
       </label>
-      <button
-        v-if="!bulkUnclaimConfirm"
-        class="btn secondary"
-        :disabled="!canBulkUnclaim"
-        @click="startBulkUnclaimConfirm"
-      >
-        Bulk unclaim
-      </button>
-      <button
-        v-else
-        class="btn danger"
-        :disabled="bulkUnclaimBusy"
-        @click="bulkUnclaim"
-      >
-        {{ bulkUnclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
-      </button>
-      <button
-        v-if="bulkUnclaimConfirm"
-        class="btn ghost"
-        :disabled="bulkUnclaimBusy"
-        @click="cancelBulkUnclaimConfirm"
-      >
-        Cancel
-      </button>
-      <span v-if="bulkUnclaimConfirm" class="muted">
-        Unclaim {{ selectedIds.length }} devices? This revokes all device tokens.
-      </span>
-      <span v-else-if="selectMode === 'pairing'" class="muted">
-        Bulk claim requires per-device codes (not available here).
-      </span>
+      <template v-if="selectMode === 'unclaim'">
+        <button
+          v-if="!bulkUnclaimConfirm"
+          class="btn secondary"
+          :disabled="!canBulkUnclaim"
+          @click="startBulkUnclaimConfirm"
+        >
+          Bulk unclaim
+        </button>
+        <button
+          v-else
+          class="btn danger"
+          :disabled="bulkUnclaimBusy"
+          @click="bulkUnclaim"
+        >
+          {{ bulkUnclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
+        </button>
+        <button
+          v-if="bulkUnclaimConfirm"
+          class="btn ghost"
+          :disabled="bulkUnclaimBusy"
+          @click="cancelBulkUnclaimConfirm"
+        >
+          Cancel
+        </button>
+        <span v-if="bulkUnclaimConfirm" class="muted">
+          Unclaim {{ selectedIds.length }} devices? This revokes all device tokens.
+        </span>
+      </template>
+
+      <template v-else>
+        <button
+          v-if="!bulkPurgeConfirm"
+          class="btn danger"
+          :disabled="!canBulkPurge"
+          @click="startBulkPurgeConfirm"
+        >
+          Bulk purge
+        </button>
+        <div v-else class="bulk-confirm">
+          <input
+            v-model="bulkPurgeConfirmText"
+            class="input"
+            placeholder="Type PURGE to confirm"
+          />
+          <button
+            class="btn danger"
+            :disabled="bulkPurgeBusy || bulkPurgeConfirmText !== 'PURGE'"
+            @click="bulkPurge"
+          >
+            {{ bulkPurgeBusy ? "Purging..." : "Confirm purge" }}
+          </button>
+          <button class="btn ghost" :disabled="bulkPurgeBusy" @click="cancelBulkPurgeConfirm">
+            Cancel
+          </button>
+          <span class="muted">
+            Permanently deletes {{ selectedIds.length }} devices and all related data.
+          </span>
+        </div>
+      </template>
     </div>
 
     <table class="table table-fixed devices-table">
@@ -852,7 +825,7 @@ onUnmounted(() => {
               <input
                 type="checkbox"
                 :checked="isSelected(d.id)"
-                :disabled="selectMode === 'cleanup' ? !isBulkUnclaimable(d) : !isBulkClaimable(d)"
+                :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
                 @change="toggleRow(d)"
                 @click.stop
               />
@@ -869,7 +842,7 @@ onUnmounted(() => {
             </td>
             <td>
               <span :class="['pill', stateClass(d.state)]">
-                {{ d.state }}
+                {{ stateLabel(d) }}
               </span>
             </td>
             <td>
@@ -891,8 +864,25 @@ onUnmounted(() => {
               >
                 {{ rowActionLabel(d) }}
               </button>
+              <button
+                v-if="d.state !== 'claimed'"
+                class="btn ghost"
+                @click.stop="useUidFromRow(d)"
+              >
+                Use UID
+              </button>
+              <button
+              v-if="canShowPurge"
+              class="btn danger"
+              @click.stop="purgeDevice(d)"
+            >
+                Purge
+              </button>
               <div v-if="bulkUnclaimStatus[d.id]" class="muted bulk-status">
                 {{ bulkUnclaimStatus[d.id] }}
+              </div>
+              <div v-if="bulkPurgeStatus[d.id]" class="muted bulk-status">
+                {{ bulkPurgeStatus[d.id] }}
               </div>
             </td>
           </tr>
@@ -913,6 +903,15 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.bulk-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bulk-status {
+  margin-top: 4px;
 }
 .table-fixed {
   table-layout: fixed;

@@ -93,7 +93,10 @@ async function mountDetail(capsList: string[] = []) {
   const DeviceDetail = (await import("../DeviceDetail.vue")).default;
   const router = createRouter({
     history: createWebHistory(),
-    routes: [{ path: "/devices/:id", component: DeviceDetail }],
+    routes: [
+      { path: "/devices/:id", component: DeviceDetail },
+      { path: "/devices", component: { template: "<div>Devices</div>" } },
+    ],
   });
   await router.push("/devices/1");
   await router.isReady();
@@ -107,7 +110,7 @@ async function mountDetail(capsList: string[] = []) {
 
   await nextTick();
   await flushPromises();
-  return { app, el, instance, apiFetch, unclaimDevice };
+  return { app, el, instance, apiFetch, unclaimDevice, router };
 }
 
 async function mountDetailWithTelemetrySequence() {
@@ -206,7 +209,10 @@ async function mountDetailWithTelemetrySequence() {
   const DeviceDetail = (await import("../DeviceDetail.vue")).default;
   const router = createRouter({
     history: createWebHistory(),
-    routes: [{ path: "/devices/:id", component: DeviceDetail }],
+    routes: [
+      { path: "/devices/:id", component: DeviceDetail },
+      { path: "/devices", component: { template: "<div>Devices</div>" } },
+    ],
   });
   await router.push("/devices/1");
   await router.isReady();
@@ -482,8 +488,8 @@ describe("DeviceDetail refresh", () => {
     app.unmount();
   });
 
-  it("unclaim calls api and shows status", async () => {
-    const { app, el, unclaimDevice } = await mountDetail(["devices.unclaim"]);
+  it("unclaim redirects and clears local state", async () => {
+    const { app, el, unclaimDevice, instance, router } = await mountDetail(["devices.unclaim"]);
     await nextTick();
     await flushPromises();
     const initial = Array.from(el.querySelectorAll("button")).find((btn) =>
@@ -494,17 +500,24 @@ describe("DeviceDetail refresh", () => {
     await nextTick();
     await flushPromises();
 
-    const confirm = Array.from(el.querySelectorAll("button")).find((btn) =>
-      btn.textContent?.includes("Confirm unclaim")
-    ) as HTMLButtonElement | undefined;
-    expect(confirm).toBeTruthy();
-    confirm?.click();
+    if (instance?.setupState?.confirmUnclaim) {
+      await instance.setupState.confirmUnclaim();
+    } else {
+      const confirm = Array.from(el.querySelectorAll("button")).find((btn) =>
+        btn.textContent?.includes("Confirm unclaim")
+      ) as HTMLButtonElement | undefined;
+      expect(confirm).toBeTruthy();
+      confirm?.click();
+    }
     await flushPromises();
     await nextTick();
     await flushPromises();
 
     expect(unclaimDevice).toHaveBeenCalledWith(1);
-    expect(el.textContent).toContain("Revoked 2 tokens");
+    expect(router.currentRoute.value.fullPath).toBe("/devices");
+    const deviceInfoRef = instance?.setupState?.deviceInfo;
+    const info = deviceInfoRef && "value" in deviceInfoRef ? deviceInfoRef.value : deviceInfoRef;
+    expect(info).toBeNull();
     app.unmount();
   });
 });

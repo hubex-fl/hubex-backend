@@ -12,6 +12,9 @@ This document lists read-only endpoints and required capabilities. It reflects t
 - POST /api/v1/devices/hello - cap: devices.hello - device hello/provision
 - POST /api/v1/devices/{device_id}/token/reissue - cap: devices.token.reissue - reissue device token (owner/admin)
 - POST /api/v1/devices/{device_id}/unclaim - cap: devices.unclaim - unclaim device (owner/admin)
+- POST /api/v1/devices/{device_id}/purge - cap: devices.purge - purge device (admin only)
+- POST /api/v1/devices/purge - cap: devices.purge - bulk purge devices (admin only)
+- POST /api/v1/devices/purge-bulk - cap: devices.purge - bulk purge devices (alias)
 - POST /api/v1/devices/{device_id}/tasks - cap: tasks.write - enqueue task
 - POST /api/v1/devices/{device_id}/tasks/{task_id}/cancel - cap: tasks.write - cancel task
 

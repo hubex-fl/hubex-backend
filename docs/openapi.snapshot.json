@@ -608,6 +608,138 @@
         "title": "DeviceLookupOut",
         "type": "object"
       },
+      "DevicePurgeBulkIn": {
+        "properties": {
+          "device_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Device Ids",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "device_ids"
+        ],
+        "title": "DevicePurgeBulkIn",
+        "type": "object"
+      },
+      "DevicePurgeBulkOut": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DevicePurgeBulkResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "DevicePurgeBulkOut",
+        "type": "object"
+      },
+      "DevicePurgeBulkResult": {
+        "properties": {
+          "deleted_counts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Counts"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "ok"
+        ],
+        "title": "DevicePurgeBulkResult",
+        "type": "object"
+      },
+      "DevicePurgeIn": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "DevicePurgeIn",
+        "type": "object"
+      },
+      "DevicePurgeOut": {
+        "properties": {
+          "deleted_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Deleted Counts",
+            "type": "object"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "integer"
+          },
+          "device_uid": {
+            "title": "Device Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_uid",
+          "deleted_counts"
+        ],
+        "title": "DevicePurgeOut",
+        "type": "object"
+      },
       "DeviceTokenReissueIn": {
         "properties": {
           "reason": {
@@ -4904,6 +5036,106 @@
         ]
       }
     },
+    "/api/v1/devices/purge": {
+      "post": {
+        "operationId": "purge_devices_bulk_api_v1_devices_purge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePurgeBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePurgeBulkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Purge Devices Bulk",
+        "tags": [
+          "devices",
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/purge-bulk": {
+      "post": {
+        "operationId": "purge_devices_bulk_api_v1_devices_purge_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePurgeBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePurgeBulkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Purge Devices Bulk",
+        "tags": [
+          "devices",
+          "devices"
+        ]
+      }
+    },
     "/api/v1/devices/whoami": {
       "get": {
         "operationId": "whoami_api_v1_devices_whoami_get",
@@ -5028,6 +5260,67 @@
           }
         ],
         "summary": "Get Current Task",
+        "tags": [
+          "devices",
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{device_id}/purge": {
+      "post": {
+        "operationId": "purge_device_api_v1_devices__device_id__purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePurgeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePurgeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Purge Device",
         "tags": [
           "devices",
           "devices"

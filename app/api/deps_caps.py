@@ -125,6 +125,8 @@ async def capability_guard(
 
     if not _has_required_caps(required, caps):
         if enforce:
+            if "devices.purge" in required:
+                _http_403(_detail("DEVICE_PURGE_FORBIDDEN", "Missing capability: devices.purge"))
             _http_403(_detail("CAP_FORBIDDEN", "insufficient capability"))
         _log_soft(enforce, "CAP_FORBIDDEN %s %s required=%s", method, path, required)
         return

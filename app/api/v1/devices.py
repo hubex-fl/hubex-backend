@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, desc, update, or_
+from sqlalchemy import select, desc, update, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -19,6 +19,16 @@ from app.db.models.tasks import ExecutionContext, Task
 from app.db.models.pairing import PairingSession
 from app.db.models.pairing import DeviceToken
 from app.db.models.audit import AuditV1Entry
+from app.db.models.device_runtime import DeviceRuntimeSetting
+from app.db.models.entities import EntityDeviceBinding
+from app.db.models.variables import (
+    VariableAppliedAck,
+    VariableAudit,
+    VariableEffect,
+    VariableSnapshot,
+    VariableSnapshotItem,
+    VariableValue,
+)
 from app.schemas.device import DeviceListItem, DeviceDetailItem
 from app.api.v1.device_state import (
     derive_state,
@@ -85,6 +95,32 @@ class DeviceUnclaimOut(BaseModel):
     device_uid: str
     revoked_count: int
     unclaimed: bool
+
+
+class DevicePurgeIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=256)
+
+
+class DevicePurgeOut(BaseModel):
+    device_id: int
+    device_uid: str
+    deleted_counts: Dict[str, int]
+
+
+class DevicePurgeBulkIn(BaseModel):
+    device_ids: list[int] = Field(min_length=1)
+    reason: str | None = Field(default=None, max_length=256)
+
+
+class DevicePurgeBulkResult(BaseModel):
+    id: int
+    ok: bool
+    deleted_counts: Optional[Dict[str, int]] = None
+    error: Optional[str] = None
+
+
+class DevicePurgeBulkOut(BaseModel):
+    results: list[DevicePurgeBulkResult]
 
 
 class UserTelemetryOut(BaseModel):
@@ -316,6 +352,17 @@ def _is_admin(user: User) -> bool:
     return "cap.admin" in user.caps or "mic.admin" in user.caps
 
 
+def _can_purge(user: User) -> bool:
+    if not user.caps:
+        return False
+    return "devices.purge" in user.caps
+
+
+def _ensure_purge_cap(user: User) -> None:
+    if not _can_purge(user):
+        raise_api_error(403, "DEVICE_PURGE_FORBIDDEN", "Missing capability: devices.purge")
+
+
 @router.post("/{device_id}/token/reissue", response_model=DeviceTokenReissueOut)
 async def reissue_device_token(
     device_id: int,
@@ -418,6 +465,165 @@ async def unclaim_device(
         revoked_count=revoked_count,
         unclaimed=True,
     )
+
+
+async def _purge_device_rows(db: AsyncSession, device: Device) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+
+    def _count(res) -> int:
+        return int(res.rowcount or 0)
+
+    res = await db.execute(
+        delete(VariableSnapshotItem).where(VariableSnapshotItem.device_id == device.id)
+    )
+    counts["variable_snapshot_items"] = _count(res)
+    res = await db.execute(
+        delete(VariableAppliedAck).where(VariableAppliedAck.device_id == device.id)
+    )
+    counts["variable_applied_acks"] = _count(res)
+    res = await db.execute(
+        delete(VariableAudit).where(
+            or_(VariableAudit.device_id == device.id, VariableAudit.actor_device_id == device.id)
+        )
+    )
+    counts["variable_audits"] = _count(res)
+    res = await db.execute(
+        delete(VariableValue).where(
+            or_(VariableValue.device_id == device.id, VariableValue.updated_by_device_id == device.id)
+        )
+    )
+    counts["variable_values"] = _count(res)
+    res = await db.execute(
+        delete(VariableSnapshot).where(VariableSnapshot.device_id == device.id)
+    )
+    counts["variable_snapshots"] = _count(res)
+    res = await db.execute(
+        delete(VariableEffect).where(
+            or_(VariableEffect.device_id == device.id, VariableEffect.device_uid == device.device_uid)
+        )
+    )
+    counts["variable_effects"] = _count(res)
+    res = await db.execute(
+        delete(DeviceTelemetry).where(DeviceTelemetry.device_id == device.id)
+    )
+    counts["device_telemetry"] = _count(res)
+    res = await db.execute(delete(Task).where(Task.client_id == device.id))
+    counts["tasks"] = _count(res)
+    res = await db.execute(
+        delete(ExecutionContext).where(ExecutionContext.client_id == device.id)
+    )
+    counts["execution_contexts"] = _count(res)
+    res = await db.execute(
+        delete(EntityDeviceBinding).where(EntityDeviceBinding.device_id == device.id)
+    )
+    counts["entity_device_bindings"] = _count(res)
+    res = await db.execute(
+        delete(DeviceRuntimeSetting).where(DeviceRuntimeSetting.device_id == device.id)
+    )
+    counts["device_runtime_settings"] = _count(res)
+    res = await db.execute(
+        delete(PairingSession).where(PairingSession.device_uid == device.device_uid)
+    )
+    counts["pairing_sessions"] = _count(res)
+    res = await db.execute(delete(DeviceToken).where(DeviceToken.device_id == device.id))
+    counts["device_tokens"] = _count(res)
+    res = await db.execute(delete(Device).where(Device.id == device.id))
+    counts["devices"] = _count(res)
+    return counts
+
+
+@router.post("/{device_id}/purge", response_model=DevicePurgeOut)
+async def purge_device(
+    device_id: int,
+    data: DevicePurgeIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _ensure_purge_cap(user)
+
+    res = await db.execute(select(Device).where(Device.id == device_id))
+    device = res.scalar_one_or_none()
+    if device is None:
+        raise_api_error(404, "DEVICE_NOT_FOUND", "device not found")
+
+    deleted_counts = await _purge_device_rows(db, device)
+    db.add(
+        AuditV1Entry(
+            actor_type="user",
+            actor_id=str(user.id),
+            action="device.purge",
+            resource=str(device.id),
+            audit_metadata={
+                "device_id": device.id,
+                "device_uid": device.device_uid,
+                "deleted_counts": deleted_counts,
+                "reason": data.reason,
+                "bulk": False,
+                "requested_device_ids_count": 1,
+                "deleted_device": deleted_counts.get("devices", 0) > 0,
+            },
+            trace_id=None,
+        )
+    )
+    await db.commit()
+    return DevicePurgeOut(
+        device_id=device_id,
+        device_uid=device.device_uid,
+        deleted_counts=deleted_counts,
+    )
+
+
+@router.post("/purge", response_model=DevicePurgeBulkOut)
+@router.post("/purge-bulk", response_model=DevicePurgeBulkOut)
+async def purge_devices_bulk(
+    data: DevicePurgeBulkIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _ensure_purge_cap(user)
+
+    results: list[DevicePurgeBulkResult] = []
+    requested_count = len(data.device_ids)
+    for device_id in data.device_ids:
+        try:
+            res = await db.execute(select(Device).where(Device.id == device_id))
+            device = res.scalar_one_or_none()
+            if device is None:
+                results.append(
+                    DevicePurgeBulkResult(id=device_id, ok=False, error="not_found")
+                )
+                continue
+            deleted_counts = await _purge_device_rows(db, device)
+            db.add(
+                AuditV1Entry(
+                    actor_type="user",
+                    actor_id=str(user.id),
+                    action="device.purge",
+                    resource=str(device.id),
+                    audit_metadata={
+                        "device_id": device.id,
+                        "device_uid": device.device_uid,
+                        "deleted_counts": deleted_counts,
+                        "reason": data.reason,
+                        "bulk": True,
+                        "requested_device_ids_count": requested_count,
+                        "deleted_device": deleted_counts.get("devices", 0) > 0,
+                    },
+                    trace_id=None,
+                )
+            )
+            await db.commit()
+            results.append(
+                DevicePurgeBulkResult(
+                    id=device_id, ok=True, deleted_counts=deleted_counts
+                )
+            )
+        except Exception as exc:
+            await db.rollback()
+            results.append(
+                DevicePurgeBulkResult(id=device_id, ok=False, error=str(exc))
+            )
+    return DevicePurgeBulkOut(results=results)
 
 
 async def _get_owned_device(
