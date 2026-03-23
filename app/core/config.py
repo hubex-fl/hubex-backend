@@ -29,6 +29,19 @@ class Settings(BaseSettings):
 
     caps_enforce: bool = True
 
+    # Phase 7 — Rate-Limiting
+    rate_limit_enabled: bool = True
+
+    # Phase 7 — Response Caching
+    cache_enabled: bool = True
+
+    # Phase 7 — Structured Logging
+    log_level: str = "INFO"
+    log_format: str = "text"  # "text" | "json"
+
+    # Phase 7 — JWT Refresh Tokens
+    refresh_token_exp_days: int = 30
+
 
 settings = Settings()
 

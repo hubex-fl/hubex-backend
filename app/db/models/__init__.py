@@ -14,6 +14,7 @@ from .variables import (
 )
 from .device_runtime import DeviceRuntimeSetting
 from .revoked_token import RevokedToken
+from .refresh_token import RefreshToken
 from .entities import Entity, EntityDeviceBinding
 from .events import EventV1, EventV1Checkpoint
 from .audit import AuditV1Entry
@@ -46,6 +47,7 @@ __all__ = [
     "VariableEffect",
     "DeviceRuntimeSetting",
     "RevokedToken",
+    "RefreshToken",
     "Entity",
     "EntityDeviceBinding",
     "EventV1",
