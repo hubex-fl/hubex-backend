@@ -62,6 +62,10 @@ CAPABILITY_REGISTRY: set[str] = {
     "org.admin",
     "org.members.read",
     "org.members.write",
+    "ota.read",
+    "ota.write",
+    "ota.admin",
+    "edge.config",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -191,6 +195,26 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/orgs/{org_id}/members"): ["org.members.write"],
     ("PUT", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
     ("DELETE", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
+    # OTA Firmware
+    ("POST", "/api/v1/ota/firmware"): ["ota.write"],
+    ("GET", "/api/v1/ota/firmware"): ["ota.read"],
+    ("GET", "/api/v1/ota/firmware/{firmware_id}"): ["ota.read"],
+    ("PUT", "/api/v1/ota/firmware/{firmware_id}"): ["ota.write"],
+    ("DELETE", "/api/v1/ota/firmware/{firmware_id}"): ["ota.admin"],
+    # OTA Rollouts
+    ("POST", "/api/v1/ota/rollouts"): ["ota.write"],
+    ("GET", "/api/v1/ota/rollouts"): ["ota.read"],
+    ("GET", "/api/v1/ota/rollouts/{rollout_id}"): ["ota.read"],
+    ("POST", "/api/v1/ota/rollouts/{rollout_id}/start"): ["ota.write"],
+    ("POST", "/api/v1/ota/rollouts/{rollout_id}/pause"): ["ota.write"],
+    ("POST", "/api/v1/ota/rollouts/{rollout_id}/cancel"): ["ota.write"],
+    # OTA device-facing
+    ("GET", "/api/v1/ota/check"): ["edge.config"],
+    ("GET", "/api/v1/ota/status"): ["edge.config"],
+    ("POST", "/api/v1/ota/status/{rollout_id}/ack"): ["edge.config"],
+    # Edge
+    ("GET", "/api/v1/edge/config"): ["edge.config"],
+    ("POST", "/api/v1/edge/heartbeat"): ["edge.config"],
 }
 
 # Public whitelist (auth-free, minimal, static).

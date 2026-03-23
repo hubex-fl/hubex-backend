@@ -27,6 +27,7 @@ from .modules import ModuleRegistry
 from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
 from .orgs import Organization, OrganizationUser
+from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
 
 __all__ = [
     "User",
@@ -67,4 +68,7 @@ __all__ = [
     "AlertEvent",
     "Organization",
     "OrganizationUser",
+    "FirmwareVersion",
+    "OtaRollout",
+    "DeviceOtaStatus",
 ]

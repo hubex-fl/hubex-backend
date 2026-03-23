@@ -21,7 +21,7 @@ logger = logging.getLogger("uvicorn.error")
 bearer = HTTPBearer(auto_error=False)
 device_token_header = APIKeyHeader(name="X-Device-Token", auto_error=False)
 
-DEVICE_CAPS: set[str] = {"vars.read", "vars.ack", "telemetry.emit"}
+DEVICE_CAPS: set[str] = {"vars.read", "vars.ack", "telemetry.emit", "edge.config"}
 
 
 def _log_soft(enforce: bool, msg: str, *args: object) -> None:

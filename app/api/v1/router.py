@@ -24,6 +24,8 @@ from .groups import router as groups_router
 from .alerts import router as alerts_router
 from .metrics import router as metrics_router
 from .orgs import router as orgs_router
+from .ota import router as ota_router
+from .edge import router as edge_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -50,3 +52,5 @@ router.include_router(groups_router, tags=["groups"])
 router.include_router(alerts_router, tags=["alerts"])
 router.include_router(metrics_router, tags=["metrics"])
 router.include_router(orgs_router, tags=["orgs"])
+router.include_router(ota_router, tags=["ota"])
+router.include_router(edge_router, tags=["edge"])
