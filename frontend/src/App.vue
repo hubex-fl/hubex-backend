@@ -1,47 +1,18 @@
-﻿<script setup lang="ts">
-import { onMounted } from "vue";
-import { hasToken } from "./lib/api";
-import { refreshCapabilities, useCapabilities, hasCap } from "./lib/capabilities";
-import { useAbortHandle } from "./lib/abort";
+<script setup lang="ts">
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import DefaultLayout from "./layouts/DefaultLayout.vue";
+import AuthLayout from "./layouts/AuthLayout.vue";
 
-const caps = useCapabilities();
-const { signal } = useAbortHandle();
-
-onMounted(() => {
-  refreshCapabilities(signal);
+const route = useRoute();
+const layout = computed(() => {
+  if (route.meta?.layout === "auth") return AuthLayout;
+  return DefaultLayout;
 });
 </script>
 
 <template>
-  <div class="shell">
-    <aside class="nav">
-      <div class="nav-title">HUBEX</div>
-      <router-link v-if="hasCap('entities.read')" to="/system-stage">System Stage</router-link>
-      <router-link v-if="hasCap('events.read')" to="/events">Events</router-link>
-      <router-link v-if="hasCap('effects.read')" to="/effects">Effects</router-link>
-      <router-link v-if="hasCap('devices.read')" to="/devices">Devices</router-link>
-      <router-link v-if="hasCap('tasks.read')" to="/executions">Executions</router-link>
-      <router-link v-if="hasCap('audit.read')" to="/audit">Audit</router-link>
-      <router-link v-if="hasCap('events.read') || hasCap('effects.read')" to="/trace-hub">Trace Hub</router-link>
-      <router-link v-if="hasCap('tasks.read') || hasCap('effects.read')" to="/correlation">Correlation</router-link>
-      <router-link
-        v-if="hasCap('devices.read') || hasCap('effects.read') || hasCap('events.read') || hasCap('vars.read')"
-        to="/observability"
-      >
-        Observability
-      </router-link>
-      <router-link to="/settings/auth">Auth</router-link>
-      <router-link to="/token">Token</router-link>
-      <div class="spacer"></div>
-      <div class="nav-status">
-        <span class="nav-status-text">Token: {{ hasToken() ? 'present' : 'missing' }}</span>
-      </div>
-      <div class="nav-status" :class="{ 'is-empty': !caps.status }">
-        <span class="nav-status-text">Caps: {{ caps.status }}</span>
-      </div>
-    </aside>
-    <main class="content">
-      <router-view />
-    </main>
-  </div>
+  <component :is="layout">
+    <router-view />
+  </component>
 </template>

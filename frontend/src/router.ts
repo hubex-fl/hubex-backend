@@ -1,33 +1,24 @@
-﻿import { createRouter, createWebHistory } from "vue-router";
-import SystemStage from "./pages/SystemStage.vue";
-import Events from "./pages/Events.vue";
-import Effects from "./pages/Effects.vue";
-import Observability from "./pages/Observability.vue";
-import SettingsAuth from "./pages/SettingsAuth.vue";
-import TraceHub from "./pages/TraceHub.vue";
-import Audit from "./pages/Audit.vue";
-import Executions from "./pages/Executions.vue";
-import Correlation from "./pages/Correlation.vue";
-import TokenInspector from "./pages/TokenInspector.vue";
-import DeviceDetail from "./pages/DeviceDetail.vue";
-import Devices from "./pages/Devices.vue";
+import { createRouter, createWebHistory } from "vue-router";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", redirect: "/system-stage" },
-    { path: "/system-stage", component: SystemStage },
-    { path: "/events", component: Events },
-    { path: "/effects", component: Effects },
-    { path: "/trace-hub", component: TraceHub },
-    { path: "/observability", component: Observability },
-    { path: "/executions", component: Executions },
-    { path: "/audit", component: Audit },
-    { path: "/correlation", component: Correlation },
-    { path: "/token", component: TokenInspector },
-    { path: "/settings/auth", component: SettingsAuth },
-    { path: "/devices", component: Devices },
-    { path: "/devices/:id", name: "device-detail", component: DeviceDetail },
+    { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In" } },
+    { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
+    { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices" } },
+    { path: "/devices/:id",  component: () => import("./pages/DeviceDetail.vue"),    meta: { title: "Device Detail" }, name: "device-detail" },
+    { path: "/events",       component: () => import("./pages/Events.vue"),          meta: { title: "Events" } },
+    { path: "/effects",      component: () => import("./pages/Effects.vue"),         meta: { title: "Effects" } },
+    { path: "/trace-hub",    component: () => import("./pages/TraceHub.vue"),        meta: { title: "Trace Hub" } },
+    { path: "/executions",   component: () => import("./pages/Executions.vue"),      meta: { title: "Executions" } },
+    { path: "/audit",        component: () => import("./pages/Audit.vue"),           meta: { title: "Audit Log" } },
+    { path: "/correlation",  component: () => import("./pages/Correlation.vue"),     meta: { title: "Correlation" } },
+    { path: "/observability",component: () => import("./pages/Observability.vue"),   meta: { title: "Observability" } },
+    { path: "/settings/auth",component: () => import("./pages/SettingsAuth.vue"),    meta: { title: "Auth Settings" } },
+    { path: "/token",        component: () => import("./pages/TokenInspector.vue"),  meta: { title: "Token Inspector" } },
+    { path: "/variables",    component: () => import("./pages/Variables.vue"),       meta: { title: "Variables" } },
+    { path: "/pairing",      component: () => import("./pages/Pairing.vue"),         meta: { title: "Pairing" } },
   ],
 });
 
