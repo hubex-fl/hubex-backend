@@ -24,6 +24,7 @@ from app.db.models.entities import Entity
 from app.db.models.events import EventV1
 from app.db.models.orgs import Organization, OrganizationUser
 from app.db.models.revoked_token import RevokedToken
+from app.db.models.refresh_token import RefreshToken  # noqa: F401 — ensure table created
 from app.db.models.user import User
 from app.core.capabilities import CAPABILITY_MAP, PUBLIC_WHITELIST
 from tests.conftest import make_token
@@ -72,6 +73,7 @@ def _create_tables(metadata, conn) -> None:
             Entity.__table__,
             EventV1.__table__,
             RevokedToken.__table__,
+            RefreshToken.__table__,
         ],
     )
 
