@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", redirect: "/system-stage" },
+    { path: "/",             component: () => import("./pages/DashboardPage.vue"), meta: { title: "Dashboard" } },
     { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In" } },
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
     { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices" } },
