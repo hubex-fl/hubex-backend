@@ -1,69 +1,118 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { useCapabilities, hasCap } from "../lib/capabilities";
+import { useDevices } from "../composables/useDevices";
+import type { Device } from "../composables/useDevices";
+import UCard from "../components/ui/UCard.vue";
+import UBadge from "../components/ui/UBadge.vue";
+import UButton from "../components/ui/UButton.vue";
+import UInput from "../components/ui/UInput.vue";
+import USelect from "../components/ui/USelect.vue";
+import USkeleton from "../components/ui/USkeleton.vue";
+import UEmpty from "../components/ui/UEmpty.vue";
+import UModal from "../components/ui/UModal.vue";
+import UToggle from "../components/ui/UToggle.vue";
 
-type Device = {
-  id: number;
-  device_uid: string;
-  claimed: boolean;
-  last_seen: string | null;
-  online: boolean;
-  health: "ok" | "stale" | "dead";
-  last_seen_age_seconds: number | null;
-  state: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
-  pairing_active: boolean;
-  busy: boolean;
-  __sig?: string;
-};
-
-const devices = ref<Device[]>([]);
-type DeviceLookup = {
-  device_uid: string;
-  device_id: number;
-  claimed: boolean;
-};
-
-const error = ref("");
-const loading = ref(false);
-const refreshing = ref(false);
-const pairingSection = ref<HTMLElement | null>(null);
-const pairingClaimInput = ref<HTMLInputElement | null>(null);
 const route = useRoute();
 const router = useRouter();
 const caps = useCapabilities();
 
+// ── Capabilities ──────────────────────────────────────────────────────────────
+const showUnclaimedAdmin = ref(false);
+const includeUnclaimed = computed(
+  () => caps.status === "ready" && hasCap("cap.admin") && showUnclaimedAdmin.value,
+);
+const canShowPurge = computed(() => caps.status === "ready" && hasCap("devices.purge"));
+
+// ── Data / Polling ─────────────────────────────────────────────────────────────
+const { devices, loading, error: fetchError, refreshing, reload } = useDevices(includeUnclaimed);
+const isRefreshing = ref(false);
+const actionError = ref("");
+const displayError = computed(() => actionError.value || fetchError.value || "");
+
+async function handleRefresh() {
+  isRefreshing.value = true;
+  actionError.value = "";
+  try {
+    await reload();
+  } finally {
+    isRefreshing.value = false;
+  }
+}
+
+// ── Pairing ────────────────────────────────────────────────────────────────────
+const pairingOpen = ref(false);
+const pairingSectionEl = ref<HTMLElement | null>(null);
+const pairingCodeRef = ref<HTMLElement | null>(null);
 const pairingDeviceUid = ref("");
-const claimingPairing = ref(false);
 const pairingClaimCode = ref("");
 const pairingClaimStatus = ref<string | null>(null);
-const showUnclaimedAdmin = ref(false);
+const claimingPairing = ref(false);
+
+type DeviceLookup = { device_uid: string; device_id: number; claimed: boolean };
+const pairingLookup = ref<DeviceLookup | null>(null);
+const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
+let lookupTimer: number | null = null;
+
+// ── Toolbar ────────────────────────────────────────────────────────────────────
 const searchQuery = ref("");
-const sortBy = ref<"last_seen" | "state" | "health">("last_seen");
-const filterBy = ref<
-  "all" | "recent" | "claimed" | "unclaimed" | "claimable" | "offline" | "offline_old"
->("all");
+const sortBy = ref("last_seen");
+const filterBy = ref("all");
+
 const RECENT_SECONDS = 300;
 const OFFLINE_OLD_SECONDS = 7 * 24 * 60 * 60;
-const selectMode = ref<"unclaim" | "purge">("unclaim");
+
+const sortOptions = [
+  { value: "last_seen", label: "Last seen" },
+  { value: "state", label: "State priority" },
+  { value: "health", label: "Health" },
+];
+
+const filterOptions = computed(() => {
+  const opts: Array<{ value: string; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "recent", label: "Recently active" },
+  ];
+  if (includeUnclaimed.value) {
+    opts.push(
+      { value: "claimed", label: "Claimed" },
+      { value: "unclaimed", label: "Unclaimed" },
+      { value: "claimable", label: "Claimable" },
+    );
+  }
+  opts.push(
+    { value: "offline", label: "Offline" },
+    { value: "offline_old", label: "Offline (old)" },
+  );
+  return opts;
+});
+
+// ── Bulk / Selection ──────────────────────────────────────────────────────────
+const selectMode = ref("unclaim");
 const selectedIds = ref<number[]>([]);
 const bulkUnclaimBusy = ref(false);
 const bulkUnclaimConfirm = ref(false);
 const bulkUnclaimStatus = ref<Record<number, string>>({});
+
 const bulkPurgeBusy = ref(false);
-const bulkPurgeConfirm = ref(false);
+const showBulkPurgeModal = ref(false);
 const bulkPurgeConfirmText = ref("");
 const bulkPurgeStatus = ref<Record<number, string>>({});
 
-const pairingLookup = ref<DeviceLookup | null>(null);
-const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
-const includeUnclaimed = computed(
-  () => caps.status === "ready" && hasCap("cap.admin") && showUnclaimedAdmin.value
-);
-const canShowPurge = computed(() => caps.status === "ready" && hasCap("devices.purge"));
+const showSinglePurgeModal = ref(false);
+const singlePurgeDevice = ref<Device | null>(null);
+const singlePurgeConfirmText = ref("");
 
+const selectModeOptions = computed(() => {
+  const opts: Array<{ value: string; label: string }> = [{ value: "unclaim", label: "Unclaim mode" }];
+  if (canShowPurge.value) opts.push({ value: "purge", label: "Purge mode" });
+  return opts;
+});
+
+// ── Derived ───────────────────────────────────────────────────────────────────
 const pairingDevice = computed(() => {
   const uid = pairingDeviceUid.value.trim();
   if (!uid) return null;
@@ -80,245 +129,182 @@ const pairingStateWarning = computed(() => {
     return null;
   }
   if (!pairingDevice.value.online) {
-    return "Device offline; pairing code will be visible on device dashboard when online.";
+    return "Device offline — pairing code visible on device when online.";
   }
   switch (pairingDevice.value.state) {
-    case "unprovisioned":
-      return "Device not provisioned (never seen)";
-    case "busy":
-      return "Device busy (task running)";
-    case "claimed":
-      return "Device already claimed";
-    case "pairing_active":
-      return "Pairing already active (check device dashboard)";
-    default:
-      return null;
+    case "unprovisioned": return "Device not provisioned (never seen)";
+    case "busy": return "Device busy (task running)";
+    case "claimed": return "Device already claimed";
+    case "pairing_active": return "Pairing already active (check device dashboard)";
+    default: return null;
   }
 });
 
 const canClaimPairing = computed(() => {
   if (claimingPairing.value) return false;
-  if (caps.status !== "ready") return false;
-  if (!hasCap("pairing.claim")) return false;
+  if (caps.status !== "ready" || !hasCap("pairing.claim")) return false;
   if (!pairingDeviceUid.value.trim()) return false;
   return pairingClaimCode.value.trim().length > 0;
-});
-
-const selectableIds = computed(() => {
-  const mode = selectMode.value;
-  return visibleDevices.value
-    .filter((d) => (mode === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d)))
-    .map((d) => d.id);
-});
-
-const allSelected = computed(() => {
-  const ids = selectableIds.value;
-  if (!ids.length) return false;
-  return ids.every((id) => selectedIds.value.includes(id));
-});
-
-const canBulkUnclaim = computed(() => {
-  if (bulkUnclaimBusy.value) return false;
-  if (selectMode.value !== "unclaim") return false;
-  if (caps.status !== "ready") return false;
-  if (!hasCap("devices.unclaim")) return false;
-  return selectedIds.value.length > 0;
-});
-
-const canBulkPurge = computed(() => {
-  if (bulkPurgeBusy.value) return false;
-  if (selectMode.value !== "purge") return false;
-  if (caps.status !== "ready") return false;
-  if (!hasCap("devices.purge")) return false;
-  return selectedIds.value.length > 0;
 });
 
 const visibleDevices = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   let list = devices.value.slice();
-  if (q) {
-    list = list.filter((d) => d.device_uid.toLowerCase().includes(q));
+  if (q) list = list.filter((d) => d.device_uid.toLowerCase().includes(q));
+
+  switch (filterBy.value) {
+    case "claimed":
+      list = list.filter((d) => d.state === "claimed");
+      break;
+    case "recent":
+      list = list.filter(
+        (d) => d.last_seen_age_seconds !== null && d.last_seen_age_seconds <= RECENT_SECONDS,
+      );
+      break;
+    case "unclaimed":
+      list = list.filter((d) => d.state !== "claimed");
+      break;
+    case "claimable":
+      list = list.filter((d) => !d.claimed && d.pairing_active);
+      break;
+    case "offline":
+      list = list.filter((d) => !d.online);
+      break;
+    case "offline_old":
+      list = list.filter(
+        (d) =>
+          !d.online &&
+          d.last_seen_age_seconds !== null &&
+          d.last_seen_age_seconds > OFFLINE_OLD_SECONDS,
+      );
+      break;
   }
-  if (filterBy.value === "claimed") {
-    list = list.filter((d) => d.state === "claimed");
-  } else if (filterBy.value === "recent") {
-    list = list.filter(
-      (d) => d.last_seen_age_seconds !== null && d.last_seen_age_seconds <= RECENT_SECONDS
-    );
-  } else if (filterBy.value === "unclaimed") {
-    list = list.filter((d) => d.state !== "claimed");
-  } else if (filterBy.value === "claimable") {
-    list = list.filter((d) => !d.claimed && d.pairing_active);
-  } else if (filterBy.value === "offline") {
-    list = list.filter((d) => !d.online);
-  } else if (filterBy.value === "offline_old") {
-    list = list.filter(
-      (d) =>
-        !d.online &&
-        d.last_seen_age_seconds !== null &&
-        d.last_seen_age_seconds > OFFLINE_OLD_SECONDS
-    );
-  }
+
   const statePriority: Record<Device["state"], number> = {
-    busy: 5,
-    pairing_active: 4,
-    provisioned_unclaimed: 3,
-    claimed: 2,
-    unprovisioned: 1,
+    busy: 5, pairing_active: 4, provisioned_unclaimed: 3, claimed: 2, unprovisioned: 1,
   };
-  const healthPriority: Record<Device["health"], number> = {
-    ok: 3,
-    stale: 2,
-    dead: 1,
-  };
-  if (sortBy.value === "last_seen") {
-    list.sort((a, b) => {
-      const av = a.last_seen_age_seconds ?? Number.POSITIVE_INFINITY;
-      const bv = b.last_seen_age_seconds ?? Number.POSITIVE_INFINITY;
-      return av - bv;
-    });
-  } else if (sortBy.value === "state") {
+  const healthPriority: Record<Device["health"], number> = { ok: 3, stale: 2, dead: 1 };
+
+  if (sortBy.value === "state") {
     list.sort((a, b) => statePriority[b.state] - statePriority[a.state]);
   } else if (sortBy.value === "health") {
     list.sort((a, b) => healthPriority[b.health] - healthPriority[a.health]);
+  } else {
+    list.sort(
+      (a, b) => (a.last_seen_age_seconds ?? Infinity) - (b.last_seen_age_seconds ?? Infinity),
+    );
   }
   return list;
 });
 
-let timer: number | null = null;
-let lookupTimer: number | null = null;
-let refreshTimer: number | null = null;
-
-function scheduleScrollRestore(y: number) {
-  if (typeof window === "undefined") return;
-  const schedule = typeof window.requestAnimationFrame === "function"
-    ? window.requestAnimationFrame.bind(window)
-    : (cb: FrameRequestCallback) => window.setTimeout(cb, 0);
-  schedule(() => window.scrollTo({ top: y }));
+function isBulkUnclaimable(d: Device) {
+  return caps.status === "ready" && hasCap("devices.unclaim") && d.state === "claimed";
 }
 
-function deviceSig(d: Device): string {
-  return [
-    d.id,
-    d.device_uid,
-    d.health,
-    d.state,
-    d.online,
-    d.last_seen ?? "",
-    d.pairing_active,
-    d.busy,
-  ].join("|");
+function isBulkPurgeable(_d: Device) {
+  return caps.status === "ready" && canShowPurge.value;
 }
 
-function reconcileById<T extends { id: number; __sig?: string }>(
-  target: T[],
-  next: T[],
-  sigFn: (item: T) => string
-) {
-  const byId = new Map<number, T>();
-  for (const item of target) {
-    byId.set(item.id, item);
-  }
-  const ordered: T[] = [];
-  for (const item of next) {
-    const existing = byId.get(item.id);
-    if (existing) {
-      const nextSig = sigFn(item);
-      if (existing.__sig !== nextSig) {
-        Object.assign(existing, item);
-        existing.__sig = nextSig;
-      }
-      ordered.push(existing);
-    } else {
-      item.__sig = sigFn(item);
-      ordered.push(item);
-    }
-  }
-  target.splice(0, target.length, ...ordered);
+const selectableIds = computed(() =>
+  visibleDevices.value
+    .filter((d) => (selectMode.value === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d)))
+    .map((d) => d.id),
+);
+
+const allSelected = computed(() => {
+  const ids = selectableIds.value;
+  return ids.length > 0 && ids.every((id) => selectedIds.value.includes(id));
+});
+
+const canBulkUnclaim = computed(
+  () =>
+    !bulkUnclaimBusy.value &&
+    selectMode.value === "unclaim" &&
+    caps.status === "ready" &&
+    hasCap("devices.unclaim") &&
+    selectedIds.value.length > 0,
+);
+
+const canBulkPurge = computed(
+  () =>
+    !bulkPurgeBusy.value &&
+    selectMode.value === "purge" &&
+    caps.status === "ready" &&
+    canShowPurge.value &&
+    selectedIds.value.length > 0,
+);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function truncate(text: string, max = 300) {
+  return text.length <= max ? text : `${text.slice(0, max)}...`;
 }
 
-async function load(opts?: { silent?: boolean }) {
-  if (opts?.silent !== true) {
-    error.value = "";
-    loading.value = true;
-  } else {
-    refreshing.value = false;
-    if (refreshTimer !== null) {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = null;
-    }
-    refreshTimer = window.setTimeout(() => {
-      refreshing.value = true;
-    }, 350);
-  }
-  if (opts?.silent && document.visibilityState !== "visible") {
-    if (refreshTimer !== null) {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = null;
-    }
-    refreshing.value = false;
-    return;
-  }
-  const scrollY = opts?.silent && typeof window !== "undefined" ? window.scrollY : 0;
+function formatError(err: unknown, fallback: string): string {
+  const info = parseApiError(err);
+  const mapped = mapErrorToUserText(info, fallback);
+  const status = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
+  const detail = truncate(info.message || "");
+  const code = info.code ? ` ${info.code}` : "";
+  const suffix = detail ? `${status}: ${detail}` : status;
+  return mapped !== fallback ? `${mapped} (${suffix}${code})` : `${fallback} (${suffix}${code})`;
+}
+
+function fmtTime(iso: string | null) {
+  if (!iso) return "—";
   try {
-    const path = includeUnclaimed.value
-      ? "/api/v1/devices?include_unclaimed=1"
-      : "/api/v1/devices";
-    const next = await apiFetch<Device[]>(path);
-    reconcileById(devices.value, next, deviceSig);
-    const nextIds = new Set(next.map((d) => d.id));
-    if (selectedIds.value.length) {
-      selectedIds.value = selectedIds.value.filter((id) => nextIds.has(id));
-    }
-    if (opts?.silent) {
-      await nextTick();
-      scheduleScrollRestore(scrollY);
-    }
-  } catch (err: any) {
-    error.value = formatPairingError(err, "Failed to load devices");
-  } finally {
-    loading.value = false;
-    if (refreshTimer !== null) {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = null;
-    }
-    refreshing.value = false;
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
   }
+}
+
+function fmtAge(seconds: number | null) {
+  if (seconds === null || seconds === undefined) return "";
+  let s = seconds;
+  if (s < 60) s = Math.floor(s / 5) * 5;
+  else if (s < 600) s = Math.floor(s / 30) * 30;
+  else s = Math.floor(s / 60) * 60;
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
+
+function healthStatus(h: Device["health"]): "ok" | "warn" | "bad" {
+  return h === "ok" ? "ok" : h === "stale" ? "warn" : "bad";
+}
+
+function stateStatus(s: Device["state"]): "ok" | "warn" | "bad" | "neutral" {
+  if (s === "claimed") return "ok";
+  if (s === "busy" || s === "unprovisioned") return "bad";
+  if (s === "pairing_active" || s === "provisioned_unclaimed") return "warn";
+  return "neutral";
+}
+
+function stateLabel(d: Device) {
+  if (!includeUnclaimed.value && d.state === "claimed") return "ready";
+  return d.state.replace(/_/g, " ");
+}
+
+function rowActionLabel(d: Device) {
+  if (d.state === "claimed") return "Open";
+  if (d.state === "busy") return "Busy";
+  return "Use UID";
 }
 
 function isSelected(id: number) {
   return selectedIds.value.includes(id);
 }
 
-function isBulkUnclaimable(d: Device) {
-  if (caps.status !== "ready") return false;
-  if (!hasCap("devices.unclaim")) return false;
-  return d.state === "claimed";
-}
-
-function isBulkPurgeable(d: Device) {
-  if (caps.status !== "ready") return false;
-  if (!canShowPurge.value) return false;
-  return true;
-}
-
+// ── Actions ───────────────────────────────────────────────────────────────────
 function toggleSelectAll() {
-  if (allSelected.value) {
-    selectedIds.value = [];
-    return;
-  }
-  selectedIds.value = selectableIds.value.slice();
+  selectedIds.value = allSelected.value ? [] : selectableIds.value.slice();
 }
 
 function toggleRow(d: Device) {
-  const selectable = selectMode.value === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d);
-  if (!selectable) return;
+  const ok = selectMode.value === "unclaim" ? isBulkUnclaimable(d) : isBulkPurgeable(d);
+  if (!ok) return;
   const ids = new Set(selectedIds.value);
-  if (ids.has(d.id)) {
-    ids.delete(d.id);
-  } else {
-    ids.add(d.id);
-  }
+  ids.has(d.id) ? ids.delete(d.id) : ids.add(d.id);
   selectedIds.value = Array.from(ids);
 }
 
@@ -326,18 +312,19 @@ async function lookupDevice(uid: string) {
   pairingLookupStatus.value = "loading";
   pairingLookup.value = null;
   try {
-    const res = await apiFetch<DeviceLookup>(`/api/v1/devices/lookup/${encodeURIComponent(uid)}`);
+    const res = await apiFetch<DeviceLookup>(
+      `/api/v1/devices/lookup/${encodeURIComponent(uid)}`,
+    );
     pairingLookup.value = res;
     pairingLookupStatus.value = "found";
-  } catch (err: any) {
+  } catch (err: unknown) {
     const info = parseApiError(err);
     if (info.httpStatus === 404) {
       pairingLookupStatus.value = "not_found";
-      pairingLookup.value = null;
       return;
     }
     pairingLookupStatus.value = "error";
-    error.value = formatPairingError(err, "Failed to lookup device");
+    actionError.value = formatError(err, "Failed to lookup device");
   }
 }
 
@@ -358,36 +345,12 @@ function scheduleLookup(uid: string) {
   }, 300);
 }
 
-function truncate(text: string, max = 300) {
-  if (text.length <= max) return text;
-  return text.slice(0, max) + "...";
-}
-
-function formatPairingError(err: any, fallback: string): string {
-  const info = parseApiError(err);
-  const mapped = mapErrorToUserText(info, fallback);
-  const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
-  const detailText = truncate(info.message || "");
-  const codeText = info.code ? ` ${info.code}` : "";
-  const metaText = info.meta ? ` ${JSON.stringify(info.meta)}` : "";
-  const suffix = detailText ? `${statusLabel}: ${detailText}` : statusLabel;
-  if (mapped !== fallback) return `${mapped} (${suffix}${codeText}${metaText})`;
-  return `${fallback} (${suffix}${codeText}${metaText})`;
-}
-
 async function claimPairing() {
   const code = pairingClaimCode.value.trim();
   const uid = pairingDeviceUid.value.trim();
-  if (!uid) {
-    error.value = "device_uid required";
-    return;
-  }
-  if (!code) {
-    error.value = "pairing_code required";
-    return;
-  }
+  if (!uid || !code) return;
   if (caps.status !== "ready" || !hasCap("pairing.claim")) {
-    error.value = "Missing capability: pairing.claim";
+    actionError.value = "Missing capability: pairing.claim";
     return;
   }
   claimingPairing.value = true;
@@ -402,246 +365,156 @@ async function claimPairing() {
     pairingDeviceUid.value = "";
     pairingLookupStatus.value = "idle";
     pairingLookup.value = null;
-    if (filterBy.value !== "all") {
-      filterBy.value = "all";
-    }
-    await load({ silent: true });
+    if (filterBy.value !== "all") filterBy.value = "all";
+    await reload();
     await router.replace("/devices");
-  } catch (err: any) {
-    error.value = formatPairingError(err, "Failed to claim pairing");
+  } catch (err: unknown) {
+    actionError.value = formatError(err, "Failed to claim pairing");
   } finally {
     claimingPairing.value = false;
   }
 }
 
-function startBulkUnclaimConfirm() {
-  bulkUnclaimConfirm.value = true;
-  bulkPurgeConfirm.value = false;
+function useUidFromRow(d: Device) {
+  pairingDeviceUid.value = d.device_uid;
+  pairingOpen.value = true;
+  nextTick(() => {
+    const el = pairingSectionEl.value;
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    pairingCodeRef.value?.querySelector<HTMLInputElement>("input")?.focus();
+  });
 }
 
+function onRowAction(d: Device) {
+  if (d.state === "claimed") {
+    router.push(`/devices/${d.id}`);
+    return;
+  }
+  useUidFromRow(d);
+}
+
+function onRowClick(d: Device) {
+  if (d.state === "claimed") router.push(`/devices/${d.id}`);
+}
+
+// Bulk unclaim
+function startBulkUnclaimConfirm() {
+  bulkUnclaimConfirm.value = true;
+}
 function cancelBulkUnclaimConfirm() {
   bulkUnclaimConfirm.value = false;
 }
 
 async function bulkUnclaim() {
-  if (selectedIds.value.length === 0) return;
+  if (!selectedIds.value.length) return;
   bulkUnclaimBusy.value = true;
   bulkUnclaimStatus.value = {};
   const ids = selectedIds.value.slice();
   for (const id of ids) {
     try {
-      const res: any = await apiFetch(`/api/v1/devices/${id}/unclaim`, {
-        method: "POST",
-      });
-      bulkUnclaimStatus.value[id] = res?.device_uid
-        ? `Unclaimed ${res.device_uid}`
-        : "Unclaimed";
-    } catch (err: any) {
-      bulkUnclaimStatus.value[id] = formatPairingError(err, "Unclaim failed");
+      const res: any = await apiFetch(`/api/v1/devices/${id}/unclaim`, { method: "POST" });
+      bulkUnclaimStatus.value[id] = res?.device_uid ? `Unclaimed ${res.device_uid}` : "Unclaimed";
+    } catch (err: unknown) {
+      bulkUnclaimStatus.value[id] = formatError(err, "Unclaim failed");
     }
   }
   selectedIds.value = [];
   bulkUnclaimConfirm.value = false;
-  await load({ silent: true });
+  await reload();
   bulkUnclaimBusy.value = false;
 }
 
-function startBulkPurgeConfirm() {
-  bulkPurgeConfirm.value = true;
+// Bulk purge
+function openBulkPurgeModal() {
   bulkPurgeConfirmText.value = "";
-  bulkUnclaimConfirm.value = false;
-}
-
-function cancelBulkPurgeConfirm() {
-  bulkPurgeConfirm.value = false;
-  bulkPurgeConfirmText.value = "";
+  showBulkPurgeModal.value = true;
 }
 
 async function bulkPurge() {
-  if (selectedIds.value.length === 0) return;
-  if (bulkPurgeConfirmText.value !== "PURGE") return;
+  if (!selectedIds.value.length || bulkPurgeConfirmText.value !== "PURGE") return;
   bulkPurgeBusy.value = true;
-  bulkPurgeStatus.value = {};
   try {
     const res: any = await apiFetch("/api/v1/devices/purge", {
       method: "POST",
       body: JSON.stringify({ device_ids: selectedIds.value, reason: "ui" }),
     });
-    const results = Array.isArray(res?.results) ? res.results : [];
+    const results: any[] = Array.isArray(res?.results) ? res.results : [];
     for (const item of results) {
       if (!item || typeof item.id !== "number") continue;
       bulkPurgeStatus.value[item.id] = item.ok ? "Purged" : item.error || "Purge failed";
     }
-  } catch (err: any) {
-    error.value = formatPairingError(err, "Bulk purge failed");
+  } catch (err: unknown) {
+    actionError.value = formatError(err, "Bulk purge failed");
   } finally {
     selectedIds.value = [];
-    bulkPurgeConfirm.value = false;
+    showBulkPurgeModal.value = false;
     bulkPurgeConfirmText.value = "";
-    await load({ silent: true });
+    await reload();
     bulkPurgeBusy.value = false;
   }
 }
 
-async function purgeDevice(device: Device) {
-  if (caps.status !== "ready") return;
-  if (!hasCap("devices.purge")) {
-    error.value = "Missing capability: devices.purge";
-    return;
-  }
-  const confirmText = window.prompt(
-    `Permanently delete ${device.device_uid}? Type PURGE to confirm.`
-  );
-  if (confirmText !== "PURGE") return;
+// Single purge
+function openSinglePurgeModal(d: Device) {
+  singlePurgeDevice.value = d;
+  singlePurgeConfirmText.value = "";
+  showSinglePurgeModal.value = true;
+}
+
+async function confirmSinglePurge() {
+  if (!singlePurgeDevice.value || singlePurgeConfirmText.value !== "PURGE") return;
+  const d = singlePurgeDevice.value;
   try {
-    await apiFetch(`/api/v1/devices/${device.id}/purge`, {
+    await apiFetch(`/api/v1/devices/${d.id}/purge`, {
       method: "POST",
       body: JSON.stringify({ reason: "ui" }),
     });
-    bulkPurgeStatus.value[device.id] = "Purged";
-    await load({ silent: true });
-  } catch (err: any) {
-    bulkPurgeStatus.value[device.id] = formatPairingError(err, "Purge failed");
+    bulkPurgeStatus.value[d.id] = "Purged";
+    showSinglePurgeModal.value = false;
+    singlePurgeDevice.value = null;
+    await reload();
+  } catch (err: unknown) {
+    actionError.value = formatError(err, "Purge failed");
   }
 }
 
-function fmtTime(iso: string | null) {
-  if (!iso) return "-";
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
-}
-
-function fmtIso(iso: string | null) {
-  if (!iso) return "-";
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
-}
-
-function fmtAge(seconds: number | null) {
-  if (seconds === null || seconds === undefined) return "-";
-  let bucket = seconds;
-  if (seconds < 60) {
-    bucket = Math.floor(seconds / 5) * 5;
-  } else if (seconds < 600) {
-    bucket = Math.floor(seconds / 30) * 30;
-  } else {
-    bucket = Math.floor(seconds / 60) * 60;
-  }
-  if (bucket < 60) return `${bucket}s ago`;
-  if (bucket < 3600) return `${Math.floor(bucket / 60)}m ago`;
-  return `${Math.floor(bucket / 3600)}h ago`;
-}
-
-function healthClass(health: Device["health"]) {
-  if (health === "ok") return "pill-ok";
-  if (health === "stale") return "pill-warn";
-  return "pill-bad";
-}
-
-function stateClass(state: Device["state"]) {
-  if (state === "busy" || state === "unprovisioned") return "pill-bad";
-  if (state === "claimed") return "pill-ok";
-  if (state === "pairing_active" || state === "provisioned_unclaimed") return "pill-warn";
-  return "pill-warn";
-}
-
-function stateLabel(device: Device) {
-  if (!includeUnclaimed.value && device.state === "claimed") return "ready";
-  return device.state;
-}
-
-function useUidFromRow(device: Device) {
-  pairingDeviceUid.value = device.device_uid;
-  const el = pairingSection.value;
-  if (el && typeof el.scrollIntoView === "function") {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-}
-
-function onRowAction(device: Device) {
-  if (device.state === "claimed") {
-    router.push(`/devices/${device.id}`);
-    return;
-  }
-  useUidFromRow(device);
-  requestAnimationFrame(() => {
-    pairingClaimInput.value?.focus();
-  });
-}
-
-function onRowClick(device: Device) {
-  if (device.state !== "claimed") return;
-  router.push(`/devices/${device.id}`);
-}
-
-function rowActionLabel(device: Device) {
-  switch (device.state) {
-    case "unprovisioned":
-      return "Use UID";
-    case "provisioned_unclaimed":
-      return "Use UID";
-    case "pairing_active":
-      return "Use UID";
-    case "claimed":
-      return "Open";
-    case "busy":
-      return "Busy";
-    default:
-      return "Open";
-  }
-}
-
-function rowActionDisabled(device: Device) {
-  return device.state === "busy";
-}
-
-watch(pairingDeviceUid, () => {
-  scheduleLookup(pairingDeviceUid.value);
-});
+// ── Watchers ──────────────────────────────────────────────────────────────────
+watch(pairingDeviceUid, (v) => scheduleLookup(v));
 
 watch(selectMode, () => {
   selectedIds.value = [];
   bulkUnclaimConfirm.value = false;
-  bulkPurgeConfirm.value = false;
   bulkPurgeConfirmText.value = "";
 });
 
-watch(canShowPurge, () => {
-  if (!canShowPurge.value && selectMode.value === "purge") {
-    selectMode.value = "unclaim";
+watch(canShowPurge, (ok) => {
+  if (!ok && selectMode.value === "purge") selectMode.value = "unclaim";
+});
+
+watch(showUnclaimedAdmin, (v) => {
+  if (!v && ["unclaimed", "claimable", "claimed"].includes(filterBy.value)) {
+    filterBy.value = "all";
   }
 });
 
-watch(showUnclaimedAdmin, () => {
-  if (!showUnclaimedAdmin.value) {
-    if (filterBy.value === "unclaimed" || filterBy.value === "claimable" || filterBy.value === "claimed") {
-      filterBy.value = "all";
-    }
-  }
-  load();
+watch(devices, () => {
+  if (!selectedIds.value.length) return;
+  const validIds = new Set(devices.value.map((d) => d.id));
+  selectedIds.value = selectedIds.value.filter((id) => validIds.has(id));
 });
 
-function onVisibilityChange() {
-  if (document.visibilityState === "visible") {
-    load({ silent: true });
-  }
-}
-
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   const uid = typeof route.query.uid === "string" ? route.query.uid : "";
   if (uid) {
     pairingDeviceUid.value = uid;
-    pairingSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    pairingOpen.value = true;
   }
-  load();
-  timer = window.setInterval(() => load({ silent: true }), 5000);
-  document.addEventListener("visibilitychange", onVisibilityChange);
 });
 
 onUnmounted(() => {
-  document.removeEventListener("visibilitychange", onVisibilityChange);
-  if (timer !== null) {
-    window.clearInterval(timer);
-    timer = null;
-  }
   if (lookupTimer !== null) {
     window.clearTimeout(lookupTimer);
     lookupTimer = null;
@@ -650,338 +523,522 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="card">
-    <h2>Devices</h2>
-    <div class="status-line">
-      <span v-if="error" class="error">{{ error }}</span>
-      <span v-else-if="refreshing" class="muted">Refreshing...</span>
-    </div>
+  <div class="space-y-6">
 
-    <div ref="pairingSection" class="pairing-section">
-      <div class="pairing-row">
-        <input
-          v-model="pairingDeviceUid"
-          class="input pairing-input"
-          placeholder="Device UID"
-        />
-      </div>
-      <div v-if="pairingStateWarning" class="pairing-warn">
-        {{ pairingStateWarning }}
-      </div>
-      <div class="pairing-row">
-        <input
-          v-model="pairingClaimCode"
-          ref="pairingClaimInput"
-          class="input pairing-input"
-          placeholder="Pairing code (claim)"
-        />
-        <button class="btn secondary" :disabled="!canClaimPairing" @click="claimPairing">
-          {{ claimingPairing ? "Claiming..." : "Claim" }}
-        </button>
-      </div>
-      <div v-if="caps.status === 'ready' && !hasCap('pairing.claim')" class="muted">
-        Missing capability: pairing.claim
-      </div>
-      <div v-if="pairingClaimStatus" class="pairing-help">
-        {{ pairingClaimStatus }}
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <input
-        v-model="searchQuery"
-        class="input toolbar-input"
-        placeholder="Search UID"
-      />
-      <select v-model="sortBy" class="input toolbar-select">
-        <option value="last_seen">Last seen (newest)</option>
-        <option value="state">State priority</option>
-        <option value="health">Health</option>
-      </select>
-      <select v-model="filterBy" class="input toolbar-select" data-testid="devices-filter">
-        <option value="all">All</option>
-        <option value="recent">Active recently</option>
-        <option v-if="includeUnclaimed" value="claimed">Claimed</option>
-        <option v-if="includeUnclaimed" value="unclaimed">Unclaimed</option>
-        <option v-if="includeUnclaimed" value="claimable">Claimable</option>
-        <option value="offline">Offline</option>
-        <option value="offline_old">Offline old</option>
-      </select>
-      <label
-        v-if="caps.status === 'ready' && hasCap('cap.admin')"
-        class="toolbar-toggle"
-      >
-        <input type="checkbox" v-model="showUnclaimedAdmin" />
-        Show unclaimed (admin)
-      </label>
-      <span v-if="includeUnclaimed" class="muted">
-        Admin view: including unclaimed devices.
-      </span>
-    </div>
-    <div class="bulk-toolbar">
-      <label class="toolbar-toggle">
-        Mode:
-        <select v-model="selectMode" class="input toolbar-select">
-          <option value="unclaim">Cleanup (Unclaim)</option>
-          <option v-if="canShowPurge" value="purge">Cleanup (Purge)</option>
-        </select>
-      </label>
-      <label class="toolbar-toggle">
-        <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
-        Select all
-      </label>
-      <template v-if="selectMode === 'unclaim'">
-        <button
-          v-if="!bulkUnclaimConfirm"
-          class="btn secondary"
-          :disabled="!canBulkUnclaim"
-          @click="startBulkUnclaimConfirm"
-        >
-          Bulk unclaim
-        </button>
-        <button
-          v-else
-          class="btn danger"
-          :disabled="bulkUnclaimBusy"
-          @click="bulkUnclaim"
-        >
-          {{ bulkUnclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
-        </button>
-        <button
-          v-if="bulkUnclaimConfirm"
-          class="btn ghost"
-          :disabled="bulkUnclaimBusy"
-          @click="cancelBulkUnclaimConfirm"
-        >
-          Cancel
-        </button>
-        <span v-if="bulkUnclaimConfirm" class="muted">
-          Unclaim {{ selectedIds.length }} devices? This revokes all device tokens.
-        </span>
-      </template>
-
-      <template v-else>
-        <button
-          v-if="!bulkPurgeConfirm"
-          class="btn danger"
-          :disabled="!canBulkPurge"
-          @click="startBulkPurgeConfirm"
-        >
-          Bulk purge
-        </button>
-        <div v-else class="bulk-confirm">
-          <input
-            v-model="bulkPurgeConfirmText"
-            class="input"
-            placeholder="Type PURGE to confirm"
-          />
-          <button
-            class="btn danger"
-            :disabled="bulkPurgeBusy || bulkPurgeConfirmText !== 'PURGE'"
-            @click="bulkPurge"
-          >
-            {{ bulkPurgeBusy ? "Purging..." : "Confirm purge" }}
-          </button>
-          <button class="btn ghost" :disabled="bulkPurgeBusy" @click="cancelBulkPurgeConfirm">
-            Cancel
-          </button>
-          <span class="muted">
-            Permanently deletes {{ selectedIds.length }} devices and all related data.
+    <!-- ── 1. Page Header ──────────────────────────────────────────────────── -->
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Devices</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
+          <span v-if="refreshing" class="text-[var(--text-muted)]">Refreshing...</span>
+          <span v-else>
+            Manage and pair IoT devices
+            <span v-if="includeUnclaimed" class="ml-1 text-[var(--status-warn)]">
+              — admin view (includes unclaimed)
+            </span>
           </span>
+        </p>
+      </div>
+      <UButton size="sm" variant="secondary" :loading="isRefreshing" @click="handleRefresh">
+        <svg v-if="!isRefreshing" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        Refresh
+      </UButton>
+    </div>
+
+    <!-- ── 2. Error Banner ─────────────────────────────────────────────────── -->
+    <div
+      v-if="displayError"
+      class="flex items-start gap-3 rounded-xl border border-[var(--status-bad)]/30 bg-[var(--status-bad-bg)] px-4 py-3"
+    >
+      <UBadge status="bad" class="shrink-0 mt-px">Error</UBadge>
+      <p class="flex-1 text-sm text-[var(--status-bad)]">{{ displayError }}</p>
+      <button
+        class="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        aria-label="Dismiss"
+        @click="actionError = ''"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- ── 3. Pairing Card ─────────────────────────────────────────────────── -->
+    <div ref="pairingSectionEl">
+      <UCard padding="none">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+            </svg>
+            <span class="text-sm font-semibold text-[var(--text-primary)]">Pair Device</span>
+            <UBadge v-if="pairingStateWarning && pairingOpen" status="warn" class="max-w-[14rem] truncate">
+              {{ pairingStateWarning }}
+            </UBadge>
+          </div>
+        </template>
+        <template #actions>
+          <UButton size="sm" variant="ghost" @click="pairingOpen = !pairingOpen">
+            <svg
+              class="h-4 w-4 transition-transform duration-200"
+              :class="pairingOpen ? 'rotate-180' : ''"
+              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
+            </svg>
+          </UButton>
+        </template>
+
+        <div v-show="pairingOpen" class="p-5 space-y-4">
+          <!-- UID + code row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <UInput
+                v-model="pairingDeviceUid"
+                label="Device UID"
+                placeholder="Device UID"
+              />
+              <div v-if="pairingDeviceUid.trim() && pairingLookupStatus !== 'idle'" class="flex items-center gap-1.5 min-h-[1.25rem]">
+                <span v-if="pairingLookupStatus === 'loading'" class="text-xs text-[var(--text-muted)]">Looking up…</span>
+                <UBadge v-else-if="pairingStateWarning" status="warn">{{ pairingStateWarning }}</UBadge>
+                <UBadge v-else-if="pairingLookupStatus === 'found'" status="ok">Device found</UBadge>
+              </div>
+            </div>
+            <div ref="pairingCodeRef">
+              <UInput
+                v-model="pairingClaimCode"
+                label="Pairing Code"
+                placeholder="Pairing code (claim)"
+              />
+            </div>
+          </div>
+
+          <!-- Claim action row -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <UButton
+              :loading="claimingPairing"
+              :disabled="!canClaimPairing"
+              @click="claimPairing"
+            >
+              {{ claimingPairing ? "Claiming…" : "Claim" }}
+            </UButton>
+
+            <UBadge v-if="pairingClaimStatus" status="ok">
+              {{ pairingClaimStatus }}
+            </UBadge>
+
+            <span
+              v-if="caps.status === 'ready' && !hasCap('pairing.claim')"
+              class="text-xs text-[var(--text-muted)]"
+            >
+              Missing capability: pairing.claim
+            </span>
+          </div>
+        </div>
+      </UCard>
+    </div>
+
+    <!-- ── 4. Device Table Card ────────────────────────────────────────────── -->
+    <UCard padding="none">
+      <template #header>
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25zm.75-12h9v9h-9v-9z" />
+          </svg>
+          <span class="text-sm font-semibold text-[var(--text-primary)]">Devices</span>
         </div>
       </template>
-    </div>
+      <template #actions>
+        <UBadge v-if="!loading" status="neutral">
+          {{
+            visibleDevices.length === devices.length
+              ? `${devices.length}`
+              : `${visibleDevices.length} / ${devices.length}`
+          }}
+        </UBadge>
+      </template>
 
-    <table class="table table-fixed devices-table">
-      <thead>
-        <tr>
-          <th class="col-select"></th>
-          <th>UID</th>
-          <th>Health</th>
-          <th>State</th>
-          <th>Online</th>
-          <th>Last seen</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-if="error">
-          <td colspan="7" class="muted">{{ error }}</td>
-        </tr>
-        <template v-else-if="loading && !visibleDevices.length">
-          <tr v-for="n in 5" :key="`loading-${n}`">
-            <td colspan="7" class="muted">Loading...</td>
-          </tr>
-        </template>
-        <tr v-else-if="!visibleDevices.length">
-          <td colspan="7" class="muted">No devices.</td>
-        </tr>
-        <template v-else>
-          <tr
-            v-for="d in visibleDevices"
-            :key="d.id"
-            v-memo="[d.__sig]"
-            :class="d.state === 'claimed' ? 'row-clickable' : ''"
-            @click="onRowClick(d)"
-          >
-            <td>
-              <input
-                type="checkbox"
-                :checked="isSelected(d.id)"
-                :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
-                @change="toggleRow(d)"
-                @click.stop
-              />
-            </td>
-            <td>
-              <router-link :to="`/devices/${d.id}`" @click.stop>
-                {{ d.device_uid }}
-              </router-link>
-            </td>
-            <td>
-              <span :class="['pill', healthClass(d.health)]">
-                {{ d.health }}
-              </span>
-            </td>
-            <td>
-              <span :class="['pill', stateClass(d.state)]">
-                {{ stateLabel(d) }}
-              </span>
-            </td>
-            <td>
-              <span :class="['pill', d.online ? 'pill-ok' : 'pill-bad']">
-                {{ d.online ? "online" : "offline" }}
-              </span>
-            </td>
-            <td>
-              {{ fmtTime(d.last_seen) }}
-              <span v-if="d.last_seen_age_seconds !== null" class="age"
-                >({{ fmtAge(d.last_seen_age_seconds) }})</span
+      <!-- Toolbar -->
+      <div class="px-4 py-3 border-b border-[var(--border)] flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[10rem]">
+          <UInput
+            v-model="searchQuery"
+            variant="search"
+            placeholder="Search by UID…"
+          />
+        </div>
+        <USelect v-model="sortBy" :options="sortOptions" />
+        <select
+          v-model="filterBy"
+          data-testid="devices-filter"
+          class="input"
+        >
+          <option
+            v-for="opt in filterOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >{{ opt.label }}</option>
+        </select>
+        <UToggle
+          v-if="caps.status === 'ready' && hasCap('cap.admin')"
+          v-model="showUnclaimedAdmin"
+          label="Admin view"
+          size="sm"
+        />
+      </div>
+
+      <!-- Bulk mode toolbar -->
+      <div
+        v-if="canShowPurge || (caps.status === 'ready' && hasCap('devices.unclaim'))"
+        class="bulk-toolbar px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center gap-4"
+      >
+        <div class="w-36">
+          <USelect v-model="selectMode" :options="selectModeOptions" />
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded accent-[var(--accent-cyan)]"
+            :checked="allSelected"
+            :disabled="!selectableIds.length"
+            @change="toggleSelectAll"
+          />
+          <span class="text-xs text-[var(--text-secondary)]">Select all</span>
+        </label>
+        <span v-if="selectedIds.length" class="text-xs text-[var(--text-muted)]">
+          {{ selectedIds.length }} selected
+        </span>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
+              <th class="w-10 px-4 py-3" />
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
+                UID
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-24">
+                Health
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-36">
+                State
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-24">
+                Online
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[180px]">
+                Last Seen
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[140px]">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Loading skeleton rows -->
+            <template v-if="loading && !devices.length">
+              <tr
+                v-for="i in 5"
+                :key="`sk-${i}`"
+                class="border-b border-[var(--border)]"
               >
-            </td>
-            <td>
-              <button
-                class="btn cta-btn"
-                :disabled="rowActionDisabled(d)"
-                @click.stop="onRowAction(d)"
+                <td class="px-4 py-3 w-10">
+                  <div class="h-4 w-4 rounded animate-pulse bg-[var(--bg-raised)]" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1rem" width="160px" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1.25rem" width="56px" rounded="full" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1.25rem" width="72px" rounded="full" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1.25rem" width="56px" rounded="full" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1rem" width="120px" />
+                </td>
+                <td class="px-4 py-3">
+                  <USkeleton height="1.75rem" width="64px" />
+                </td>
+              </tr>
+            </template>
+
+            <!-- Empty state -->
+            <tr v-else-if="!visibleDevices.length">
+              <td colspan="7">
+                <UEmpty
+                  title="No devices."
+                  :description="searchQuery || filterBy !== 'all' ? 'Try adjusting your search or filter.' : 'No devices registered yet.'"
+                  icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25zm.75-12h9v9h-9v-9z"
+                />
+              </td>
+            </tr>
+
+            <!-- Data rows -->
+            <template v-else>
+              <tr
+                v-for="d in visibleDevices"
+                :key="d.id"
+                v-memo="[d.__sig, isSelected(d.id)]"
+                class="border-b border-[var(--border)] last:border-0 transition-colors hover:bg-[var(--bg-raised)]"
+                :class="d.state === 'claimed' ? 'cursor-pointer' : 'cursor-default'"
+                @click="onRowClick(d)"
               >
-                {{ rowActionLabel(d) }}
-              </button>
-              <button
-                v-if="d.state !== 'claimed'"
-                class="btn ghost"
-                @click.stop="useUidFromRow(d)"
-              >
-                Use UID
-              </button>
-              <button
-              v-if="canShowPurge"
-              class="btn danger"
-              @click.stop="purgeDevice(d)"
+                <!-- Checkbox -->
+                <td class="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded accent-[var(--accent-cyan)]"
+                    :checked="isSelected(d.id)"
+                    :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
+                    @change="toggleRow(d)"
+                    @click.stop
+                  />
+                </td>
+
+                <!-- UID -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="h-2 w-2 shrink-0 rounded-full"
+                      :class="d.online ? 'bg-[var(--status-ok)] animate-pulse-slow' : 'bg-[var(--bg-raised)]'"
+                    />
+                    <router-link
+                      :to="`/devices/${d.id}`"
+                      class="font-mono text-xs text-[var(--text-primary)] hover:text-[var(--accent-cyan)] transition-colors truncate max-w-[200px]"
+                      @click.stop
+                    >
+                      {{ d.device_uid }}
+                    </router-link>
+                  </div>
+                </td>
+
+                <!-- Health -->
+                <td class="px-4 py-3">
+                  <UBadge :status="healthStatus(d.health)">{{ d.health }}</UBadge>
+                </td>
+
+                <!-- State -->
+                <td class="px-4 py-3">
+                  <UBadge :status="stateStatus(d.state)">{{ stateLabel(d) }}</UBadge>
+                </td>
+
+                <!-- Online -->
+                <td class="px-4 py-3">
+                  <UBadge :status="d.online ? 'ok' : 'bad'" :pulse="d.online">
+                    {{ d.online ? "online" : "offline" }}
+                  </UBadge>
+                </td>
+
+                <!-- Last Seen -->
+                <td class="px-4 py-3">
+                  <div class="text-xs text-[var(--text-secondary)]">{{ fmtTime(d.last_seen) }}</div>
+                  <div
+                    v-if="d.last_seen_age_seconds !== null"
+                    class="font-mono text-xs text-[var(--text-muted)]"
+                  >
+                    {{ fmtAge(d.last_seen_age_seconds) }}
+                  </div>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <UButton
+                      size="sm"
+                      :variant="d.state === 'claimed' ? 'secondary' : 'ghost'"
+                      :disabled="d.state === 'busy'"
+                      @click.stop="onRowAction(d)"
+                    >
+                      {{ rowActionLabel(d) }}
+                    </UButton>
+                    <UButton
+                      v-if="canShowPurge"
+                      size="sm"
+                      variant="danger"
+                      @click.stop="openSinglePurgeModal(d)"
+                    >
+                      Purge
+                    </UButton>
+                    <span
+                      v-if="bulkUnclaimStatus[d.id]"
+                      class="text-xs text-[var(--status-ok)]"
+                    >
+                      {{ bulkUnclaimStatus[d.id] }}
+                    </span>
+                    <span
+                      v-if="bulkPurgeStatus[d.id]"
+                      class="text-xs"
+                      :class="bulkPurgeStatus[d.id] === 'Purged' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
+                    >
+                      {{ bulkPurgeStatus[d.id] }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </UCard>
+
+    <!-- ── 5. Sticky Bulk Actions Bar ─────────────────────────────────────── -->
+    <Transition name="bulk-bar">
+      <div
+        v-if="selectedIds.length"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl bg-[var(--bg-surface)]/95 backdrop-blur-md border border-[var(--border)] shadow-2xl"
+      >
+        <UBadge status="neutral">{{ selectedIds.length }} selected</UBadge>
+
+        <!-- Unclaim mode -->
+        <template v-if="selectMode === 'unclaim'">
+          <template v-if="!bulkUnclaimConfirm">
+            <UButton
+              size="sm"
+              variant="secondary"
+              :disabled="!canBulkUnclaim"
+              @click="startBulkUnclaimConfirm"
             >
-                Purge
-              </button>
-              <div v-if="bulkUnclaimStatus[d.id]" class="muted bulk-status">
-                {{ bulkUnclaimStatus[d.id] }}
-              </div>
-              <div v-if="bulkPurgeStatus[d.id]" class="muted bulk-status">
-                {{ bulkPurgeStatus[d.id] }}
-              </div>
-            </td>
-          </tr>
+              Bulk unclaim
+            </UButton>
+          </template>
+          <template v-else>
+            <span class="text-xs text-[var(--text-muted)]">
+              Unclaim {{ selectedIds.length }} device{{ selectedIds.length !== 1 ? "s" : "" }}?
+            </span>
+            <UButton
+              size="sm"
+              variant="secondary"
+              :loading="bulkUnclaimBusy"
+              :disabled="bulkUnclaimBusy"
+              @click="bulkUnclaim"
+            >
+              Confirm unclaim
+            </UButton>
+            <UButton
+              size="sm"
+              variant="ghost"
+              :disabled="bulkUnclaimBusy"
+              @click="cancelBulkUnclaimConfirm"
+            >
+              Cancel
+            </UButton>
+          </template>
         </template>
-      </tbody>
-    </table>
+
+        <!-- Purge mode -->
+        <template v-else>
+          <UButton
+            size="sm"
+            variant="danger"
+            :disabled="!canBulkPurge"
+            @click="openBulkPurgeModal"
+          >
+            Bulk purge
+          </UButton>
+        </template>
+
+        <button
+          class="ml-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          aria-label="Clear selection"
+          @click="selectedIds = []"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
+    <!-- ── 6. Bulk Purge Modal ─────────────────────────────────────────────── -->
+    <UModal
+      :open="showBulkPurgeModal"
+      title="Confirm Bulk Purge"
+      size="sm"
+      @close="showBulkPurgeModal = false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-[var(--text-secondary)]">
+          Permanently delete
+          <span class="font-semibold text-[var(--status-bad)]">{{ selectedIds.length }}</span>
+          device{{ selectedIds.length !== 1 ? "s" : "" }} and all related data? This cannot be undone.
+        </p>
+        <div class="bulk-confirm">
+          <UInput
+            v-model="bulkPurgeConfirmText"
+            placeholder="Type PURGE to confirm"
+            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'PURGE' ? 'Type PURGE in uppercase' : undefined"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex gap-3 justify-end">
+          <UButton variant="ghost" :disabled="bulkPurgeBusy" @click="showBulkPurgeModal = false">
+            Cancel
+          </UButton>
+          <UButton
+            variant="danger"
+            :loading="bulkPurgeBusy"
+            :disabled="bulkPurgeConfirmText !== 'PURGE' || bulkPurgeBusy"
+            @click="bulkPurge"
+          >
+            Confirm purge
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- ── 7. Single Device Purge Modal ───────────────────────────────────── -->
+    <UModal
+      :open="showSinglePurgeModal"
+      title="Confirm Device Purge"
+      size="sm"
+      @close="showSinglePurgeModal = false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-[var(--text-secondary)]">
+          Permanently delete
+          <span class="font-mono text-[var(--text-primary)]">{{ singlePurgeDevice?.device_uid }}</span>
+          and all related data? This cannot be undone.
+        </p>
+        <UInput
+          v-model="singlePurgeConfirmText"
+          placeholder="Type PURGE to confirm"
+          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'PURGE' ? 'Type PURGE in uppercase' : undefined"
+        />
+      </div>
+      <template #footer>
+        <div class="flex gap-3 justify-end">
+          <UButton variant="ghost" @click="showSinglePurgeModal = false">Cancel</UButton>
+          <UButton
+            variant="danger"
+            :disabled="singlePurgeConfirmText !== 'PURGE'"
+            @click="confirmSinglePurge"
+          >
+            Purge device
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
   </div>
 </template>
 
 <style scoped>
-.row-clickable {
-  cursor: pointer;
+.bulk-bar-enter-active,
+.bulk-bar-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.status-line {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.bulk-confirm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.bulk-status {
-  margin-top: 4px;
-}
-.table-fixed {
-  table-layout: fixed;
-  width: 100%;
-}
-.col-select {
-  width: 40px;
-}
-.devices-table th:nth-child(1),
-.devices-table td:nth-child(1) {
-  width: 40px;
-}
-.devices-table th:nth-child(2),
-.devices-table td:nth-child(2) {
-  width: 240px;
-}
-.devices-table th:nth-child(3),
-.devices-table td:nth-child(3) {
-  width: 90px;
-}
-.devices-table th:nth-child(4),
-.devices-table td:nth-child(4) {
-  width: 140px;
-}
-.devices-table th:nth-child(5),
-.devices-table td:nth-child(5) {
-  width: 90px;
-}
-.devices-table th:nth-child(6),
-.devices-table td:nth-child(6) {
-  width: 200px;
-}
-.devices-table th:nth-child(7),
-.devices-table td:nth-child(7) {
-  width: 180px;
-}
-.bulk-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 8px 0 12px;
-}
-.bulk-status {
-  margin-top: 4px;
-  font-size: 12px;
-}
-.devices-table th,
-.devices-table td {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-.devices-table tbody tr {
-  height: 36px;
-}
-.devices-table td {
-  line-height: 36px;
-}
-.devices-table .pill {
-  display: inline-block;
-  white-space: nowrap;
-}
-.age {
-  display: inline-block;
-  min-width: 80px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  text-align: right;
+.bulk-bar-enter-from,
+.bulk-bar-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(0.75rem);
 }
 </style>

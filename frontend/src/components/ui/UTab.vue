@@ -26,7 +26,7 @@ function select() {
     :disabled="disabled"
     @click="select"
     :class="[
-      variant?.value === 'pills'
+      variant === 'pills'
         ? [
             'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
             isActive

@@ -8,6 +8,7 @@ const router = createRouter({
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
     { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices" } },
     { path: "/devices/:id",  component: () => import("./pages/DeviceDetail.vue"),    meta: { title: "Device Detail" }, name: "device-detail" },
+    { path: "/entities",     component: () => import("./pages/EntitiesPage.vue"),    meta: { title: "Entities" } },
     { path: "/events",       component: () => import("./pages/Events.vue"),          meta: { title: "Events" } },
     { path: "/effects",      component: () => import("./pages/Effects.vue"),         meta: { title: "Effects" } },
     { path: "/trace-hub",    component: () => import("./pages/TraceHub.vue"),        meta: { title: "Trace Hub" } },

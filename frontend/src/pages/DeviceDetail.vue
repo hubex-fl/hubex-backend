@@ -51,6 +51,7 @@ type CurrentTaskOut = {
 };
 
 type TaskHistoryItemOut = {
+  id: number;
   task_id: number;
   task_name: string;
   task_type: string;
@@ -365,6 +366,7 @@ async function loadAuditEntries(): Promise<boolean> {
     ),
   });
   if (res === null) return false;
+  if (!res) return true;
   const uid = deviceInfo.value?.device_uid;
   const filtered = uid ? res.filter((entry) => entry.resource === uid) : [];
   reconcileById(auditEntries.value, filtered.slice(0, 5), auditSig);
@@ -631,7 +633,7 @@ async function loadTaskHistory(): Promise<boolean> {
       )
     );
     if (!res) return true;
-    reconcileById(taskHistory.value, res, taskHistorySig);
+    reconcileById(taskHistory.value, res.map(t => ({ ...t, id: t.task_id })), taskHistorySig);
     return true;
   } catch (e: any) {
     taskHistoryError.value = formatApiError(e, "Failed to load task history");
@@ -1024,7 +1026,7 @@ async function saveNewOverride() {
   }
   try {
     const existing = variables.value.find(
-      (item) => item.key === addOverrideKey.value && item.source === "device"
+      (item) => item.key === addOverrideKey.value && item.source === "device_override"
     );
     await putValue({
       key: addOverrideKey.value,
@@ -1356,10 +1358,10 @@ onUnmounted(() => {
                   :disabled="overrideDisabled"
                   @click="openEditVariable(row)"
                 >
-                  {{ row.source === "global" ? "Edit override" : "Edit" }}
+                  {{ row.source === "global_default" ? "Edit override" : "Edit" }}
                 </button>
                 <button
-                  v-if="row.source === 'device'"
+                  v-if="row.source === 'device_override'"
                   class="btn secondary"
                   :disabled="overrideDisabled"
                   @click="clearVariableOverride(row)"
