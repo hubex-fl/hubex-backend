@@ -10,6 +10,13 @@ import {
   putValue,
   EffectiveVariable as EffectiveVariableOut,
 } from "../lib/variables";
+import UCard from "../components/ui/UCard.vue";
+import UBadge from "../components/ui/UBadge.vue";
+import UButton from "../components/ui/UButton.vue";
+import UInput from "../components/ui/UInput.vue";
+import USelect from "../components/ui/USelect.vue";
+import USkeleton from "../components/ui/USkeleton.vue";
+import UEmpty from "../components/ui/UEmpty.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -18,6 +25,7 @@ const deviceId = ref(route.params.id as string);
 type DeviceInfo = {
   id: number;
   device_uid: string;
+  name?: string | null;
   last_seen_at: string | null;
   health: "ok" | "stale" | "dead";
   last_seen_age_seconds: number | null;
@@ -168,6 +176,92 @@ const isUnclaimed = computed(() => {
   return state === "provisioned_unclaimed" || state === "pairing_active" || state === "unprovisioned";
 });
 const restrictUnclaimed = computed(() => isUnclaimed.value && !canAdmin.value);
+
+// ── Hero ring helpers ─────────────────────────────────────────────────────────
+const RING_R = 52;
+const RING_CIRC = 2 * Math.PI * RING_R;
+
+const heroRingColor = computed(() => {
+  const h = deviceInfo.value?.health;
+  if (h === "ok") return "var(--status-ok)";
+  if (h === "stale") return "var(--status-warn)";
+  return "var(--status-bad)";
+});
+
+const heroRingOnline = computed(() => deviceInfo.value?.health === "ok");
+
+const heroStatusLabel = computed(() => {
+  const h = deviceInfo.value?.health;
+  if (h === "ok") return "ONLINE";
+  if (h === "stale") return "STALE";
+  return "OFFLINE";
+});
+const heroStatusClass = computed(() => {
+  const h = deviceInfo.value?.health;
+  if (h === "ok") return "text-[var(--status-ok)]";
+  if (h === "stale") return "text-[var(--status-warn)]";
+  return "text-[var(--status-bad)]";
+});
+const connectionLabel = computed(() => {
+  const h = deviceInfo.value?.health;
+  if (h === "ok") return "Stabil";
+  if (h === "stale") return "Unterbrochen";
+  return "Offline";
+});
+const telemetryBattery = computed(() => {
+  const p = latestTelemetry.value?.payload;
+  if (!p) return null;
+  const key = Object.keys(p).find(k => /battery|batt/i.test(k));
+  return key ? formatValue(p[key]) : null;
+});
+const telemetrySignal = computed(() => {
+  const p = latestTelemetry.value?.payload;
+  if (!p) return null;
+  const key = Object.keys(p).find(k => /rssi|signal|wifi/i.test(k));
+  return key ? formatValue(p[key]) : null;
+});
+
+const healthBadgeStatus = computed((): "ok" | "warn" | "bad" => {
+  const h = deviceInfo.value?.health;
+  if (h === "ok") return "ok";
+  if (h === "stale") return "warn";
+  return "bad";
+});
+
+const stateBadgeStatus = computed((): "ok" | "warn" | "bad" | "neutral" => {
+  const s = deviceInfo.value?.state;
+  if (!s) return "neutral";
+  if (s === "claimed") return "ok";
+  if (s === "busy" || s === "unprovisioned") return "bad";
+  return "warn";
+});
+
+const taskBadgeStatus = computed((): "ok" | "warn" | "bad" => {
+  const task = currentTask.value;
+  if (!task || !task.has_active_lease) return "bad";
+  if (isLeaseExpiredLocally.value) return "bad";
+  const status = (task.task_status || "").toLowerCase();
+  if (status.includes("fail") || status.includes("error") || status.includes("cancel")) return "bad";
+  if (leaseSecondsRemaining.value !== null && leaseSecondsRemaining.value <= 30) return "warn";
+  return "ok";
+});
+
+// ── Latest telemetry tiles ────────────────────────────────────────────────────
+const showAllTelemetry = ref(false);
+const MAX_TILES = 8;
+
+const latestPayloadFields = computed(() => {
+  const p = latestTelemetry.value?.payload;
+  if (!p || typeof p !== "object") return [];
+  return Object.entries(p).map(([k, v]) => ({ key: k, value: formatValue(v) }));
+});
+
+const visibleTelemetryFields = computed(() => {
+  const all = latestPayloadFields.value;
+  return showAllTelemetry.value ? all : all.slice(0, MAX_TILES);
+});
+
+// ── WS / polling logic (unchanged) ───────────────────────────────────────────
 
 function buildWsUrl(token: string): string {
   const apiBase = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
@@ -764,7 +858,7 @@ function variableValueText(row: EffectiveVariableOut) {
 }
 
 function variableSourceLabel(row: EffectiveVariableOut) {
-  return row.source === "device_override" ? "device override" : "global default";
+  return row.source === "device_override" ? "override" : "default";
 }
 
 function toggleVariableReveal(key: string) {
@@ -779,65 +873,18 @@ function fmtTime(iso: string) {
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "-";
-  if (typeof value === "number") return Number.isFinite(value) ? value.toString() : "-";
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return Number.isFinite(value) ? value.toString() : "—";
   if (typeof value === "boolean") return value ? "true" : "false";
   if (typeof value === "string") return value;
   return JSON.stringify(value);
 }
 
-function healthClass(health: "ok" | "stale" | "dead") {
-  if (health === "ok") return "pill-ok";
-  if (health === "stale") return "pill-warn";
-  return "pill-bad";
-}
-
-function stateClass(state: DeviceInfo["state"]) {
-  if (!state) return "pill-warn";
-  if (state === "busy" || state === "unprovisioned") return "pill-bad";
-  if (state === "claimed") return "pill-ok";
-  if (state === "pairing_active" || state === "provisioned_unclaimed") return "pill-warn";
-  return "pill-warn";
-}
-
-function fmtAge(ageSeconds: number | null) {
-  if (ageSeconds === null) return "-";
-  const bucketed = bucketSeconds(ageSeconds);
-  if (bucketed < 60) return `${bucketed}s ago`;
-  if (bucketed < 3600) return `${Math.floor(bucketed / 60)}m ago`;
-  return `${Math.floor(bucketed / 3600)}h ago`;
-}
-
-function fmtRemaining(seconds: number | null) {
-  if (seconds === null) return "-";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
-}
-
-function fmtAgoFromIso(iso: string | null) {
-  if (!iso) return "-";
-  const dt = new Date(iso);
-  if (!Number.isFinite(dt.getTime())) return "-";
-  const nowMs = nowBucket.value * 30000;
-  const diffSeconds = Math.max(0, Math.floor((nowMs - dt.getTime()) / 1000));
-  return fmtAge(diffSeconds);
-}
-
-function fmtDeviceLastSeen(info: DeviceInfo | null) {
-  if (!info) return "-";
-  if (info.last_seen_at) return fmtAgoFromIso(info.last_seen_at);
-  if (info.last_seen_age_seconds !== null) return fmtAge(info.last_seen_age_seconds);
-  return "-";
-}
-
-function historyStatusClass(status: string) {
+function historyStatusBadge(status: string): "ok" | "warn" | "bad" {
   const s = (status || "").toLowerCase();
-  if (["done", "success", "succeeded", "completed"].includes(s)) return "pill-ok";
-  if (["failed", "error", "cancelled", "canceled", "timeout", "timed_out"].includes(s)) {
-    return "pill-bad";
-  }
-  return "pill-warn";
+  if (["done", "success", "succeeded", "completed"].includes(s)) return "ok";
+  if (["failed", "error", "cancelled", "canceled", "timeout", "timed_out"].includes(s)) return "bad";
+  return "warn";
 }
 
 function formatApiError(err: any, fallback: string) {
@@ -847,20 +894,6 @@ function formatApiError(err: any, fallback: string) {
   const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
   const codeText = info.code ? `${info.code}` : "UNKNOWN";
   return `${message} (${statusLabel}, ${codeText})`;
-}
-
-function currentTaskStatusClass() {
-  const task = currentTask.value;
-  if (!task || !task.has_active_lease) return "pill-bad";
-  if (isLeaseExpiredLocally.value) return "pill-bad";
-  const status = (task.task_status || "").toLowerCase();
-  if (status.includes("fail") || status.includes("error") || status.includes("cancel")) {
-    return "pill-bad";
-  }
-  if (leaseSecondsRemaining.value !== null && leaseSecondsRemaining.value <= 30) {
-    return "pill-warn";
-  }
-  return "pill-ok";
 }
 
 function upsertEffectiveItems(next: EffectiveVariableOut[]) {
@@ -915,7 +948,17 @@ async function handleReissueToken() {
     reissueError.value = "Reason is required (min 3 characters).";
     return;
   }
-  if (!window.confirm("This revokes previous device tokens. Continue?")) return;
+  if (
+    !window.confirm(
+      "⚠️ WARNING: After reissuing, the device will lose its current token.\n\n" +
+        "It will need to reconnect to show as auth failed, then you must:\n" +
+        "  1) Connect to HUBEX-SETUP AP\n" +
+        "  2) Go to /portal\n" +
+        "  3) Paste the new token in the 'Set Device Token' field\n\n" +
+        "This revokes all previous device tokens. Continue?"
+    )
+  )
+    return;
   reissueBusy.value = true;
   try {
     const res = await reissueDeviceToken(deviceInfo.value.id, reason.trim());
@@ -1057,15 +1100,46 @@ function toggleTelemetry(id: number) {
 }
 
 function payloadPreview(payload: Record<string, any> | null | undefined, expanded: boolean) {
-  if (!payload) return "-";
+  if (!payload) return "—";
   const text = JSON.stringify(payload);
   if (expanded) return text;
   if (text.length <= 120) return text;
   return text.slice(0, 120) + "...";
 }
 
+function fmtAge(ageSeconds: number | null) {
+  if (ageSeconds === null) return "—";
+  const bucketed = bucketSeconds(ageSeconds);
+  if (bucketed < 60) return `${bucketed}s ago`;
+  if (bucketed < 3600) return `${Math.floor(bucketed / 60)}m ago`;
+  return `${Math.floor(bucketed / 3600)}h ago`;
+}
+
+function fmtRemaining(seconds: number | null) {
+  if (seconds === null) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function fmtAgoFromIso(iso: string | null) {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  if (!Number.isFinite(dt.getTime())) return "—";
+  const nowMs = nowBucket.value * 30000;
+  const diffSeconds = Math.max(0, Math.floor((nowMs - dt.getTime()) / 1000));
+  return fmtAge(diffSeconds);
+}
+
+function fmtDeviceLastSeen(info: DeviceInfo | null) {
+  if (!info) return "—";
+  if (info.last_seen_at) return fmtAgoFromIso(info.last_seen_at);
+  if (info.last_seen_age_seconds !== null) return fmtAge(info.last_seen_age_seconds);
+  return "—";
+}
+
 function fmtRelative(iso: string | undefined) {
-  if (!iso) return "-";
+  if (!iso) return "—";
   return fmtAgoFromIso(iso);
 }
 
@@ -1173,494 +1247,591 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="card" ref="deviceCardRef">
-    <div class="card-header-row">
-      <h2>Device Detail</h2>
-      <div class="pill-group">
-        <span
-          v-if="deviceInfo?.health"
-          :class="['pill', healthClass(deviceInfo.health)]"
-        >
-          {{ deviceInfo.health }}
-        </span>
-        <span v-if="deviceInfo?.state" :class="['pill', stateClass(deviceInfo.state)]">
-          {{ deviceInfo.state }}
-        </span>
-        <span :class="['pill', currentTaskStatusClass()]">
-          {{
-            currentTask?.has_active_lease && !isLeaseExpiredLocally
-              ? (currentTask?.task_status ?? "active")
-              : "idle"
-          }}
-        </span>
-      </div>
+  <div class="space-y-4" ref="deviceCardRef">
+
+    <!-- ── Page Header ─────────────────────────────────────────────────────── -->
+    <div class="flex items-center gap-2">
+      <UButton variant="ghost" size="sm" @click="router.push('/devices')" class="shrink-0">
+        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Devices
+      </UButton>
+      <span class="text-[var(--text-muted)]">/</span>
+      <span class="text-sm font-mono text-[var(--text-muted)] truncate">
+        {{ deviceInfo?.name || deviceInfo?.device_uid || `#${deviceId}` }}
+      </span>
     </div>
 
-    <div class="card-actions">
-      <button class="btn secondary" :disabled="capsUnavailable" @click="refreshNow">Refresh now</button>
-      <button class="btn secondary" :disabled="!deviceInfo?.device_uid" @click="copyUid">
-        Copy UID
-      </button>
-      <button
-        v-if="deviceInfo?.state === 'pairing_active'"
-        class="btn secondary"
-        @click="openPairingPanel"
-      >
-        Open pairing panel
-      </button>
-    </div>
-
-    <div class="status-line">
-      <span v-if="deviceInfoError" class="error">{{ deviceInfoError }}</span>
-      <span v-else-if="deviceInfoLoading" class="muted">Loading...</span>
-      <span v-else class="muted">Last updated: {{ deviceInfoUpdatedAt ?? "-" }}</span>
-    </div>
-
-    <div class="info-grid">
-      <div class="info-item">
-        <div class="info-label">ID</div>
-        <div class="info-value">{{ deviceInfo?.id ?? deviceId }}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">UID</div>
-        <div class="info-value">{{ deviceInfo?.device_uid ?? "-" }}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Last seen</div>
-        <div class="info-value">{{ fmtDeviceLastSeen(deviceInfo) }}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Lease expires in</div>
-        <div class="info-value">
-          {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}
-        </div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Current task</div>
-        <div class="info-value">
-          <span v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally">
-            {{ currentTask?.task_name ?? "-" }}
-            <span v-if="currentTask?.task_type && currentTask.task_type !== currentTask.task_name">
-              ({{ currentTask.task_type }})
-            </span>
-          </span>
-          <span v-else>none</span>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="isUnclaimed" class="pairing-warn" style="margin-top: 8px;">
+    <!-- Unclaimed warning -->
+    <div
+      v-if="isUnclaimed"
+      class="flex items-center gap-2 px-4 py-3 rounded-lg border border-[var(--status-warn)]/30 bg-[var(--status-warn-bg)] text-sm text-[var(--status-warn)]"
+    >
+      <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+      </svg>
       Device is unclaimed.
-    </div>
-    <div v-if="restrictUnclaimed" class="muted" style="margin-top: 6px;">
-      Claim this device to view telemetry, tasks, variables, and recovery tools.
+      <span v-if="restrictUnclaimed" class="ml-1 text-[var(--text-muted)]">Claim to view full details.</span>
     </div>
 
-    <template v-if="!restrictUnclaimed">
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <div class="card-header-row">
-        <strong>Effective Variables</strong>
-        <div class="row-actions">
-          <button class="btn secondary" @click="loadVariables">Refresh vars</button>
-          <button
-            class="btn secondary"
-            :disabled="overrideDisabled || !deviceInfo?.device_uid"
-            @click="openAddOverride"
-          >
-            Add override
-          </button>
-        </div>
-      </div>
-      <div v-if="deviceInfo?.busy" class="inline-warn" style="margin-top: 6px;">
-        Device busy — changes may apply later
-      </div>
-      <div v-if="overrideDisabled" class="pairing-warn" style="margin-top: 6px;">
-        Device not provisioned
-      </div>
-      <div v-if="variablesSnapshotId || variablesAppliedSummary" class="info-note" style="margin-top: 6px;">
-        <span v-if="variablesSnapshotId">
-          Last snapshot: <span class="cell-mono">{{ variablesSnapshotId }}</span>
-        </span>
-        <span v-if="variablesSnapshotId && variablesAppliedSummary"> • </span>
-        <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
-      </div>
-      <div class="section-status" style="margin-top: 6px;">
-        <span v-if="variablesError" class="error">{{ variablesError }}</span>
-        <span v-else-if="variablesLoading" class="muted">Loading variables...</span>
-      </div>
-      <div v-if="addOverrideOpen" class="action-strip">
-        <div class="info-grid" style="margin-top: 0;">
-          <div class="info-item">
-            <div class="info-label">Key</div>
-            <select v-model="addOverrideKey" class="input">
-              <option value="" disabled>Select variable</option>
-              <option v-for="key in overrideKeyOptions" :key="key" :value="key">
-                {{ key }}
-              </option>
-            </select>
+    <!-- ── Hero Card ─────────────────────────────────────────────────────────── -->
+    <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+      <!-- Top: device identity + actions -->
+      <div class="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <!-- Status ring with chip icon inside -->
+        <div class="relative shrink-0">
+          <div v-if="deviceInfoLoading">
+            <USkeleton width="88px" height="88px" rounded="full" />
           </div>
-          <div class="info-item">
-            <div class="info-label">Value</div>
-            <input v-model="addOverrideValue" class="input" />
-          </div>
-        </div>
-        <div v-if="overrideKeyOptions.length === 0" class="row-error">
-          No variables available for override.
-        </div>
-        <div v-if="addOverrideError" class="row-error">{{ addOverrideError }}</div>
-        <div class="row-actions">
-          <button
-            class="btn secondary"
-            :disabled="overrideDisabled || !addOverrideKey"
-            @click="saveNewOverride"
-          >
-            Save override
-          </button>
-          <button class="btn secondary" @click="closeAddOverride">Cancel</button>
-        </div>
-      </div>
-      <table class="table table-fixed variables-table" style="margin-top: 6px;">
-        <thead>
-          <tr>
-            <th class="ev-col-key">Key</th>
-            <th class="ev-col-value">Value</th>
-            <th class="ev-col-source">Source</th>
-            <th class="ev-col-version">Version</th>
-            <th class="ev-col-updated">Updated</th>
-            <th class="ev-col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in variablesSorted" :key="row.key">
-            <td class="ev-cell ev-col-key">{{ row.key }}</td>
-            <td class="ev-cell ev-col-value">
-              <span v-if="editingVarKey === row.key">
-                <input v-model="editingVarValue" class="input" />
-              </span>
-              <span v-else>{{ variableValueText(row) }}</span>
-            </td>
-            <td class="ev-cell ev-col-source">{{ variableSourceLabel(row) }}</td>
-            <td class="ev-cell ev-col-version">
-              <span class="cell-mono">{{ row.version ?? "-" }}</span>
-            </td>
-            <td class="ev-cell ev-col-updated tabular-nums">
-              <span class="cell-mono">{{ row.updated_at ? fmtTime(row.updated_at) : "-" }}</span>
-            </td>
-            <td class="ev-cell ev-col-actions">
-              <template v-if="editingVarKey === row.key">
-                <button class="btn secondary" @click="saveVariableOverride(row)">Save</button>
-                <button class="btn secondary" @click="closeEditVariable">Cancel</button>
-              </template>
-              <template v-else>
-                <button
-                  class="btn secondary"
-                  :disabled="overrideDisabled"
-                  @click="openEditVariable(row)"
-                >
-                  {{ row.source === "global_default" ? "Edit override" : "Edit" }}
-                </button>
-                <button
-                  v-if="row.source === 'device_override'"
-                  class="btn secondary"
-                  :disabled="overrideDisabled"
-                  @click="clearVariableOverride(row)"
-                >
-                  Delete override
-                </button>
-                <button
-                  v-if="row.is_secret"
-                  class="btn secondary"
-                  @click="toggleVariableReveal(row.key)"
-                >
-                  {{ revealVariableKeys.has(row.key) ? "Hide" : "Reveal" }}
-                </button>
-              </template>
-            </td>
-          </tr>
-          <tr v-if="variables.length === 0">
-            <td colspan="6">No variables</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <strong>Current Task + Lease</strong>
-      <div v-if="deviceInfo?.state === 'busy'" class="pairing-warn" style="margin-top: 6px;">
-        Device busy (task running)
-      </div>
-      <div v-if="currentTaskError" class="error" style="margin-top: 6px;">
-        {{ currentTaskError }}
-      </div>
-      <div style="margin-top: 6px;">
-        <div><strong>Status:</strong> {{ currentTask?.task_status ?? "idle" }}</div>
-        <div><strong>Lease expires in:</strong> {{ currentTask?.has_active_lease && !isLeaseExpiredLocally ? fmtRemaining(leaseSecondsRemaining) : "-" }}</div>
-      </div>
-    </div>
-
-    <div v-if="taskHistoryError" class="error">{{ taskHistoryError }}</div>
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <strong>Recovery</strong>
-      <div v-if="capsUnavailable" class="muted" style="margin-top: 6px;">
-        Capabilities unavailable.
-      </div>
-      <div v-else-if="!canReissueToken" class="muted" style="margin-top: 6px;">
-        Missing cap devices.token.reissue.
-      </div>
-      <div v-else style="margin-top: 6px;">
-        <div class="row-actions">
-          <button class="btn secondary" :disabled="reissueBusy" @click="handleReissueToken">
-            {{ reissueBusy ? "Reissuing..." : "Reissue Device Token" }}
-          </button>
-        </div>
-        <div v-if="reissueError" class="error" style="margin-top: 6px;">
-          {{ reissueError }}
-        </div>
-        <div v-if="reissueToken" class="pairing-warn" style="margin-top: 10px;">
-          <div style="margin-bottom: 6px;">
-            This token is shown once. Store it securely.
-          </div>
-          <div class="info-grid" style="margin-top: 0;">
-            <div class="info-item">
-              <div class="info-label">Token</div>
-              <div class="info-value cell-mono">{{ reissueToken }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Revoked</div>
-              <div class="info-value">{{ reissueRevokedCount ?? 0 }}</div>
+          <div v-else class="relative">
+            <svg width="88" height="88" viewBox="0 0 88 88">
+              <circle cx="44" cy="44" r="38" fill="none" stroke="var(--bg-raised)" stroke-width="8" />
+              <circle
+                cx="44" cy="44" r="38"
+                fill="none"
+                :style="{ stroke: heroRingColor }"
+                stroke-width="8"
+                stroke-dasharray="238.8 238.8"
+                stroke-dashoffset="0"
+                stroke-linecap="round"
+                transform="rotate(-90 44 44)"
+                :class="heroRingOnline ? 'ring-pulse' : ''"
+              />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <svg class="h-9 w-9" :style="{ color: heroRingColor }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+              </svg>
             </div>
           </div>
-          <div class="row-actions" style="margin-top: 8px;">
-            <button class="btn secondary" @click="copyReissueToken">
-              {{ reissueCopied ? "Copied" : "Copy token" }}
-            </button>
-            <button class="btn secondary" @click="clearReissueToken">Close</button>
-          </div>
         </div>
 
-        <div class="section-status" style="margin-top: 12px;">
-          <span v-if="auditError" class="error">{{ auditError }}</span>
-          <span v-else-if="!canReadAudit" class="muted">Missing capability: audit.read.</span>
-          <span v-else-if="auditLoading" class="muted">Loading audit...</span>
-        </div>
-        <div v-if="canReadAudit && !auditError" style="margin-top: 6px;">
-          <div class="muted" style="margin-bottom: 4px;">
-            Recent reissue audit
-            <router-link to="/audit" class="link">Open audit</router-link>
-          </div>
-          <ul class="audit-list" v-if="auditEntries.length">
-            <li v-for="entry in auditEntries" :key="entry.id">
-              {{ fmtRelative(entry.ts) }} · {{ entry.actor_id }} · revoked {{ entry.metadata?.revoked_count ?? 0 }}
-            </li>
-          </ul>
-          <div v-else class="muted">No recent audit entries.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <strong>Danger zone</strong>
-      <div v-if="capsUnavailable" class="muted" style="margin-top: 6px;">
-        Capabilities unavailable.
-      </div>
-      <div v-else-if="!canUnclaim" class="muted" style="margin-top: 6px;">
-        Missing cap devices.unclaim.
-      </div>
-      <div v-else style="margin-top: 6px;">
-        <div class="pairing-warn" style="margin-bottom: 6px;">
-          Detaches ownership and revokes all device tokens.
-        </div>
-        <div class="row-actions">
-          <button
-            v-if="!unclaimConfirm"
-            class="btn secondary"
-            :disabled="unclaimBusy"
-            @click="startUnclaimConfirm"
-          >
-            Unclaim device
-          </button>
-          <button
-            v-else
-            class="btn secondary"
-            :disabled="unclaimBusy"
-            @click="confirmUnclaim"
-          >
-            {{ unclaimBusy ? "Unclaiming..." : "Confirm unclaim" }}
-          </button>
-          <button
-            v-if="unclaimConfirm"
-            class="btn secondary"
-            :disabled="unclaimBusy"
-            @click="cancelUnclaimConfirm"
-          >
-            Cancel
-          </button>
-        </div>
-        <div v-if="unclaimError" class="error" style="margin-top: 6px;">
-          {{ unclaimError }}
-        </div>
-        <div v-if="unclaimStatus" class="muted" style="margin-top: 6px;">
-          {{ unclaimStatus }}
-        </div>
-      </div>
-    </div>
-
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <strong>Recent Tasks</strong>
-      <table class="table table-fixed history-table" style="margin-top: 6px;">
-        <colgroup>
-          <col style="width: 260px;">
-          <col style="width: 140px;">
-          <col>
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Task</th>
-            <th>Status</th>
-            <th>When</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="taskHistory.length === 0">
-            <td colspan="3">No recent tasks</td>
-          </tr>
-          <tr v-else v-for="t in taskHistory" :key="t.task_id" v-memo="[t.__sig]">
-            <td>
-              {{ t.task_name }}
-              <span v-if="t.task_type !== t.task_name">({{ t.task_type }})</span>
-            </td>
-            <td>
-              <span :class="['pill', historyStatusClass(t.task_status)]">
-                {{ t.task_status }}
+        <!-- Device info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-3 flex-wrap mb-1">
+            <div v-if="deviceInfoLoading" class="flex gap-2">
+              <USkeleton height="1.5rem" width="5rem" rounded="full" />
+              <USkeleton height="1.5rem" width="4rem" rounded="full" />
+            </div>
+            <template v-else>
+              <span :class="['text-xl font-bold tracking-widest font-mono', heroStatusClass]">
+                {{ heroStatusLabel }}
               </span>
-            </td>
-            <td class="tabular-nums">
-              <span v-if="t.finished_at">finished {{ fmtAgoFromIso(t.finished_at) }}</span>
-              <span v-else-if="t.claimed_at">claimed {{ fmtAgoFromIso(t.claimed_at) }}</span>
-              <span v-else>-</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <UBadge v-if="deviceInfo?.state" :status="stateBadgeStatus">
+                {{ deviceInfo.state.replace(/_/g, ' ') }}
+              </UBadge>
+            </template>
+          </div>
+          <div v-if="deviceInfoLoading">
+            <USkeleton height="1.5rem" width="55%" class="mb-1" />
+            <USkeleton height="0.875rem" width="35%" />
+          </div>
+          <template v-else>
+            <h1 class="text-lg font-mono font-bold text-[var(--text-primary)] truncate">
+              {{ deviceInfo?.name || deviceInfo?.device_uid || `Device #${deviceId}` }}
+            </h1>
+            <p v-if="deviceInfo?.name" class="text-xs font-mono text-[var(--text-muted)]">{{ deviceInfo.device_uid }}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">
+              Gerät verbunden &middot; Letztes Update:
+              <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
+            </p>
+          </template>
+        </div>
+
+        <!-- Actions (moved from top header) -->
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <UButton variant="secondary" size="sm" :disabled="capsUnavailable" @click="refreshNow">
+            <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Refresh
+          </UButton>
+          <UButton variant="secondary" size="sm" :disabled="!deviceInfo?.device_uid" @click="copyUid">
+            Copy UID
+          </UButton>
+          <UButton v-if="deviceInfo?.state === 'pairing_active'" variant="secondary" size="sm" @click="openPairingPanel">
+            Pairing Panel
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-6">
+        <!-- Verbindung -->
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0" :class="heroRingOnline ? 'text-[var(--status-ok)]' : 'text-[var(--text-muted)]'" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+          </svg>
+          <div>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Verbindung</p>
+            <p class="text-xs font-semibold text-[var(--text-primary)]">{{ connectionLabel }}</p>
+          </div>
+        </div>
+
+        <!-- Signal (from telemetry if available) -->
+        <div v-if="telemetrySignal" class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+          <div>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Signal</p>
+            <p class="text-xs font-semibold text-[var(--text-primary)]">{{ telemetrySignal }}</p>
+          </div>
+        </div>
+
+        <!-- Battery (from telemetry if available) -->
+        <div v-if="telemetryBattery" class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-[var(--accent-lime)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M4.5 10.5H18V15H4.5v-4.5zM3.75 18h15A2.25 2.25 0 0021 15.75v-1.5a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 001.5 14.25v1.5A2.25 2.25 0 003.75 18z" />
+          </svg>
+          <div>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Batterie</p>
+            <p class="text-xs font-semibold text-[var(--text-primary)]">{{ telemetryBattery }}</p>
+          </div>
+        </div>
+
+        <!-- Task -->
+        <div class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+          </svg>
+          <div>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Task</p>
+            <p class="text-xs font-semibold text-[var(--text-primary)]">
+              {{ currentTask?.has_active_lease && !isLeaseExpiredLocally
+                  ? (currentTask?.task_name ?? currentTask?.task_status ?? 'active')
+                  : 'idle' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Lease countdown (if active) -->
+        <div v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally" class="flex items-center gap-2">
+          <svg class="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Lease</p>
+            <p class="text-xs font-semibold text-[var(--text-primary)]">{{ fmtRemaining(leaseSecondsRemaining) }}</p>
+          </div>
+        </div>
+
+        <!-- Live telemetry indicator -->
+        <div v-if="latestPayloadFields.length" class="flex items-center gap-1.5 ml-auto">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse shrink-0" />
+          <span class="text-xs text-[var(--text-muted)]">{{ latestPayloadFields.length }} live fields</span>
+        </div>
+      </div>
     </div>
 
-    <div class="section-divider"></div>
-    <div style="margin-bottom: 14px;">
-      <div class="card-header-row">
-        <strong>Telemetry</strong>
-        <div class="row-actions">
-          <button
-            class="btn secondary"
+    <!-- ── Main panels ─────────────────────────────────────────────────────── -->
+    <div v-if="!restrictUnclaimed" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <!-- Telemetry / Inputs panel -->
+      <UCard padding="none" class="border-l-2 border-l-[var(--accent-cyan)]">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span
+              v-if="!telemetryError && telemetry.length"
+              class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse"
+            />
+            <h3 class="text-sm font-semibold text-[var(--text-primary)]">
+              <span class="text-[var(--accent-cyan)] mr-1">↓</span>Input
+              <span class="text-[var(--text-muted)] font-normal ml-1">· Telemetry</span>
+            </h3>
+            <span v-if="latestTelemetry" class="text-xs text-[var(--text-muted)]">
+              {{ latestTelemetry.event_type || "data" }} · {{ fmtRelative(latestTelemetry.received_at) }}
+            </span>
+          </div>
+          <UButton
+            size="sm" variant="ghost"
             :disabled="telemetryLoading || caps.status !== 'ready' || !canReadTelemetry"
             @click="loadTelemetry"
           >
-            {{ telemetryLoading ? "Refreshing..." : "Refresh telemetry" }}
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+          </UButton>
+        </template>
+
+        <!-- Caps error -->
+        <div v-if="!canReadTelemetry" class="p-4 text-xs text-[var(--text-muted)]">
+          Missing capability: telemetry.read
+        </div>
+        <div v-else-if="telemetryError" class="p-4 text-xs text-[var(--status-bad)]">
+          {{ telemetryError }}
+        </div>
+
+        <!-- Loading -->
+        <div v-else-if="telemetryLoading && !telemetry.length" class="p-4 grid grid-cols-2 gap-2">
+          <div v-for="i in 4" :key="i" class="rounded-lg border border-[var(--border)] p-3">
+            <USkeleton height="0.75rem" width="60%" class="mb-2" />
+            <USkeleton height="1.25rem" width="40%" />
+          </div>
+        </div>
+
+        <!-- Metric tiles from latest payload -->
+        <div v-else-if="visibleTelemetryFields.length" class="p-3 grid grid-cols-2 gap-2">
+          <div
+            v-for="field in visibleTelemetryFields"
+            :key="field.key"
+            class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-3"
+          >
+            <p class="text-[10px] text-[var(--text-muted)] truncate mb-1 uppercase tracking-wide">{{ field.key }}</p>
+            <p class="text-sm font-mono font-semibold text-[var(--text-primary)] truncate">{{ field.value }}</p>
+          </div>
+          <button
+            v-if="latestPayloadFields.length > MAX_TILES"
+            class="col-span-2 text-xs text-[var(--accent-cyan)] hover:underline py-1"
+            @click="showAllTelemetry = !showAllTelemetry"
+          >
+            {{ showAllTelemetry ? 'Show less' : `Show ${latestPayloadFields.length - MAX_TILES} more` }}
           </button>
         </div>
-      </div>
-      <div class="section-status">
-        <span v-if="capsUnavailable" class="muted">Capabilities unavailable.</span>
-        <span v-else-if="!canReadTelemetry" class="muted">Missing capability: telemetry.read.</span>
-        <span v-else-if="telemetryError" class="error">{{ telemetryError }}</span>
-      </div>
-      <div
-        v-if="latestTelemetry && !telemetryError"
-        class="muted"
-        style="margin: 6px 0;"
-      >
-        Latest: <strong>{{ latestTelemetry.event_type || "unknown" }}</strong>
-        · {{ fmtRelative(latestTelemetry.received_at || "") }}
-        <span v-if="latestTelemetry.payload">· {{ payloadPreview(latestTelemetry.payload, false) }}</span>
-      </div>
-      <table ref="telemetryTableRef" class="table table-fixed telemetry-table">
-        <colgroup>
-          <col style="width: 160px;">
-          <col style="width: 140px;">
-          <col>
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Payload</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="capsUnavailable">
-            <td colspan="3" class="muted">Capabilities unavailable.</td>
-          </tr>
-          <tr v-else-if="!canReadTelemetry">
-            <td colspan="3" class="muted">Missing capability: telemetry.read.</td>
-          </tr>
-          <tr v-else-if="telemetry.length === 0">
-            <td colspan="3">No telemetry yet. Device must POST /api/v1/telemetry.</td>
-          </tr>
-          <tr
-            v-else
-            v-for="t in telemetry"
-            :key="t.id"
-            v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
+
+        <!-- Raw telemetry rows (no payload tiles) -->
+        <div v-else-if="telemetry.length" class="overflow-x-auto">
+          <table class="w-full text-xs" ref="telemetryTableRef">
+            <thead>
+              <tr class="border-b border-[var(--border)]">
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Time</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">Type</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">Payload</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--border)]">
+              <tr
+                v-for="t in telemetry"
+                :key="t.id"
+                v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
+                class="hover:bg-[var(--bg-raised)] transition-colors"
+              >
+                <td class="px-4 py-2 font-mono text-[var(--text-muted)] whitespace-nowrap">
+                  {{ fmtRelative(t.received_at || t.created_at) }}
+                </td>
+                <td class="px-4 py-2 text-[var(--text-secondary)] whitespace-nowrap">{{ t.event_type || "—" }}</td>
+                <td class="px-4 py-2">
+                  <span class="font-mono text-[var(--text-muted)] break-all">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
+                  <button class="ml-2 text-[var(--accent-cyan)] hover:underline text-xs" @click="toggleTelemetry(t.id)">
+                    {{ isTelemetryExpanded(t.id) ? 'less' : 'more' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty -->
+        <UEmpty
+          v-else
+          title="No telemetry yet"
+          description="Device must POST /api/v1/telemetry to send data."
+          icon="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z"
+        />
+      </UCard>
+
+      <!-- Variables / Outputs panel -->
+      <UCard padding="none" class="border-l-2 border-l-[var(--accent-lime)]">
+        <template #header>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">
+            <span class="text-[var(--accent-lime)] mr-1">↑</span>Output
+            <span class="text-[var(--text-muted)] font-normal ml-1">· Variables</span>
+          </h3>
+          <div class="flex gap-1">
+            <UButton size="sm" variant="ghost" @click="loadVariables">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </UButton>
+            <UButton
+              size="sm" variant="ghost"
+              :disabled="overrideDisabled || !deviceInfo?.device_uid"
+              @click="openAddOverride"
+            >
+              + Override
+            </UButton>
+          </div>
+        </template>
+
+        <!-- Warnings -->
+        <div
+          v-if="deviceInfo?.busy"
+          class="mx-3 mt-3 px-3 py-2 rounded-lg border border-[var(--status-warn)]/30 bg-[var(--status-warn-bg)] text-xs text-[var(--status-warn)]"
+        >
+          Device busy — changes may apply later
+        </div>
+
+        <!-- Error -->
+        <div v-if="variablesError" class="px-4 py-3 text-xs text-[var(--status-bad)]">{{ variablesError }}</div>
+
+        <!-- Add override form -->
+        <div v-if="addOverrideOpen" class="px-4 py-3 border-b border-[var(--border)] space-y-2">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <USelect
+              v-model="addOverrideKey"
+              :options="overrideKeyOptions.map(k => ({ value: k, label: k }))"
+              class="flex-1"
+            />
+            <UInput v-model="addOverrideValue" placeholder="value" class="flex-1" />
+          </div>
+          <p v-if="addOverrideError" class="text-xs text-[var(--status-bad)]">{{ addOverrideError }}</p>
+          <p v-if="overrideKeyOptions.length === 0" class="text-xs text-[var(--text-muted)]">No variables available for override.</p>
+          <div class="flex gap-2">
+            <UButton size="sm" :disabled="overrideDisabled || !addOverrideKey" @click="saveNewOverride">Save</UButton>
+            <UButton size="sm" variant="secondary" @click="closeAddOverride">Cancel</UButton>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="variablesLoading && !variables.length" class="p-4 space-y-2">
+          <div v-for="i in 3" :key="i" class="flex gap-3 items-center">
+            <USkeleton width="6rem" height="1rem" />
+            <USkeleton height="1rem" />
+          </div>
+        </div>
+
+        <!-- Empty -->
+        <UEmpty
+          v-else-if="!variablesLoading && variables.length === 0"
+          title="No variables"
+          description="No variables configured for this device."
+          icon="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"
+        />
+
+        <!-- Variable rows -->
+        <div v-else class="divide-y divide-[var(--border)]">
+          <div
+            v-for="row in variablesSorted"
+            :key="row.key"
+            class="px-4 py-2.5 flex items-center gap-3"
           >
-            <td class="tabular-nums" :title="fmtTime(t.received_at || t.created_at || '')">
-              {{ fmtRelative(t.received_at || t.created_at) }}
-            </td>
-            <td>{{ t.event_type || "-" }}</td>
-            <td>
-              <span class="payload-preview">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
-              <button class="link-button" @click="toggleTelemetry(t.id)">
-                {{ isTelemetryExpanded(t.id) ? "Collapse" : "Expand" }}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-mono font-semibold text-[var(--text-primary)] truncate">{{ row.key }}</span>
+                <UBadge :status="row.source === 'device_override' ? 'info' : 'neutral'" class="shrink-0">
+                  {{ variableSourceLabel(row) }}
+                </UBadge>
+              </div>
+              <!-- Edit mode -->
+              <div v-if="editingVarKey === row.key" class="mt-1.5 flex gap-2">
+                <UInput v-model="editingVarValue" class="flex-1" />
+                <UButton size="sm" @click="saveVariableOverride(row)">Save</UButton>
+                <UButton size="sm" variant="secondary" @click="closeEditVariable">✕</UButton>
+              </div>
+              <!-- View mode -->
+              <p v-else class="text-xs font-mono text-[var(--text-muted)] truncate mt-0.5">
+                {{ variableValueText(row) }}
+              </p>
+            </div>
+            <!-- Actions -->
+            <div v-if="editingVarKey !== row.key" class="flex gap-1 shrink-0">
+              <button
+                class="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+                title="Edit"
+                :disabled="overrideDisabled"
+                @click="openEditVariable(row)"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                </svg>
               </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <button
+                v-if="row.source === 'device_override'"
+                class="p-1 rounded text-[var(--text-muted)] hover:text-[var(--status-bad)] hover:bg-[var(--bg-raised)] transition-colors"
+                title="Delete override"
+                :disabled="overrideDisabled"
+                @click="clearVariableOverride(row)"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+              </button>
+              <button
+                v-if="row.is_secret"
+                class="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+                :title="revealVariableKeys.has(row.key) ? 'Hide' : 'Reveal'"
+                @click="toggleVariableReveal(row.key)"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path v-if="revealVariableKeys.has(row.key)" stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Snapshot info footer -->
+        <div v-if="variablesSnapshotId || variablesAppliedSummary" class="px-4 py-2 border-t border-[var(--border)]">
+          <p class="text-[10px] text-[var(--text-muted)]">
+            <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
+          </p>
+        </div>
+      </UCard>
     </div>
-    </template>
+
+    <!-- ── Task History ────────────────────────────────────────────────────── -->
+    <UCard v-if="!restrictUnclaimed" padding="none">
+      <template #header>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recent Tasks</h3>
+        <span
+          v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally"
+          class="text-xs text-[var(--text-muted)]"
+        >
+          Active: {{ currentTask.task_name }} · {{ fmtRemaining(leaseSecondsRemaining) }} left
+        </span>
+      </template>
+
+      <div v-if="currentTaskError" class="px-4 py-3 text-xs text-[var(--status-bad)]">{{ currentTaskError }}</div>
+      <div v-if="taskHistoryError" class="px-4 py-3 text-xs text-[var(--status-bad)]">{{ taskHistoryError }}</div>
+
+      <UEmpty
+        v-if="taskHistory.length === 0 && !taskHistoryError"
+        title="No recent tasks"
+        description="Tasks run on this device will appear here."
+        icon="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
+      />
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-[var(--border)]">
+              <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">Task</th>
+              <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Status</th>
+              <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden sm:table-cell">When</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border)]">
+            <tr
+              v-for="t in taskHistory"
+              :key="t.task_id"
+              v-memo="[t.__sig]"
+              class="hover:bg-[var(--bg-raised)] transition-colors"
+            >
+              <td class="px-4 py-2.5 truncate max-w-[12rem]">
+                <span class="text-[var(--text-secondary)]">{{ t.task_name }}</span>
+                <span v-if="t.task_type !== t.task_name" class="text-[var(--text-muted)] ml-1">({{ t.task_type }})</span>
+              </td>
+              <td class="px-4 py-2.5 whitespace-nowrap">
+                <UBadge :status="historyStatusBadge(t.task_status)">{{ t.task_status }}</UBadge>
+              </td>
+              <td class="px-4 py-2.5 font-mono text-[var(--text-muted)] whitespace-nowrap hidden sm:table-cell">
+                <span v-if="t.finished_at">{{ fmtAgoFromIso(t.finished_at) }}</span>
+                <span v-else-if="t.claimed_at">{{ fmtAgoFromIso(t.claimed_at) }}</span>
+                <span v-else>—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </UCard>
+
+    <!-- ── Recovery ───────────────────────────────────────────────────────── -->
+    <UCard v-if="!restrictUnclaimed" padding="md">
+      <template #header>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recovery</h3>
+        <router-link to="/audit" class="text-xs text-[var(--accent-cyan)] hover:underline">Audit log</router-link>
+      </template>
+
+      <div v-if="capsUnavailable" class="text-xs text-[var(--text-muted)]">Capabilities unavailable.</div>
+      <div v-else-if="!canReissueToken" class="text-xs text-[var(--text-muted)]">Missing cap: devices.token.reissue</div>
+      <div v-else class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <UButton variant="secondary" size="sm" :disabled="reissueBusy" @click="handleReissueToken">
+            {{ reissueBusy ? "Reissuing…" : "Reissue Device Token" }}
+          </UButton>
+          <p v-if="reissueError" class="text-xs text-[var(--status-bad)]">{{ reissueError }}</p>
+        </div>
+
+        <!-- New token display -->
+        <div
+          v-if="reissueToken"
+          class="rounded-lg border border-[var(--status-warn)]/30 bg-[var(--status-warn-bg)] p-4 space-y-3"
+        >
+          <p class="text-xs font-semibold text-[var(--status-warn)]">New token issued — copy now, shown once.</p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 text-xs font-mono bg-[var(--bg-raised)] px-3 py-2 rounded border border-[var(--border)] break-all">{{ reissueToken }}</code>
+            <UButton size="sm" variant="secondary" @click="copyReissueToken">
+              {{ reissueCopied ? "Copied!" : "Copy" }}
+            </UButton>
+          </div>
+          <p class="text-xs text-[var(--text-muted)]">Revoked tokens: {{ reissueRevokedCount ?? 0 }}</p>
+          <div class="text-xs text-[var(--text-secondary)] space-y-0.5">
+            <p class="font-semibold">To apply this token to the device:</p>
+            <p>1. Wait for "auth failed" or power-cycle the device.</p>
+            <p>2. Connect to <strong>HUBEX-SETUP</strong> Wi-Fi AP.</p>
+            <p>3. Open <strong>http://192.168.4.1/portal</strong>.</p>
+            <p>4. Paste in <em>Set Device Token</em> and save.</p>
+          </div>
+          <UButton size="sm" variant="ghost" @click="clearReissueToken">Dismiss</UButton>
+        </div>
+
+        <!-- Audit entries -->
+        <div v-if="canReadAudit && !auditError">
+          <p class="text-xs text-[var(--text-muted)] mb-2">Recent reissue audit</p>
+          <div v-if="auditLoading" class="space-y-1">
+            <USkeleton v-for="i in 2" :key="i" height="1rem" />
+          </div>
+          <div v-else-if="!auditEntries.length" class="text-xs text-[var(--text-muted)]">No recent entries.</div>
+          <ul v-else class="space-y-1">
+            <li v-for="entry in auditEntries" :key="entry.id" class="text-xs text-[var(--text-muted)]">
+              {{ fmtRelative(entry.ts) }} · {{ entry.actor_id }} · revoked {{ entry.metadata?.revoked_count ?? 0 }}
+            </li>
+          </ul>
+        </div>
+        <p v-if="auditError" class="text-xs text-[var(--status-bad)]">{{ auditError }}</p>
+      </div>
+    </UCard>
+
+    <!-- ── Danger Zone ────────────────────────────────────────────────────── -->
+    <UCard v-if="!restrictUnclaimed && canUnclaim" padding="md" class="border-[var(--status-bad)]/20">
+      <template #header>
+        <h3 class="text-sm font-semibold text-[var(--status-bad)]">Danger Zone</h3>
+      </template>
+
+      <p class="text-xs text-[var(--text-muted)] mb-3">
+        Unclaiming detaches ownership and revokes all device tokens.
+      </p>
+      <div class="flex flex-wrap gap-2 items-center">
+        <UButton
+          v-if="!unclaimConfirm"
+          variant="secondary"
+          size="sm"
+          :disabled="unclaimBusy"
+          class="border-[var(--status-bad)]/40 text-[var(--status-bad)] hover:bg-[var(--status-bad)]/10"
+          @click="startUnclaimConfirm"
+        >
+          Unclaim Device
+        </UButton>
+        <template v-else>
+          <UButton
+            variant="secondary"
+            size="sm"
+            :disabled="unclaimBusy"
+            class="border-[var(--status-bad)]/40 text-[var(--status-bad)]"
+            @click="confirmUnclaim"
+          >
+            {{ unclaimBusy ? "Unclaiming…" : "Confirm Unclaim" }}
+          </UButton>
+          <UButton variant="ghost" size="sm" :disabled="unclaimBusy" @click="cancelUnclaimConfirm">
+            Cancel
+          </UButton>
+        </template>
+        <p v-if="unclaimError" class="text-xs text-[var(--status-bad)]">{{ unclaimError }}</p>
+        <p v-if="unclaimStatus" class="text-xs text-[var(--text-muted)]">{{ unclaimStatus }}</p>
+      </div>
+    </UCard>
+
   </div>
 </template>
 
 <style scoped>
-.status-line {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
+.ring-pulse {
+  animation: ring-glow 2s ease-in-out infinite;
 }
-.section-status {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.table-fixed {
-  table-layout: fixed;
-  width: 100%;
-}
-.telemetry-table th,
-.telemetry-table td,
-.history-table th,
-.history-table td,
-.variables-table th,
-.variables-table td {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-}
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-.audit-list {
-  margin: 0;
-  padding-left: 16px;
-}
-.link {
-  margin-left: 6px;
+@keyframes ring-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
 }
 </style>
