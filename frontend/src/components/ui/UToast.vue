@@ -23,7 +23,7 @@ const colors: Record<ToastVariant, string> = {
 <template>
   <Teleport to="body">
     <div
-      class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 w-80 pointer-events-none"
+      class="fixed bottom-4 right-2 left-2 sm:left-auto sm:right-4 z-[100] flex flex-col gap-2 sm:w-80 pointer-events-none"
       aria-live="polite"
     >
       <TransitionGroup name="toast">

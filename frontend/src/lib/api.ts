@@ -1,3 +1,5 @@
+import { useServerHealthStore } from "../stores/serverHealth";
+
 const TOKEN_KEY = "hubex_access_token";
 
 export function getToken(): string | null {
@@ -28,7 +30,21 @@ export async function apiFetch<T>(
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(path, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers });
+  } catch (err) {
+    // Network error — server unreachable
+    useServerHealthStore().markOffline();
+    throw err;
+  }
+  // 502/503/504 = gateway/upstream down
+  if ([502, 503, 504].includes(res.status)) {
+    useServerHealthStore().markOffline();
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  // Server responded — it's reachable
+  useServerHealthStore().markOnline();
   if (res.status === 401) {
     clearToken();
     window.location.href = "/login";

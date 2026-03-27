@@ -56,12 +56,14 @@ export function useDevices(includeUnclaimed: Ref<boolean>, intervalMs = 5_000) {
   const refreshing = ref(false);
 
   let inflight = false;
+  let pendingReload = false;
   let pollTimer: number | null = null;
   let refreshTimer: number | null = null;
 
   async function fetchDevices(silent = false): Promise<void> {
     if (inflight) return;
     inflight = true;
+    pendingReload = false;
 
     let scrollY = 0;
     if (silent) {
@@ -107,6 +109,13 @@ export function useDevices(includeUnclaimed: Ref<boolean>, intervalMs = 5_000) {
       }
       refreshing.value = false;
       inflight = false;
+      if (pendingReload) {
+        pendingReload = false;
+        const waiters = reloadResolvers.splice(0);
+        fetchDevices(false).then(() => {
+          for (const r of waiters) r();
+        });
+      }
     }
   }
 
@@ -148,5 +157,17 @@ export function useDevices(includeUnclaimed: Ref<boolean>, intervalMs = 5_000) {
     document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
-  return { devices, loading, error, refreshing, reload: () => fetchDevices(false) };
+  let reloadResolvers: Array<() => void> = [];
+
+  function reload(): Promise<void> {
+    if (inflight) {
+      return new Promise<void>((resolve) => {
+        pendingReload = true;
+        reloadResolvers.push(resolve);
+      });
+    }
+    return fetchDevices(false);
+  }
+
+  return { devices, loading, error, refreshing, reload };
 }

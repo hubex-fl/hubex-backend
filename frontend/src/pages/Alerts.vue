@@ -1,0 +1,610 @@
+<script setup lang="ts">
+import { ref, computed } from "vue";
+import { useCapabilities, hasCap } from "../lib/capabilities";
+import { useAlerts } from "../composables/useAlerts";
+import UEmpty from "../components/ui/UEmpty.vue";
+import type { AlertRule, AlertEvent } from "../composables/useAlerts";
+import { useToastStore } from "../stores/toast";
+import { mapErrorToUserText, parseApiError } from "../lib/errors";
+import { relativeTime } from "../composables/useRecentAlerts";
+
+const caps = useCapabilities();
+const toast = useToastStore();
+
+const {
+  rules,
+  events,
+  loading,
+  error,
+  refreshing,
+  reload,
+  ackEvent,
+  resolveEvent,
+  createRule,
+  updateRule,
+  deleteRule,
+} = useAlerts();
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const activeTab = ref<"events" | "rules">("events");
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
+const isRefreshing = ref(false);
+async function handleRefresh() {
+  isRefreshing.value = true;
+  try { await reload(); } finally { isRefreshing.value = false; }
+}
+
+// ── Events Filters ─────────────────────────────────────────────────────────
+const statusFilter = ref<"all" | "firing" | "acknowledged" | "resolved">("all");
+const ruleFilter = ref<number | "all">("all");
+
+const statusOrder: Record<string, number> = { firing: 0, acknowledged: 1, resolved: 2 };
+
+const filteredEvents = computed(() => {
+  let list = [...events.value];
+  if (statusFilter.value !== "all") list = list.filter((e) => e.status === statusFilter.value);
+  if (ruleFilter.value !== "all") list = list.filter((e) => e.rule_id === ruleFilter.value);
+  list.sort((a, b) => {
+    const sd = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+    if (sd !== 0) return sd;
+    return new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime();
+  });
+  return list;
+});
+
+function ruleNameFor(ruleId: number): string {
+  const r = rules.value.find((r) => r.id === ruleId);
+  return r ? r.name : `Rule #${ruleId}`;
+}
+
+// ── Event Actions ─────────────────────────────────────────────────────────
+const ackingIds = ref(new Set<number>());
+const resolvingIds = ref(new Set<number>());
+
+async function handleAck(event: AlertEvent) {
+  ackingIds.value.add(event.id);
+  try {
+    await ackEvent(event.id);
+    toast.addToast(`Alert acknowledged`, "success");
+  } catch (err) {
+    const info = parseApiError(err);
+    toast.addToast(mapErrorToUserText(info, "Failed to acknowledge alert"), "error");
+  } finally {
+    ackingIds.value.delete(event.id);
+  }
+}
+
+async function handleResolve(event: AlertEvent) {
+  resolvingIds.value.add(event.id);
+  try {
+    await resolveEvent(event.id);
+    toast.addToast(`Alert resolved`, "success");
+  } catch (err) {
+    const info = parseApiError(err);
+    toast.addToast(mapErrorToUserText(info, "Failed to resolve alert"), "error");
+  } finally {
+    resolvingIds.value.delete(event.id);
+  }
+}
+
+// ── Rules ─────────────────────────────────────────────────────────────────
+const deletingConfirmId = ref<number | null>(null);
+const deletingId = ref<number | null>(null);
+const togglingId = ref<number | null>(null);
+
+async function handleToggleRule(rule: AlertRule) {
+  togglingId.value = rule.id;
+  try {
+    await updateRule(rule.id, { enabled: !rule.enabled });
+  } catch (err) {
+    const info = parseApiError(err);
+    toast.addToast(mapErrorToUserText(info, "Failed to update rule"), "error");
+  } finally {
+    togglingId.value = null;
+  }
+}
+
+async function handleDeleteRule(id: number) {
+  if (deletingConfirmId.value !== id) {
+    deletingConfirmId.value = id;
+    return;
+  }
+  deletingId.value = id;
+  deletingConfirmId.value = null;
+  try {
+    await deleteRule(id);
+    toast.addToast("Rule deleted", "success");
+  } catch (err) {
+    const info = parseApiError(err);
+    toast.addToast(mapErrorToUserText(info, "Failed to delete rule"), "error");
+  } finally {
+    deletingId.value = null;
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────
+const modalOpen = ref(false);
+const modalMode = ref<"create" | "edit">("create");
+const modalError = ref<string | null>(null);
+const modalSaving = ref(false);
+const editingRule = ref<AlertRule | null>(null);
+
+type RuleFormData = {
+  name: string;
+  condition_type: string;
+  severity: "info" | "warning" | "critical";
+  entity_id: string;
+  cooldown_seconds: number;
+  enabled: boolean;
+};
+
+const emptyForm = (): RuleFormData => ({
+  name: "",
+  condition_type: "device_offline",
+  severity: "warning",
+  entity_id: "",
+  cooldown_seconds: 300,
+  enabled: true,
+});
+
+const form = ref<RuleFormData>(emptyForm());
+
+const conditionTypeHints: Record<string, string> = {
+  device_offline: "Triggers when a device hasn't sent a heartbeat",
+  entity_health: "Triggers based on entity health status",
+  effect_failure_rate: "Triggers when effect failure rate exceeds threshold",
+  event_lag: "Triggers when event processing lag is too high",
+};
+
+function openCreate() {
+  modalMode.value = "create";
+  editingRule.value = null;
+  form.value = emptyForm();
+  modalError.value = null;
+  modalOpen.value = true;
+}
+
+function openEdit(rule: AlertRule) {
+  modalMode.value = "edit";
+  editingRule.value = rule;
+  form.value = {
+    name: rule.name,
+    condition_type: rule.condition_type,
+    severity: rule.severity,
+    entity_id: rule.entity_id ?? "",
+    cooldown_seconds: rule.cooldown_seconds,
+    enabled: rule.enabled,
+  };
+  modalError.value = null;
+  modalOpen.value = true;
+}
+
+function closeModal() {
+  modalOpen.value = false;
+  modalError.value = null;
+}
+
+function onModalKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") closeModal();
+}
+
+async function handleSaveRule() {
+  if (!form.value.name.trim()) {
+    modalError.value = "Name is required.";
+    return;
+  }
+  modalSaving.value = true;
+  modalError.value = null;
+  const payload = {
+    name: form.value.name.trim(),
+    condition_type: form.value.condition_type,
+    severity: form.value.severity,
+    entity_id: form.value.entity_id.trim() || null,
+    cooldown_seconds: Number(form.value.cooldown_seconds),
+    enabled: form.value.enabled,
+    condition_config: {},
+  };
+  try {
+    if (modalMode.value === "create") {
+      await createRule(payload);
+      toast.addToast("Rule created", "success");
+    } else if (editingRule.value) {
+      await updateRule(editingRule.value.id, payload);
+      toast.addToast("Rule updated", "success");
+    }
+    closeModal();
+  } catch (err) {
+    const info = parseApiError(err);
+    modalError.value = mapErrorToUserText(info, "Failed to save rule");
+  } finally {
+    modalSaving.value = false;
+  }
+}
+
+// ── Severity styles ────────────────────────────────────────────────────────
+const severityClass: Record<string, string> = {
+  critical: "bg-red-500/15 text-red-400",
+  warning: "bg-yellow-500/15 text-yellow-400",
+  info: "bg-blue-500/15 text-blue-400",
+};
+
+const statusClass: Record<string, string> = {
+  firing: "bg-red-500/15 text-red-400",
+  acknowledged: "bg-yellow-500/15 text-yellow-400",
+  resolved: "bg-green-500/15 text-green-400",
+};
+</script>
+
+<template>
+  <div class="space-y-4">
+    <!-- No permission -->
+    <div
+      v-if="caps.status === 'ready' && !hasCap('alerts.read')"
+      class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-8 text-center"
+    >
+      <p class="text-[var(--text-muted)]">You don't have permission to view alerts.</p>
+    </div>
+
+    <template v-else>
+      <!-- Page header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+          <h2 class="text-base font-semibold text-[var(--text-primary)]">Alerts</h2>
+          <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
+        </div>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-hover)] bg-[var(--bg-raised)] transition-colors"
+          :disabled="isRefreshing"
+          @click="handleRefresh"
+        >
+          <svg class="h-3.5 w-3.5" :class="isRefreshing ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Error banner -->
+      <div
+        v-if="error"
+        class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+      >
+        {{ error }}
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-1 border-b border-[var(--border)]">
+        <button
+          v-for="tab in [{ key: 'events', label: 'Events' }, { key: 'rules', label: 'Rules' }]"
+          :key="tab.key"
+          :class="[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === tab.key
+              ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)]'
+              : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]',
+          ]"
+          @click="activeTab = tab.key as 'events' | 'rules'"
+        >
+          {{ tab.label }}
+          <span
+            v-if="tab.key === 'events' && events.filter(e => e.status === 'firing').length > 0"
+            class="ml-1.5 inline-flex items-center justify-center rounded-full bg-red-500/20 text-red-400 text-[10px] font-mono px-1.5 min-w-[18px]"
+          >
+            {{ events.filter(e => e.status === "firing").length }}
+          </span>
+        </button>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div v-if="loading" class="space-y-2">
+        <div v-for="i in 4" :key="i" class="h-16 rounded-xl bg-[var(--bg-surface)] animate-pulse" />
+      </div>
+
+      <!-- EVENTS TAB -->
+      <template v-else-if="activeTab === 'events'">
+        <!-- Filter bar -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Status pills -->
+          <div class="flex gap-1">
+            <button
+              v-for="s in ['all', 'firing', 'acknowledged', 'resolved']"
+              :key="s"
+              :class="[
+                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                statusFilter === s
+                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)]'
+                  : 'bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
+              ]"
+              @click="statusFilter = s as typeof statusFilter"
+            >
+              {{ s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1) }}
+            </button>
+          </div>
+
+          <!-- Rule dropdown -->
+          <select
+            v-model="ruleFilter"
+            class="ml-auto text-xs px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
+          >
+            <option value="all">All Rules</option>
+            <option v-for="r in rules" :key="r.id" :value="r.id">{{ r.name }}</option>
+          </select>
+        </div>
+
+        <!-- Event list -->
+        <UEmpty
+          v-if="filteredEvents.length === 0"
+          title="No alert events"
+          description="Alert events appear here when a rule is triggered. They are generated automatically when conditions are met."
+          icon="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+        />
+
+        <div v-else class="space-y-2">
+          <div
+            v-for="ev in filteredEvents"
+            :key="ev.id"
+            class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 flex items-start gap-3"
+          >
+            <!-- Severity badge -->
+            <span
+              :class="['shrink-0 mt-0.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[ev.status === 'firing' ? (rules.find(r => r.id === ev.rule_id)?.severity ?? 'info') : (rules.find(r => r.id === ev.rule_id)?.severity ?? 'info')]]"
+            >
+              {{ rules.find(r => r.id === ev.rule_id)?.severity ?? "info" }}
+            </span>
+
+            <!-- Main content -->
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Status badge -->
+                <span
+                  :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', statusClass[ev.status], ev.status === 'firing' ? 'animate-pulse' : '']"
+                >
+                  {{ ev.status }}
+                </span>
+                <span class="text-xs text-[var(--text-muted)]">{{ ruleNameFor(ev.rule_id) }}</span>
+                <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
+              </div>
+              <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ ev.message }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="shrink-0 flex gap-1.5">
+              <button
+                v-if="ev.status === 'firing'"
+                :disabled="ackingIds.has(ev.id)"
+                class="px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 disabled:opacity-50 transition-colors"
+                @click="handleAck(ev)"
+              >
+                {{ ackingIds.has(ev.id) ? "…" : "Ack" }}
+              </button>
+              <button
+                v-if="ev.status !== 'resolved'"
+                :disabled="resolvingIds.has(ev.id)"
+                class="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 disabled:opacity-50 transition-colors"
+                @click="handleResolve(ev)"
+              >
+                {{ resolvingIds.has(ev.id) ? "…" : "Resolve" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- RULES TAB -->
+      <template v-else-if="activeTab === 'rules'">
+        <!-- Toolbar -->
+        <div class="flex justify-end">
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+            @click="openCreate"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Rule
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <UEmpty
+          v-if="rules.length === 0"
+          title="No alert rules"
+          description="Alert rules notify you when devices go offline or metrics cross thresholds. Create your first rule to get started."
+          icon="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+        >
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+            @click="openCreate"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Rule
+          </button>
+        </UEmpty>
+
+        <div v-else class="space-y-2">
+          <div
+            v-for="rule in rules"
+            :key="rule.id"
+            class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 flex items-center gap-3"
+          >
+            <!-- Name & badges -->
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ rule.name }}</span>
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]">
+                  {{ rule.condition_type }}
+                </span>
+                <span :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[rule.severity]]">
+                  {{ rule.severity }}
+                </span>
+              </div>
+              <p class="text-xs text-[var(--text-muted)]">Cooldown: {{ rule.cooldown_seconds }}s</p>
+            </div>
+
+            <!-- Toggle -->
+            <button
+              :title="rule.enabled ? 'Disable rule' : 'Enable rule'"
+              :disabled="togglingId === rule.id"
+              :class="[
+                'relative shrink-0 h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
+                rule.enabled ? 'bg-[var(--accent-cyan)]/70' : 'bg-[var(--bg-raised)]',
+              ]"
+              @click="handleToggleRule(rule)"
+            >
+              <span
+                :class="[
+                  'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+                  rule.enabled ? 'translate-x-4' : 'translate-x-0.5',
+                ]"
+              />
+            </button>
+
+            <!-- Edit -->
+            <button
+              class="shrink-0 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              title="Edit rule"
+              @click="openEdit(rule)"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+            </button>
+
+            <!-- Delete (two-step) -->
+            <button
+              :disabled="deletingId === rule.id"
+              :class="[
+                'shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
+                deletingConfirmId === rule.id
+                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                  : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10',
+              ]"
+              @click="handleDeleteRule(rule.id)"
+            >
+              {{ deletingId === rule.id ? '…' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </template>
+
+    <!-- Create/Edit Modal -->
+    <Teleport to="body">
+      <div
+        v-if="modalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @keydown="onModalKeydown"
+      >
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/60" @click="closeModal" />
+
+        <!-- Modal card -->
+        <div class="relative z-10 w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl p-6 space-y-4">
+          <h3 class="text-base font-semibold text-[var(--text-primary)]">
+            {{ modalMode === 'create' ? 'New Alert Rule' : 'Edit Alert Rule' }}
+          </h3>
+
+          <!-- Name -->
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-[var(--text-muted)]">Name <span class="text-red-400">*</span></label>
+            <input
+              v-model="form.name"
+              type="text"
+              placeholder="Rule name"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+            />
+          </div>
+
+          <!-- Condition Type -->
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-[var(--text-muted)]">Condition Type</label>
+            <select
+              v-model="form.condition_type"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+            >
+              <option value="device_offline">device_offline</option>
+              <option value="entity_health">entity_health</option>
+              <option value="effect_failure_rate">effect_failure_rate</option>
+              <option value="event_lag">event_lag</option>
+            </select>
+            <p v-if="conditionTypeHints[form.condition_type]" class="text-xs text-[var(--text-muted)]">
+              {{ conditionTypeHints[form.condition_type] }}
+            </p>
+          </div>
+
+          <!-- Severity -->
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>
+            <select
+              v-model="form.severity"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+            >
+              <option value="info">info</option>
+              <option value="warning">warning</option>
+              <option value="critical">critical</option>
+            </select>
+          </div>
+
+          <!-- Entity ID -->
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-[var(--text-muted)]">Entity ID <span class="text-[var(--text-muted)]">(optional)</span></label>
+            <input
+              v-model="form.entity_id"
+              type="text"
+              placeholder="e.g. sensor.temperature"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+            />
+          </div>
+
+          <!-- Cooldown -->
+          <div class="space-y-1">
+            <label class="text-xs font-medium text-[var(--text-muted)]">Cooldown (seconds)</label>
+            <input
+              v-model.number="form.cooldown_seconds"
+              type="number"
+              min="0"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+            />
+          </div>
+
+          <!-- Enabled -->
+          <div class="flex items-center gap-2">
+            <input
+              id="modal-enabled"
+              v-model="form.enabled"
+              type="checkbox"
+              class="h-4 w-4 rounded border-[var(--border)] accent-[var(--accent-cyan)]"
+            />
+            <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
+          </div>
+
+          <!-- Inline error -->
+          <p v-if="modalError" class="text-xs text-red-400">{{ modalError }}</p>
+
+          <!-- Buttons -->
+          <div class="flex justify-end gap-2 pt-2">
+            <button
+              class="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="closeModal"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="modalSaving"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 disabled:opacity-50 transition-colors"
+              @click="handleSaveRule"
+            >
+              {{ modalSaving ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>

@@ -366,8 +366,9 @@ async function claimPairing() {
     pairingLookupStatus.value = "idle";
     pairingLookup.value = null;
     if (filterBy.value !== "all") filterBy.value = "all";
+    /* Small delay so the backend commit is visible, then force refresh */
+    await new Promise((r) => setTimeout(r, 500));
     await reload();
-    await router.replace("/devices");
   } catch (err: unknown) {
     actionError.value = formatError(err, "Failed to claim pairing");
   } finally {
@@ -505,6 +506,27 @@ watch(devices, () => {
   selectedIds.value = selectedIds.value.filter((id) => validIds.has(id));
 });
 
+// ── View toggle (table / cards) ───────────────────────────────────────────────
+const deviceView = ref<"table" | "cards">(
+  (localStorage.getItem("hubex:device-view") as "table" | "cards") ?? "table"
+);
+watch(deviceView, (v) => localStorage.setItem("hubex:device-view", v));
+
+const hasActiveFilter = computed(
+  () => searchQuery.value.trim() !== "" || filterBy.value !== "all"
+);
+
+function cardHealthBorder(h: Device["health"]): string {
+  if (h === "ok") return "var(--status-ok)";
+  if (h === "stale") return "var(--status-warn)";
+  return "var(--status-bad)";
+}
+
+function clearFilters() {
+  searchQuery.value = "";
+  filterBy.value = "all";
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   const uid = typeof route.query.uid === "string" ? route.query.uid : "";
@@ -512,6 +534,8 @@ onMounted(() => {
     pairingDeviceUid.value = uid;
     pairingOpen.value = true;
   }
+  // On mobile, always expand pairing section by default
+  if (window.innerWidth < 768) pairingOpen.value = true;
 });
 
 onUnmounted(() => {
@@ -580,7 +604,8 @@ onUnmounted(() => {
           </div>
         </template>
         <template #actions>
-          <UButton size="sm" variant="ghost" @click="pairingOpen = !pairingOpen">
+          <!-- Collapse toggle: desktop only -->
+          <UButton size="sm" variant="ghost" class="hidden md:flex" @click="pairingOpen = !pairingOpen">
             <svg
               class="h-4 w-4 transition-transform duration-200"
               :class="pairingOpen ? 'rotate-180' : ''"
@@ -591,7 +616,18 @@ onUnmounted(() => {
           </UButton>
         </template>
 
-        <div v-show="pairingOpen" class="p-5 space-y-4">
+        <!-- Mobile: always visible; Desktop: collapsible via pairingOpen -->
+        <div :class="['p-5 space-y-4', !pairingOpen ? 'md:hidden' : '']">
+          <!-- First-time hint when list is empty -->
+          <div
+            v-if="!loading && devices.length === 0"
+            class="flex items-center gap-2 text-xs text-[var(--accent-cyan)]"
+          >
+            <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7l-.996-.997a5.984 5.984 0 01-1.777-4.21" />
+            </svg>
+            First time here? Enter your device UID and pairing code to get started.
+          </div>
           <!-- UID + code row -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="space-y-1.5">
@@ -687,6 +723,27 @@ onUnmounted(() => {
           label="Admin view"
           size="sm"
         />
+        <!-- View toggle -->
+        <div class="flex rounded-lg border border-[var(--border)] overflow-hidden shrink-0">
+          <button
+            :class="['px-3 py-1.5 text-xs transition-colors', deviceView === 'table' ? 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
+            title="Table view"
+            @click="deviceView = 'table'"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+            </svg>
+          </button>
+          <button
+            :class="['px-3 py-1.5 text-xs border-l border-[var(--border)] transition-colors', deviceView === 'cards' ? 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
+            title="Card view"
+            @click="deviceView = 'cards'"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Bulk mode toolbar -->
@@ -712,8 +769,8 @@ onUnmounted(() => {
         </span>
       </div>
 
-      <!-- Table -->
-      <div class="overflow-x-auto">
+      <!-- ── Table View ─────────────────────────────────────────────────────── -->
+      <div v-if="deviceView === 'table'" class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
@@ -770,14 +827,25 @@ onUnmounted(() => {
               </tr>
             </template>
 
-            <!-- Empty state -->
+            <!-- Empty state (table view) -->
             <tr v-else-if="!visibleDevices.length">
-              <td colspan="7">
+              <td colspan="7" class="py-2">
                 <UEmpty
-                  title="No devices."
-                  :description="searchQuery || filterBy !== 'all' ? 'Try adjusting your search or filter.' : 'No devices registered yet.'"
-                  icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25zm.75-12h9v9h-9v-9z"
-                />
+                  v-if="hasActiveFilter"
+                  title="No devices match"
+                  description="Try adjusting your search or filter."
+                  icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
+                >
+                  <UButton size="sm" variant="secondary" @click="clearFilters">Clear filters</UButton>
+                </UEmpty>
+                <UEmpty
+                  v-else
+                  title="No devices yet"
+                  description="Pair your first device to get started. Devices will appear here once they connect."
+                  icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
+                >
+                  <UButton size="sm" @click="pairingOpen = true">Pair Device</UButton>
+                </UEmpty>
               </td>
             </tr>
 
@@ -886,6 +954,126 @@ onUnmounted(() => {
             </template>
           </tbody>
         </table>
+      </div>
+
+      <!-- ── Card View ──────────────────────────────────────────────────────── -->
+      <div v-else class="p-4">
+        <!-- Skeleton cards -->
+        <div v-if="loading && !devices.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div
+            v-for="i in 8"
+            :key="`csk-${i}`"
+            class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 space-y-3"
+          >
+            <USkeleton height="1rem" width="70%" />
+            <div class="flex gap-2">
+              <USkeleton height="1.25rem" width="3rem" rounded="full" />
+              <USkeleton height="1.25rem" width="4rem" rounded="full" />
+            </div>
+            <USkeleton height="0.75rem" width="50%" />
+          </div>
+        </div>
+
+        <!-- Empty state cards -->
+        <UEmpty
+          v-else-if="!visibleDevices.length && hasActiveFilter"
+          title="No devices match"
+          description="Try adjusting your search or filter."
+          icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
+        >
+          <UButton size="sm" variant="secondary" @click="clearFilters">Clear filters</UButton>
+        </UEmpty>
+        <UEmpty
+          v-else-if="!visibleDevices.length"
+          title="No devices yet"
+          description="Pair your first device to get started."
+          icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
+        >
+          <UButton size="sm" @click="pairingOpen = true">Pair Device</UButton>
+        </UEmpty>
+
+        <!-- Device cards grid -->
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div
+            v-for="d in visibleDevices"
+            :key="d.id"
+            v-memo="[d.__sig, isSelected(d.id)]"
+            :class="[
+              'rounded-xl border bg-[var(--bg-surface)] p-4 flex flex-col gap-3 transition-shadow hover:shadow-glow',
+              d.state === 'claimed' ? 'cursor-pointer' : 'cursor-default',
+              isSelected(d.id) ? 'border-[var(--accent-cyan)]/40 bg-[var(--accent-cyan)]/5' : 'border-[var(--border)]',
+            ]"
+            :style="{ borderLeftWidth: '3px', borderLeftColor: cardHealthBorder(d.health) }"
+            @click="onRowClick(d)"
+          >
+            <!-- Card header: online dot + UID + checkbox -->
+            <div class="flex items-start justify-between gap-2 min-w-0">
+              <div class="flex items-center gap-2 min-w-0">
+                <span
+                  class="h-2 w-2 shrink-0 rounded-full mt-0.5"
+                  :class="d.online ? 'bg-[var(--status-ok)] animate-pulse-slow' : 'bg-[var(--bg-raised)]'"
+                />
+                <span class="font-mono text-xs font-semibold text-[var(--text-primary)] truncate">
+                  {{ d.device_uid }}
+                </span>
+              </div>
+              <!-- Bulk checkbox -->
+              <input
+                type="checkbox"
+                class="h-4 w-4 shrink-0 rounded accent-[var(--accent-cyan)]"
+                :checked="isSelected(d.id)"
+                :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
+                @change="toggleRow(d)"
+                @click.stop
+              />
+            </div>
+
+            <!-- Badges -->
+            <div class="flex gap-2 flex-wrap">
+              <UBadge :status="healthStatus(d.health)">{{ d.health }}</UBadge>
+              <UBadge :status="stateStatus(d.state)">{{ stateLabel(d) }}</UBadge>
+            </div>
+
+            <!-- Last seen -->
+            <p class="text-xs text-[var(--text-muted)]">
+              <span v-if="d.last_seen_age_seconds !== null" class="font-mono">{{ fmtAge(d.last_seen_age_seconds) }}</span>
+              <span v-else>Never seen</span>
+            </p>
+
+            <!-- Action row -->
+            <div class="flex gap-2 mt-auto pt-1">
+              <UButton
+                size="sm"
+                :variant="d.state === 'claimed' ? 'secondary' : 'ghost'"
+                :disabled="d.state === 'busy'"
+                class="flex-1"
+                @click.stop="onRowAction(d)"
+              >
+                {{ rowActionLabel(d) }}
+              </UButton>
+              <UButton
+                v-if="canShowPurge"
+                size="sm"
+                variant="danger"
+                @click.stop="openSinglePurgeModal(d)"
+              >
+                Purge
+              </UButton>
+            </div>
+
+            <!-- Bulk status feedback -->
+            <span v-if="bulkUnclaimStatus[d.id]" class="text-xs text-[var(--status-ok)]">
+              {{ bulkUnclaimStatus[d.id] }}
+            </span>
+            <span
+              v-if="bulkPurgeStatus[d.id]"
+              class="text-xs"
+              :class="bulkPurgeStatus[d.id] === 'Purged' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
+            >
+              {{ bulkPurgeStatus[d.id] }}
+            </span>
+          </div>
+        </div>
       </div>
     </UCard>
 

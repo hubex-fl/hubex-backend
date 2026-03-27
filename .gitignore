@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -12,15 +12,15 @@ env/
 # Env/config
 .env
 .env.*
-_uvicorn_*.out.log
-_uvicorn_*.err.log
-_uvicorn_*.log
-*.log
-_codex_progress.log
-tmp/
-.env.*
 !.env.example
 !frontend/.env.example
+
+# Logs
+*.log
+_uvicorn_*.out.log
+_uvicorn_*.err.log
+_codex_progress.log
+tmp/
 
 # Tests/cache
 .pytest_cache/
@@ -37,7 +37,22 @@ tmp/
 # OS
 .DS_Store
 Thumbs.db
-__pycache__/
-*.pyc
 
-tmp/*.log
+# CC System (dev tool, not part of HUBEX)
+cc-system/
+cc-server.js
+dashboard.html
+install.sh
+start.sh
+package.json
+package-lock.json
+node_modules/
+roadmap-status.json
+ROADMAP.md
+CLAUDE.md
+.claude/schedule-config.json
+.claude/tunnel-url.txt
+.claude/write-status.log
+.claude/write-status.js
+.claude/settings.json
+.claude/skills/

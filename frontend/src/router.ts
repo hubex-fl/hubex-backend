@@ -10,6 +10,7 @@ const router = createRouter({
     { path: "/devices/:id",  component: () => import("./pages/DeviceDetail.vue"),    meta: { title: "Device Detail" }, name: "device-detail" },
     { path: "/entities",     component: () => import("./pages/EntitiesPage.vue"),    meta: { title: "Entities" } },
     { path: "/events",       component: () => import("./pages/Events.vue"),          meta: { title: "Events" } },
+    { path: "/alerts",       component: () => import("./pages/Alerts.vue"),          meta: { title: "Alerts" } },
     { path: "/effects",      component: () => import("./pages/Effects.vue"),         meta: { title: "Effects" } },
     { path: "/trace-hub",    component: () => import("./pages/TraceHub.vue"),        meta: { title: "Trace Hub" } },
     { path: "/executions",   component: () => import("./pages/Executions.vue"),      meta: { title: "Executions" } },
