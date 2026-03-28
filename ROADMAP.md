@@ -163,7 +163,7 @@
 
 ---
 
-## Phase 4: Integration & Demo [todo] ← AKTUELL
+## Phase 4: Integration & Demo [done] ✅
 
 ### Milestone 9: Device Integration Demo [done] ✅
 > Zeigt dass HubEx nicht nur Custom-MCUs kann, sondern ein universeller Hub ist.
@@ -212,20 +212,36 @@
   - Fire Count + Last Fired Timestamps
   - "Test Fire" Button
 
-### Milestone 11: n8n Integration [todo] ← AKTUELL
+### Milestone 11: n8n Integration [done] ✅
+- [x] Step 1 — n8n Webhook Templates (alert → email, variable.changed → sheets)
+  - `n8n-nodes-hubex/nodes/Hubex/HubexTrigger.node.ts` — Webhook-basierter Trigger
+  - Event Types: device.paired/online/offline, telemetry.received, alert.fired/resolved, variable.changed
+- [x] Step 2 — Custom n8n Node für HubEx (Trigger: any event, Action: set variable)
+  - `n8n-nodes-hubex/nodes/Hubex/Hubex.node.ts` — CRUD Node (Device, Telemetry, Alert, Variable)
+  - `n8n-nodes-hubex/credentials/HubexApi.credentials.ts` — JWT Auth Credentials
+- [x] Step 3 — n8n Node: Variable-Stream als Datenquelle
+  - New "Variable Stream" resource in Hubex.node.ts
+  - Operations: getHistory, getSnapshot, getDefinitions, bulkSet
+  - Full parameter support: time ranges, scopes, limits, JSON bulk input
 
-### Milestone 11: n8n Integration [todo]
-- [ ] Step 1 — n8n Webhook Templates (alert → email, variable.changed → sheets)
-- [ ] Step 2 — Custom n8n Node für HubEx (Trigger: any event, Action: set variable)
-- [ ] Step 3 — n8n Node: Variable-Stream als Datenquelle
+### Milestone 12: Developer Docs [done] ✅
+- [x] Step 1 — API Docs Landing Page (Swagger / Redoc)
+  - `frontend/src/pages/ApiDocs.vue` — Landing page at `/api-docs`
+  - Links to Swagger UI + ReDoc, copy-to-clipboard OpenAPI URL
+  - 10 API sections with base paths, descriptions, key endpoints
+  - Authentication flow + rate limits documentation
+  - Sidebar entry in Admin group
+- [x] Step 2 — Getting Started Guide (Device Pairing, First Variable, First Alert)
+  - `docs/GETTING_STARTED.md` — Prerequisites, quick setup, 6-step first-steps guide
+  - curl examples for auth, pairing, variables, telemetry, alerts, automations
+- [x] Step 3 — ESP SDK Docs + Variable Bridge Docs
+  - `docs/ESP_SDK.md` — Device lifecycle, telemetry, OTA, edge config, simulator usage
+  - `docs/VARIABLE_BRIDGE.md` — Bridge matching rules, value coercion, nested payloads, bulk-set, history
+- [x] Step 4 — SDK/Integration Guide (Python Agent, n8n, Webhooks)
+  - `docs/INTEGRATION_GUIDE.md` — Python agent, n8n node, webhooks (HMAC), automations, MQTT bridge
+  - 5-step custom integration guide
 
-### Milestone 12: Developer Docs [todo]
-- [ ] Step 1 — API Docs Landing Page (Swagger / Redoc)
-- [ ] Step 2 — Getting Started Guide (Device Pairing, First Variable, First Alert)
-- [ ] Step 3 — ESP SDK Docs + Variable Bridge Docs
-- [ ] Step 4 — SDK/Integration Guide (Python Agent, n8n, Webhooks)
-
-### Milestone 12.5: Pitch & Go-to-Market [todo]
+### Milestone 12.5: Pitch & Go-to-Market [todo] ← AKTUELL
 - [ ] Step 1 — Pitch Deck (Partner/Investoren)
 - [ ] Step 2 — Product Landing Page (Branding, Demo-Video)
 - [ ] Step 3 — Competitive Analysis (vs. Grafana Cloud, InfluxDB, ThingsBoard, Datacake)

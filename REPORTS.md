@@ -2,6 +2,41 @@
 
 ---
 
+## M11 + M12: n8n Integration Complete + Developer Docs — 2026-03-28
+**Status:** Done
+
+### Milestone 11: n8n Integration (all 3 steps)
+
+| Step | Deliverable |
+|------|-------------|
+| 1 | n8n Webhook Templates — HubexTrigger node with 8 event types |
+| 2 | Custom n8n Node — Hubex.node.ts: Device, Telemetry, Alert, Variable CRUD |
+| 3 | Variable Stream data source — getHistory, getSnapshot, getDefinitions, bulkSet |
+
+**Files changed:**
+- `n8n-nodes-hubex/nodes/Hubex/Hubex.node.ts` — Added "Variable Stream" resource with 4 operations + 7 parameters
+- `n8n-nodes-hubex/package.json` — Added `variableStream` keyword
+
+### Milestone 12: Developer Docs (all 4 steps)
+
+| Step | Deliverable |
+|------|-------------|
+| 1 | API Docs Landing Page (`/api-docs`) — Swagger/ReDoc links, 10 API sections, auth flow, rate limits |
+| 2 | Getting Started Guide (`docs/GETTING_STARTED.md`) — Prerequisites, setup, 6 first-steps with curl examples |
+| 3 | ESP SDK + Variable Bridge (`docs/ESP_SDK.md`, `docs/VARIABLE_BRIDGE.md`) — Device lifecycle, bridge rules, coercion |
+| 4 | Integration Guide (`docs/INTEGRATION_GUIDE.md`) — Python agent, n8n, webhooks, MQTT, automations |
+
+**Frontend files:**
+- `frontend/src/pages/ApiDocs.vue` — New page (UCard, UButton, UBadge components)
+- `frontend/src/router.ts` — Added `/api-docs` route
+- `frontend/src/layouts/DefaultLayout.vue` — Added "API Docs" sidebar entry in Admin group
+
+**Build verification:**
+- TypeScript check: passed (no errors)
+- Vite build: passed (3.21s)
+
+---
+
 ## M10 + M10.5: CI/CD Complete + Automation Engine — 2026-03-28
 **Status:** ✅ Done
 
