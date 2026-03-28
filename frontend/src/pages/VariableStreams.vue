@@ -16,6 +16,8 @@ import {
 import type { VizDataPoint } from "../lib/viz-types";
 import { resolveVizType } from "../lib/viz-resolve";
 import type { TimeRange } from "../composables/useVariableHistory";
+import { apiFetch } from "../lib/api";
+import type { Device } from "../composables/useDevices";
 
 import UButton from "../components/ui/UButton.vue";
 import USelect from "../components/ui/USelect.vue";
@@ -30,7 +32,10 @@ const historyData  = ref<Record<string, VizDataPoint[]>>({});
 const loading      = ref(true);
 const error        = ref<string | null>(null);
 
-const deviceUid    = ref("");
+// Device selector (M8d Step 6)
+const deviceUid    = ref(localStorage.getItem("streams_device_uid") ?? "");
+const availableDevices = ref<Device[]>([]);
+const devicesLoading = ref(false);
 const scopeFilter  = ref<"all" | VariableScope>("all");
 const searchTerm   = ref("");
 const timeRange    = ref<TimeRange>("1h");
@@ -53,6 +58,20 @@ const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: "7d",  label: "7d" },
   { value: "30d", label: "30d" },
 ];
+
+const SCOPE_OPTIONS = [
+  { value: "all",    label: "All scopes" },
+  { value: "global", label: "Global" },
+  { value: "device", label: "Device" },
+] as const;
+
+const deviceOptions = computed(() => [
+  { value: "", label: "All devices" },
+  ...availableDevices.value.map((d) => ({
+    value: d.device_uid,
+    label: d.label || d.device_uid,
+  })),
+]);
 
 // ── Filtered definitions ───────────────────────────────────────────────
 const filteredDefs = computed(() => {
@@ -174,10 +193,25 @@ function clearSelection() {
 
 // ── Watchers ────────────────────────────────────────────────────────────
 watch([scopeFilter, deviceUid], loadAll);
+watch(deviceUid, (v) => localStorage.setItem("streams_device_uid", v));
 watch(timeRange, () => loadAllHistory(definitions.value));
+
+// ── Load available devices for selector ───────────────────────────────────
+async function loadDevices() {
+  devicesLoading.value = true;
+  try {
+    const data = await apiFetch<Device[]>("/api/v1/devices?include_unclaimed=false");
+    availableDevices.value = data.filter((d) => d.state === "claimed");
+  } catch {
+    availableDevices.value = [];
+  } finally {
+    devicesLoading.value = false;
+  }
+}
 
 // ── Lifecycle ────────────────────────────────────────────────────────────
 onMounted(() => {
+  loadDevices();
   loadAll();
   startRefresh();
   window.addEventListener("keydown", handleKeydown);
@@ -238,7 +272,7 @@ const fullscreenDef = computed(() =>
         <option value="global">Global</option>
         <option value="device">Device</option>
       </USelect>
-      <UInput v-model="deviceUid" placeholder="Device UID" class="filter-device" />
+      <USelect v-model="deviceUid" :options="deviceOptions" class="filter-device" :disabled="devicesLoading" />
       <button v-if="selectedKeys.size" class="clear-sel" @click="clearSelection">
         Clear selection ({{ selectedKeys.size }})
       </button>

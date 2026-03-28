@@ -2,7 +2,7 @@
 defineProps<{
   modelValue?: string | number;
   label?: string;
-  options: Array<{ value: string | number; label: string }>;
+  options?: Array<{ value: string | number; label: string }>;
   placeholder?: string;
   disabled?: boolean;
   id?: string;
@@ -29,14 +29,15 @@ const emit = defineEmits<{ (e: "update:modelValue", v: string): void }>();
       @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
-      <option
-        v-for="opt in options"
-        :key="opt.value"
-        :value="opt.value"
-        :selected="opt.value === modelValue"
-      >
-        {{ opt.label }}
-      </option>
+      <template v-if="options?.length">
+        <option
+          v-for="opt in options"
+          :key="opt.value"
+          :value="opt.value"
+          :selected="opt.value === modelValue"
+        >{{ opt.label }}</option>
+      </template>
+      <slot v-else />
     </select>
   </div>
 </template>

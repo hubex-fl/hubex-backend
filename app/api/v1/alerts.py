@@ -17,7 +17,7 @@ from app.db.models.alerts import AlertEvent, AlertRule
 
 router = APIRouter(tags=["alerts"])
 
-VALID_CONDITION_TYPES = {"device_offline", "entity_health", "effect_failure_rate", "event_lag"}
+VALID_CONDITION_TYPES = {"device_offline", "entity_health", "effect_failure_rate", "event_lag", "variable_threshold"}
 VALID_SEVERITIES = {"info", "warning", "critical"}
 
 

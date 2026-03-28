@@ -26,6 +26,7 @@ from app.db.models.variables import (
 )
 from app.db.models.device_runtime import DeviceRuntimeSetting
 from app.core.variable_effects import derive_effects_from_change, enqueue_effects
+from app.core.system_events import emit_system_event
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -455,6 +456,14 @@ async def create_or_update_value(
     # Record history point for visualization
     actor_source = "user" if actor_user_id else "device"
     await record_history(db, definition=definition, value=coerced, device_id=device_id, source=actor_source)
+    await emit_system_event(db, "variable.changed", {
+        "variable_key": definition.key,
+        "scope": definition.scope,
+        "device_uid": device_uid,
+        "value": coerced,
+        "source": actor_source,
+        "value_type": definition.value_type,
+    })
     await db.flush()
     effects = derive_effects_from_change(
         definition,
@@ -614,6 +623,14 @@ async def create_or_update_value_v2(
     # Record history point for visualization
     v2_source = "user" if actor_user_id else "device"
     await record_history(db, definition=definition, value=coerced, device_id=device_id, source=v2_source)
+    await emit_system_event(db, "variable.changed", {
+        "variable_key": definition.key,
+        "scope": definition.scope,
+        "device_uid": device_uid,
+        "value": coerced,
+        "source": v2_source,
+        "value_type": definition.value_type,
+    })
     await db.flush()
     invalidate_effective_cache()
     return definition, current, device

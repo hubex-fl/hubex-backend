@@ -38,6 +38,9 @@ from app.schemas.variables import (
     VariableEffectRunOut,
     VariableHistoryOut,
     VariableHistoryPointOut,
+    BulkSetItem,
+    BulkSetIn,
+    BulkSetResult,
 )
 from app.db.models.device import Device
 from app.db.models.variables import (
@@ -414,6 +417,78 @@ async def set_value(
         version=value.version,
         updated_at=value.updated_at,
         is_secret=definition.is_secret,
+    )
+
+
+@router.post("/bulk-set", response_model=BulkSetResult)
+async def bulk_set_values(
+    data: BulkSetIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Set multiple variable values in a single request.
+
+    If allow_partial=True (default), failures are collected and the successful
+    items are committed. If allow_partial=False, any single failure rolls back
+    all changes.
+    """
+    succeeded: list[str] = []
+    failed: list[dict] = []
+
+    if data.allow_partial:
+        # Process items individually; collect failures without rolling back successes
+        for item in data.items:
+            try:
+                await vars_core.create_or_update_value(
+                    db,
+                    key=item.key,
+                    scope=item.scope,
+                    device_uid=item.device_uid,
+                    value=item.value,
+                    expected_version=None,
+                    actor_user_id=current_user.id,
+                    actor_device_id=None,
+                )
+                succeeded.append(item.key)
+            except Exception as exc:
+                await db.rollback()
+                failed.append({"key": item.key, "error": str(exc)})
+        if succeeded:
+            try:
+                await db.commit()
+            except Exception as exc:
+                await db.rollback()
+                # Move all previously-succeeded items to failed
+                for key in succeeded:
+                    failed.append({"key": key, "error": str(exc)})
+                succeeded = []
+    else:
+        # All-or-nothing: any failure rolls back everything
+        try:
+            for item in data.items:
+                await vars_core.create_or_update_value(
+                    db,
+                    key=item.key,
+                    scope=item.scope,
+                    device_uid=item.device_uid,
+                    value=item.value,
+                    expected_version=None,
+                    actor_user_id=current_user.id,
+                    actor_device_id=None,
+                )
+                succeeded.append(item.key)
+            await db.commit()
+        except Exception as exc:
+            await db.rollback()
+            failed_key = data.items[len(succeeded)].key if len(succeeded) < len(data.items) else "unknown"
+            failed.append({"key": failed_key, "error": str(exc)})
+            succeeded = []
+
+    return BulkSetResult(
+        succeeded=succeeded,
+        failed=failed,
+        total=len(data.items),
+        success_count=len(succeeded),
     )
 
 

@@ -288,3 +288,25 @@ class VariableHistoryOut(BaseModel):
     device_uid: str | None
     points: list[VariableHistoryPointOut]
     downsampled: bool = False
+
+
+class BulkSetItem(BaseModel):
+    key: str
+    value: Any
+    scope: str = "global"
+    device_uid: str | None = Field(default=None, validation_alias=AliasChoices("device_uid", "deviceUid"))
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class BulkSetIn(BaseModel):
+    items: list[BulkSetItem] = Field(min_length=1, max_length=50)
+    actor: str = "user"
+    allow_partial: bool = True
+
+
+class BulkSetResult(BaseModel):
+    succeeded: list[str]
+    failed: list[dict]
+    total: int
+    success_count: int

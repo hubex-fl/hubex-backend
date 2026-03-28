@@ -19,6 +19,9 @@ import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import { DEVICE_TYPE_META } from "../composables/useDevices";
 import type { DeviceType } from "../composables/useDevices";
+import { getVariableHistory } from "../lib/variables";
+import type { VizDataPoint } from "../lib/viz-types";
+import VizSparkline from "../components/viz/VizSparkline.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -119,6 +122,8 @@ const variablesAppliedSummary = ref<string | null>(null);
 const variablesSorted = computed(() =>
   [...variables.value].sort((a, b) => a.key.localeCompare(b.key))
 );
+// Sparkline history for numeric device variables (M8d Step 2)
+const sparklineData = ref<Record<string, VizDataPoint[]>>({});
 const revealVariableKeys = ref<Set<string>>(new Set());
 const addOverrideOpen = ref(false);
 const addOverrideKey = ref("");
@@ -440,8 +445,9 @@ async function refreshAll(reason: string) {
     loadTaskHistory(),
     loadVariables(),
   ]);
-  // Non-blocking: load entity memberships after device info is available
+  // Non-blocking: load entity memberships + sparklines after device info is available
   loadEntityMemberships();
+  loadSparklines();
   if (deviceOk === false || taskOk === false || historyOk === false || varsOk === false) {
     hadError = true;
   }
@@ -821,6 +827,43 @@ async function loadVariables(): Promise<boolean> {
   } finally {
     variablesLoading.value = false;
   }
+}
+
+// Load 1h sparkline history for numeric device variables (M8d Step 2)
+async function loadSparklines(): Promise<void> {
+  const uid = deviceInfo.value?.device_uid;
+  if (!uid) return;
+  const numericVars = variables.value.filter(
+    (v) => v.value_type === "int" || v.value_type === "float"
+  );
+  if (!numericVars.length) return;
+
+  const now = Date.now();
+  const fromMs = now - 60 * 60 * 1000; // 1h ago
+  await Promise.allSettled(
+    numericVars.map(async (v) => {
+      try {
+        const res = await getVariableHistory({
+          key: v.key,
+          deviceUid: uid,
+          from: new Date(fromMs).toISOString(),
+          to: new Date(now).toISOString(),
+          limit: 60,
+        });
+        sparklineData.value = {
+          ...sparklineData.value,
+          [v.key]: res.points.map((p) => ({
+            t: new Date(p.recorded_at).getTime(),
+            v: p.numeric_value,
+            raw: p.value_json,
+            source: p.source,
+          })),
+        };
+      } catch {
+        // silently ignore sparkline errors
+      }
+    })
+  );
 }
 
 async function loadVariablesApplied(uid: string): Promise<void> {
@@ -1805,9 +1848,21 @@ onUnmounted(() => {
                 <UButton size="sm" variant="secondary" @click="closeEditVariable">✕</UButton>
               </div>
               <!-- View mode -->
-              <p v-else class="text-xs font-mono text-[var(--text-muted)] truncate mt-0.5">
-                {{ variableValueText(row) }}
-              </p>
+              <div v-else class="flex items-center gap-2 mt-0.5">
+                <p class="text-xs font-mono text-[var(--text-muted)] truncate flex-1">
+                  {{ variableValueText(row) }}
+                </p>
+                <!-- Inline sparkline for numeric variables (M8d Step 2) -->
+                <VizSparkline
+                  v-if="(row.value_type === 'int' || row.value_type === 'float') && sparklineData[row.key]?.length"
+                  :points="sparklineData[row.key]"
+                  :width="72"
+                  :height="22"
+                  :stroke-width="1.5"
+                  color="var(--accent-blue)"
+                  class="shrink-0 opacity-80"
+                />
+              </div>
             </div>
             <!-- Actions -->
             <div v-if="editingVarKey !== row.key" class="flex gap-1 shrink-0">
@@ -1847,11 +1902,18 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Snapshot info footer -->
-        <div v-if="variablesSnapshotId || variablesAppliedSummary" class="px-4 py-2 border-t border-[var(--border)]">
+        <!-- Footer: snapshot info + View in Streams link (M8d Step 2) -->
+        <div class="px-4 py-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
           <p class="text-[10px] text-[var(--text-muted)]">
             <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
           </p>
+          <RouterLink
+            v-if="variables.length"
+            :to="`/variables/streams`"
+            class="text-[10px] text-[var(--accent-blue)] hover:underline shrink-0"
+          >
+            View in Streams →
+          </RouterLink>
         </div>
       </UCard>
     </div>

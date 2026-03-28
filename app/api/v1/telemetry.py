@@ -46,6 +46,27 @@ def _serialize_telemetry(row: DeviceTelemetry) -> dict:
     }
 
 
+def _flatten_payload(payload: dict, prefix: str = "", _depth: int = 0) -> dict[str, Any]:
+    """Recursively flatten nested dicts using dot notation (max 3 levels deep).
+
+    Lists are not flattened — they are kept as-is under their parent key.
+
+    Examples:
+        {"sensors": {"temp": 23.5}} → {"sensors.temp": 23.5}
+        {"a": {"b": {"c": 1}}}      → {"a.b.c": 1}
+        {"a": {"b": {"c": {"d": 1}}}} → {"a.b.c": {"d": 1}}  (depth limit)
+    """
+    result: dict[str, Any] = {}
+    for key, value in payload.items():
+        flat_key = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict) and _depth < 3:
+            nested = _flatten_payload(value, prefix=flat_key, _depth=_depth + 1)
+            result.update(nested)
+        else:
+            result[flat_key] = value
+    return result
+
+
 def _validate_payload(payload: Dict[str, Any]) -> None:
     def _walk(obj: Any) -> None:
         if isinstance(obj, dict):
@@ -99,22 +120,29 @@ class TelemetryRecentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-@router.post("", response_model=TelemetryOut)
 async def _bridge_telemetry_to_variables(
     device_id: int,
     device_uid: str,
     event_type: Optional[str],
     payload: Dict[str, Any],
 ) -> None:
-    """Background task: match telemetry payload keys against device_writable variable definitions."""
+    """Background task: match telemetry payload keys against device_writable variable definitions.
+
+    Supports nested payloads via dot notation through _flatten_payload, e.g.
+    {"sensors": {"temperature": 23.5}} matches variable key "sensors.temperature"
+    or "myevent.sensors.temperature" (when event_type="myevent").
+    """
     try:
         async with AsyncSessionLocal() as db:
-            # Build lookup keys: "event_type.key" and "key"
+            # Flatten nested dicts to dot-notation keys (max 3 levels)
+            flat = _flatten_payload(payload)
+
+            # Build candidate lookup keys from all flattened keys
             candidate_keys: list[str] = []
-            for pk in payload.keys():
+            for flat_key in flat.keys():
                 if event_type:
-                    candidate_keys.append(f"{event_type}.{pk}")
-                candidate_keys.append(pk)
+                    candidate_keys.append(f"{event_type}.{flat_key}")
+                candidate_keys.append(flat_key)
 
             if not candidate_keys:
                 return
@@ -132,12 +160,13 @@ async def _bridge_telemetry_to_variables(
 
             from app.db.models.variables import VariableValue
             for defn in defs:
-                # Determine raw payload value
-                if event_type and defn.key == f"{event_type}.{defn.key.split('.')[-1]}":
-                    raw_key = defn.key.split(".", 1)[-1]
-                    raw_value = payload.get(raw_key)
-                else:
-                    raw_value = payload.get(defn.key)
+                # Look up raw value from flattened dict
+                raw_value = flat.get(defn.key)
+                if raw_value is None and event_type:
+                    # Try stripping event_type prefix (e.g. "myevent.sensors.temp" → "sensors.temp")
+                    prefix = f"{event_type}."
+                    if defn.key.startswith(prefix):
+                        raw_value = flat.get(defn.key[len(prefix):])
 
                 if raw_value is None:
                     continue

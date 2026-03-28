@@ -144,11 +144,63 @@ async def _eval_event_lag(config: dict, db: AsyncSession, now: datetime) -> tupl
     return False, ""
 
 
+async def _eval_variable_threshold(config: dict, db: AsyncSession, now: datetime) -> tuple[bool, str]:
+    """
+    config keys:
+      variable_key (str, required)
+      threshold_operator (str): "gt", "gte", "lt", "lte", "eq", "ne"
+      threshold_value (float, required)
+      device_uid (str | None) - if None, checks global scope
+    """
+    key: str | None = config.get("variable_key")
+    operator: str = config.get("threshold_operator", "gt")
+    threshold: float | None = config.get("threshold_value")
+    device_uid: str | None = config.get("device_uid")
+
+    if not key or threshold is None:
+        return False, ""
+
+    from app.db.models.variables import VariableValue
+
+    # Build query — VariableValue uses device_id (int FK), not device_uid directly
+    stmt = select(VariableValue).where(VariableValue.variable_key == key)
+    if device_uid:
+        # Resolve device_uid → device_id via a subquery
+        sub = select(Device.id).where(Device.uid == device_uid).scalar_subquery()
+        stmt = stmt.where(VariableValue.device_id == sub)
+    else:
+        stmt = stmt.where(VariableValue.scope == "global")
+    res = await db.execute(stmt)
+    val_obj = res.scalar_one_or_none()
+    if val_obj is None:
+        return False, ""
+
+    raw = val_obj.value_json
+    try:
+        numeric = float(raw)
+    except (TypeError, ValueError):
+        return False, ""
+
+    ops = {
+        "gt": numeric > threshold,
+        "gte": numeric >= threshold,
+        "lt": numeric < threshold,
+        "lte": numeric <= threshold,
+        "eq": numeric == threshold,
+        "ne": numeric != threshold,
+    }
+    fired = ops.get(operator, False)
+    if fired:
+        return True, f"variable '{key}' value {numeric} {operator} {threshold}"
+    return False, ""
+
+
 _EVALUATORS = {
     "device_offline": _eval_device_offline,
     "entity_health": _eval_entity_health,
     "effect_failure_rate": _eval_effect_failure_rate,
     "event_lag": _eval_event_lag,
+    "variable_threshold": _eval_variable_threshold,
 }
 
 
