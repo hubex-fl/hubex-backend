@@ -2,6 +2,36 @@
 
 ---
 
+## M9: Device Integration Demo — Complete
+**Datum:** 2026-03-28 | **Status:** ✅ Done
+
+### Ergebnis
+Alle 5 M9-Steps waren bereits implementiert — nur Lücken geschlossen:
+
+| Step | Was | Status |
+|------|-----|--------|
+| 1 | ESP SDK / Device Simulator | `app/simulator/__main__.py` — 287 Zeilen, Hello/Telemetry/Tasks/Variables/Ack |
+| 2 | E2E Demo | `scripts/demo_e2e.py` + neues `scripts/e2e_demo.py` (9-Step httpx Demo) |
+| 3 | QR Provisioning | `app/api/v1/pairing.py` — 615 Zeilen, Hello/Start/Claim/Confirm/QR |
+| 4 | API-Device Demo | `scripts/api_device.py` + `docs/API_DEVICE.md` |
+| 5 | MQTT Bridge | `scripts/mqtt_bridge.py` + `docs/MQTT_BRIDGE.md` |
+
+### Neu implementiert
+- **Variable Threshold Alert UI** (`frontend/src/pages/Alerts.vue`):
+  - `variable_threshold` als neuer condition_type im Create/Edit Modal
+  - Dynamische Felder: variable_key, threshold_operator (6 Ops mit Symbolen), threshold_value, device_uid
+  - Rule Cards zeigen Threshold als lesbaren Ausdruck: `temperature > 40`
+- **E2E Demo** erweitert um `variable_threshold` Alert + `variable.changed` Webhook
+- **CC Dashboard** Parser komplett überarbeitet (flexible Regex für alle ROADMAP-Formate)
+
+### Commits
+- `d0c2114` — feat(m9): Device Integration Demo — mark complete
+- `452d425` — feat(m9): comprehensive E2E demo script
+- `eb04e2e` — feat(alerts): add variable_threshold UI to alert rules
+- `7fbbb64` — fix(cc-dashboard): rewrite ROADMAP parser
+
+---
+
 ## M8d: Data Hub Gap Fills — 7 Steps
 **Datum:** 2026-03-28 | **Status:** ✅ Done | **Commit:** `975dacb`
 
