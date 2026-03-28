@@ -21,6 +21,7 @@ const router = createRouter({
     { path: "/settings/auth", redirect: "/settings" },
     { path: "/token",        component: () => import("./pages/TokenInspector.vue"),  meta: { title: "Token Inspector" } },
     { path: "/variables",    component: () => import("./pages/Variables.vue"),       meta: { title: "Variables" } },
+    { path: "/variables/streams", component: () => import("./pages/VariableStreams.vue"), meta: { title: "Variable Streams" } },
     { path: "/pairing",      component: () => import("./pages/Pairing.vue"),         meta: { title: "Pairing" } },
   ],
 });

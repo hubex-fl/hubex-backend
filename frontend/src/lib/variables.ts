@@ -11,8 +11,42 @@ export type VariableDefinition = {
   description: string | null;
   is_secret: boolean;
   is_readonly: boolean;
+  display_hint: string | null;
+  category: string | null;
+  unit: string | null;
+  min_value: number | null;
+  max_value: number | null;
   created_at: string;
   updated_at: string;
+};
+
+export type VariableDefinitionPatchInput = {
+  description?: string | null;
+  displayHint?: string | null;
+  category?: string | null;
+  unit?: string | null;
+  minValue?: number | null;
+  maxValue?: number | null;
+  defaultValue?: any | null;
+  isSecret?: boolean;
+  isReadonly?: boolean;
+};
+
+export type VariableHistoryPoint = {
+  t: number;
+  v: number | null;
+  raw: unknown;
+  source: string;
+};
+
+export type VariableHistoryResponse = {
+  key: string;
+  scope: string;
+  device_uid: string | null;
+  count: number;
+  downsampled: boolean;
+  bucket_seconds: number | null;
+  points: VariableHistoryPoint[];
 };
 
 export type VariableValue = {
@@ -141,4 +175,41 @@ export async function getAudit(params: {
   if (params.limit) query.set("limit", String(params.limit));
   if (params.offset) query.set("offset", String(params.offset));
   return apiFetch<VariableAudit[]>(`/api/v1/variables/audit?${query.toString()}`);
+}
+
+export async function patchDefinition(
+  key: string,
+  input: VariableDefinitionPatchInput
+): Promise<VariableDefinition> {
+  return apiFetch<VariableDefinition>(`/api/v1/variables/definitions/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteDefinition(key: string): Promise<void> {
+  await apiFetch<void>(
+    `/api/v1/variables/definitions/${encodeURIComponent(key)}?confirm=true`,
+    { method: "DELETE" }
+  );
+}
+
+export async function getVariableHistory(params: {
+  key: string;
+  scope: VariableScope;
+  deviceUid?: string | null;
+  from?: number;
+  to?: number;
+  limit?: number;
+  downsample?: number;
+}): Promise<VariableHistoryResponse> {
+  const q = new URLSearchParams();
+  q.set("key", params.key);
+  q.set("scope", params.scope);
+  if (params.deviceUid) q.set("deviceUid", params.deviceUid);
+  if (params.from)       q.set("from", String(params.from));
+  if (params.to)         q.set("to", String(params.to));
+  if (params.limit)      q.set("limit", String(params.limit));
+  if (params.downsample) q.set("downsample", String(params.downsample));
+  return apiFetch<VariableHistoryResponse>(`/api/v1/variables/history?${q.toString()}`);
 }

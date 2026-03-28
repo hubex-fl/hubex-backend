@@ -2,152 +2,147 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import {
-  VariableDefinition,
-  VariableScope,
-  VariableValue,
-  VariableDefinitionInput,
-  VariableValueInput,
+  type VariableDefinition,
+  type VariableScope,
+  type VariableValue,
+  type VariableDefinitionInput,
+  type VariableDefinitionPatchInput,
+  type VariableValueInput,
   listDefinitions,
   createDefinition,
+  patchDefinition,
+  deleteDefinition,
   getValue,
   putValue,
   getDeviceVariables,
+  getVariableHistory,
+  type VariableHistoryPoint,
 } from "../lib/variables";
+import { DISPLAY_HINT_OPTIONS } from "../lib/viz-resolve";
+import type { VizDataPoint } from "../lib/viz-types";
 
+import UCard   from "../components/ui/UCard.vue";
+import UButton from "../components/ui/UButton.vue";
+import UInput  from "../components/ui/UInput.vue";
+import USelect from "../components/ui/USelect.vue";
+import UBadge  from "../components/ui/UBadge.vue";
+import UModal  from "../components/ui/UModal.vue";
+import UToggle from "../components/ui/UToggle.vue";
+import VizSparkline from "../components/viz/VizSparkline.vue";
+import VizWidget    from "../components/viz/VizWidget.vue";
+
+// ── State ──────────────────────────────────────────────────────────────────
 type ScopeFilter = "all" | VariableScope;
 
-const definitions = ref<VariableDefinition[]>([]);
-const valuesByKey = ref<Record<string, VariableValue>>({});
-const error = ref<string | null>(null);
-const errorDetails = ref<string | null>(null);
-const loading = ref(false);
-const rowErrors = ref<Record<string, string>>({});
+const definitions   = ref<VariableDefinition[]>([]);
+const valuesByKey   = ref<Record<string, VariableValue>>({});
+const historyByKey  = ref<Record<string, VizDataPoint[]>>({});
+const expandedKey   = ref<string | null>(null);
+const error         = ref<string | null>(null);
+const errorDetails  = ref<string | null>(null);
+const loading       = ref(false);
+const rowErrors     = ref<Record<string, string>>({});
+const revealKeys    = ref<Set<string>>(new Set());
 
-const search = ref("");
+const search      = ref("");
 const scopeFilter = ref<ScopeFilter>("all");
-const deviceUid = ref("");
+const deviceUid   = ref("");
 const showSecrets = ref(true);
 
-const editorOpen = ref(false);
-const editorMode = ref<"create" | "edit">("create");
-const editorKey = ref("");
-const editorScope = ref<VariableScope>("global");
-const editorDeviceUid = ref("");
-const editorValueType = ref<VariableDefinitionInput["valueType"]>("string");
-const editorDefaultValue = ref("");
-const editorValue = ref("");
-const editorIsSecret = ref(false);
-const editorIsReadonly = ref(false);
-const editorExpectedVersion = ref<number | null>(null);
-const showSecretWarning = computed(() => editorIsSecret.value);
+// ── Create modal ────────────────────────────────────────────────────────────
+const createOpen      = ref(false);
+const crKey           = ref("");
+const crScope         = ref<VariableScope>("global");
+const crDeviceUid     = ref("");
+const crValueType     = ref<VariableDefinitionInput["valueType"]>("string");
+const crDefaultValue  = ref("");
+const crValue         = ref("");
+const crIsSecret      = ref(false);
+const crIsReadonly    = ref(false);
+const crDisplayHint   = ref("auto");
+const crCategory      = ref("");
+const crDescription   = ref("");
+const crUnit          = ref("");
+const crMin           = ref("");
+const crMax           = ref("");
+const crSaving        = ref(false);
+const crError         = ref<string | null>(null);
 
-const conflictKey = ref<string | null>(null);
-const conflictMessage = ref<string | null>(null);
-const conflictVersion = ref<number | null>(null);
-const conflictValue = ref<any>(null);
-const conflictDeviceUid = ref<string | null>(null);
-const conflictScope = ref<VariableScope | null>(null);
+// ── Edit definition modal ──────────────────────────────────────────────────
+const editOpen         = ref(false);
+const editDef          = ref<VariableDefinition | null>(null);
+const editDisplayHint  = ref("auto");
+const editCategory     = ref("");
+const editDescription  = ref("");
+const editUnit         = ref("");
+const editMin          = ref("");
+const editMax          = ref("");
+const editSaving       = ref(false);
+const editError        = ref<string | null>(null);
+
+// ── Set value modal ─────────────────────────────────────────────────────────
+const setValueOpen    = ref(false);
+const setValueDef     = ref<VariableDefinition | null>(null);
+const setValueStr     = ref("");
+const setValueVersion = ref<number | null>(null);
+const setValueSaving  = ref(false);
+const setValueError   = ref<string | null>(null);
+
+// ── Conflict ────────────────────────────────────────────────────────────────
+const conflictKey      = ref<string | null>(null);
+const conflictMessage  = ref<string | null>(null);
+const conflictVersion  = ref<number | null>(null);
+const conflictScope    = ref<VariableScope | null>(null);
+const conflictDuid     = ref<string | null>(null);
 const overwritePending = ref(false);
 
-const revealKeys = ref<Set<string>>(new Set());
-
-const isDeviceScope = computed(() => editorScope.value === "device");
-
-const filteredRows = computed(() => {
-  const term = search.value.trim().toLowerCase();
-  const scopedDefs = definitions.value.filter((d) => {
-    if (scopeFilter.value === "all") return true;
-    return d.scope === scopeFilter.value;
-  });
-  return scopedDefs.filter((d) => {
-    if (!showSecrets.value && d.is_secret) return false;
-    if (!term) return true;
-    return d.key.toLowerCase().includes(term);
-  });
-});
-
-function formatApiError(err: any, fallback: string) {
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function fmtApiError(err: unknown, fallback: string) {
   const info = parseApiError(err);
   const mapped = mapErrorToUserText(info, fallback);
-  const statusLabel = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
-  const codeText = info.code ? `${info.code}` : "UNKNOWN";
-  const message = mapped || fallback;
-  return `${message} (${statusLabel}, ${codeText})`;
+  const status = info.httpStatus ? `HTTP ${info.httpStatus}` : "HTTP ?";
+  return `${mapped || fallback} (${status}, ${info.code ?? "?"})`;
 }
 
-function formatErrorDetails(err: any) {
-  const info = parseApiError(err);
-  const pieces: string[] = [];
-  if (info.message) pieces.push(info.message);
-  if (info.meta) pieces.push(JSON.stringify(info.meta));
-  const text = pieces.join(" ");
-  return text ? text.slice(0, 300) : null;
-}
-
-function clearConflict() {
-  conflictKey.value = null;
-  conflictMessage.value = null;
-  conflictVersion.value = null;
-  conflictValue.value = null;
-  conflictDeviceUid.value = null;
-  conflictScope.value = null;
-  overwritePending.value = false;
-}
-
-function clearRowError(key: string) {
-  const next = { ...rowErrors.value };
-  delete next[key];
-  rowErrors.value = next;
-}
-
-function parseValueInput(valueType: VariableDefinitionInput["valueType"], raw: string) {
-  if (valueType === "string") return raw;
-  if (valueType === "int") return raw === "" ? null : Number.parseInt(raw, 10);
-  if (valueType === "float") return raw === "" ? null : Number.parseFloat(raw);
-  if (valueType === "bool") return raw.trim().toLowerCase() === "true";
-  if (valueType === "json") {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return raw;
-    }
-  }
+function parseValueInput(vt: string, raw: string): unknown {
+  if (vt === "string") return raw;
+  if (vt === "int")    return raw === "" ? null : parseInt(raw, 10);
+  if (vt === "float")  return raw === "" ? null : parseFloat(raw);
+  if (vt === "bool")   return raw.trim().toLowerCase() === "true";
+  if (vt === "json")   { try { return JSON.parse(raw); } catch { return raw; } }
   return raw;
 }
 
-function openCreate() {
-  editorOpen.value = true;
-  editorMode.value = "create";
-  editorKey.value = "";
-  editorScope.value = "global";
-  editorDeviceUid.value = "";
-  editorValueType.value = "string";
-  editorDefaultValue.value = "";
-  editorValue.value = "";
-  editorIsSecret.value = false;
-  editorIsReadonly.value = false;
-  editorExpectedVersion.value = null;
-  clearConflict();
+function valueDisplay(def: VariableDefinition, val?: VariableValue): string {
+  if (def.is_secret && !revealKeys.value.has(def.key)) return "••••••";
+  if (!val || val.value === null || val.value === undefined) return "–";
+  if (typeof val.value === "string") return val.value.slice(0, 80);
+  return JSON.stringify(val.value).slice(0, 80);
 }
 
-function openEdit(definition: VariableDefinition, current?: VariableValue) {
-  editorOpen.value = true;
-  editorMode.value = "edit";
-  editorKey.value = definition.key;
-  editorScope.value = definition.scope;
-  editorDeviceUid.value = deviceUid.value.trim();
-  editorValueType.value = definition.value_type;
-  editorDefaultValue.value = definition.default_value ? JSON.stringify(definition.default_value) : "";
-  editorValue.value = current?.value !== undefined ? JSON.stringify(current.value) : "";
-  editorIsSecret.value = definition.is_secret;
-  editorIsReadonly.value = definition.is_readonly;
-  editorExpectedVersion.value = current?.version ?? null;
-  clearConflict();
+function updatedAgo(val?: VariableValue): string {
+  if (!val?.updated_at) return "–";
+  const ago = Math.floor((Date.now() - new Date(val.updated_at).getTime()) / 1000);
+  if (ago < 60)    return `${ago}s ago`;
+  if (ago < 3600)  return `${Math.floor(ago / 60)}m ago`;
+  if (ago < 86400) return `${Math.floor(ago / 3600)}h ago`;
+  return new Date(val.updated_at).toLocaleDateString();
 }
 
+function scopeStatus(scope: string): "info" | "neutral" {
+  return scope === "global" ? "info" : "neutral";
+}
+
+function typeStatus(vt: string): "ok" | "warn" | "info" | "neutral" {
+  const map: Record<string, "ok" | "warn" | "info" | "neutral"> = {
+    int: "ok", float: "ok", bool: "warn", string: "info", json: "neutral",
+  };
+  return map[vt] ?? "neutral";
+}
+
+// ── Data loading ─────────────────────────────────────────────────────────────
 async function loadDefinitionsAndValues() {
   error.value = null;
-  errorDetails.value = null;
   loading.value = true;
   try {
     const defs = await listDefinitions(scopeFilter.value === "all" ? undefined : scopeFilter.value);
@@ -156,311 +151,765 @@ async function loadDefinitionsAndValues() {
     const values: Record<string, VariableValue> = {};
     if (deviceUid.value.trim()) {
       const vars = await getDeviceVariables(deviceUid.value.trim());
-      const combined = [...vars.globals, ...vars.device];
-      for (const item of combined) {
-        values[item.key] = item;
-      }
+      for (const item of [...vars.globals, ...vars.device]) values[item.key] = item;
     } else {
       await Promise.all(
-        defs
-          .filter((d) => d.scope === "global")
-          .map(async (d) => {
-            const v = await getValue({ key: d.key, scope: "global" });
-            values[d.key] = v;
-          })
+        defs.filter((d) => d.scope === "global").map(async (d) => {
+          try { values[d.key] = await getValue({ key: d.key, scope: "global" }); } catch { /* no value yet */ }
+        })
       );
     }
     valuesByKey.value = values;
     revealKeys.value = new Set();
-  } catch (e: any) {
-    error.value = formatApiError(e, "Failed to load variables");
-    errorDetails.value = formatErrorDetails(e);
+
+    // Load sparkline data for numeric defs (last 1h, max 60 points, no await)
+    loadSparklines(defs);
+  } catch (e) {
+    error.value = fmtApiError(e, "Failed to load variables");
   } finally {
     loading.value = false;
   }
 }
 
-async function handleSave() {
-  error.value = null;
-  errorDetails.value = null;
+async function loadSparklines(defs: VariableDefinition[]) {
+  const numeric = defs.filter((d) => d.value_type === "int" || d.value_type === "float");
+  const now = Math.floor(Date.now() / 1000);
+  await Promise.all(
+    numeric.map(async (d) => {
+      try {
+        const resp = await getVariableHistory({
+          key: d.key,
+          scope: d.scope,
+          deviceUid: d.scope === "device" ? deviceUid.value.trim() || undefined : undefined,
+          from: now - 3600,
+          to: now,
+          limit: 60,
+          downsample: 60,
+        });
+        historyByKey.value = { ...historyByKey.value, [d.key]: resp.points as VizDataPoint[] };
+      } catch { /* sparkline fails silently */ }
+    })
+  );
+}
+
+async function loadDetailHistory(def: VariableDefinition) {
+  const now = Math.floor(Date.now() / 1000);
   try {
-    if (editorMode.value === "create") {
-      const defInput: VariableDefinitionInput = {
-        key: editorKey.value.trim(),
-        scope: editorScope.value,
-        valueType: editorValueType.value,
-        defaultValue: editorDefaultValue.value
-          ? parseValueInput(editorValueType.value, editorDefaultValue.value)
-          : null,
-        isSecret: editorIsSecret.value,
-        isReadonly: editorIsReadonly.value,
-      };
-      await createDefinition(defInput);
-      if (editorValue.value) {
-        const valueInput: VariableValueInput = {
-          key: editorKey.value.trim(),
-          scope: editorScope.value,
-          deviceUid: editorScope.value === "device" ? editorDeviceUid.value.trim() : undefined,
-          value: parseValueInput(editorValueType.value, editorValue.value),
-        };
-        await putValue(valueInput);
-      }
-    } else {
-      const valueInput: VariableValueInput = {
-        key: editorKey.value.trim(),
-        scope: editorScope.value,
-        deviceUid: editorScope.value === "device" ? editorDeviceUid.value.trim() : undefined,
-        value: parseValueInput(editorValueType.value, editorValue.value),
-        expectedVersion: editorExpectedVersion.value ?? undefined,
-      };
-      await putValue(valueInput);
+    const resp = await getVariableHistory({
+      key: def.key,
+      scope: def.scope,
+      deviceUid: def.scope === "device" ? deviceUid.value.trim() || undefined : undefined,
+      from: now - 86400,
+      to: now,
+      limit: 500,
+      downsample: 300,
+    });
+    historyByKey.value = { ...historyByKey.value, [def.key]: resp.points as VizDataPoint[] };
+  } catch { /* ignore */ }
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+function openCreate() {
+  crKey.value = ""; crScope.value = "global"; crDeviceUid.value = "";
+  crValueType.value = "string"; crDefaultValue.value = ""; crValue.value = "";
+  crIsSecret.value = false; crIsReadonly.value = false;
+  crDisplayHint.value = "auto"; crCategory.value = ""; crDescription.value = "";
+  crUnit.value = ""; crMin.value = ""; crMax.value = "";
+  crError.value = null; createOpen.value = true;
+}
+
+async function handleCreate() {
+  crError.value = null;
+  crSaving.value = true;
+  try {
+    const defInput: VariableDefinitionInput = {
+      key: crKey.value.trim(),
+      scope: crScope.value,
+      valueType: crValueType.value,
+      defaultValue: crDefaultValue.value ? parseValueInput(crValueType.value, crDefaultValue.value) : null,
+      description: crDescription.value || null,
+      isSecret: crIsSecret.value,
+      isReadonly: crIsReadonly.value,
+      displayHint: crDisplayHint.value !== "auto" ? crDisplayHint.value : null,
+      category: crCategory.value || null,
+      unit: crUnit.value || null,
+      minValue: crMin.value !== "" ? parseFloat(crMin.value) : null,
+      maxValue: crMax.value !== "" ? parseFloat(crMax.value) : null,
+    } as unknown as VariableDefinitionInput;
+    await createDefinition(defInput);
+    if (crValue.value) {
+      await putValue({
+        key: crKey.value.trim(), scope: crScope.value,
+        deviceUid: crScope.value === "device" ? crDeviceUid.value.trim() : undefined,
+        value: parseValueInput(crValueType.value, crValue.value),
+      });
     }
-    editorOpen.value = false;
+    createOpen.value = false;
     await loadDefinitionsAndValues();
-  } catch (e: any) {
+  } catch (e) {
+    crError.value = fmtApiError(e, "Failed to create variable");
+  } finally {
+    crSaving.value = false;
+  }
+}
+
+// ── Edit definition ────────────────────────────────────────────────────────────
+function openEditDef(def: VariableDefinition) {
+  editDef.value = def;
+  editDisplayHint.value = def.display_hint ?? "auto";
+  editCategory.value = def.category ?? "";
+  editDescription.value = def.description ?? "";
+  editUnit.value = (def as unknown as { unit?: string }).unit ?? "";
+  editMin.value = (def as unknown as { min_value?: number | null }).min_value != null
+    ? String((def as unknown as { min_value: number }).min_value) : "";
+  editMax.value = (def as unknown as { max_value?: number | null }).max_value != null
+    ? String((def as unknown as { max_value: number }).max_value) : "";
+  editError.value = null;
+  editOpen.value = true;
+}
+
+async function handleEditSave() {
+  if (!editDef.value) return;
+  editError.value = null;
+  editSaving.value = true;
+  try {
+    const patch: VariableDefinitionPatchInput = {
+      description:  editDescription.value || null,
+      displayHint:  editDisplayHint.value !== "auto" ? editDisplayHint.value : null,
+      category:     editCategory.value || null,
+      unit:         editUnit.value || null,
+      minValue:     editMin.value !== "" ? parseFloat(editMin.value) : null,
+      maxValue:     editMax.value !== "" ? parseFloat(editMax.value) : null,
+    };
+    const updated = await patchDefinition(editDef.value.key, patch);
+    // Update local definitions list
+    definitions.value = definitions.value.map((d) => d.key === updated.key ? updated : d);
+    editOpen.value = false;
+  } catch (e) {
+    editError.value = fmtApiError(e, "Failed to update definition");
+  } finally {
+    editSaving.value = false;
+  }
+}
+
+// ── Set value ────────────────────────────────────────────────────────────────
+function openSetValue(def: VariableDefinition) {
+  setValueDef.value = def;
+  const cur = valuesByKey.value[def.key];
+  setValueStr.value = cur?.value !== undefined && cur.value !== null ? JSON.stringify(cur.value) : "";
+  setValueVersion.value = cur?.version ?? null;
+  setValueError.value = null;
+  setValueOpen.value = true;
+}
+
+async function handleSetValue() {
+  if (!setValueDef.value) return;
+  setValueError.value = null;
+  setValueSaving.value = true;
+  try {
+    const input: VariableValueInput = {
+      key: setValueDef.value.key,
+      scope: setValueDef.value.scope,
+      deviceUid: setValueDef.value.scope === "device" ? deviceUid.value.trim() || undefined : undefined,
+      value: parseValueInput(setValueDef.value.value_type, setValueStr.value),
+      expectedVersion: setValueVersion.value ?? undefined,
+    };
+    await putValue(input);
+    setValueOpen.value = false;
+    await loadDefinitionsAndValues();
+  } catch (e: unknown) {
     const info = parseApiError(e);
     if (info.code === "VAR_VERSION_CONFLICT") {
-      conflictKey.value = editorKey.value.trim();
-      conflictMessage.value = formatApiError(e, "Version conflict - reload or overwrite");
-      conflictVersion.value = (info.meta as any)?.current_version ?? null;
-      conflictValue.value = (info.meta as any)?.current_value ?? null;
-      conflictDeviceUid.value = editorScope.value === "device" ? editorDeviceUid.value.trim() : null;
-      conflictScope.value = editorScope.value;
+      conflictKey.value = setValueDef.value.key;
+      conflictMessage.value = fmtApiError(e, "Version conflict");
+      conflictVersion.value = (info.meta as { current_version?: number })?.current_version ?? null;
+      conflictScope.value = setValueDef.value.scope;
+      conflictDuid.value = setValueDef.value.scope === "device" ? deviceUid.value.trim() : null;
       return;
     }
-    error.value = formatApiError(e, "Failed to save variable");
-    errorDetails.value = formatErrorDetails(e);
-  }
-}
-
-async function handleDelete(definition: VariableDefinition, current?: VariableValue) {
-  if (!confirm("Clear value? This will revert to default if set.")) return;
-  error.value = null;
-  errorDetails.value = null;
-  try {
-    const valueInput: VariableValueInput = {
-      key: definition.key,
-      scope: definition.scope,
-      deviceUid: definition.scope === "device" ? deviceUid.value.trim() : undefined,
-      value: null,
-      expectedVersion: current?.version ?? undefined,
-    };
-    await putValue(valueInput);
-    await loadDefinitionsAndValues();
-    clearRowError(definition.key);
-  } catch (e: any) {
-    const msg = formatApiError(e, "Failed to clear variable");
-    rowErrors.value = { ...rowErrors.value, [definition.key]: msg };
-  }
-}
-
-function valueDisplay(definition: VariableDefinition, value?: VariableValue) {
-  if (definition.is_secret) {
-    return revealKeys.value.has(definition.key) ? value?.value ?? "-" : "••••••";
-  }
-  if (!value) return "-";
-  if (value.value === null || value.value === undefined) return "-";
-  if (typeof value.value === "string") return value.value;
-  return JSON.stringify(value.value);
-}
-
-function updatedDisplay(value?: VariableValue) {
-  if (!value?.updated_at) return "-";
-  try { return new Date(value.updated_at).toLocaleString(); } catch { return value.updated_at; }
-}
-
-function toggleReveal(key: string) {
-  const next = new Set(revealKeys.value);
-  if (next.has(key)) next.delete(key);
-  else next.add(key);
-  revealKeys.value = next;
-}
-
-async function reloadConflict() {
-  if (!conflictKey.value || !conflictScope.value) return;
-  try {
-    const latest = await getValue({
-      key: conflictKey.value,
-      scope: conflictScope.value,
-      deviceUid: conflictScope.value === "device" ? conflictDeviceUid.value ?? undefined : undefined,
-    });
-    editorExpectedVersion.value = latest.version ?? null;
-    editorValue.value = JSON.stringify(latest.value ?? "");
-    clearConflict();
-  } catch (e: any) {
-    error.value = formatApiError(e, "Failed to reload variable");
-    errorDetails.value = formatErrorDetails(e);
-  }
-}
-
-async function overwriteConflict() {
-  if (overwritePending.value) return;
-  overwritePending.value = true;
-  try {
-    await reloadConflict();
-    if (editorExpectedVersion.value === null) return;
-    await handleSave();
+    setValueError.value = fmtApiError(e, "Failed to set value");
   } finally {
-    overwritePending.value = false;
+    setValueSaving.value = false;
   }
 }
 
-watch([scopeFilter, deviceUid], () => {
-  loadDefinitionsAndValues();
+// ── Delete definition ─────────────────────────────────────────────────────────
+async function handleDeleteDef(def: VariableDefinition) {
+  if (!confirm(`Delete definition "${def.key}" and all its history? This cannot be undone.`)) return;
+  try {
+    await deleteDefinition(def.key);
+    definitions.value = definitions.value.filter((d) => d.key !== def.key);
+    const next = { ...valuesByKey.value };
+    delete next[def.key];
+    valuesByKey.value = next;
+  } catch (e) {
+    rowErrors.value = { ...rowErrors.value, [def.key]: fmtApiError(e, "Failed to delete") };
+  }
+}
+
+// ── Conflict resolution ────────────────────────────────────────────────────
+function clearConflict() {
+  conflictKey.value = null; conflictMessage.value = null;
+  conflictVersion.value = null; conflictScope.value = null; conflictDuid.value = null;
+  overwritePending.value = false;
+}
+
+async function reloadAndRetry() {
+  if (!conflictKey.value || !conflictScope.value) return;
+  const latest = await getValue({
+    key: conflictKey.value,
+    scope: conflictScope.value,
+    deviceUid: conflictScope.value === "device" ? conflictDuid.value ?? undefined : undefined,
+  });
+  setValueVersion.value = latest.version ?? null;
+  setValueStr.value = JSON.stringify(latest.value ?? "");
+  clearConflict();
+  await handleSetValue();
+}
+
+// ── Expand detail ─────────────────────────────────────────────────────────────
+function toggleExpand(def: VariableDefinition) {
+  if (expandedKey.value === def.key) {
+    expandedKey.value = null;
+  } else {
+    expandedKey.value = def.key;
+    loadDetailHistory(def);
+  }
+}
+
+// ── Filtered rows ─────────────────────────────────────────────────────────────
+const filteredRows = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  return definitions.value.filter((d) => {
+    if (scopeFilter.value !== "all" && d.scope !== scopeFilter.value) return false;
+    if (!showSecrets.value && d.is_secret) return false;
+    if (!term) return true;
+    return d.key.toLowerCase().includes(term)
+      || (d.category ?? "").toLowerCase().includes(term)
+      || (d.description ?? "").toLowerCase().includes(term);
+  });
 });
 
-onMounted(() => {
-  loadDefinitionsAndValues();
-});
+const isNumeric = (vt: string) => vt === "int" || vt === "float";
+
+watch([scopeFilter, deviceUid], loadDefinitionsAndValues);
+onMounted(loadDefinitionsAndValues);
 </script>
 
 <template>
-  <div class="card">
-    <div class="card-header-row">
-      <h2>Variables</h2>
-      <button class="btn" @click="openCreate">Add variable</button>
+  <div class="vars-page">
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="vars-header">
+      <div class="vars-header-left">
+        <h1 class="vars-title">Variables</h1>
+        <span class="vars-count">{{ filteredRows.length }}</span>
+      </div>
+      <UButton @click="openCreate" size="sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Variable
+      </UButton>
     </div>
 
-    <div class="toolbar">
-      <input v-model="search" class="input" placeholder="Search key" />
-      <select v-model="scopeFilter" class="input">
-        <option value="all">all scopes</option>
-        <option value="global">global</option>
-        <option value="device">device</option>
-      </select>
-      <input
-        v-model="deviceUid"
-        class="input"
-        placeholder="device UID (optional)"
-      />
-      <label class="toggle">
-        <input type="checkbox" v-model="showSecrets" />
-        show secrets
+    <!-- ── Toolbar ────────────────────────────────────────────────── -->
+    <div class="vars-toolbar">
+      <UInput v-model="search" placeholder="Search key, category, description…" class="toolbar-search" />
+      <USelect v-model="scopeFilter" class="toolbar-scope">
+        <option value="all">All scopes</option>
+        <option value="global">Global</option>
+        <option value="device">Device</option>
+      </USelect>
+      <UInput v-model="deviceUid" placeholder="Device UID (for device scope)" class="toolbar-device" />
+      <label class="toolbar-toggle">
+        <UToggle v-model="showSecrets" size="sm" />
+        <span>Secrets</span>
       </label>
     </div>
 
-    <div v-if="error" class="error">{{ error }}</div>
-    <details v-if="errorDetails" class="error-details">
-      <summary>details</summary>
-      <pre>{{ errorDetails }}</pre>
-    </details>
-    <div v-if="loading">Loading...</div>
+    <!-- ── Error ──────────────────────────────────────────────────── -->
+    <div v-if="error" class="vars-error">{{ error }}</div>
 
-    <table v-if="filteredRows.length" class="table">
-      <thead>
-        <tr>
-          <th>Scope</th>
-          <th>Device UID</th>
-          <th>Key</th>
-          <th>Type</th>
-          <th>Value</th>
-          <th>Version</th>
-          <th>Updated</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template v-for="def in filteredRows" :key="def.key">
+    <!-- ── Loading ───────────────────────────────────────────────── -->
+    <div v-if="loading" class="vars-loading">
+      <div v-for="i in 4" :key="i" class="skel-row" :style="{ animationDelay: `${i * 0.08}s` }" />
+    </div>
+
+    <!-- ── Empty state ────────────────────────────────────────────── -->
+    <div v-else-if="!filteredRows.length" class="vars-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#484f58" stroke-width="1.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+      <p>No variables yet</p>
+      <UButton size="sm" @click="openCreate">Create the first variable</UButton>
+    </div>
+
+    <!-- ── Table ─────────────────────────────────────────────────── -->
+    <div v-else class="vars-table-wrap">
+      <table class="vars-table">
+        <thead>
           <tr>
-            <td>{{ def.scope }}</td>
-            <td>{{ def.scope === "device" ? (deviceUid || "-") : "-" }}</td>
-            <td>{{ def.key }}</td>
-            <td>{{ def.value_type }}</td>
-            <td>{{ valueDisplay(def, valuesByKey[def.key]) }}</td>
-            <td>{{ valuesByKey[def.key]?.version ?? "-" }}</td>
-            <td>{{ updatedDisplay(valuesByKey[def.key]) }}</td>
-            <td>
-              <button class="btn secondary" @click="openEdit(def, valuesByKey[def.key])">
-                Edit
-              </button>
-              <button class="btn secondary" @click="handleDelete(def, valuesByKey[def.key])">
-                Delete
-              </button>
-              <button
-                v-if="def.is_secret"
-                class="btn secondary"
-                @click="toggleReveal(def.key)"
-              >
-                {{ revealKeys.has(def.key) ? "Hide" : "Reveal" }}
-              </button>
-            </td>
+            <th class="col-expand"></th>
+            <th>Key</th>
+            <th>Scope</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th class="col-spark">Trend</th>
+            <th>Hint</th>
+            <th>Updated</th>
+            <th class="col-actions">Actions</th>
           </tr>
-          <tr v-if="rowErrors[def.key]">
-            <td colspan="8">
-              <div class="row-error">{{ rowErrors[def.key] }}</div>
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
-    <div v-else-if="!loading">No variables found.</div>
+        </thead>
+        <tbody>
+          <template v-for="def in filteredRows" :key="def.key">
+            <!-- Main row -->
+            <tr
+              class="vars-row"
+              :class="{ 'row-expanded': expandedKey === def.key }"
+              @click="toggleExpand(def)"
+            >
+              <!-- Expand chevron -->
+              <td class="col-expand">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2"
+                  :style="{ transform: expandedKey === def.key ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </td>
 
-    <div v-if="editorOpen" class="modal">
-      <div class="modal-card">
-        <div class="card-header-row">
-          <h3>{{ editorMode === "create" ? "Add variable" : "Edit variable" }}</h3>
-          <button class="btn secondary" @click="editorOpen = false">Close</button>
-        </div>
-        <div v-if="showSecretWarning" class="pairing-warn" style="margin-top: 6px;">
-          Secret values are masked in lists.
-        </div>
-        <div class="info-grid">
-          <div class="info-item">
-            <div class="info-label">Key</div>
-            <input v-model="editorKey" class="input" :disabled="editorMode === 'edit'" />
+              <!-- Key + category + description -->
+              <td class="col-key">
+                <div class="key-wrap">
+                  <span class="key-name">{{ def.key }}</span>
+                  <span v-if="def.category" class="key-cat">{{ def.category }}</span>
+                </div>
+                <span v-if="def.description" class="key-desc">{{ def.description }}</span>
+              </td>
+
+              <!-- Scope -->
+              <td><UBadge :status="scopeStatus(def.scope)" size="sm">{{ def.scope }}</UBadge></td>
+
+              <!-- Type -->
+              <td>
+                <UBadge :status="typeStatus(def.value_type)" size="sm">{{ def.value_type }}</UBadge>
+                <span v-if="def.unit" class="type-unit">{{ def.unit }}</span>
+              </td>
+
+              <!-- Value -->
+              <td class="col-value" @click.stop>
+                <span
+                  class="value-text"
+                  :class="{ 'value-secret': def.is_secret && !revealKeys.has(def.key), 'value-null': !valuesByKey[def.key]?.value && valuesByKey[def.key]?.value !== 0 }"
+                >
+                  {{ valueDisplay(def, valuesByKey[def.key]) }}
+                </span>
+                <button
+                  v-if="def.is_secret"
+                  class="reveal-btn"
+                  @click.stop="revealKeys = new Set(revealKeys.has(def.key) ? [...revealKeys].filter(k => k !== def.key) : [...revealKeys, def.key])"
+                >
+                  {{ revealKeys.has(def.key) ? "hide" : "show" }}
+                </button>
+              </td>
+
+              <!-- Sparkline -->
+              <td class="col-spark" @click.stop>
+                <VizSparkline
+                  v-if="isNumeric(def.value_type) && historyByKey[def.key]?.length"
+                  :points="historyByKey[def.key]"
+                  :label="def.key"
+                  :width="72"
+                  :height="26"
+                />
+                <span v-else-if="!isNumeric(def.value_type)" class="spark-na">—</span>
+              </td>
+
+              <!-- Display hint -->
+              <td>
+                <span v-if="def.display_hint" class="hint-badge">{{ def.display_hint }}</span>
+                <span v-else class="hint-none">auto</span>
+              </td>
+
+              <!-- Updated -->
+              <td class="col-time">{{ updatedAgo(valuesByKey[def.key]) }}</td>
+
+              <!-- Actions -->
+              <td class="col-actions" @click.stop>
+                <div class="row-actions">
+                  <UButton size="sm" variant="ghost" @click.stop="openSetValue(def)" title="Set value">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </UButton>
+                  <UButton size="sm" variant="ghost" @click.stop="openEditDef(def)" title="Edit definition">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </UButton>
+                  <UButton size="sm" variant="ghost" class="danger-btn" @click.stop="handleDeleteDef(def)" title="Delete definition">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </UButton>
+                </div>
+                <div v-if="rowErrors[def.key]" class="row-err-text">{{ rowErrors[def.key] }}</div>
+              </td>
+            </tr>
+
+            <!-- Expanded detail panel -->
+            <tr v-if="expandedKey === def.key" class="detail-row">
+              <td colspan="9">
+                <div class="detail-panel">
+                  <div class="detail-meta">
+                    <div class="meta-item">
+                      <span class="meta-label">Key</span>
+                      <code class="meta-val">{{ def.key }}</code>
+                    </div>
+                    <div class="meta-item">
+                      <span class="meta-label">Type</span>
+                      <code class="meta-val">{{ def.value_type }}</code>
+                    </div>
+                    <div v-if="def.unit" class="meta-item">
+                      <span class="meta-label">Unit</span>
+                      <code class="meta-val">{{ def.unit }}</code>
+                    </div>
+                    <div v-if="def.display_hint" class="meta-item">
+                      <span class="meta-label">Viz</span>
+                      <code class="meta-val">{{ def.display_hint }}</code>
+                    </div>
+                    <div v-if="def.min_value != null || def.max_value != null" class="meta-item">
+                      <span class="meta-label">Range</span>
+                      <code class="meta-val">{{ def.min_value ?? "–" }} … {{ def.max_value ?? "–" }}</code>
+                    </div>
+                    <div v-if="def.description" class="meta-item wide">
+                      <span class="meta-label">Description</span>
+                      <span class="meta-val">{{ def.description }}</span>
+                    </div>
+                  </div>
+
+                  <!-- VizWidget for the variable -->
+                  <VizWidget
+                    :variableKey="def.key"
+                    :label="def.key"
+                    :unit="def.unit ?? undefined"
+                    :valueType="def.value_type"
+                    :displayHint="def.display_hint"
+                    :currentValue="valuesByKey[def.key]?.value"
+                    :points="historyByKey[def.key] ?? []"
+                    :min="def.min_value"
+                    :max="def.max_value"
+                    :height="200"
+                    :compact="false"
+                    :showHeader="true"
+                    :timeRange="'24h'"
+                  />
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Create Variable Modal ──────────────────────────────────── -->
+    <UModal :open="createOpen" title="New Variable" @close="createOpen = false">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Key *</label>
+            <UInput v-model="crKey" placeholder="e.g. sensor.temperature" />
           </div>
-          <div class="info-item">
-            <div class="info-label">Scope</div>
-            <select v-model="editorScope" class="input" :disabled="editorMode === 'edit'">
-              <option value="global">global</option>
-              <option value="device">device</option>
-            </select>
+          <div class="form-field">
+            <label>Scope</label>
+            <USelect v-model="crScope">
+              <option value="global">Global</option>
+              <option value="device">Device</option>
+            </USelect>
           </div>
-          <div class="info-item" v-if="isDeviceScope">
-            <div class="info-label">Device UID</div>
-            <input v-model="editorDeviceUid" class="input" />
+          <div v-if="crScope === 'device'" class="form-field">
+            <label>Device UID</label>
+            <UInput v-model="crDeviceUid" placeholder="device-uid" />
           </div>
-          <div class="info-item">
-            <div class="info-label">Value type</div>
-            <select v-model="editorValueType" class="input" :disabled="editorMode === 'edit'">
+          <div class="form-field">
+            <label>Value type</label>
+            <USelect v-model="crValueType">
               <option value="string">string</option>
               <option value="int">int</option>
               <option value="float">float</option>
               <option value="bool">bool</option>
               <option value="json">json</option>
-            </select>
+            </USelect>
           </div>
-          <div class="info-item">
-            <div class="info-label">Default value</div>
-            <input v-model="editorDefaultValue" class="input" :disabled="editorMode === 'edit'" />
+          <div class="form-field">
+            <label>Default value</label>
+            <UInput v-model="crDefaultValue" :placeholder="crValueType === 'json' ? '{…}' : 'optional'" />
           </div>
-          <div class="info-item">
-            <div class="info-label">Value</div>
-            <textarea v-model="editorValue" class="input" rows="3"></textarea>
+          <div class="form-field">
+            <label>Initial value</label>
+            <UInput v-model="crValue" placeholder="Set immediately (optional)" />
+          </div>
+          <div class="form-field">
+            <label>Description</label>
+            <UInput v-model="crDescription" placeholder="Human-readable description" />
+          </div>
+          <div class="form-field">
+            <label>Category</label>
+            <UInput v-model="crCategory" placeholder="e.g. sensor.temperature, gps, config" />
+          </div>
+          <div class="form-field">
+            <label>Unit</label>
+            <UInput v-model="crUnit" placeholder="°C, %, m/s, …" />
+          </div>
+          <div class="form-field">
+            <label>Visualization</label>
+            <USelect v-model="crDisplayHint">
+              <option v-for="opt in DISPLAY_HINT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </USelect>
+          </div>
+          <div class="form-field" v-if="crValueType === 'int' || crValueType === 'float'">
+            <label>Min value</label>
+            <UInput v-model="crMin" type="number" placeholder="0" />
+          </div>
+          <div class="form-field" v-if="crValueType === 'int' || crValueType === 'float'">
+            <label>Max value</label>
+            <UInput v-model="crMax" type="number" placeholder="100" />
           </div>
         </div>
-        <div class="toolbar" style="margin-top: 12px;">
-          <label class="toggle">
-            <input type="checkbox" v-model="editorIsSecret" :disabled="editorMode === 'edit'" />
-            secret
+        <div class="form-toggles">
+          <label class="toggle-row">
+            <UToggle v-model="crIsSecret" size="sm" />
+            <span>Secret <span class="toggle-hint">— value masked in lists</span></span>
           </label>
-          <label class="toggle">
-            <input type="checkbox" v-model="editorIsReadonly" :disabled="editorMode === 'edit'" />
-            readonly
+          <label class="toggle-row">
+            <UToggle v-model="crIsReadonly" size="sm" />
+            <span>Read-only <span class="toggle-hint">— devices cannot overwrite</span></span>
           </label>
-          <button class="btn" @click="handleSave">Save</button>
         </div>
-        <div v-if="conflictKey" class="action-strip">
-          <div class="row-error">
-            {{ conflictMessage }}
-          </div>
-          <div class="row-actions">
-            <button class="btn secondary" @click="reloadConflict">Reload latest</button>
-            <button class="btn secondary" @click="overwriteConflict">Overwrite anyway</button>
-            <button class="btn secondary" @click="clearConflict">Cancel</button>
-          </div>
-        </div>
+        <div v-if="crError" class="modal-error">{{ crError }}</div>
       </div>
-    </div>
+      <template #footer>
+        <UButton variant="ghost" @click="createOpen = false">Cancel</UButton>
+        <UButton @click="handleCreate" :loading="crSaving">Create</UButton>
+      </template>
+    </UModal>
+
+    <!-- ── Edit Definition Modal ──────────────────────────────────── -->
+    <UModal :open="editOpen" :title="`Edit — ${editDef?.key ?? ''}`" @close="editOpen = false">
+      <div class="modal-body" v-if="editDef">
+        <div class="edit-readonly-info">
+          <UBadge :status="scopeStatus(editDef.scope)" size="sm">{{ editDef.scope }}</UBadge>
+          <UBadge :status="typeStatus(editDef.value_type)" size="sm">{{ editDef.value_type }}</UBadge>
+          <span class="edit-readonly-note">Key and type cannot be changed</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field wide">
+            <label>Description</label>
+            <UInput v-model="editDescription" placeholder="Human-readable description" />
+          </div>
+          <div class="form-field">
+            <label>Category</label>
+            <UInput v-model="editCategory" placeholder="e.g. sensor.temperature" />
+          </div>
+          <div class="form-field">
+            <label>Unit</label>
+            <UInput v-model="editUnit" placeholder="°C, %, m/s, …" />
+          </div>
+          <div class="form-field">
+            <label>Visualization hint</label>
+            <USelect v-model="editDisplayHint">
+              <option v-for="opt in DISPLAY_HINT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </USelect>
+          </div>
+          <div class="form-field" v-if="editDef.value_type === 'int' || editDef.value_type === 'float'">
+            <label>Min value</label>
+            <UInput v-model="editMin" type="number" />
+          </div>
+          <div class="form-field" v-if="editDef.value_type === 'int' || editDef.value_type === 'float'">
+            <label>Max value</label>
+            <UInput v-model="editMax" type="number" />
+          </div>
+        </div>
+        <div v-if="editError" class="modal-error">{{ editError }}</div>
+      </div>
+      <template #footer>
+        <UButton variant="ghost" @click="editOpen = false">Cancel</UButton>
+        <UButton @click="handleEditSave" :loading="editSaving">Save changes</UButton>
+      </template>
+    </UModal>
+
+    <!-- ── Set Value Modal ────────────────────────────────────────── -->
+    <UModal :open="setValueOpen" :title="`Set value — ${setValueDef?.key ?? ''}`" @close="setValueOpen = false">
+      <div class="modal-body" v-if="setValueDef">
+        <div class="edit-readonly-info">
+          <UBadge :status="typeStatus(setValueDef.value_type)" size="sm">{{ setValueDef.value_type }}</UBadge>
+          <UBadge :status="scopeStatus(setValueDef.scope)" size="sm">{{ setValueDef.scope }}</UBadge>
+        </div>
+        <div class="form-field">
+          <label>Value</label>
+          <textarea
+            v-model="setValueStr"
+            class="value-textarea"
+            rows="4"
+            :placeholder="setValueDef.value_type === 'json' ? '{ &quot;key&quot;: &quot;value&quot; }' : 'enter value…'"
+          />
+        </div>
+        <!-- Conflict banner -->
+        <div v-if="conflictKey === setValueDef.key" class="conflict-banner">
+          <span>⚠ {{ conflictMessage }}</span>
+          <div class="conflict-actions">
+            <UButton size="sm" variant="ghost" @click="reloadAndRetry">Reload &amp; retry</UButton>
+            <UButton size="sm" variant="ghost" @click="clearConflict">Cancel</UButton>
+          </div>
+        </div>
+        <div v-if="setValueError" class="modal-error">{{ setValueError }}</div>
+      </div>
+      <template #footer>
+        <UButton variant="ghost" @click="setValueOpen = false">Cancel</UButton>
+        <UButton @click="handleSetValue" :loading="setValueSaving">Set value</UButton>
+      </template>
+    </UModal>
   </div>
 </template>
+
+<style scoped>
+/* ── Page shell ─────────────────────────────────────────── */
+.vars-page {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 0 0 40px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.vars-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.vars-header-left { display: flex; align-items: baseline; gap: 10px; }
+.vars-title { font-size: 20px; font-weight: 600; color: #e6edf3; margin: 0; }
+.vars-count {
+  font-size: 12px; color: #8b949e;
+  background: #21262d; border-radius: 10px; padding: 1px 8px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.vars-toolbar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.toolbar-search { flex: 1; min-width: 180px; }
+.toolbar-scope  { width: 140px; }
+.toolbar-device { width: 220px; }
+.toolbar-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #8b949e; cursor: pointer; }
+
+/* ── Error / loading ─────────────────────────────────────── */
+.vars-error {
+  background: #3d1f1f; border: 1px solid #6e2020; border-radius: 6px;
+  color: #f85149; font-size: 13px; padding: 10px 14px;
+}
+.vars-loading { display: flex; flex-direction: column; gap: 6px; }
+.skel-row {
+  height: 44px; background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
+  background-size: 200% 100%; border-radius: 6px; animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Empty state ─────────────────────────────────────────── */
+.vars-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 60px 20px; color: #8b949e; font-size: 14px;
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+.vars-table-wrap { overflow-x: auto; }
+.vars-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.vars-table th {
+  padding: 8px 12px; text-align: left;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+  color: #8b949e; border-bottom: 1px solid #30363d;
+  white-space: nowrap;
+}
+.vars-table td {
+  padding: 10px 12px; border-bottom: 1px solid #21262d; vertical-align: middle;
+}
+.vars-row { cursor: pointer; transition: background 0.1s; }
+.vars-row:hover { background: #161b22; }
+.vars-row.row-expanded { background: #161b22; }
+
+/* Col widths */
+.col-expand { width: 28px; }
+.col-spark  { width: 90px; }
+.col-actions{ width: 110px; }
+.col-time   { white-space: nowrap; color: #8b949e; font-size: 12px; }
+.col-value  { max-width: 200px; overflow: hidden; }
+
+/* Key cell */
+.key-wrap   { display: flex; align-items: baseline; gap: 6px; }
+.key-name   { font-family: monospace; color: #e6edf3; font-size: 13px; }
+.key-cat    { font-size: 10px; color: #58a6ff; background: #58a6ff11; padding: 1px 5px; border-radius: 10px; }
+.key-desc   { display: block; font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+/* Value cell */
+.value-text { font-family: monospace; font-size: 12px; color: #c9d1d9; }
+.value-secret { letter-spacing: 2px; color: #8b949e; }
+.value-null { color: #484f58; font-style: italic; }
+.reveal-btn {
+  margin-left: 6px; font-size: 10px; color: #8b949e;
+  background: none; border: none; cursor: pointer; padding: 0 4px;
+  border-radius: 3px;
+}
+.reveal-btn:hover { color: #58a6ff; background: #58a6ff11; }
+
+/* Type unit */
+.type-unit { font-size: 11px; color: #8b949e; margin-left: 4px; }
+
+/* Sparkline placeholder */
+.spark-na { color: #484f58; font-size: 11px; }
+
+/* Hint badge */
+.hint-badge {
+  font-size: 10px; color: #8b949e; background: #21262d;
+  padding: 2px 6px; border-radius: 10px; font-family: monospace;
+}
+.hint-none { color: #484f58; font-size: 11px; }
+
+/* Row actions */
+.row-actions { display: flex; gap: 2px; align-items: center; }
+.danger-btn { color: #f85149 !important; }
+.danger-btn:hover { background: #f8514911 !important; }
+.row-err-text { font-size: 10px; color: #f85149; margin-top: 3px; }
+
+/* ── Detail panel ─────────────────────────────────────────── */
+.detail-row td { padding: 0; background: #0d1117; }
+.detail-panel { padding: 16px 20px 20px; border-bottom: 1px solid #30363d; }
+.detail-meta {
+  display: flex; flex-wrap: wrap; gap: 12px 24px;
+  margin-bottom: 16px;
+}
+.meta-item { display: flex; flex-direction: column; gap: 2px; }
+.meta-item.wide { flex: 1; min-width: 200px; }
+.meta-label { font-size: 10px; text-transform: uppercase; color: #484f58; letter-spacing: 0.06em; }
+.meta-val { font-family: monospace; font-size: 12px; color: #c9d1d9; }
+
+/* ── Modals ───────────────────────────────────────────────── */
+.modal-body { padding: 4px 0 8px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.form-field { display: flex; flex-direction: column; gap: 4px; }
+.form-field.wide { grid-column: 1 / -1; }
+.form-field label { font-size: 11px; color: #8b949e; }
+.form-toggles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #c9d1d9; cursor: pointer; }
+.toggle-hint { color: #8b949e; font-size: 11px; }
+.modal-error {
+  margin-top: 10px; background: #3d1f1f; border: 1px solid #6e2020;
+  border-radius: 4px; color: #f85149; font-size: 12px; padding: 8px 12px;
+}
+
+.edit-readonly-info { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.edit-readonly-note { font-size: 11px; color: #484f58; margin-left: 4px; }
+
+.value-textarea {
+  width: 100%; font-family: monospace; font-size: 13px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+  color: #e6edf3; padding: 8px 10px; resize: vertical;
+  box-sizing: border-box;
+}
+.value-textarea:focus { outline: none; border-color: #58a6ff; }
+
+.conflict-banner {
+  background: #332a00; border: 1px solid #6e4f00;
+  border-radius: 4px; padding: 10px 12px; margin-top: 10px;
+  font-size: 12px; color: #e3b341;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.conflict-actions { display: flex; gap: 6px; }
+</style>

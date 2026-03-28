@@ -19,7 +19,10 @@ from app.realtime import hub
 from app.db.models.device import Device
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.user import User
+from app.db.models.variables import VariableDefinition
 from app.db.session import AsyncSessionLocal
+from app.core.variables import record_history
+from sqlalchemy import select as sa_select
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 ws_router = APIRouter(prefix="/telemetry", tags=["telemetry"])
@@ -97,6 +100,100 @@ class TelemetryRecentOut(BaseModel):
 
 
 @router.post("", response_model=TelemetryOut)
+async def _bridge_telemetry_to_variables(
+    device_id: int,
+    device_uid: str,
+    event_type: Optional[str],
+    payload: Dict[str, Any],
+) -> None:
+    """Background task: match telemetry payload keys against device_writable variable definitions."""
+    try:
+        async with AsyncSessionLocal() as db:
+            # Build lookup keys: "event_type.key" and "key"
+            candidate_keys: list[str] = []
+            for pk in payload.keys():
+                if event_type:
+                    candidate_keys.append(f"{event_type}.{pk}")
+                candidate_keys.append(pk)
+
+            if not candidate_keys:
+                return
+
+            # Load matching device_writable definitions
+            res = await db.execute(
+                sa_select(VariableDefinition).where(
+                    VariableDefinition.key.in_(candidate_keys),
+                    VariableDefinition.device_writable == True,  # noqa: E712
+                )
+            )
+            defs = res.scalars().all()
+            if not defs:
+                return
+
+            from app.db.models.variables import VariableValue
+            for defn in defs:
+                # Determine raw payload value
+                if event_type and defn.key == f"{event_type}.{defn.key.split('.')[-1]}":
+                    raw_key = defn.key.split(".", 1)[-1]
+                    raw_value = payload.get(raw_key)
+                else:
+                    raw_value = payload.get(defn.key)
+
+                if raw_value is None:
+                    continue
+
+                # Coerce to definition type
+                try:
+                    if defn.value_type == "int":
+                        coerced = int(raw_value)
+                    elif defn.value_type == "float":
+                        coerced = float(raw_value)
+                    elif defn.value_type == "bool":
+                        coerced = bool(raw_value)
+                    elif defn.value_type == "json":
+                        coerced = raw_value if isinstance(raw_value, (dict, list)) else raw_value
+                    else:
+                        coerced = str(raw_value)
+                except (TypeError, ValueError):
+                    continue
+
+                # Upsert VariableValue
+                scope = defn.scope
+                duid = device_uid if scope == "device" else None
+                did = device_id if scope == "device" else None
+
+                existing_res = await db.execute(
+                    sa_select(VariableValue).where(
+                        VariableValue.variable_key == defn.key,
+                        VariableValue.scope == scope,
+                        VariableValue.device_id == did,
+                    )
+                )
+                existing = existing_res.scalar_one_or_none()
+                if existing:
+                    existing.value = coerced
+                    existing.version = (existing.version or 0) + 1
+                    existing.updated_at = datetime.now(timezone.utc)
+                else:
+                    db.add(VariableValue(
+                        variable_key=defn.key,
+                        scope=scope,
+                        device_id=did,
+                        value=coerced,
+                        version=1,
+                    ))
+
+                await record_history(
+                    db, definition=defn, value=coerced,
+                    device_id=did, source="telemetry"
+                )
+
+            await db.commit()
+    except Exception as exc:
+        logger.warning("telemetry→variable bridge error: %s", exc)
+
+
+@router.post("", response_model=TelemetryOut)
 async def ingest_telemetry(
     data: TelemetryIn,
     db: AsyncSession = Depends(get_db),
@@ -105,6 +202,10 @@ async def ingest_telemetry(
     await _check_rate_limit(device.id)
     _validate_payload(data.payload)
     device.last_seen_at = datetime.now(timezone.utc)
+    # Allow device to self-report its reporting interval
+    ri = data.payload.get("reporting_interval_seconds")
+    if isinstance(ri, (int, float)) and 1 <= ri <= 86400:
+        device.reporting_interval_seconds = int(ri)
     telemetry = DeviceTelemetry(
         device_id=device.id,
         event_type=data.event_type,
@@ -123,6 +224,14 @@ async def ingest_telemetry(
     await db.commit()
     await db.refresh(telemetry)
     await hub.broadcast(device.id, _serialize_telemetry(telemetry))
+
+    # Bridge telemetry → variables (fire-and-forget, non-blocking)
+    asyncio.create_task(
+        _bridge_telemetry_to_variables(
+            device.id, device.device_uid, data.event_type, data.payload
+        )
+    )
+
     return TelemetryOut(telemetry_id=telemetry.id, received_at=telemetry.received_at)
 
 

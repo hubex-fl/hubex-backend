@@ -2,6 +2,69 @@
 
 ---
 
+## Variable Stream Visualization System — M8c V1-V5
+**Datum:** 2026-03-28 | **Status:** ✅ Done
+
+### Was wurde gemacht
+
+**V1 — Backend CRUD + History** (in Main)
+- `display_hint` + `category` in VariableDefinition
+- `variable_history` Tabelle (BigInt, Zeitreihe, numeric_value denormalisiert)
+- `PATCH/DELETE /variables/definitions/{key}` + `GET /variables/history`
+- History-Recording nach jedem Value-Write (source: user/device/telemetry)
+
+**V2 — Widget-Komponenten (Grafana/HA/n8n-Design)**
+- `lib/viz-types.ts`, `lib/viz-resolve.ts`, `composables/useVariableHistory.ts`
+- `VizSparkline.vue` — Pure SVG (Area Fill, Gradient, Dot)
+- `VizLineChart.vue` — Chart.js + date-fns Zeitachse
+- `VizGauge.vue` — SVG Radial 210°→330° (HA-style, dynamische Farbe)
+- `VizBoolIndicator.vue` — Status Dot + Timeline Bar
+- `VizLogView.vue` — Mono-Log mit Source-Badges (n8n-style)
+- `VizJsonViewer.vue` — Klappbarer JSON-Baum (renderless)
+- `VizMapView.vue` — Leaflet lazy-loaded, dark tiles
+- `VizImageView.vue` — URL-Image mit Auto-Refresh
+- `VizWidget.vue` — Grafana Panel Container (Header, TimeRange, Skeleton, Footer)
+
+**V3 — Variables.vue Full CRUD + Inline Viz**
+- Create/Edit-Definition/Set-Value-Modals mit Version-Conflict-Flow
+- Echtes DELETE mit Cascade, Sparkline-Spalte, Expandable-Detail-Row
+- Komplette Neuentwicklung mit Design System
+
+**V4 — Telemetry Bridge**
+- `_bridge_telemetry_to_variables()` — fire-and-forget asyncio.create_task
+- Matching: `{event_type}.{key}` und `{key}` gegen device_writable Definitionen
+- Wert-Coercion + Upsert VariableValue + record_history(source="telemetry")
+
+**V5 — VariableStreams.vue**
+- Grafana-style Real-Time Grid: 2/3/4 Spalten
+- TimeRange-Tabs, Card-Selection, Fullscreen-Overlay, Auto-Refresh 15s
+- "Data" Gruppe in Sidebar (Variables + Streams)
+
+**Roadmap-Update**
+- M8c als ✅ Done markiert
+- M8d neu: History-Retention, DeviceDetail-Vars, Variable-Alerts, Variable→Webhook
+- M20: explizite Abhängigkeit zu VizWidget dokumentiert
+- Abhängigkeits-Graph + nächste-3-Sprints Tabelle
+
+### Tests
+- TypeScript: ✅ 0 errors
+- Vite Build: ✅ 3.14s, 0 warnings
+  - Variables.vue: 23KB gzip (vorher 255KB vor Code-Split)
+  - VizWidget (Chart.js): 75KB gzip — lazy chunk
+  - Leaflet: 43KB gzip — lazy chunk (nur wenn Map-Widget)
+
+### Design-Leitsätze umgesetzt
+- n8n: Monospace-Logs, Source-Badges, Daten-zentriert
+- Grafana: Panel-Container, TimeRange-Tabs, Skeleton
+- Home Assistant: Radial Gauge, Status Dot, Bool-Timeline
+
+### Nächster Sprint (M8d)
+1. History Retention Policy (Background-Task, 30d default)
+2. DeviceDetail Variable-Panel (Sparklines + VizWidget)
+3. Variable-basierte Alert-Rules (threshold_operator)
+
+---
+
 ## Milestone 9 Step 5 — Standard-Device Connector PoC: Shelly/Tasmota MQTT Bridge
 **Date:** 2026-03-27
 **Status:** ✅ Done — **Milestone 9 COMPLETE**
