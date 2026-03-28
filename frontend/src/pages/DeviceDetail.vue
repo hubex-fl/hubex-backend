@@ -181,6 +181,50 @@ const isUnclaimed = computed(() => {
 });
 const restrictUnclaimed = computed(() => isUnclaimed.value && !canAdmin.value);
 
+// ── System Context (entities, capabilities summary) ──────────────────────────
+type EntityMembership = { entity_id: string; role: string; enabled: boolean; entity_name?: string };
+const entityMemberships = ref<EntityMembership[]>([]);
+const entityMembershipsLoading = ref(false);
+
+async function loadEntityMemberships(): Promise<void> {
+  if (!deviceInfo.value) return;
+  entityMembershipsLoading.value = true;
+  try {
+    const entities = await apiFetch<Array<{ entity_id: string; name?: string; description?: string }>>(
+      "/api/v1/entities"
+    );
+    const memberships: EntityMembership[] = [];
+    for (const entity of entities) {
+      try {
+        const bindings = await apiFetch<Array<{ device_id: number; role: string; enabled: boolean }>>(
+          `/api/v1/entities/${entity.entity_id}/devices`
+        );
+        const binding = bindings.find((b) => b.device_id === deviceInfo.value?.id);
+        if (binding) {
+          memberships.push({
+            entity_id: entity.entity_id,
+            role: binding.role,
+            enabled: binding.enabled,
+            entity_name: entity.name || entity.entity_id,
+          });
+        }
+      } catch { /* ignore per-entity errors */ }
+    }
+    entityMemberships.value = memberships;
+  } catch { /* ignore */ }
+  entityMembershipsLoading.value = false;
+}
+
+const deviceCapsList = computed(() => {
+  const caps = deviceInfo.value?.capabilities;
+  if (!caps || typeof caps !== "object") return [];
+  return Object.entries(caps).map(([k, v]) => ({ key: k, value: v }));
+});
+
+const dataFlowInputCount = computed(() => telemetry.value.length);
+const dataFlowOutputCount = computed(() => variables.value.length);
+const dataFlowTaskCount = computed(() => taskHistory.value.length);
+
 // ── Hero ring helpers ─────────────────────────────────────────────────────────
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -396,6 +440,8 @@ async function refreshAll(reason: string) {
     loadTaskHistory(),
     loadVariables(),
   ]);
+  // Non-blocking: load entity memberships after device info is available
+  loadEntityMemberships();
   if (deviceOk === false || taskOk === false || historyOk === false || varsOk === false) {
     hadError = true;
   }
@@ -1434,6 +1480,132 @@ onUnmounted(() => {
         <div v-if="latestPayloadFields.length" class="flex items-center gap-1.5 ml-auto">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse shrink-0" />
           <span class="text-xs text-[var(--text-muted)]">{{ latestPayloadFields.length }} live fields</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── System Context — Data Flow Node ──────────────────────────────── -->
+    <div v-if="!restrictUnclaimed" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+      <!-- Section header -->
+      <div class="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center justify-between">
+        <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">System Context</h3>
+        <span class="text-[10px] text-[var(--text-muted)]">Where this device fits in your infrastructure</span>
+      </div>
+
+      <!-- Data Flow Visualization -->
+      <div class="px-5 py-6">
+        <div class="flex items-center justify-center gap-0 overflow-x-auto">
+          <!-- Input sources -->
+          <div class="flex flex-col items-end gap-2 min-w-[120px] shrink-0">
+            <div class="rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5 px-3 py-2 text-right">
+              <p class="text-[10px] text-[var(--accent-cyan)] uppercase tracking-wide font-semibold">Telemetry</p>
+              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowInputCount }}</p>
+              <p class="text-[10px] text-[var(--text-muted)]">events received</p>
+            </div>
+            <div class="rounded-lg border border-[var(--text-muted)]/20 bg-[var(--bg-raised)] px-3 py-2 text-right">
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold">Tasks</p>
+              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowTaskCount }}</p>
+              <p class="text-[10px] text-[var(--text-muted)]">executed</p>
+            </div>
+          </div>
+
+          <!-- Arrow in -->
+          <div class="flex flex-col items-center px-2 shrink-0">
+            <svg class="h-5 w-16 text-[var(--accent-cyan)]" viewBox="0 0 64 20" fill="none">
+              <path d="M0 10h52" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
+              <path d="M48 4l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+
+          <!-- Device Node (center) -->
+          <div class="relative shrink-0">
+            <div
+              class="w-40 rounded-xl border-2 p-4 flex flex-col items-center gap-2 shadow-lg"
+              :style="{
+                borderColor: DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'var(--border)',
+                backgroundColor: 'var(--bg-surface)',
+                boxShadow: `0 0 20px ${DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'transparent'}15`,
+              }"
+            >
+              <svg class="h-8 w-8" :style="{ color: DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'var(--text-muted)' }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.icon ?? DEVICE_TYPE_META.unknown.icon" />
+              </svg>
+              <p class="text-xs font-mono font-bold text-[var(--text-primary)] text-center truncate w-full">
+                {{ deviceInfo?.name || deviceInfo?.device_uid?.slice(-8) || '...' }}
+              </p>
+              <p class="text-[10px] text-[var(--text-muted)]">
+                {{ DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.label ?? 'Device' }}
+              </p>
+              <!-- Health indicator dot -->
+              <span
+                class="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-[var(--bg-surface)]"
+                :class="{
+                  'bg-[var(--status-ok)]': deviceInfo?.health === 'ok',
+                  'bg-[var(--status-warn)]': deviceInfo?.health === 'stale',
+                  'bg-[var(--status-bad)]': deviceInfo?.health === 'dead' || !deviceInfo?.health,
+                }"
+              />
+            </div>
+          </div>
+
+          <!-- Arrow out -->
+          <div class="flex flex-col items-center px-2 shrink-0">
+            <svg class="h-5 w-16 text-[var(--accent-lime)]" viewBox="0 0 64 20" fill="none">
+              <path d="M0 10h52" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
+              <path d="M48 4l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+
+          <!-- Output targets -->
+          <div class="flex flex-col items-start gap-2 min-w-[120px] shrink-0">
+            <div class="rounded-lg border border-[var(--accent-lime)]/30 bg-[var(--accent-lime)]/5 px-3 py-2">
+              <p class="text-[10px] text-[var(--accent-lime)] uppercase tracking-wide font-semibold">Variables</p>
+              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowOutputCount }}</p>
+              <p class="text-[10px] text-[var(--text-muted)]">configured</p>
+            </div>
+            <div v-if="entityMemberships.length" class="rounded-lg border border-[var(--accent-purple, #a78bfa)]/30 bg-[var(--accent-purple, #a78bfa)]/5 px-3 py-2">
+              <p class="text-[10px] text-[var(--accent-purple, #a78bfa)] uppercase tracking-wide font-semibold">Entities</p>
+              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ entityMemberships.length }}</p>
+              <p class="text-[10px] text-[var(--text-muted)]">memberships</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Entity memberships + capabilities bar -->
+      <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-4">
+        <!-- Entity chips -->
+        <div v-if="entityMembershipsLoading" class="flex items-center gap-2">
+          <USkeleton width="4rem" height="1.25rem" rounded="full" />
+          <USkeleton width="5rem" height="1.25rem" rounded="full" />
+        </div>
+        <div v-else-if="entityMemberships.length" class="flex items-center gap-2 flex-wrap">
+          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mr-1">Entities:</span>
+          <router-link
+            v-for="em in entityMemberships"
+            :key="em.entity_id"
+            :to="`/entities`"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors hover:border-[var(--accent-cyan)]/40"
+            :class="em.enabled ? 'border-[var(--accent-purple, #a78bfa)]/30 text-[var(--accent-purple, #a78bfa)] bg-[var(--accent-purple, #a78bfa)]/5' : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-surface)]'"
+          >
+            <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+            {{ em.entity_name }}
+            <span v-if="em.role !== 'member'" class="opacity-60">({{ em.role }})</span>
+          </router-link>
+        </div>
+        <span v-else class="text-[10px] text-[var(--text-muted)]">No entity memberships</span>
+
+        <!-- Capabilities summary -->
+        <div v-if="deviceCapsList.length" class="flex items-center gap-2 ml-auto">
+          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Caps:</span>
+          <span
+            v-for="cap in deviceCapsList.slice(0, 5)"
+            :key="cap.key"
+            class="inline-block px-1.5 py-0.5 rounded text-[9px] font-mono border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-muted)]"
+          >{{ cap.key }}</span>
+          <span v-if="deviceCapsList.length > 5" class="text-[9px] text-[var(--text-muted)]">+{{ deviceCapsList.length - 5 }}</span>
         </div>
       </div>
     </div>
