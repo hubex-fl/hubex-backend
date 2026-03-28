@@ -2,6 +2,61 @@
 
 ---
 
+## M8d: Data Hub Gap Fills — 7 Steps
+**Datum:** 2026-03-28 | **Status:** ✅ Done | **Commit:** `975dacb`
+
+### Was wurde gemacht
+
+**Step 1 — History Retention Policy**
+- `app/core/history_retention.py` — `history_retention_loop()` läuft stündlich
+- Löscht `variable_history` Einträge älter als `HUBEX_HISTORY_RETENTION_DAYS` (default 30)
+- In `app/main.py` lifespan als `retention_task` eingebunden
+
+**Step 2 — DeviceDetail Inline Sparklines**
+- `loadSparklines()` nach `loadVariables()` — lädt 1h History für alle int/float Variablen
+- `VizSparkline` neben jedem numerischen Wert (72px × 22px, kein Extra-Request wenn keine Daten)
+- "View in Streams →" Footer-Link im Variable-Panel
+
+**Step 3 — Variable-basierte Alert Rules**
+- Neuer `condition_type = "variable_threshold"` im Alert Worker registriert
+- `_eval_variable_threshold()` prüft aktuellen Variablenwert gegen Schwellwert
+- Operators: `gt`, `gte`, `lt`, `lte`, `eq`, `ne` — Fehler/Fehlkonfiguration wird graceful behandelt
+- `VALID_CONDITION_TYPES` in `alerts.py` erweitert
+
+**Step 4 — Variable → Webhook Bridge**
+- `emit_system_event(db, "variable.changed", {...})` nach jedem Value-Write
+- Payload: `variable_key`, `scope`, `device_uid`, `value`, `source`, `value_type`
+- Webhook Dispatcher filtert `event_type = "variable.changed"` automatisch
+
+**Step 5 — Telemetry Bridge: Nested Payload Support**
+- `_flatten_payload(payload, max_depth=3)` mit Dot-Notation
+- `{"sensors": {"temp": 23.5}}` → Variable Key `sensors.temp` wird gefunden
+- Auch `{event_type}.sensors.temp` wird als Kandidat-Key geprüft
+
+**Step 6 — Streams: Device Selector**
+- `USelect` Dropdown mit `availableDevices` aus `GET /api/v1/devices`
+- Nur `state === "claimed"` Devices erscheinen
+- Letzte Auswahl in `localStorage["streams_device_uid"]` persistiert
+
+**Step 7 — Bulk Variable Set Endpoint**
+- `POST /api/v1/variables/bulk-set` mit max. 50 Items
+- `allow_partial=true` → partial failure tracking; `false` → Rollback bei Fehler
+- Antwort: `BulkSetResult { succeeded[], failed[], total, success_count }`
+
+**USelect Fix**
+- `options` prop von required auf optional (`options?:`) geändert
+- `<slot v-else />` Fallback für native `<option>` children hinzugefügt
+- Alle vorherigen Vue prop-warnings damit behoben
+
+### Commits
+- `f49c8c4` — feat(m8c): Variable Stream Visualization System — V1-V5 complete
+- `975dacb` — feat(m8d): Data Hub gap fills — 7 steps complete
+
+### Nächster Schritt
+`PROMPT_PHASE_9_1.md` — Variable-Alert UI + GitHub Actions CI
+
+---
+
 ## Variable Stream Visualization System — M8c V1-V5
 **Datum:** 2026-03-28 | **Status:** ✅ Done
 
