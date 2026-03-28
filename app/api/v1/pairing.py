@@ -17,6 +17,7 @@ from app.api.deps_rate_limit import FixedWindowLimiter
 from app.api.v1.error_utils import raise_api_error
 from app.core.security import hash_device_token
 from app.core.system_events import emit_system_event
+from app.core.device_type import detect_device_type
 from app.db.models.device import Device
 from app.db.models.pairing import PairingSession, DeviceToken
 from app.db.models.tasks import Task
@@ -175,12 +176,15 @@ async def pairing_hello(
             firmware_version=data.firmware_version,
             capabilities=data.capabilities,
             last_seen_at=now,
+            device_type=detect_device_type(data.firmware_version),
         )
         db.add(device)
     else:
         device.firmware_version = data.firmware_version
         device.capabilities = data.capabilities
         device.last_seen_at = now
+        if not device.device_type or device.device_type == "unknown":
+            device.device_type = detect_device_type(data.firmware_version)
 
     device.is_claimed = device.owner_user_id is not None
     await db.commit()

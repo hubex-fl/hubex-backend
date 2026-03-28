@@ -4,8 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { useCapabilities, hasCap } from "../lib/capabilities";
-import { useDevices } from "../composables/useDevices";
-import type { Device } from "../composables/useDevices";
+import { useDevices, DEVICE_TYPE_META } from "../composables/useDevices";
+import type { Device, DeviceType } from "../composables/useDevices";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UButton from "../components/ui/UButton.vue";
@@ -109,6 +109,13 @@ const filterOptions = computed(() => {
     { value: "offline", label: "Offline" },
     { value: "offline_old", label: "Offline (old)" },
   );
+  // Device type filters (only show types that exist)
+  const presentTypes = new Set(devices.value.map((d) => d.device_type));
+  for (const dt of Object.keys(DEVICE_TYPE_META) as DeviceType[]) {
+    if (dt !== "unknown" && presentTypes.has(dt)) {
+      opts.push({ value: `type:${dt}`, label: DEVICE_TYPE_META[dt].label });
+    }
+  }
   return opts;
 });
 
@@ -172,7 +179,10 @@ const canClaimPairing = computed(() => {
 const visibleDevices = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   let list = devices.value.slice();
-  if (q) list = list.filter((d) => d.device_uid.toLowerCase().includes(q));
+  if (q) list = list.filter((d) =>
+    d.device_uid.toLowerCase().includes(q) ||
+    (DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type).toLowerCase().includes(q),
+  );
 
   switch (filterBy.value) {
     case "claimed":
@@ -199,6 +209,12 @@ const visibleDevices = computed(() => {
           d.last_seen_age_seconds !== null &&
           d.last_seen_age_seconds > OFFLINE_OLD_SECONDS,
       );
+      break;
+    default:
+      if (filterBy.value.startsWith("type:")) {
+        const dt = filterBy.value.slice(5);
+        list = list.filter((d) => d.device_type === dt);
+      }
       break;
   }
 
@@ -811,6 +827,9 @@ onUnmounted(() => {
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
                 UID
               </th>
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-32">
+                Type
+              </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-24">
                 Health
               </th>
@@ -918,6 +937,16 @@ onUnmounted(() => {
                     >
                       {{ d.device_uid }}
                     </router-link>
+                  </div>
+                </td>
+
+                <!-- Type -->
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="h-4 w-4 shrink-0" :style="{ color: DEVICE_TYPE_META[d.device_type as DeviceType]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path :d="DEVICE_TYPE_META[d.device_type as DeviceType]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
+                    </svg>
+                    <span class="text-xs text-[var(--text-secondary)]">{{ DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type }}</span>
                   </div>
                 </td>
 
@@ -1059,6 +1088,14 @@ onUnmounted(() => {
                 @change="toggleRow(d)"
                 @click.stop
               />
+            </div>
+
+            <!-- Device type -->
+            <div class="flex items-center gap-1.5">
+              <svg class="h-3.5 w-3.5 shrink-0" :style="{ color: DEVICE_TYPE_META[d.device_type as DeviceType]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path :d="DEVICE_TYPE_META[d.device_type as DeviceType]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
+              </svg>
+              <span class="text-[10px] text-[var(--text-muted)]">{{ DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type }}</span>
             </div>
 
             <!-- Badges -->

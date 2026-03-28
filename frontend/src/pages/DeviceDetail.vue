@@ -17,6 +17,8 @@ import UInput from "../components/ui/UInput.vue";
 import USelect from "../components/ui/USelect.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import { DEVICE_TYPE_META } from "../composables/useDevices";
+import type { DeviceType } from "../composables/useDevices";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,7 +27,9 @@ const deviceId = ref(route.params.id as string);
 type DeviceInfo = {
   id: number;
   device_uid: string;
+  device_type: string;
   name?: string | null;
+  firmware_version?: string | null;
   last_seen_at: string | null;
   health: "ok" | "stale" | "dead";
   last_seen_age_seconds: number | null;
@@ -1301,7 +1305,7 @@ onUnmounted(() => {
             </svg>
             <div class="absolute inset-0 flex items-center justify-center">
               <svg class="h-9 w-9" :style="{ color: heroRingColor }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" :d="DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.icon ?? DEVICE_TYPE_META.unknown.icon" />
               </svg>
             </div>
           </div>
@@ -1332,6 +1336,15 @@ onUnmounted(() => {
               {{ deviceInfo?.name || deviceInfo?.device_uid || `Device #${deviceId}` }}
             </h1>
             <p v-if="deviceInfo?.name" class="text-xs font-mono text-[var(--text-muted)]">{{ deviceInfo.device_uid }}</p>
+            <p v-if="deviceInfo?.device_type && deviceInfo.device_type !== 'unknown'" class="text-xs text-[var(--text-muted)] mt-0.5">
+              <span class="inline-flex items-center gap-1">
+                <svg class="h-3 w-3" :style="{ color: DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path :d="DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
+                </svg>
+                {{ DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.label ?? deviceInfo.device_type }}
+              </span>
+              <span v-if="deviceInfo.firmware_version" class="ml-2 text-[var(--text-muted)]">&middot; FW {{ deviceInfo.firmware_version }}</span>
+            </p>
             <p class="text-xs text-[var(--text-muted)] mt-0.5">
               Gerät verbunden &middot; Letztes Update:
               <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>

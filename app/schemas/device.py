@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class DeviceListItem(BaseModel):
     id: int
     device_uid: str
+    device_type: Optional[str] = "unknown"
     claimed: bool
     last_seen: Optional[datetime]
     online: bool
@@ -26,6 +27,7 @@ class DeviceListItem(BaseModel):
 class DeviceDetailItem(BaseModel):
     id: int
     device_uid: str
+    device_type: Optional[str] = "unknown"
     name: Optional[str]
     firmware_version: Optional[str]
     capabilities: Optional[dict]

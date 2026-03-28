@@ -16,6 +16,7 @@ from app.db.models.device import Device
 from app.db.models.user import User
 from app.api.v1.validators import validate_json_object
 from app.api.v1.error_utils import raise_api_error
+from app.core.device_type import detect_device_type, VALID_DEVICE_TYPES
 from app.db.models.telemetry import DeviceTelemetry
 from app.db.models.tasks import ExecutionContext, Task
 from app.db.models.pairing import PairingSession
@@ -190,12 +191,15 @@ async def hello(
             capabilities=data.capabilities,
             last_seen_at=now,
             org_id=org_id,
+            device_type=detect_device_type(data.firmware_version),
         )
         db.add(device)
     else:
         device.firmware_version = data.firmware_version
         device.capabilities = data.capabilities
         device.last_seen_at = now
+        if not device.device_type or device.device_type == "unknown":
+            device.device_type = detect_device_type(data.firmware_version)
     device.is_claimed = device.owner_user_id is not None
 
     await db.commit()
@@ -291,6 +295,7 @@ async def list_devices(
             DeviceListItem(
                 id=device.id,
                 device_uid=device.device_uid,
+                device_type=device.device_type or "unknown",
                 claimed=claimed,
                 last_seen=last_seen,
                 online=online,
@@ -337,6 +342,7 @@ async def get_device(
     return DeviceDetailItem(
         id=device.id,
         device_uid=device.device_uid,
+        device_type=device.device_type or "unknown",
         name=device.name,
         firmware_version=device.firmware_version,
         capabilities=device.capabilities,
@@ -656,6 +662,33 @@ async def _get_owned_device(
     return device
 
 
+class DeviceTypeUpdateIn(BaseModel):
+    device_type: str = Field(min_length=1, max_length=32)
+
+
+class DeviceTypeUpdateOut(BaseModel):
+    device_id: int
+    device_type: str
+
+
+@router.patch("/{device_id}/type", response_model=DeviceTypeUpdateOut)
+async def update_device_type(
+    device_id: int,
+    data: DeviceTypeUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    device = await _get_owned_device(device_id, db, user)
+    dt = data.device_type.strip().lower()
+    if dt not in VALID_DEVICE_TYPES:
+        raise_api_error(
+            400,
+            "INVALID_DEVICE_TYPE",
+            f"Invalid device type. Valid: {', '.join(sorted(VALID_DEVICE_TYPES))}",
+        )
+    device.device_type = dt
+    await db.commit()
+    return DeviceTypeUpdateOut(device_id=device.id, device_type=dt)
 
 
 @router.get("/{device_id}/telemetry/recent", response_model=list[UserTelemetryOut])

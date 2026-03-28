@@ -15,6 +15,9 @@ class Device(Base):
     # vom User vergebener Name (unique pro User wäre später enforcebar)
     name: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    # Device type classification
+    device_type: Mapped[str | None] = mapped_column(String(32), nullable=True, default="unknown")
+
     # Telemetrie / Fingerprint
     firmware_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     capabilities: Mapped[dict | None] = mapped_column(JSON, nullable=True)
