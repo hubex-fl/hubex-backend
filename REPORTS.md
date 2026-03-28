@@ -2,6 +2,55 @@
 
 ---
 
+## M10 + M10.5: CI/CD Complete + Automation Engine — 2026-03-28
+**Status:** ✅ Done
+
+### Milestone 10: CI/CD & Deployment (all 4 steps marked done)
+
+| Step | Deliverable |
+|------|-------------|
+| 1 | GitHub Actions (test, build, lint, coverage) |
+| 2 | Docker Production Compose (Traefik, SSL, PostgreSQL, Redis) |
+| 3 | One-Click Deploy Script + .env Generator |
+| 4 | System Health Dashboard — `/system-health` page |
+
+### Milestone 10.5: Automation Engine
+
+**Backend:**
+- `app/db/models/automation.py` — `AutomationRule` + `AutomationFireLog` models (JSONB, FK to organizations)
+- `app/schemas/automation.py` — Pydantic schemas: Create / Patch / Out / FireLogOut
+- `app/api/v1/automations.py` — Full CRUD + test-fire + history (last 50 entries)
+- `app/core/automation_engine.py` — Background loop (5s polling, system events from events_v1)
+  - Triggers: `variable_threshold`, `variable_geofence` (Haversine distance + Ray-Casting polygon), `device_offline`, `telemetry_received`
+  - Actions: `set_variable`, `call_webhook` (httpx, fire-and-forget), `create_alert_event`, `emit_system_event`
+  - Cooldown check, fire_count tracking, AutomationFireLog entries per firing
+- `app/main.py` — `automation_task` added to background tasks
+- `app/api/v1/router.py` — automations router registered
+- `app/db/models/__init__.py` — AutomationRule + AutomationFireLog exported
+- Alembic migration: `b876f187b765_add_automation_rules_and_automation_.py`
+
+**Frontend:**
+- `frontend/src/pages/SystemHealth.vue` — `/system-health` page
+  - Polls `GET /health` + `GET /ready` + `GET /api/v1/metrics`
+  - Overall status banner (green/yellow/red with animated dot)
+  - Component status row: Backend API, Database, Redis
+  - Metrics grid: Devices online, stale/offline, alerts, events 24h, uptime, entities, webhooks
+  - Auto-refresh every 30s + manual refresh button + last checked timestamp
+- `frontend/src/pages/Automations.vue` — `/automations` page
+  - Rules list as IF→THEN cards with trigger summary + action summary
+  - Enable/disable toggle, Test Fire (two-step confirm), Edit, Delete, History buttons
+  - Create/Edit modal: Trigger picker (4 types with icons + descriptions) + dynamic config forms
+  - Geofence config: Circle (lat/lng + radius slider) or Polygon (JSON textarea)
+  - History modal: last 50 fire events with success/error status
+- `frontend/src/lib/automations.ts` — typed API functions for all endpoints
+- `frontend/src/router.ts` — `/system-health` + `/automations` routes added
+- `frontend/src/layouts/DefaultLayout.vue` — "Automations" (Automation group) + "System Health" (Admin group) sidebar links
+
+**TypeScript:** clean (0 errors)
+**Vite build:** successful (SystemHealth: 10.47 kB, Automations: 34.71 kB)
+
+---
+
 ## M9: Device Integration Demo — Complete
 **Datum:** 2026-03-28 | **Status:** ✅ Done
 

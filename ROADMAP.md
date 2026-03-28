@@ -187,11 +187,32 @@
   - `docs/MQTT_BRIDGE.md` — Shelly + Tasmota Topic-Formate dokumentiert
   - Bridge als HUBEX Device registriert, Namespace per MQTT Device ID
 
-### Milestone 10: CI/CD & Deployment [todo]
-- [ ] Step 1 — GitHub Actions (test, build, lint, coverage)
-- [ ] Step 2 — Docker Production Compose (Traefik, SSL, PostgreSQL, Redis, backups)
-- [ ] Step 3 — One-Click Deploy Script (Linux, .env Generator)
-- [ ] Step 4 — Health-Check Dashboard (uptime, DB-connections, Redis-latency)
+### Milestone 10: CI/CD & Deployment [done] ✅
+- [x] Step 1 — GitHub Actions (test, build, lint, coverage)
+- [x] Step 2 — Docker Production Compose (Traefik, SSL, PostgreSQL, Redis, backups)
+- [x] Step 3 — One-Click Deploy Script (Linux, .env Generator)
+- [x] Step 4 — Health-Check Dashboard (uptime, DB-connections, Redis-latency)
+
+### Milestone 10.5: Automation Engine — Native If→Then Rules [done] ✅
+> Native automation engine: wenn eine Bedingung erfüllt ist, wird eine Aktion ausgeführt.
+> Kein externer Workflow-Editor nötig — direkt in HUBEX, grafisch und intuitiv.
+
+- [x] Step 1 — Backend: AutomationRule Model + CRUD API + Engine (~4h)
+  - `AutomationRule` Tabelle: trigger_type/config + action_type/config + cooldown
+  - `AutomationFireLog` Tabelle: Ausführungshistorie pro Regel
+  - `GET/POST/PATCH/DELETE /api/v1/automations` + Test + History Endpoints
+  - Engine-Loop: evaluiert Regeln bei System-Events (variable.changed, device.offline, telemetry.received)
+  - Trigger: variable_threshold, variable_geofence (Haversine + Ray-Casting), device_offline, telemetry_received
+  - Actions: set_variable, call_webhook, create_alert_event, emit_system_event
+
+- [x] Step 2 — Frontend: Automations Page — Visual If→Then Builder (~3h)
+  - `/automations` — Regelübersicht als Cards mit [IF trigger] → [THEN action]
+  - Modal: Trigger-Typ-Picker (Icons + Beschreibung) → dynamische Konfiguration
+  - Geofence-Konfig: Circle (lat/lng + radius) oder Polygon (JSON)
+  - Fire Count + Last Fired Timestamps
+  - "Test Fire" Button
+
+### Milestone 11: n8n Integration [todo] ← AKTUELL
 
 ### Milestone 11: n8n Integration [todo]
 - [ ] Step 1 — n8n Webhook Templates (alert → email, variable.changed → sheets)

@@ -23,6 +23,8 @@ const router = createRouter({
     { path: "/variables",    component: () => import("./pages/Variables.vue"),       meta: { title: "Variables" } },
     { path: "/variables/streams", component: () => import("./pages/VariableStreams.vue"), meta: { title: "Variable Streams" } },
     { path: "/pairing",      component: () => import("./pages/Pairing.vue"),         meta: { title: "Pairing" } },
+    { path: "/system-health", component: () => import("./pages/SystemHealth.vue"),   meta: { title: "System Health" } },
+    { path: "/automations",  component: () => import("./pages/Automations.vue"),     meta: { title: "Automations" } },
   ],
 });
 

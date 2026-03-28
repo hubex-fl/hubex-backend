@@ -29,6 +29,7 @@ from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
 from .orgs import Organization, OrganizationUser
 from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
+from .automation import AutomationRule, AutomationFireLog
 
 __all__ = [
     "User",
@@ -73,4 +74,6 @@ __all__ = [
     "FirmwareVersion",
     "OtaRollout",
     "DeviceOtaStatus",
+    "AutomationRule",
+    "AutomationFireLog",
 ]

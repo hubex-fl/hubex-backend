@@ -24,6 +24,7 @@ from app.core.alert_worker import alert_worker_loop
 from app.core.health_worker import health_worker_loop
 from app.core.ota_worker import ota_worker_loop
 from app.core.history_retention import history_retention_loop
+from app.core.automation_engine import automation_engine_loop
 from app.db.session import AsyncSessionLocal, engine
 
 logger = logging.getLogger("uvicorn.error")
@@ -60,8 +61,9 @@ async def lifespan(app: FastAPI):
     health_task = asyncio.create_task(health_worker_loop())
     ota_task = asyncio.create_task(ota_worker_loop())
     retention_task = asyncio.create_task(history_retention_loop())
+    automation_task = asyncio.create_task(automation_engine_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()
