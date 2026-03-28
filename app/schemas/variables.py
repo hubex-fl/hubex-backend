@@ -31,6 +31,29 @@ class VariableDefinitionIn(BaseModel):
         default=True, validation_alias=AliasChoices("allow_device_override", "allowDeviceOverride")
     )
 
+    display_hint: str | None = Field(
+        default=None, validation_alias=AliasChoices("display_hint", "displayHint")
+    )
+    category: str | None = None
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+
+class VariableDefinitionPatchIn(BaseModel):
+    """Partial update for mutable definition fields."""
+    display_hint: str | None = Field(
+        default=None, validation_alias=AliasChoices("display_hint", "displayHint")
+    )
+    category: str | None = None
+    description: str | None = None
+    unit: str | None = None
+    min_value: float | None = Field(default=None, validation_alias=AliasChoices("min_value", "minValue"))
+    max_value: float | None = Field(default=None, validation_alias=AliasChoices("max_value", "maxValue"))
+    enum_values: list[str] | None = Field(
+        default=None, validation_alias=AliasChoices("enum_values", "enumValues")
+    )
+    regex: str | None = None
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
@@ -50,6 +73,8 @@ class VariableDefinitionOut(BaseModel):
     user_writable: bool
     device_writable: bool
     allow_device_override: bool
+    display_hint: str | None = None
+    category: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -249,3 +274,17 @@ class VariableEffectRunOut(BaseModel):
     processed: int
     done: int
     failed: int
+
+
+class VariableHistoryPointOut(BaseModel):
+    recorded_at: datetime
+    value: Any | None
+    numeric_value: float | None = None
+    source: str
+
+
+class VariableHistoryOut(BaseModel):
+    key: str
+    device_uid: str | None
+    points: list[VariableHistoryPointOut]
+    downsampled: bool = False

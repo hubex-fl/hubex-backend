@@ -22,6 +22,7 @@ from app.db.models.variables import (
     VariableSnapshot,
     VariableSnapshotItem,
     VariableAppliedAck,
+    VariableHistory,
 )
 from app.db.models.device_runtime import DeviceRuntimeSetting
 from app.core.variable_effects import derive_effects_from_change, enqueue_effects
@@ -247,6 +248,8 @@ async def create_definition(
     user_writable: bool,
     device_writable: bool,
     allow_device_override: bool,
+    display_hint: str | None = None,
+    category: str | None = None,
 ) -> VariableDefinition:
     existing = await get_definition(db, key)
     if existing is not None:
@@ -286,6 +289,8 @@ async def create_definition(
         user_writable=user_writable,
         device_writable=device_writable,
         allow_device_override=allow_device_override,
+        display_hint=display_hint,
+        category=category,
     )
     db.add(definition)
     await db.flush()
@@ -331,6 +336,31 @@ async def get_value(
     )
     value = res.scalar_one_or_none()
     return definition, value, device
+
+
+async def record_history(
+    db: AsyncSession,
+    *,
+    definition: VariableDefinition,
+    value: Any,
+    device_id: int | None,
+    source: str = "system",
+) -> None:
+    """Record a history point for visualization time-series."""
+    numeric = None
+    if definition.value_type in ("int", "float") and value is not None:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            pass
+    db.add(VariableHistory(
+        variable_key=definition.key,
+        scope=definition.scope,
+        device_id=device_id,
+        value_json=value,
+        numeric_value=numeric,
+        source=source,
+    ))
 
 
 async def create_or_update_value(
@@ -422,6 +452,9 @@ async def create_or_update_value(
         created_at=now,
     )
     db.add(audit)
+    # Record history point for visualization
+    actor_source = "user" if actor_user_id else "device"
+    await record_history(db, definition=definition, value=coerced, device_id=device_id, source=actor_source)
     await db.flush()
     effects = derive_effects_from_change(
         definition,
@@ -578,6 +611,9 @@ async def create_or_update_value_v2(
         created_at=now,
     )
     db.add(audit)
+    # Record history point for visualization
+    v2_source = "user" if actor_user_id else "device"
+    await record_history(db, definition=definition, value=coerced, device_id=device_id, source=v2_source)
     await db.flush()
     invalidate_effective_cache()
     return definition, current, device

@@ -19,6 +19,7 @@ from app.core.system_events import emit_system_event
 from app.core.variable_effects import run_effects_once
 from app.schemas.variables import (
     VariableDefinitionIn,
+    VariableDefinitionPatchIn,
     VariableDefinitionOut,
     VariableValueIn,
     VariableSetIn,
@@ -35,9 +36,18 @@ from app.schemas.variables import (
     VariableEffectOut,
     VariableEffectRunIn,
     VariableEffectRunOut,
+    VariableHistoryOut,
+    VariableHistoryPointOut,
 )
 from app.db.models.device import Device
-from app.db.models.variables import VariableSnapshot, VariableSnapshotItem, VariableEffect
+from app.db.models.variables import (
+    VariableSnapshot,
+    VariableSnapshotItem,
+    VariableEffect,
+    VariableDefinition,
+    VariableValue,
+    VariableHistory,
+)
 
 router = APIRouter(prefix="/variables", tags=["variables"])
 
@@ -108,6 +118,8 @@ async def create_definition(
             user_writable=data.user_writable,
             device_writable=data.device_writable,
             allow_device_override=data.allow_device_override,
+            display_hint=data.display_hint,
+            category=data.category,
         )
         await db.commit()
     except Exception:
@@ -142,12 +154,167 @@ async def create_definition_v2(
             user_writable=data.user_writable,
             device_writable=data.device_writable,
             allow_device_override=data.allow_device_override,
+            display_hint=data.display_hint,
+            category=data.category,
         )
         await db.commit()
     except Exception:
         await db.rollback()
         raise
     return definition
+
+
+@router.patch("/definitions/{key}", response_model=VariableDefinitionOut)
+async def patch_definition(
+    key: str,
+    data: VariableDefinitionPatchIn = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Update mutable fields of a variable definition."""
+    res = await db.execute(
+        select(VariableDefinition).where(VariableDefinition.key == key)
+    )
+    defn = res.scalar_one_or_none()
+    if defn is None:
+        raise_api_error(404, "VAR_DEF_NOT_FOUND", "Variable definition not found")
+
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
+        setattr(defn, field, value)
+    await db.commit()
+    await db.refresh(defn)
+    return defn
+
+
+@router.delete("/definitions/{key}")
+async def delete_definition(
+    key: str,
+    confirm: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Delete a variable definition and all associated values/history."""
+    res = await db.execute(
+        select(VariableDefinition).where(VariableDefinition.key == key)
+    )
+    defn = res.scalar_one_or_none()
+    if defn is None:
+        raise_api_error(404, "VAR_DEF_NOT_FOUND", "Variable definition not found")
+    if not confirm:
+        raise_api_error(400, "DELETE_REQUIRES_CONFIRM", "Pass ?confirm=true to delete")
+
+    from sqlalchemy import delete
+    from app.db.models.variables import VariableAudit, VariableAppliedAck
+
+    # Cascade delete related rows
+    await db.execute(delete(VariableHistory).where(VariableHistory.variable_key == key))
+    await db.execute(delete(VariableAppliedAck).where(VariableAppliedAck.variable_key == key))
+    await db.execute(delete(VariableAudit).where(VariableAudit.variable_key == key))
+    await db.execute(delete(VariableSnapshotItem).where(VariableSnapshotItem.variable_key == key))
+    await db.execute(delete(VariableValue).where(VariableValue.variable_key == key))
+    await db.execute(delete(VariableDefinition).where(VariableDefinition.key == key))
+    await db.commit()
+    return {"ok": True, "deleted_key": key}
+
+
+@router.get("/history", response_model=VariableHistoryOut)
+async def get_variable_history(
+    key: str = Query(...),
+    device_uid: str | None = Query(default=None, alias="deviceUid"),
+    from_time: datetime | None = Query(default=None, alias="from"),
+    to_time: datetime | None = Query(default=None, alias="to"),
+    limit: int = Query(default=500, ge=1, le=2000),
+    downsample: int | None = Query(default=None, ge=10, le=86400),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get time-series history for a variable. Optionally downsample."""
+    from sqlalchemy import func as sa_func, cast, Float
+
+    now = datetime.now(timezone.utc)
+    if from_time is None:
+        from_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if to_time is None:
+        to_time = now
+
+    # Resolve device_id from uid
+    device_id = None
+    if device_uid:
+        res = await db.execute(select(Device.id).where(Device.device_uid == device_uid))
+        device_id = res.scalar_one_or_none()
+
+    stmt = (
+        select(VariableHistory)
+        .where(
+            VariableHistory.variable_key == key,
+            VariableHistory.recorded_at >= from_time,
+            VariableHistory.recorded_at <= to_time,
+        )
+    )
+    if device_id is not None:
+        stmt = stmt.where(VariableHistory.device_id == device_id)
+
+    if downsample and downsample > 0:
+        # SQL-level downsampling: bucket by seconds, return avg/min/max
+        from sqlalchemy import literal_column
+        epoch = sa_func.extract("epoch", VariableHistory.recorded_at)
+        bucket = sa_func.floor(epoch / downsample) * downsample
+
+        bucket_stmt = (
+            select(
+                sa_func.to_timestamp(bucket).label("bucket_time"),
+                sa_func.avg(VariableHistory.numeric_value).label("avg_val"),
+                sa_func.min(VariableHistory.numeric_value).label("min_val"),
+                sa_func.max(VariableHistory.numeric_value).label("max_val"),
+                sa_func.count().label("cnt"),
+            )
+            .where(
+                VariableHistory.variable_key == key,
+                VariableHistory.recorded_at >= from_time,
+                VariableHistory.recorded_at <= to_time,
+                VariableHistory.numeric_value.is_not(None),
+            )
+        )
+        if device_id is not None:
+            bucket_stmt = bucket_stmt.where(VariableHistory.device_id == device_id)
+
+        bucket_stmt = (
+            bucket_stmt
+            .group_by(bucket)
+            .order_by(bucket)
+            .limit(limit)
+        )
+        res = await db.execute(bucket_stmt)
+        rows = res.all()
+        points = [
+            VariableHistoryPointOut(
+                recorded_at=row.bucket_time,
+                value={"avg": round(row.avg_val, 4) if row.avg_val is not None else None,
+                       "min": round(row.min_val, 4) if row.min_val is not None else None,
+                       "max": round(row.max_val, 4) if row.max_val is not None else None,
+                       "count": row.cnt},
+                numeric_value=round(row.avg_val, 4) if row.avg_val is not None else None,
+                source="aggregated",
+            )
+            for row in rows
+        ]
+        return VariableHistoryOut(key=key, device_uid=device_uid, points=points, downsampled=True)
+
+    # Raw points
+    stmt = stmt.order_by(VariableHistory.recorded_at.desc()).limit(limit)
+    res = await db.execute(stmt)
+    rows = res.scalars().all()
+    points = [
+        VariableHistoryPointOut(
+            recorded_at=row.recorded_at,
+            value=row.value_json,
+            numeric_value=row.numeric_value,
+            source=row.source,
+        )
+        for row in reversed(rows)  # oldest first
+    ]
+    return VariableHistoryOut(key=key, device_uid=device_uid, points=points, downsampled=False)
 
 
 @router.get("/value", response_model=VariableValueOut)

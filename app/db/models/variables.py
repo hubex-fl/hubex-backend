@@ -45,6 +45,10 @@ class VariableDefinition(Base):
     user_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     allow_device_override: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    # Visualization & organization
+    display_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -220,3 +224,26 @@ class VariableEffect(Base):
     locked_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     locked_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class VariableHistory(Base):
+    """Time-series history of variable values for visualization."""
+
+    __tablename__ = "variable_history"
+    __table_args__ = (
+        Index("ix_variable_history_key_device_time", "variable_key", "device_id", "recorded_at"),
+        Index("ix_variable_history_device_time", "device_id", "recorded_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    variable_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True)
+    value_json: Mapped[dict | list | str | int | float | bool | None] = mapped_column(
+        _JSON_TYPE, nullable=True
+    )
+    numeric_value: Mapped[float | None] = mapped_column(nullable=True)
+    recorded_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'system'"))
