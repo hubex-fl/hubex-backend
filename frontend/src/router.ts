@@ -4,6 +4,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/",             component: () => import("./pages/DashboardPage.vue"), meta: { title: "Dashboard" } },
+    { path: "/landing",      component: () => import("./pages/Landing.vue"),        meta: { layout: "public", title: "HUBEX — The Universal IoT Device Hub" } },
     { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In" } },
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
     { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices" } },

@@ -2,6 +2,33 @@
 
 ---
 
+## M12.5: Pitch & Go-to-Market — 2026-03-28
+**Status:** Done
+
+### Deliverables
+
+| Step | Deliverable |
+|------|-------------|
+| 1 | Pitch Deck (`docs/PITCH_DECK.md`) — 13-slide Marp-compatible deck with speaker notes, problem/solution/market/competition/business model/ask |
+| 2 | Landing Page (`frontend/src/pages/Landing.vue`) — Full dark-themed public page at `/landing` with hero, features, architecture, comparison, pricing, CTA |
+| 3 | Competitive Analysis (`docs/COMPETITIVE_ANALYSIS.md`) — 7 competitors, 11-dimension matrix, detailed per-competitor analysis |
+| 4 | Pricing Model (`docs/PRICING.md`) — 3-tier Open Core (Free/Pro/Enterprise), FAQ, Build vs. Buy ROI, add-on pricing |
+
+### Files changed
+- `docs/PITCH_DECK.md` — New: 13-slide pitch deck
+- `docs/COMPETITIVE_ANALYSIS.md` — New: 7 competitors, matrix + detailed analysis
+- `docs/PRICING.md` — New: 3-tier pricing, FAQ, ROI calculation
+- `frontend/src/pages/Landing.vue` — New: public landing page (hero, features, architecture, comparison, pricing)
+- `frontend/src/router.ts` — Added `/landing` route with `meta: { layout: "public" }`
+- `frontend/src/App.vue` — Added public layout bypass (no sidebar/auth wrapper)
+- `ROADMAP.md` — M12.5 marked done, AKTUELL moved to M13
+
+### Build verification
+- TypeScript: 0 errors
+- Vite build: success (Landing.vue = 24.45 kB / 6.95 kB gzip)
+
+---
+
 ## M11 + M12: n8n Integration Complete + Developer Docs — 2026-03-28
 **Status:** Done
 

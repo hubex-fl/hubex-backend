@@ -241,17 +241,27 @@
   - `docs/INTEGRATION_GUIDE.md` — Python agent, n8n node, webhooks (HMAC), automations, MQTT bridge
   - 5-step custom integration guide
 
-### Milestone 12.5: Pitch & Go-to-Market [todo] ← AKTUELL
-- [ ] Step 1 — Pitch Deck (Partner/Investoren)
-- [ ] Step 2 — Product Landing Page (Branding, Demo-Video)
-- [ ] Step 3 — Competitive Analysis (vs. Grafana Cloud, InfluxDB, ThingsBoard, Datacake)
-- [ ] Step 4 — Pricing Model (Free: 5 Devices; Pro: 50 Devices + History 90d; Enterprise: unlimited)
+### Milestone 12.5: Pitch & Go-to-Market [done] ✅
+- [x] Step 1 — Pitch Deck (Partner/Investoren)
+  - `docs/PITCH_DECK.md` — 13-slide Marp-compatible deck with speaker notes
+  - Cover, Problem, Solution, Demo, How It Works, Architecture, Market, Competition, Business Model, Traction, Roadmap, Team, Ask
+- [x] Step 2 — Product Landing Page (Branding, Demo-Video)
+  - `frontend/src/pages/Landing.vue` — Full dark-themed landing at `/landing`
+  - Hero with gradient, 6 feature cards, architecture flow, comparison table, 3-tier pricing, CTA
+  - Public layout (no sidebar/auth), mobile-responsive, pure Tailwind CSS
+  - Router + App.vue updated for `meta: { layout: "public" }` bypass
+- [x] Step 3 — Competitive Analysis (vs. AWS IoT Core, ThingsBoard, Home Assistant, Datacake, Grafana, Blynk, Ubidots)
+  - `docs/COMPETITIVE_ANALYSIS.md` — 11-dimension matrix + 7 detailed competitor analyses
+  - Strengths, weaknesses, HUBEX advantage per competitor
+- [x] Step 4 — Pricing Model (Free: 5 Devices; Pro: 50 Devices + History 90d; Enterprise: unlimited)
+  - `docs/PRICING.md` — 3-tier Open Core model with feature table
+  - FAQ, Build vs. Buy ROI calculation ($64K savings), add-on pricing concept
 
 ---
 
 ## Phase 5: Plattform-Erweiterung [todo]
 
-### Milestone 13: Realtime & Notifications [todo]
+### Milestone 13: Realtime & Notifications [todo] ← AKTUELL
 - [ ] Step 1 — WebSocket Layer (device events, variable-stream, auth)
   > Basis für M8c Streams-Page in Echtzeit (aktuell Polling)
 - [ ] Step 2 — Notification System (Email, Push, Webhook dispatch)
