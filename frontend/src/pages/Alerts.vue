@@ -155,12 +155,39 @@ const conditionTypeHints: Record<string, string> = {
   entity_health: "Triggers based on entity health status",
   effect_failure_rate: "Triggers when effect failure rate exceeds threshold",
   event_lag: "Triggers when event processing lag is too high",
+  variable_threshold: "Triggers when a variable value crosses a threshold",
 };
+
+// ── Variable Threshold fields ─────────────────────────────────────────────
+const vtKey = ref("");
+const vtOperator = ref<string>("gt");
+const vtValue = ref<number>(0);
+const vtDeviceUid = ref("");
+
+const OPERATOR_OPTIONS = [
+  { value: "gt",  label: "> greater than" },
+  { value: "gte", label: "≥ greater or equal" },
+  { value: "lt",  label: "< less than" },
+  { value: "lte", label: "≤ less or equal" },
+  { value: "eq",  label: "= equal" },
+  { value: "ne",  label: "≠ not equal" },
+];
+
+const OPERATOR_SYMBOLS: Record<string, string> = {
+  gt: ">", gte: "≥", lt: "<", lte: "≤", eq: "=", ne: "≠",
+};
+
+function formatVarThreshold(cfg: any): string {
+  if (!cfg?.variable_key) return "";
+  const sym = OPERATOR_SYMBOLS[cfg.threshold_operator] ?? cfg.threshold_operator;
+  return `${cfg.variable_key} ${sym} ${cfg.threshold_value}`;
+}
 
 function openCreate() {
   modalMode.value = "create";
   editingRule.value = null;
   form.value = emptyForm();
+  vtKey.value = ""; vtOperator.value = "gt"; vtValue.value = 0; vtDeviceUid.value = "";
   modalError.value = null;
   modalOpen.value = true;
 }
@@ -176,6 +203,13 @@ function openEdit(rule: AlertRule) {
     cooldown_seconds: rule.cooldown_seconds,
     enabled: rule.enabled,
   };
+  // Populate variable threshold fields
+  if (rule.condition_type === "variable_threshold" && rule.condition_config) {
+    vtKey.value = rule.condition_config.variable_key ?? "";
+    vtOperator.value = rule.condition_config.threshold_operator ?? "gt";
+    vtValue.value = rule.condition_config.threshold_value ?? 0;
+    vtDeviceUid.value = rule.condition_config.device_uid ?? "";
+  }
   modalError.value = null;
   modalOpen.value = true;
 }
@@ -196,6 +230,18 @@ async function handleSaveRule() {
   }
   modalSaving.value = true;
   modalError.value = null;
+  // Build condition_config based on condition_type
+  let condCfg: Record<string, unknown> = {};
+  if (form.value.condition_type === "variable_threshold") {
+    if (!vtKey.value.trim()) { modalError.value = "Variable key is required."; modalSaving.value = false; return; }
+    condCfg = {
+      variable_key: vtKey.value.trim(),
+      threshold_operator: vtOperator.value,
+      threshold_value: Number(vtValue.value),
+      ...(vtDeviceUid.value.trim() ? { device_uid: vtDeviceUid.value.trim() } : {}),
+    };
+  }
+
   const payload = {
     name: form.value.name.trim(),
     condition_type: form.value.condition_type,
@@ -203,7 +249,7 @@ async function handleSaveRule() {
     entity_id: form.value.entity_id.trim() || null,
     cooldown_seconds: Number(form.value.cooldown_seconds),
     enabled: form.value.enabled,
-    condition_config: {},
+    condition_config: condCfg,
   };
   try {
     if (modalMode.value === "create") {
@@ -444,6 +490,9 @@ const statusClass: Record<string, string> = {
                   {{ rule.severity }}
                 </span>
               </div>
+              <p v-if="rule.condition_type === 'variable_threshold' && rule.condition_config" class="text-xs text-[var(--accent-cyan)] font-mono">
+                {{ formatVarThreshold(rule.condition_config) }}
+              </p>
               <p class="text-xs text-[var(--text-muted)]">Cooldown: {{ rule.cooldown_seconds }}s</p>
             </div>
 
@@ -532,11 +581,54 @@ const statusClass: Record<string, string> = {
               <option value="entity_health">entity_health</option>
               <option value="effect_failure_rate">effect_failure_rate</option>
               <option value="event_lag">event_lag</option>
+              <option value="variable_threshold">variable_threshold</option>
             </select>
             <p v-if="conditionTypeHints[form.condition_type]" class="text-xs text-[var(--text-muted)]">
               {{ conditionTypeHints[form.condition_type] }}
             </p>
           </div>
+
+          <!-- Variable Threshold config (only when condition_type === variable_threshold) -->
+          <template v-if="form.condition_type === 'variable_threshold'">
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Variable Key</label>
+              <input
+                v-model="vtKey"
+                type="text"
+                placeholder="e.g. temperature, smoke_level"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
+                <select
+                  v-model="vtOperator"
+                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                >
+                  <option v-for="op in OPERATOR_OPTIONS" :key="op.value" :value="op.value">{{ op.label }}</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-medium text-[var(--text-muted)]">Threshold Value</label>
+                <input
+                  v-model.number="vtValue"
+                  type="number"
+                  step="any"
+                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                />
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Device UID <span class="text-[var(--text-muted)]">(optional — empty = global scope)</span></label>
+              <input
+                v-model="vtDeviceUid"
+                type="text"
+                placeholder="Leave empty for global variable"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              />
+            </div>
+          </template>
 
           <!-- Severity -->
           <div class="space-y-1">
