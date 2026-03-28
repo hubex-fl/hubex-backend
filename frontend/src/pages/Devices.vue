@@ -57,6 +57,28 @@ const pairingLookup = ref<DeviceLookup | null>(null);
 const pairingLookupStatus = ref<"idle" | "loading" | "found" | "not_found" | "error">("idle");
 let lookupTimer: number | null = null;
 
+// QR code: fetch SVG when pairing code is 8 chars
+const pairingQrSvg = ref<string | null>(null);
+const pairingQrLoading = ref(false);
+
+watch(pairingClaimCode, async (code) => {
+  pairingQrSvg.value = null;
+  if (code.trim().length < 6) return;
+  pairingQrLoading.value = true;
+  try {
+    const res = await fetch(`/api/v1/devices/pairing/${encodeURIComponent(code.trim())}/qr`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("hubex_access_token") ?? ""}` },
+    });
+    if (res.ok) {
+      pairingQrSvg.value = await res.text();
+    }
+  } catch {
+    // QR not available — silently ignore
+  } finally {
+    pairingQrLoading.value = false;
+  }
+});
+
 // ── Toolbar ────────────────────────────────────────────────────────────────────
 const searchQuery = ref("");
 const sortBy = ref("last_seen");
@@ -642,12 +664,23 @@ onUnmounted(() => {
                 <UBadge v-else-if="pairingLookupStatus === 'found'" status="ok">Device found</UBadge>
               </div>
             </div>
-            <div ref="pairingCodeRef">
+            <div ref="pairingCodeRef" class="space-y-2">
               <UInput
                 v-model="pairingClaimCode"
                 label="Pairing Code"
                 placeholder="Pairing code (claim)"
               />
+              <!-- QR code: shown when code is entered and QR is available -->
+              <div v-if="pairingQrSvg || pairingQrLoading" class="flex items-start gap-3">
+                <div class="rounded-lg border border-[var(--border)] bg-white p-1 shrink-0 w-[88px] h-[88px] flex items-center justify-center">
+                  <div v-if="pairingQrLoading" class="text-[var(--text-muted)] text-[10px]">…</div>
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <div v-else-if="pairingQrSvg" v-html="pairingQrSvg" class="w-full h-full" />
+                </div>
+                <p class="text-[11px] text-[var(--text-muted)] leading-relaxed pt-1">
+                  Scan with a QR reader to auto-fill on devices that support it
+                </p>
+              </div>
             </div>
           </div>
 

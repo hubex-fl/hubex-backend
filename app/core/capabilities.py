@@ -100,6 +100,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/devices/pairing/claim"): ["pairing.claim"],
     ("POST", "/api/v1/devices/pairing/confirm"): ["pairing.confirm"],
     ("GET", "/api/v1/devices/pairing/status"): ["pairing.status"],
+    ("GET", "/api/v1/devices/pairing/{pairing_code}/qr"): ["pairing.status"],
     ("GET", "/api/v1/modules"): ["modules.read"],
     ("GET", "/api/v1/modules/{key}"): ["modules.read"],
     ("POST", "/api/v1/modules/{key}/enable"): ["modules.write"],

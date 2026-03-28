@@ -2,8 +2,11 @@
 
 from datetime import datetime, timedelta, timezone
 import hashlib
+import io
+import json
 import secrets
 from fastapi import APIRouter, Depends, Body, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
@@ -556,3 +559,53 @@ async def pairing_status(
         expires_at=expires_at,
         ttl_seconds=ttl_seconds,
     )
+
+
+@router.get("/{pairing_code}/qr", response_class=Response)
+async def pairing_qr_code(
+    pairing_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return an SVG QR code for the given pairing code.
+
+    The QR payload is a JSON string:
+      {"code":"XXXXXXXX","uid":"<device_uid>"}
+
+    Requires user authentication so only dashboard users can fetch QR codes.
+    """
+    now = _now_utc()
+    res = await db.execute(
+        select(PairingSession).where(PairingSession.pairing_code == pairing_code)
+    )
+    ps = res.scalar_one_or_none()
+    if ps is None:
+        raise_api_error(404, "PAIRING_CODE_NOT_FOUND", "pairing code not found")
+    if _ensure_utc(ps.expires_at) <= now:
+        raise_api_error(410, "PAIRING_CODE_EXPIRED", "pairing code expired")
+
+    try:
+        import qrcode  # type: ignore
+        import qrcode.image.svg  # type: ignore
+    except ImportError:
+        raise_api_error(501, "QR_NOT_AVAILABLE", "qrcode package not installed")
+
+    payload = json.dumps({"code": pairing_code, "uid": ps.device_uid}, separators=(",", ":"))
+
+    factory = qrcode.image.svg.SvgPathImage
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=4,
+        border=2,
+        image_factory=factory,
+    )
+    qr.add_data(payload)
+    qr.make(fit=True)
+    img = qr.make_image()
+
+    buf = io.BytesIO()
+    img.save(buf)
+    svg_bytes = buf.getvalue()
+
+    return Response(content=svg_bytes, media_type="image/svg+xml")

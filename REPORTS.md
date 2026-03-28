@@ -2,6 +2,172 @@
 
 ---
 
+## Milestone 9 Step 5 — Standard-Device Connector PoC: Shelly/Tasmota MQTT Bridge
+**Date:** 2026-03-27
+**Status:** ✅ Done — **Milestone 9 COMPLETE**
+
+### Files Created
+
+#### `scripts/mqtt_bridge.py` (~290 lines)
+Python MQTT bridge that subscribes to Shelly/Tasmota topics and forwards data to HUBEX as telemetry.
+
+**Architecture:**
+- `BridgeState` class: thread-safe accumulator + rate limiter; accumulates fields per MQTT device within the interval window, then pushes as a batch
+- MQTT loop runs in background thread (`client.loop_start()`); main thread runs heartbeat loop + graceful shutdown
+- On exit: `flush_all()` pushes any accumulated but not-yet-sent fields before disconnecting
+
+**Field extraction (`_parse_payload`):**
+- Tries JSON parse first; falls back to plain float string (Shelly per-relay topics like `power`, `energy`)
+- Recursive `_extract_numeric()` extracts all numeric leaf values from nested JSON
+- All fields namespaced as `{device_id}.{field}` — multi-device data in one telemetry stream
+- `cmnd/#` topics silently ignored (Tasmota command topics)
+
+**Rate limiting:** configurable per-device interval (default 10s); fields accumulated between pushes (last value wins)
+
+**Supported formats:**
+- Shelly: `shellies/{device-id}/relay/0/power` → `"12.5"` (plain) or `shellies/{device-id}/status` → JSON
+- Tasmota: `tele/{device-id}/SENSOR`, `tele/{device-id}/STATE`, `stat/{device-id}/STATUS` → JSON
+
+**CLI Args:** `--mqtt-host`, `--mqtt-port`, `--mqtt-user`, `--mqtt-pass`, `--topic`, `--device-type`, `--interval`, `--auto-pair`, `--token`
+
+#### `docs/MQTT_BRIDGE.md`
+Usage guide with quick start, full options table, Shelly/Tasmota topic format tables, rate limiting explanation, and architecture diagram.
+
+### Milestone 9 Status
+🎉 **Milestone 9: Device Integration Demo — COMPLETE** (all 5 steps done)
+- Step 1: ESP32 SDK (single-header HubexClient.h)
+- Step 2: E2E Demo script (8-step automated walkthrough)
+- Step 3: QR-Code Pairing (backend endpoint + frontend display)
+- Step 4: API-Device Demo (REST API as virtual device)
+- Step 5: MQTT Bridge (Shelly/Tasmota → HUBEX telemetry)
+
+### Next Step
+**PROMPT_PHASE_10_1.md** — CI/CD: GitHub Actions (test, build, lint)
+
+---
+
+## Milestone 9 Step 4 — API-Device Demo: External REST API as Virtual Device
+**Date:** 2026-03-27
+**Status:** ✅ Done
+
+### Files Created
+
+#### `scripts/api_device.py` (~315 lines)
+Runnable Python script that connects any external REST JSON API as a HUBEX virtual device.
+
+**Features:**
+- Full auto-pair flow: login (JWT) → hello → user-claim → confirm → persist device token
+- Poll loop: `GET --source-url` → extract numeric fields → `POST /api/v1/telemetry` → `POST /edge/heartbeat`
+- `poll_interval_s` override from `GET /edge/config` — adjustable from dashboard without restart
+- `_extract_fields()` — recursive JSON walker: auto-detects all numeric leaf fields if `--fields` not specified; handles nested objects (first level flattened), arrays (first element only)
+- Signal handler (SIGINT/SIGTERM) → graceful exit, sleep in 0.5s chunks for fast Ctrl+C response
+- Colorized terminal output (ANSI codes): ✓ ok, ✗ error, → info, ⚠ warn
+
+**CLI Arguments:**
+`--server`, `--email`, `--password`, `--uid`, `--source-url`, `--fields`, `--interval`, `--auto-pair`, `--token`
+
+Default `--source-url`: Open-Meteo Munich weather API (no key required)
+
+#### `docs/API_DEVICE.md`
+Usage guide with quick start, full options table, three example invocations (weather station, service monitor, pre-paired), and field auto-detection documentation.
+
+### Next Step
+**PROMPT_PHASE_9_5.md** — Standard-Device Connector PoC (Shelly/Tasmota via MQTT)
+
+---
+
+## Milestone 9 Step 3 — Provisioning Flow: QR-Code Pairing
+**Date:** 2026-03-27
+**Status:** ✅ Done
+
+### Files Changed
+
+#### `app/api/v1/pairing.py`
+Added new endpoint: `GET /api/v1/devices/pairing/{pairing_code}/qr`
+- Validates pairing session exists (404) and is not expired (410)
+- Encodes `{"code": pairing_code, "uid": device_uid}` as compact JSON into QR code SVG
+- Uses `qrcode[svg]` with `SvgPathImage` factory (box_size=4, border=2, error_correction=M)
+- Returns `image/svg+xml` response — embeddable directly via `v-html`
+
+#### `requirements.txt`
+Added: `qrcode[svg]==8.0`
+
+#### `frontend/src/pages/Devices.vue`
+- `pairingQrSvg` ref + `pairingQrLoading` ref
+- `watch(pairingClaimCode)`: fetches QR SVG from backend when code ≥6 chars, clears on reset
+- Template: white 88×88px box with `v-html="pairingQrSvg"`, animated skeleton while loading, "Scan to pair from mobile" label — hidden when no QR available
+
+### Next Step
+**PROMPT_PHASE_9_4.md** — API-Device Demo
+
+---
+
+## Milestone 9 Step 2 — End-to-End Demo: ESP → Telemetry → Alert → Webhook → n8n
+**Date:** 2026-03-27
+**Status:** ✅ Done
+
+### Files Created
+
+#### `scripts/demo_e2e.py` (~380 lines)
+8-step automated E2E demo script with full color output.
+
+**Steps executed:**
+1. Auth (login → JWT)
+2. Pair device (hello → user-claim → confirm → device_token)
+3. Push 5 telemetry readings with simulated sensor data
+4. Create alert rule (device_offline threshold, 60s window)
+5. Register webhook subscription (all events → localhost:9999/webhook)
+6. Fetch event stream (last 20 events, show device/telemetry events)
+7. Push edge config variable (`poll_interval_s = 10`)
+8. Cleanup (delete alert rule, webhook, unclaim device) — skipped with `--keep`
+
+**Args:** `--server`, `--email`, `--password`, `--dry-run` (prints plan without executing), `--keep` (skip cleanup)
+
+#### `docs/E2E_DEMO.md`
+Full curl walkthrough for each of the 8 steps + n8n integration section (webhook node setup, HTTP Request node for HUBEX API calls, example automation flow for alert→email).
+
+### Next Step
+**PROMPT_PHASE_9_3.md** — Provisioning Flow (QR-Code Pairing)
+
+---
+
+## Milestone 9 Step 1 — ESP32 SDK: Pairing, Heartbeat, Edge Config, Telemetry, OTA
+**Date:** 2026-03-28
+**Status:** ✅ Done
+
+### Files Created
+
+#### `sdk/esp32/HubexClient.h` (single-header C++ library, ~330 lines)
+Full Arduino/ESP32 library. Dependencies: ArduinoJson ≥7, HTTPClient, WiFiClientSecure, Preferences, Update.
+
+**Public API:**
+- `HubexClient(serverUrl, deviceUid)` — constructor
+- `begin(firmwareVersion, skipTls)` — load stored token from NVS
+- `isPaired()` — true if device has stored token
+- `clearToken()` — force re-pairing
+- `ensurePaired()` — blocking loop: POST /api/v1/devices/pairing/hello until claimed; shows pairing code on Serial; stores token in NVS via Preferences
+- `heartbeat()` — POST /edge/heartbeat with firmware_version
+- `getConfig(outVars, outTasks)` — GET /edge/config, populates two JsonDocuments
+- `getVar(key, default)` — convenience: single variable as String
+- `pushTelemetry({{"key", float}, ...})` — POST /api/v1/telemetry with initializer list
+- `pushTelemetry(JsonDocument&)` — overload for pre-built payload
+- `checkOtaInfo(outInfo)` — GET /ota/check, populates HubexOtaInfo
+- `checkOta()` — full flow: check → download → Update.writeStream → ESP.restart on success; ACKs rollout status at each step
+
+**Implementation notes:**
+- Token stored in NVS namespace `"hubex"` (survives power cycle)
+- HTTPS: creates WiFiClientSecure per request; `setInsecure()` when skipTls=true
+- `HubexResult` = `{bool ok, int httpCode, String error}` — all methods return this
+- `HubexField = std::pair<const char*, float>` for telemetry
+
+#### `sdk/esp32/examples/basic_device/basic_device.ino`
+Minimal working sketch showing full lifecycle: WiFi connect → `ensurePaired()` → loop with heartbeat + simulated sensor readings + telemetry push + config var read + OTA check.
+
+### Next Step
+**PROMPT_PHASE_9_2.md** — End-to-End Demo Script: Device → Telemetry → Alert → Webhook → n8n
+
+---
+
 ## Hotfix — Device Health Thresholds + DeviceDetail Visual Polish
 **Date:** 2026-03-28
 **Status:** ✅ Done
