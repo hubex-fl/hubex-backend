@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUBEX — Roadmap</title>
+<style>
+:root {
+  --bg: #0a0a0f; --bg2: #12121a; --bg3: #1a1a2e;
+  --text: #e4e4e7; --text2: #8b8b9e; --text3: #555568;
+  --border: #2a2a3d;
+  --cyan: #00d4ff; --lime: #b8ff00; --amber: #ffbe0b;
+  --green: #22c55e; --red: #ef4444;
+  --font: 'Segoe UI', -apple-system, sans-serif;
+  --mono: 'Cascadia Code', 'Fira Code', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+.app { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+.header { margin-bottom: 40px; }
+.header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.header h1 span { color: var(--cyan); }
+.header p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+
+.stats { display: flex; gap: 24px; margin-bottom: 36px; flex-wrap: wrap; }
+.stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 140px; }
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); font-weight: 600; }
+.stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; font-family: var(--mono); }
+.stat-value.cyan { color: var(--cyan); }
+.stat-value.lime { color: var(--lime); }
+.stat-value.amber { color: var(--amber); }
+
+.progress-wrap { margin-bottom: 40px; }
+.progress-bar { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.progress-label { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text3); }
+
+.milestone { margin-bottom: 28px; }
+.ms-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+.ms-header:hover .ms-name { color: var(--cyan); }
+.ms-chevron { color: var(--text3); font-size: 12px; transition: transform 0.2s; }
+.ms-chevron.open { transform: rotate(90deg); }
+.ms-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+.ms-badge.done { background: rgba(34,197,94,0.15); color: var(--green); }
+.ms-badge.in-progress { background: rgba(0,212,255,0.15); color: var(--cyan); }
+.ms-badge.todo { background: rgba(85,85,104,0.15); color: var(--text3); }
+.ms-name { font-size: 16px; font-weight: 600; }
+.ms-meta { margin-left: auto; font-size: 12px; color: var(--text3); font-family: var(--mono); }
+
+.steps { margin-left: 20px; border-left: 2px solid var(--border); padding-left: 16px; }
+.step { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 14px; position: relative; }
+.step::before { content: ''; position: absolute; left: -21px; top: 14px; width: 8px; height: 8px; border-radius: 50%; }
+.step.done::before { background: var(--green); }
+.step.active::before { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.step.todo::before { background: var(--text3); }
+.step-check { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.step.done .step-name { color: var(--text2); text-decoration: line-through; text-decoration-color: var(--text3); }
+.step.active .step-name { color: var(--cyan); font-weight: 600; }
+.step-name { flex: 1; }
+.step-hours { color: var(--text3); font-size: 12px; font-family: var(--mono); flex-shrink: 0; }
+.step.active .step-hours { color: var(--cyan); }
+.active-tag { font-size: 10px; background: rgba(0,212,255,0.15); color: var(--cyan); padding: 1px 8px; border-radius: 10px; font-weight: 600; margin-left: 4px; }
+
+.phase-header { margin-top: 36px; margin-bottom: 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--cyan); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center; color: var(--text3); font-size: 12px; }
+.steps.collapsed { display: none; }
+.loading { text-align: center; padding: 80px; color: var(--text3); }
+.refresh-btn { background: none; border: 1px solid var(--border); color: var(--text2); padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+.refresh-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(10,10,15,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+.nav-inner { max-width: 900px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 32px; }
+.nav-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+.nav-brand span { color: var(--cyan); }
+.nav-links { display: flex; gap: 24px; margin-left: auto; }
+.nav-links a { color: var(--text2); font-size: 14px; font-weight: 500; transition: color 0.2s; text-decoration: none; }
+.nav-links a:hover, .nav-links a.active { color: var(--cyan); }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand"><span>HUBEX</span> CC</div>
+    <div class="nav-links">
+      <a href="/product">Product</a>
+      <a href="/dashboard.html" class="active">Roadmap</a>
+    </div>
+  </div>
+</nav>
+<div class="app" id="app" style="padding-top:80px;"><div class="loading">Lade Roadmap...</div></div>
+<script>
+const API = window.location.origin + '/api/roadmap';
+
+function statusClass(s) {
+  if (s === 'done') return 'done';
+  if (s === 'in-progress') return 'in-progress';
+  return 'todo';
+}
+function statusLabel(s) {
+  if (s === 'done') return 'Erledigt';
+  if (s === 'in-progress') return 'In Arbeit';
+  return 'Ausstehend';
+}
+function checkSvg(done) {
+  if (done) return '<svg class="step-check" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#22c55e" stroke-width="2"/><path d="M6 10l3 3 5-5" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return '<svg class="step-check" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#555568" stroke-width="2"/></svg>';
+}
+function gradient(pct) {
+  if (pct < 30) return 'linear-gradient(90deg, var(--red), var(--amber))';
+  if (pct < 70) return 'linear-gradient(90deg, var(--amber), var(--cyan))';
+  return 'linear-gradient(90deg, var(--cyan), var(--lime))';
+}
+
+async function render() {
+  const res = await fetch(API);
+  const data = await res.json();
+  if (data.error) { document.getElementById('app').innerHTML = '<p style="color:var(--red)">'+data.error+'</p>'; return; }
+  const { phases, milestones, totalSteps, doneSteps, totalHours, doneHours, pct } = data;
+
+  let html = '<div class="header"><div style="display:flex;align-items:center;justify-content:space-between">';
+  html += '<h1><span>HUBEX</span> Roadmap</h1>';
+  html += '<button class="refresh-btn" onclick="render()">&#8635; Refresh</button></div>';
+  html += '<p>IoT Device Hub — Projektfortschritt</p></div>';
+
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="stat-label">Fortschritt</div><div class="stat-value cyan">'+pct+'%</div></div>';
+  html += '<div class="stat"><div class="stat-label">Steps</div><div class="stat-value lime">'+doneSteps+'/'+totalSteps+'</div></div>';
+  html += '<div class="stat"><div class="stat-label">Stunden</div><div class="stat-value amber">'+doneHours+'/'+totalHours+'h</div></div>';
+  html += '<div class="stat"><div class="stat-label">Milestones</div><div class="stat-value">'+milestones.filter(function(m){return m.status==="done"}).length+'/'+milestones.length+'</div></div>';
+  html += '</div>';
+
+  html += '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+gradient(pct)+'"></div></div>';
+  html += '<div class="progress-label"><span>Start</span><span>'+milestones.length+' Milestones &middot; '+(phases?phases.length:0)+' Phasen</span></div></div>';
+
+  var allMs = phases ? phases : [{name:'', milestones: milestones}];
+  for (var p = 0; p < allMs.length; p++) {
+    var phase = allMs[p];
+    if (phase.name) {
+      var phBadge = phase.status === 'done' ? ' <span class="ms-badge done" style="font-size:10px">✓</span>'
+        : phase.status === 'in-progress' ? ' <span class="ms-badge in-progress" style="font-size:10px">AKTUELL</span>'
+        : '';
+      html += '<div class="phase-header">'+phase.name+phBadge+'</div>';
+    }
+    var phaseMilestones = phase.milestones || [];
+    for (var i = 0; i < phaseMilestones.length; i++) {
+    var ms = phaseMilestones[i];
+    var sc = statusClass(ms.status);
+    var doneCnt = ms.steps.filter(function(s){return s.done}).length;
+    var collapsed = ms.status === 'done' ? 'collapsed' : '';
+    var chevOpen = ms.status === 'done' ? '' : 'open';
+
+    html += '<div class="milestone">';
+    html += '<div class="ms-header" onclick="this.querySelector(\'.ms-chevron\').classList.toggle(\'open\');this.nextElementSibling.classList.toggle(\'collapsed\')">';
+    html += '<span class="ms-chevron '+chevOpen+'">&#9654;</span>';
+    html += '<span class="ms-badge '+sc+'">'+statusLabel(ms.status)+'</span>';
+    html += '<span class="ms-name">'+ms.id+': '+ms.name+'</span>';
+    html += '<span class="ms-meta">'+doneCnt+'/'+ms.steps.length+'</span>';
+    html += '</div><div class="steps '+collapsed+'">';
+
+    for (var j = 0; j < ms.steps.length; j++) {
+      var step = ms.steps[j];
+      var cls = step.done ? 'done' : step.active ? 'active' : 'todo';
+      var tag = step.active ? '<span class="active-tag">AKTUELL</span>' : '';
+      html += '<div class="step '+cls+'">'+checkSvg(step.done);
+      html += '<span class="step-name">'+step.id+' — '+step.name+tag+'</span>';
+      html += '<span class="step-hours">'+(step.hours ? step.hours+'h' : '')+'</span></div>';
+    }
+    html += '</div></div>';
+  }
+  } // end phase loop
+
+  html += '<div class="footer">HUBEX Roadmap Viewer &middot; '+new Date().toLocaleString('de-DE')+'</div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+render();
+setInterval(render, 30000);
+</script>
+</body>
+</html>
