@@ -235,6 +235,36 @@ def run_demo(server: str, email: str, password: str,
         warn(f"Alert rule creation failed ({code}): {data}")
 
     # ──────────────────────────────────────────────────────────────────────
+    # Step 4b: Variable Threshold Alert
+    # ──────────────────────────────────────────────────────────────────────
+    info("Creating variable_threshold alert — triggers if temperature > 40°C")
+
+    var_rule_payload = {
+        "name":             f"[Demo] Temperature too high: {device_uid}",
+        "condition_type":   "variable_threshold",
+        "condition_config": {
+            "variable_key":       "temperature",
+            "threshold_operator": "gt",
+            "threshold_value":    40,
+        },
+        "severity":         "critical",
+        "enabled":          True,
+        "cooldown_seconds": 60,
+    }
+    code, data = _req("POST", f"{server}/api/v1/alerts/rules",
+                      headers=auth_headers,
+                      json_body=var_rule_payload,
+                      dry_run=dry_run)
+    var_alert_rule_id = 0
+    if code == 201 and isinstance(data, dict):
+        var_alert_rule_id = data.get("id", -1)
+        ok(f"Variable threshold alert created — id={var_alert_rule_id}: temperature > 40°C")
+    elif dry_run:
+        ok("Variable threshold alert would be created")
+    else:
+        warn(f"Variable threshold alert creation failed ({code}): {data}")
+
+    # ──────────────────────────────────────────────────────────────────────
     # Step 5: Webhook
     # ──────────────────────────────────────────────────────────────────────
     step(5, "Webhook — Register n8n listener")
@@ -244,7 +274,7 @@ def run_demo(server: str, email: str, password: str,
     wh_payload = {
         "url":          webhook_url,
         "secret":       "demo-secret-change-me",
-        "event_filter": ["device.claimed", "device.telemetry", "alert.fired"],
+        "event_filter": ["device.claimed", "device.telemetry", "alert.fired", "variable.changed"],
     }
     code, data = _req("POST", f"{server}/api/v1/webhooks",
                       headers=auth_headers,
@@ -318,14 +348,15 @@ def run_demo(server: str, email: str, password: str,
             else:
                 warn(f"Unclaim failed ({code})")
 
-        # Delete alert rule
-        if alert_rule_id > 0:
-            code, _ = _req("DELETE", f"{server}/api/v1/alerts/rules/{alert_rule_id}",
-                           headers=auth_headers, dry_run=dry_run)
-            if code in (200, 204, 404) or dry_run:
-                ok(f"Alert rule {alert_rule_id} deleted")
-            else:
-                warn(f"Alert rule delete failed ({code})")
+        # Delete alert rules
+        for rid, label in [(alert_rule_id, "device_offline"), (var_alert_rule_id, "variable_threshold")]:
+            if rid > 0:
+                code, _ = _req("DELETE", f"{server}/api/v1/alerts/rules/{rid}",
+                               headers=auth_headers, dry_run=dry_run)
+                if code in (200, 204, 404) or dry_run:
+                    ok(f"Alert rule {rid} ({label}) deleted")
+                else:
+                    warn(f"Alert rule {rid} delete failed ({code})")
 
         # Delete webhook
         if webhook_id > 0:

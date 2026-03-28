@@ -165,13 +165,27 @@
 
 ## Phase 4: Integration & Demo [todo] ← AKTUELL
 
-### Milestone 9: Device Integration Demo [todo]
+### Milestone 9: Device Integration Demo [done] ✅
 > Zeigt dass HubEx nicht nur Custom-MCUs kann, sondern ein universeller Hub ist.
-- [ ] Step 1 — ESP SDK Update (OTA check, edge config, heartbeat, variable bridge demo)
-- [ ] Step 2 — End-to-End Demo (ESP → Telemetry → Variable → Alert → Webhook → n8n)
-- [ ] Step 3 — Provisioning Flow (QR-Code Pairing, App-freundlich)
-- [ ] Step 4 — API-Device Demo (externe REST-API als virtuelles Device)
-- [ ] Step 5 — Standard-Device Connector (z.B. Shelly/Tasmota via MQTT)
+- [x] Step 1 — ESP SDK Update (OTA check, edge config, heartbeat, variable bridge demo)
+  - `app/simulator/__main__.py` — Python CLI Simulator (hello, telemetry, tasks, variables, ack)
+  - Configurable failure injection, simulation duration, firmware version
+- [x] Step 2 — End-to-End Demo (ESP → Telemetry → Variable → Alert → Webhook → n8n)
+  - `scripts/demo_e2e.py` — 8-Step Demo: Auth → Pair → Telemetry → Alerts → Webhooks → Events → Config → Cleanup
+  - Inkl. `variable_threshold` Alert (temperature > 40°C) + `variable.changed` Webhook-Filter
+  - `docs/E2E_DEMO.md` — Anleitung + Architektur
+- [x] Step 3 — Provisioning Flow (QR-Code Pairing, App-freundlich)
+  - `app/api/v1/pairing.py` — Hello/Start/Claim/Confirm/Status/QR Endpoints
+  - `frontend/src/pages/Pairing.vue` — 2-Step Pairing UI
+  - 10min TTL, Rate-Limiting (10/60s), Legacy-Routes kompatibel
+- [x] Step 4 — API-Device Demo (externe REST-API als virtuelles Device)
+  - `scripts/api_device.py` — Periodisches HTTP-Polling externer APIs als virtuelles Device
+  - `docs/API_DEVICE.md` — Dokumentation + Beispiele (Wetter, Stocks, Metriken)
+  - Auto-Pairing, Nested-JSON-Flattening, Variable-Override für Poll-Intervall
+- [x] Step 5 — Standard-Device Connector (z.B. Shelly/Tasmota via MQTT)
+  - `scripts/mqtt_bridge.py` — MQTT-zu-HUBEX Bridge (paho-mqtt)
+  - `docs/MQTT_BRIDGE.md` — Shelly + Tasmota Topic-Formate dokumentiert
+  - Bridge als HUBEX Device registriert, Namespace per MQTT Device ID
 
 ### Milestone 10: CI/CD & Deployment [todo]
 - [ ] Step 1 — GitHub Actions (test, build, lint, coverage)
