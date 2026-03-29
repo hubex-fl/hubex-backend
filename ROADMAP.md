@@ -294,14 +294,27 @@
   - Alert: "Bestätigen", "Stummschalten", "Regel bearbeiten", "Device anzeigen"
 
 - [ ] Step 3 — Proaktive Empty States
-  > Leere Zustände geben Vorschläge statt nur "Nichts hier".
-  - Variable ohne Alert: "Möchtest du benachrichtigt werden, wenn dieser Wert
-    einen Schwellwert überschreitet? → Alert erstellen"
-  - Device ohne Variablen: "Sende Telemetrie oder erstelle manuell eine Variable"
-  - Dashboard leer: "Füge dein erstes Widget hinzu — Vorschlag basierend auf
-    deinen aktiven Variablen"
-  - Automation-Seite leer: "Erstelle deine erste Automation — z.B. 'Wenn Temperatur
-    > 30°C, dann sende Notification'"
+  > Leere Zustände sind Einstiegspunkte, nicht Sackgassen.
+  > ABER: immer auch der direkte Weg für erfahrene User sichtbar.
+  - Jede leere Seite zeigt: konkreten CTA UND normalen "+"-Button
+  - Devices leer: "Verbinde dein erstes Device →" + "+ Device hinzufügen"
+  - Variables leer: "Devices senden automatisch Variablen. Oder erstelle
+    eine manuell →" + "+ Variable erstellen"
+  - Alerts leer: "Werde benachrichtigt wenn etwas passiert →" + "+ Alert-Regel"
+  - Automations leer: Klickbare Templates + "+ Neue Automation" Button
+
+- [ ] Step 4 — Progressive Action-Bars
+  > Jede Detail-Seite zeigt kontextuelle "Nächste Schritte" — aber nur
+  > wenn relevant und nie aufdringlich. Skipbar, ausblendbar.
+  - Device-Detail (neues Device): Action-Bar mit Vorschlägen
+    (Daten ansehen, Automation erstellen, Dashboard-Widget, Alert)
+  - "×" zum dauerhaften Ausblenden (User-Preference pro Device)
+  - Aktionen verschwinden einzeln wenn erledigt
+  - Variable-Detail: "Was möchtest du mit diesem Datenpunkt tun?"
+  - Dashboard leer: Template wählen ODER "Leer starten" mit Auto-Suggest
+  - Automation leer: 3 klickbare vorbefüllte Templates
+  - In Settings: "Hilfe-Hinweise zurücksetzen" Button
+  - Prinzip: unterstützend, nie blockierend, alles mit einem Klick skippbar
 
 ### Milestone 17: Realtime & Notifications [todo]
 > WebSocket-Layer für Echtzeit-Updates und ein zentrales Notification Center.
@@ -419,13 +432,16 @@
   - Step kann Typ "branch" haben mit true_action und false_action
   - UI: Verzweigung als visueller Split im Flow
 
-- [ ] Step 5 — Visueller Automations-Builder
-  > Darstellung wächst mit Komplexität.
+- [ ] Step 5 — Visueller Automations-Builder + Templates
+  > Darstellung wächst mit Komplexität. Templates als Schnelleinstieg.
   - Einfache Automation (1 Trigger, 1 Action): kompakte Card-Ansicht wie bisher
   - Ketten (2+ Steps): vertikaler Flow mit Schritten und Pfeilen
   - Verzweigungen: Flow mit Split/Merge Darstellung
   - Komplexe Automationen: Mini-Flow-Graph (read-only Version der n8n-Ansicht)
-  - Referenz: `brand_04_screen_automations.html`
+  - Vorbefüllte Automation-Templates: "Schwellwert-Alarm", "Device-Offline-Alarm",
+    "Variable-Weiterleitung", "Zeitgesteuerte Aktion", "Geofence-Alarm"
+  - Template = vorbefüllter Builder, User wählt nur Device/Variable/Werte
+  - Templates sichtbar im Empty State UND als Option im "+ Neue Automation" Flow
 
 - [ ] Step 6 — Externe Flows sichtbar machen
   > Wenn eine Automation per Webhook an n8n geht, wird das in HubEx sichtbar.
@@ -459,6 +475,15 @@
   - Filter: nach Gerät, nach Gruppe, nach Automation-Kette
   - Zoom/Pan, Minimap
   - Farb-Kodierung: Online/Offline, Severity, Kategorie
+
+- [ ] Step 4 — Demo-Datensatz (Optional, Skipbar)
+  - In Settings ladbar: "Demo-Daten laden"
+  - Auch im First-Login-Flow als Option
+  - Inhalt: 3 Devices (Temp-Sensor/Hardware, Wetter-API/Service,
+    MQTT-Bridge/Bridge), 8 Variablen mit semantischen Typen,
+    2 Automationen, 1 Dashboard mit 6 Widgets
+  - Zeigt sofort wie das Produkt aussieht wenn es produktiv läuft
+  - Entfernbar: "Demo-Daten löschen" in Settings
 
 ---
 
@@ -504,24 +529,7 @@
 - [ ] Step 4 — BLE Bridge Plugin
 - [ ] Step 5 — CAN Bus / I2C / SPI Bridge Plugin
 
-### Milestone 25: Onboarding & Getting Started [todo]
-> Neuer User sieht nicht "leeres Dashboard", sondern wird geführt.
-
-- [ ] Step 1 — Welcome Wizard (skipbar)
-  - Overlay-basiert, max 4 Schritte:
-    1. "Willkommen bei [Produktname]"
-    2. "Verbinde dein erstes Device" → Add Device Wizard
-    3. "Sieh deine ersten Daten" → Variable-Ansicht
-    4. "Baue dein erstes Dashboard" → Dashboard Builder
-  - Jeder Schritt mit "Skip" und "Tutorial nochmal starten" in Settings
-  - Fortschritt gespeichert pro User
-
-- [ ] Step 2 — Demo-Datensatz
-  - Per Klick ladbar: "Demo-Daten laden" in Settings
-  - Simuliertes Setup: 3 Devices (Temp-Sensor, API-Service, MQTT-Bridge),
-    6 Variablen, 2 Automationen, 1 Dashboard
-  - Zeigt sofort, wie HubEx aussieht wenn es gefüllt ist
-  - Entfernbar: "Demo-Daten löschen" Button
+### ~~Milestone 25: Onboarding~~ → GESTRICHEN (verteilt in M15/M16/M19/M20)
 
 ---
 
@@ -629,7 +637,7 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
                     ├─► M22 (MCP) — unabhängig
                     ├─► M23 (Agent SDK) — braucht M15 (Device Wizard)
                     ├─► M24 (Bridges) — braucht M23 (Agent SDK)
-                    └─► M25 (Onboarding) — braucht M15 (Wizard) + M18 (Dashboard)
+                    └─► (M25 gestrichen — Onboarding verteilt in M15/M16/M19/M20)
                           │
                           └─► Phase 7: Enterprise
                                 ├─► M26 (Security) — unabhängig
@@ -649,4 +657,4 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
 | **Sprint 2** | M13 Steps 4-5 | Component Library + Screen Redesign | Sprint 1 |
 | **Sprint 3** | M14 Steps 1-3 | Typsystem Backend + Grundbibliothek + Triggers | Sprint 2 |
 | **Sprint 4** | M14 Steps 4-5 + M15 Steps 1-3 | Typsystem Frontend + Device Identity + Gruppierung | Sprint 3 |
-| **Sprint 5** | M15 Steps 4-6 + M16 | Device Wizard + Auto-Discovery + Kontextuelles Arbeiten | Sprint 4 |
+| **Sprint 5** | M15 Steps 4-6 + M16 Steps 1-4 | Device Wizard + Auto-Discovery + Kontextuelles Arbeiten + Action-Bars | Sprint 4 |
