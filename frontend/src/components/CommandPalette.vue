@@ -133,7 +133,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
               :class="[
                 'flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
                 i === activeIndex
-                  ? 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]'
+                  ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
                   : 'text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
               ]"
               @mouseenter="activeIndex = i"

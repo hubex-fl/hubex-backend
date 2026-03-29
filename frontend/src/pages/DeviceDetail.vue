@@ -1473,7 +1473,7 @@ onUnmounted(() => {
 
         <!-- Signal (from telemetry if available) -->
         <div v-if="telemetrySignal" class="flex items-center gap-2">
-          <svg class="h-4 w-4 shrink-0 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <svg class="h-4 w-4 shrink-0 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
           </svg>
           <div>
@@ -1540,8 +1540,8 @@ onUnmounted(() => {
         <div class="flex items-center justify-center gap-0 overflow-x-auto">
           <!-- Input sources -->
           <div class="flex flex-col items-end gap-2 min-w-[120px] shrink-0">
-            <div class="rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5 px-3 py-2 text-right">
-              <p class="text-[10px] text-[var(--accent-cyan)] uppercase tracking-wide font-semibold">Telemetry</p>
+            <div class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-3 py-2 text-right">
+              <p class="text-[10px] text-[var(--primary)] uppercase tracking-wide font-semibold">Telemetry</p>
               <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowInputCount }}</p>
               <p class="text-[10px] text-[var(--text-muted)]">events received</p>
             </div>
@@ -1554,7 +1554,7 @@ onUnmounted(() => {
 
           <!-- Arrow in -->
           <div class="flex flex-col items-center px-2 shrink-0">
-            <svg class="h-5 w-16 text-[var(--accent-cyan)]" viewBox="0 0 64 20" fill="none">
+            <svg class="h-5 w-16 text-[var(--primary)]" viewBox="0 0 64 20" fill="none">
               <path d="M0 10h52" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
               <path d="M48 4l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -1628,7 +1628,7 @@ onUnmounted(() => {
             v-for="em in entityMemberships"
             :key="em.entity_id"
             :to="`/entities`"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors hover:border-[var(--accent-cyan)]/40"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors hover:border-[var(--primary)]/40"
             :class="em.enabled ? 'border-[var(--accent-purple, #a78bfa)]/30 text-[var(--accent-purple, #a78bfa)] bg-[var(--accent-purple, #a78bfa)]/5' : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-surface)]'"
           >
             <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1657,7 +1657,7 @@ onUnmounted(() => {
     <div v-if="!restrictUnclaimed" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
       <!-- Telemetry / Inputs panel -->
-      <UCard padding="none" class="border-l-2 border-l-[var(--accent-cyan)]">
+      <UCard padding="none" class="border-l-2 border-l-[var(--primary)]">
         <template #header>
           <div class="flex items-center gap-2">
             <span
@@ -1665,7 +1665,7 @@ onUnmounted(() => {
               class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse"
             />
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-              <span class="text-[var(--accent-cyan)] mr-1">↓</span>Input
+              <span class="text-[var(--primary)] mr-1">↓</span>Input
               <span class="text-[var(--text-muted)] font-normal ml-1">· Telemetry</span>
             </h3>
             <span v-if="latestTelemetry" class="text-xs text-[var(--text-muted)]">
@@ -1711,7 +1711,7 @@ onUnmounted(() => {
           </div>
           <button
             v-if="latestPayloadFields.length > MAX_TILES"
-            class="col-span-2 text-xs text-[var(--accent-cyan)] hover:underline py-1"
+            class="col-span-2 text-xs text-[var(--primary)] hover:underline py-1"
             @click="showAllTelemetry = !showAllTelemetry"
           >
             {{ showAllTelemetry ? 'Show less' : `Show ${latestPayloadFields.length - MAX_TILES} more` }}
@@ -1741,7 +1741,7 @@ onUnmounted(() => {
                 <td class="px-4 py-2 text-[var(--text-secondary)] whitespace-nowrap">{{ t.event_type || "—" }}</td>
                 <td class="px-4 py-2">
                   <span class="font-mono text-[var(--text-muted)] break-all">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
-                  <button class="ml-2 text-[var(--accent-cyan)] hover:underline text-xs" @click="toggleTelemetry(t.id)">
+                  <button class="ml-2 text-[var(--primary)] hover:underline text-xs" @click="toggleTelemetry(t.id)">
                     {{ isTelemetryExpanded(t.id) ? 'less' : 'more' }}
                   </button>
                 </td>
@@ -1978,7 +1978,7 @@ onUnmounted(() => {
     <UCard v-if="!restrictUnclaimed" padding="md">
       <template #header>
         <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recovery</h3>
-        <router-link to="/audit" class="text-xs text-[var(--accent-cyan)] hover:underline">Audit log</router-link>
+        <router-link to="/audit" class="text-xs text-[var(--primary)] hover:underline">Audit log</router-link>
       </template>
 
       <div v-if="capsUnavailable" class="text-xs text-[var(--text-muted)]">Capabilities unavailable.</div>

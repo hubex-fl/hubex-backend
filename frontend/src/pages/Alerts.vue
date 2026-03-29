@@ -270,15 +270,15 @@ async function handleSaveRule() {
 
 // ── Severity styles ────────────────────────────────────────────────────────
 const severityClass: Record<string, string> = {
-  critical: "bg-red-500/15 text-red-400",
-  warning: "bg-yellow-500/15 text-yellow-400",
-  info: "bg-blue-500/15 text-blue-400",
+  critical: "bg-[var(--status-bad-bg)] text-[var(--status-bad)]",
+  warning: "bg-[var(--status-warn-bg)] text-[var(--status-warn)]",
+  info: "bg-[var(--status-info-bg)] text-[var(--status-info)]",
 };
 
 const statusClass: Record<string, string> = {
-  firing: "bg-red-500/15 text-red-400",
-  acknowledged: "bg-yellow-500/15 text-yellow-400",
-  resolved: "bg-green-500/15 text-green-400",
+  firing: "bg-[var(--status-bad-bg)] text-[var(--status-bad)]",
+  acknowledged: "bg-[var(--status-warn-bg)] text-[var(--status-warn)]",
+  resolved: "bg-[var(--status-ok-bg)] text-[var(--status-ok)]",
 };
 </script>
 
@@ -294,14 +294,13 @@ const statusClass: Record<string, string> = {
 
     <template v-else>
       <!-- Page header -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-          </svg>
-          <h2 class="text-base font-semibold text-[var(--text-primary)]">Alerts</h2>
-          <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">Alerts</h1>
+          <p class="text-sm text-[var(--text-muted)] mt-1">Monitor and manage alert rules and events</p>
         </div>
+        <div class="flex items-center gap-2">
+        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-hover)] bg-[var(--bg-raised)] transition-colors"
           :disabled="isRefreshing"
@@ -312,6 +311,7 @@ const statusClass: Record<string, string> = {
           </svg>
           Refresh
         </button>
+        </div>
       </div>
 
       <!-- Error banner -->
@@ -330,7 +330,7 @@ const statusClass: Record<string, string> = {
           :class="[
             'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
             activeTab === tab.key
-              ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)]'
+              ? 'border-[var(--primary)] text-[var(--primary)]'
               : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]',
           ]"
           @click="activeTab = tab.key as 'events' | 'rules'"
@@ -362,7 +362,7 @@ const statusClass: Record<string, string> = {
               :class="[
                 'px-3 py-1 rounded-full text-xs font-medium transition-colors',
                 statusFilter === s
-                  ? 'bg-[var(--accent-cyan)]/20 text-[var(--accent-cyan)]'
+                  ? 'bg-[var(--primary)]/20 text-[var(--primary)]'
                   : 'bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
               ]"
               @click="statusFilter = s as typeof statusFilter"
@@ -374,7 +374,7 @@ const statusClass: Record<string, string> = {
           <!-- Rule dropdown -->
           <select
             v-model="ruleFilter"
-            class="ml-auto text-xs px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
+            class="ml-auto text-xs px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
           >
             <option value="all">All Rules</option>
             <option v-for="r in rules" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -445,7 +445,7 @@ const statusClass: Record<string, string> = {
         <!-- Toolbar -->
         <div class="flex justify-end">
           <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
             @click="openCreate"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -463,7 +463,7 @@ const statusClass: Record<string, string> = {
           icon="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
         >
           <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
             @click="openCreate"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -483,14 +483,14 @@ const statusClass: Record<string, string> = {
             <div class="flex-1 min-w-0 space-y-1">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ rule.name }}</span>
-                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]">
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/15 text-[var(--primary)]">
                   {{ rule.condition_type }}
                 </span>
                 <span :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[rule.severity]]">
                   {{ rule.severity }}
                 </span>
               </div>
-              <p v-if="rule.condition_type === 'variable_threshold' && rule.condition_config" class="text-xs text-[var(--accent-cyan)] font-mono">
+              <p v-if="rule.condition_type === 'variable_threshold' && rule.condition_config" class="text-xs text-[var(--primary)] font-mono">
                 {{ formatVarThreshold(rule.condition_config) }}
               </p>
               <p class="text-xs text-[var(--text-muted)]">Cooldown: {{ rule.cooldown_seconds }}s</p>
@@ -502,7 +502,7 @@ const statusClass: Record<string, string> = {
               :disabled="togglingId === rule.id"
               :class="[
                 'relative shrink-0 h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
-                rule.enabled ? 'bg-[var(--accent-cyan)]/70' : 'bg-[var(--bg-raised)]',
+                rule.enabled ? 'bg-[var(--primary)]/70' : 'bg-[var(--bg-raised)]',
               ]"
               @click="handleToggleRule(rule)"
             >
@@ -566,7 +566,7 @@ const statusClass: Record<string, string> = {
               v-model="form.name"
               type="text"
               placeholder="Rule name"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             />
           </div>
 
@@ -575,7 +575,7 @@ const statusClass: Record<string, string> = {
             <label class="text-xs font-medium text-[var(--text-muted)]">Condition Type</label>
             <select
               v-model="form.condition_type"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             >
               <option value="device_offline">device_offline</option>
               <option value="entity_health">entity_health</option>
@@ -596,7 +596,7 @@ const statusClass: Record<string, string> = {
                 v-model="vtKey"
                 type="text"
                 placeholder="e.g. temperature, smoke_level"
-                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
               />
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -604,7 +604,7 @@ const statusClass: Record<string, string> = {
                 <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
                 <select
                   v-model="vtOperator"
-                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
                 >
                   <option v-for="op in OPERATOR_OPTIONS" :key="op.value" :value="op.value">{{ op.label }}</option>
                 </select>
@@ -615,7 +615,7 @@ const statusClass: Record<string, string> = {
                   v-model.number="vtValue"
                   type="number"
                   step="any"
-                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
                 />
               </div>
             </div>
@@ -625,7 +625,7 @@ const statusClass: Record<string, string> = {
                 v-model="vtDeviceUid"
                 type="text"
                 placeholder="Leave empty for global variable"
-                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
               />
             </div>
           </template>
@@ -635,7 +635,7 @@ const statusClass: Record<string, string> = {
             <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>
             <select
               v-model="form.severity"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             >
               <option value="info">info</option>
               <option value="warning">warning</option>
@@ -650,7 +650,7 @@ const statusClass: Record<string, string> = {
               v-model="form.entity_id"
               type="text"
               placeholder="e.g. sensor.temperature"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             />
           </div>
 
@@ -661,7 +661,7 @@ const statusClass: Record<string, string> = {
               v-model.number="form.cooldown_seconds"
               type="number"
               min="0"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
             />
           </div>
 
@@ -671,7 +671,7 @@ const statusClass: Record<string, string> = {
               id="modal-enabled"
               v-model="form.enabled"
               type="checkbox"
-              class="h-4 w-4 rounded border-[var(--border)] accent-[var(--accent-cyan)]"
+              class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]"
             />
             <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
           </div>
@@ -689,7 +689,7 @@ const statusClass: Record<string, string> = {
             </button>
             <button
               :disabled="modalSaving"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 disabled:opacity-50 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 disabled:opacity-50 transition-colors"
               @click="handleSaveRule"
             >
               {{ modalSaving ? 'Saving…' : 'Save' }}

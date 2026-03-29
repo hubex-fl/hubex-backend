@@ -90,10 +90,10 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-bold text-[var(--text-primary)]">Settings</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Manage your account, organization, and integrations</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Settings</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">Manage your account, organization, and integrations</p>
       </div>
     </div>
 
@@ -105,7 +105,7 @@ onMounted(() => {
         :class="[
           'flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px',
           activeTab === tab.key
-            ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)]'
+            ? 'border-[var(--primary)] text-[var(--primary)]'
             : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
         ]"
         @click="activeTab = tab.key"
@@ -131,8 +131,8 @@ onMounted(() => {
         <div v-else-if="userInfo" class="space-y-4">
           <div class="flex items-center gap-4">
             <!-- Avatar placeholder -->
-            <div class="h-14 w-14 rounded-full bg-[var(--accent-cyan)]/10 border border-[var(--accent-cyan)]/30 flex items-center justify-center shrink-0">
-              <span class="text-xl font-bold text-[var(--accent-cyan)]">{{ userInfo.email.charAt(0).toUpperCase() }}</span>
+            <div class="h-14 w-14 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/30 flex items-center justify-center shrink-0">
+              <span class="text-xl font-bold text-[var(--primary)]">{{ userInfo.email.charAt(0).toUpperCase() }}</span>
             </div>
             <div>
               <p class="text-sm font-semibold text-[var(--text-primary)]">{{ userInfo.email }}</p>
@@ -186,7 +186,7 @@ onMounted(() => {
             v-for="org in orgs"
             :key="org.id"
             class="w-full flex items-center gap-3 px-1 py-3 text-left hover:bg-[var(--bg-raised)] transition-colors rounded"
-            :class="selectedOrg?.id === org.id ? 'bg-[var(--accent-cyan)]/5' : ''"
+            :class="selectedOrg?.id === org.id ? 'bg-[var(--primary)]/5' : ''"
             @click="selectOrg(org)"
           >
             <div class="h-9 w-9 rounded-lg bg-[var(--accent-purple, #a78bfa)]/10 border border-[var(--accent-purple, #a78bfa)]/30 flex items-center justify-center shrink-0">
@@ -201,7 +201,7 @@ onMounted(() => {
                 <span class="text-[10px] text-[var(--text-muted)]">max {{ org.max_devices }} devices</span>
               </div>
             </div>
-            <svg v-if="selectedOrg?.id === org.id" class="h-4 w-4 text-[var(--accent-cyan)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg v-if="selectedOrg?.id === org.id" class="h-4 w-4 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </button>
@@ -287,8 +287,8 @@ onMounted(() => {
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">Useful Links</h3>
         </template>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <a href="/api/v1/docs" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--accent-cyan)]/40 transition-colors">
-            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <a href="/api/v1/docs" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors">
+            <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
             </svg>
             <div>
@@ -296,8 +296,8 @@ onMounted(() => {
               <p class="text-[10px] text-[var(--text-muted)]">Swagger / OpenAPI</p>
             </div>
           </a>
-          <router-link to="/token" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--accent-cyan)]/40 transition-colors">
-            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <router-link to="/token" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors">
+            <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
             </svg>
             <div>
@@ -305,8 +305,8 @@ onMounted(() => {
               <p class="text-[10px] text-[var(--text-muted)]">Decode & inspect JWT</p>
             </div>
           </router-link>
-          <router-link to="/audit" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--accent-cyan)]/40 transition-colors">
-            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <router-link to="/audit" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors">
+            <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
@@ -314,8 +314,8 @@ onMounted(() => {
               <p class="text-[10px] text-[var(--text-muted)]">Track all actions</p>
             </div>
           </router-link>
-          <router-link to="/observability" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--accent-cyan)]/40 transition-colors">
-            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <router-link to="/observability" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors">
+            <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" />
             </svg>
             <div>

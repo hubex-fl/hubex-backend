@@ -204,7 +204,7 @@ onUnmounted(() => { selectedId.value = null; });
                 :key="entry.id"
                 :class="[
                   'cursor-pointer transition-colors hover:bg-[var(--bg-raised)]',
-                  selectedId === entry.id ? 'bg-[var(--accent-cyan)]/5' : '',
+                  selectedId === entry.id ? 'bg-[var(--primary)]/5' : '',
                 ]"
                 @click="selectedId = entry.id"
               >

@@ -20,7 +20,7 @@ const padMap: Record<string, string> = {
   <div
     :class="[
       'rounded-xl border bg-[var(--bg-surface)] border-[var(--border)]',
-      hoverable && 'transition-shadow hover:shadow-glow cursor-pointer',
+      hoverable && 'transition-all hover:border-[var(--border-hover)] hover:shadow-[var(--shadow-glow-primary)] cursor-pointer',
     ]"
   >
     <div

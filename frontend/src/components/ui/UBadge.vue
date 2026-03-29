@@ -1,9 +1,11 @@
 <script setup lang="ts">
 type Status = "ok" | "warn" | "bad" | "info" | "neutral";
+type Category = "hardware" | "service" | "bridge" | "agent";
 
 const props = withDefaults(
   defineProps<{
     status?: Status;
+    category?: Category;
     pulse?: boolean;
     label?: string;
   }>(),
@@ -16,6 +18,13 @@ const colorMap: Record<Status, string> = {
   bad:     "bg-[var(--status-bad-bg)] text-[var(--status-bad)] border-[var(--status-bad)]/30",
   info:    "bg-[var(--status-info-bg)] text-[var(--status-info)] border-[var(--status-info)]/30",
   neutral: "bg-[var(--bg-raised)] text-[var(--text-muted)] border-[var(--border)]",
+};
+
+const categoryColorMap: Record<Category, string> = {
+  hardware: "bg-[var(--cat-hardware)]/15 text-[var(--cat-hardware)] border-[var(--cat-hardware)]/30",
+  service:  "bg-[var(--cat-service)]/15 text-[var(--cat-service)] border-[var(--cat-service)]/30",
+  bridge:   "bg-[var(--cat-bridge)]/15 text-[var(--cat-bridge)] border-[var(--cat-bridge)]/30",
+  agent:    "bg-[var(--cat-agent)]/15 text-[var(--cat-agent)] border-[var(--cat-agent)]/30",
 };
 
 const dotMap: Record<Status, string> = {
@@ -31,7 +40,7 @@ const dotMap: Record<Status, string> = {
   <span
     :class="[
       'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border',
-      colorMap[status],
+      category ? categoryColorMap[category] : colorMap[status],
     ]"
   >
     <span

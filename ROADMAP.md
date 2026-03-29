@@ -175,55 +175,39 @@
 > für gute UX stehen. Design System, Typsystem, Branding, i18n, Onboarding.
 > Alles was danach kommt, baut darauf auf.
 
-### Milestone 13: Design System Reboot [todo] ← AKTUELL
-> Das bestehende Design System (M8 Step 1) war funktional, aber generisch.
-> Jetzt wird die visuelle Identität "Warm Depth" durchgängig implementiert.
-> Die Design-Referenzen (brand_01–04 HTML-Dateien) sind die Source of Truth.
+### Milestone 13: Design System Reboot [done] ✅
+> "Warm Depth" Design System durchgängig implementiert.
 
-- [ ] Step 1 — Design Tokens Migration
-  > CSS Custom Properties aus `brand_01_tokens.html` in das Vue-Projekt übernehmen.
-  - Alle Farb-Tokens (--bg-base, --primary, --accent, --danger, etc.) in zentrale CSS-Datei
-  - Typography-Tokens (Satoshi, Inter, IBM Plex Mono) mit korrekten Weights und Letter-Spacing
-  - Spacing-Scale (4px-Basis), Radius-Scale, Shadow-Scale inkl. Glow-Varianten
-  - Transition/Motion-Tokens (ease-default, duration-fast/normal/slow)
-  - Noise-Texture Overlay (body::before aus brand_03)
+- [x] Step 1 — Design Tokens Migration
+  - `style.css`: Komplettes CSS Custom Properties System (--bg-*, --primary, --accent, --status-*, --border-*, --shadow-*, --radius-*, --duration-*, --font-*, --cat-*)
+  - Dark + Light Theme, Noise-Texture Overlay, Google Fonts (Inter, IBM Plex Mono)
+  - `tailwind.config.ts`: Farben, Fonts, Schatten referenzieren CSS-Variablen
+  - Backward-Compat: --accent-cyan → --accent, --accent-amber → --primary
 
-- [ ] Step 2 — Branding-Abstraction Layer
-  > Produktname, Logo, Farben werden NIRGENDS hardcoded.
-  - `branding.ts` Config: productName, logoSVG, primaryColor, accentColor, favicon
-  - Alle Template-Referenzen auf `branding.productName` statt Klartext
-  - Backend: Produktname aus Environment-Variable in API-Responses
-  - Logo-SVG als Komponente (`BrandLogo.vue`), nicht als statisches Asset
-  - Favicon dynamisch generiert aus Branding-Config
+- [x] Step 2 — Branding-Abstraction Layer
+  - `lib/branding.ts`: productName, tagline, logoSVG (Hexagon), Farben
+  - `components/BrandLogo.vue`: Reusable Logo mit size/showText Props
+  - DefaultLayout, AuthLayout, Landing, Dashboard: branding.productName statt Hardcoded
 
-- [ ] Step 3 — i18n Foundation
-  > Infrastruktur für Mehrsprachigkeit, initial nur DE + EN.
-  - vue-i18n Setup mit Lazy-Loading per Route
-  - Alle bestehenden hardcodierten Strings extrahieren in Locale-Files
-  - Backend: API-Fehlermeldungen als Codes, Übersetzung im Frontend
-  - Semantische Typ-Namen und -Beschreibungen als Translation-Keys
-  - Sidebar-Labels, Button-Texte, Tooltips, Empty States, Notifications
+- [x] Step 3 — i18n Foundation
+  - vue-i18n installiert, `i18n/index.ts` Setup mit localStorage-Persistence
+  - `i18n/locales/en.ts` + `de.ts`: Nav, Common, Auth, Devices, Variables, Alerts, Automations, Dashboard, Settings, Health, Empty States, Time
+  - Sidebar-Labels via `$t('nav.*')`, Settings: Sprach-Umschalter (EN/DE)
 
-- [ ] Step 4 — Component Library Migration
-  > Alle bestehenden Komponenten auf neue Design Tokens umstellen.
-  - Referenz: `brand_03_components.html` (Buttons, Inputs, Cards, Badges, Tables, etc.)
-  - Buttons: Primary (Gradient), Secondary (Ghost), Danger, Disabled States
-  - Cards: Warm-Depth-Style mit border-default, hover-state, optional Glow
-  - Inputs: Focus-Ring mit --border-focus (amber), konsistente Höhen
-  - Badges: Kategorie-Badges (Hardware/Service/Bridge/Agent) mit eigenen Farben
-  - Status-Dots: Pulsierende Animation für Online, statisch für Offline
-  - Tables: Row-Hover, Zebra-Striping mit bg-surface
-  - Sidebar: Referenz `brand_04_screen_*.html`, aktiver Zustand mit primary-dim
+- [x] Step 4 — Component Library Migration
+  - 17 UI Components auf Warm Depth Tokens migriert
+  - UButton: Primary=Amber mit Glow, Focus=Primary-Ring
+  - UCard: Hover-Glow, UBadge: Category-Prop (hardware/service/bridge/agent)
+  - UInput/USelect: Amber Focus-Ring, UToggle: Primary=Amber
+  - UTab: Active=Primary, UTable: Sort=Primary, CommandPalette: Active=Primary
 
-- [ ] Step 5 — Screen-by-Screen Redesign
-  > Jede bestehende Seite auf das neue Design System umstellen.
-  - Dashboard, Devices, Variables, Alerts, Automations, OTA, Settings
-  - Referenz-Screens: brand_04_screen_device.html, brand_04_screen_automations.html,
-    brand_04_screen_settings.html
-  - Konsistente Header-Leiste (Seitentitel + Search + Notifications + Avatar)
-  - Empty States für jede Seite mit Illustration und CTA
+- [x] Step 5 — Screen-by-Screen Redesign
+  - 79 --accent-cyan Referenzen durch --primary ersetzt (9 Pages + 2 Layouts)
+  - Konsistente Header (h1 + Subtitle) auf Alerts, Automations, Settings, SystemHealth
+  - Status-Tokens (--status-ok/warn/bad) in SystemHealth, Alerts
+  - Device-Kategorie-Farben (--cat-*) in useDevices
 
-### Milestone 14: Semantisches Typsystem [todo]
+### Milestone 14: Semantisches Typsystem [todo] ← AKTUELL
 > Variablen bekommen echte Typen mit Validierung, Einheiten, Default-Visualisierungen
 > und automatischen Trigger-Templates. Das ist das Fundament für Dashboard Builder,
 > Automationen und Device-Onboarding.

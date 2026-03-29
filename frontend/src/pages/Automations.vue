@@ -487,20 +487,17 @@ async function handleSave() {
 const triggerTypeLabel = computed(() => TRIGGER_TYPES.find((t) => t.value === formTriggerType.value)?.label ?? "");
 const actionTypeLabel = computed(() => ACTION_TYPES.find((t) => t.value === formActionType.value)?.label ?? "");
 
-const inputClass = "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)] transition-colors";
+const inputClass = "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors";
 const labelClass = "text-xs font-medium text-[var(--text-muted)]";
 </script>
 
 <template>
   <div class="space-y-4">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-        <h2 class="text-base font-semibold text-[var(--text-primary)]">Automations</h2>
-        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Automations</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">If-then rules for automated actions</p>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -514,7 +511,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
           Refresh
         </button>
         <button
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
           @click="openCreate"
         >
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -544,7 +541,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
         <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">No automation rules</h3>
         <p class="text-sm text-[var(--text-muted)] mb-4">Create your first automation to trigger actions when conditions are met.</p>
         <button
-          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 transition-colors"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
           @click="openCreate"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -584,12 +581,12 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
               <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
 
               <!-- Arrow -->
-              <svg class="h-3.5 w-3.5 text-[var(--accent-cyan)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
 
               <!-- Action badge -->
-              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]">
+              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
                 THEN {{ rule.action_type.replace("_", " ") }}
               </span>
               <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
@@ -611,7 +608,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
               :disabled="togglingId === rule.id"
               :class="[
                 'relative h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
-                rule.enabled ? 'bg-[var(--accent-cyan)]/70' : 'bg-[var(--bg-raised)]',
+                rule.enabled ? 'bg-[var(--primary)]/70' : 'bg-[var(--bg-raised)]',
               ]"
               @click="handleToggle(rule)"
             >
@@ -647,7 +644,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
                 testConfirmId === rule.id
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                  : 'text-[var(--text-muted)] hover:text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/10',
+                  : 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10',
               ]"
               @click="handleTest(rule.id)"
             >
@@ -796,7 +793,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 </div>
                 <div class="space-y-1">
                   <label :class="labelClass">Radius: {{ trigGeoRadius }}m</label>
-                  <input v-model.number="trigGeoRadius" type="range" min="100" max="50000" step="100" class="w-full accent-[var(--accent-cyan)]" />
+                  <input v-model.number="trigGeoRadius" type="range" min="100" max="50000" step="100" class="w-full accent-[var(--primary)]" />
                   <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>100m</span><span>50km</span></div>
                 </div>
               </template>
@@ -844,7 +841,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 :class="[
                   'text-left px-3 py-2.5 rounded-lg border text-xs transition-colors',
                   formActionType === a.value
-                    ? 'border-[var(--accent-cyan)]/50 bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]'
+                    ? 'border-[var(--primary)]/50 bg-[var(--primary)]/10 text-[var(--primary)]'
                     : 'border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-hover)]',
                 ]"
                 @click="formActionType = a.value"
@@ -947,11 +944,11 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Settings</h4>
             <div class="space-y-1">
               <label :class="labelClass">Cooldown: {{ formCooldown }}s</label>
-              <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--accent-cyan)]" />
+              <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
               <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (no cooldown)</span><span>1h</span></div>
             </div>
             <div class="flex items-center gap-2">
-              <input id="form-enabled" v-model="formEnabled" type="checkbox" class="h-4 w-4 rounded border-[var(--border)] accent-[var(--accent-cyan)]" />
+              <input id="form-enabled" v-model="formEnabled" type="checkbox" class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]" />
               <label for="form-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
             </div>
           </div>
@@ -969,7 +966,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
             </button>
             <button
               :disabled="modalSaving"
-              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/20 disabled:opacity-50 transition-colors"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 disabled:opacity-50 transition-colors"
               @click="handleSave"
             >
               {{ modalSaving ? "Saving…" : "Save Rule" }}

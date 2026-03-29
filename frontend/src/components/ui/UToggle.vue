@@ -22,9 +22,9 @@ const emit = defineEmits<{ (e: "update:modelValue", v: boolean): void }>();
       :aria-checked="modelValue"
       :disabled="disabled"
       :class="[
-        'relative shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent-cyan)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)]',
+        'relative shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--bg-base)]',
         size === 'sm' ? 'h-4 w-7' : 'h-5 w-9',
-        modelValue ? 'bg-[var(--accent-cyan)]' : 'bg-[var(--bg-raised)]',
+        modelValue ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)]',
       ]"
       @click="!disabled && emit('update:modelValue', !modelValue)"
     >

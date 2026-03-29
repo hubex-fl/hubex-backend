@@ -632,7 +632,7 @@ onUnmounted(() => {
       <UCard padding="none">
         <template #header>
           <div class="flex items-center gap-2">
-            <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
             </svg>
             <span class="text-sm font-semibold text-[var(--text-primary)]">Pair Device</span>
@@ -659,7 +659,7 @@ onUnmounted(() => {
           <!-- First-time hint when list is empty -->
           <div
             v-if="!loading && devices.length === 0"
-            class="flex items-center gap-2 text-xs text-[var(--accent-cyan)]"
+            class="flex items-center gap-2 text-xs text-[var(--primary)]"
           >
             <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7l-.996-.997a5.984 5.984 0 01-1.777-4.21" />
@@ -775,7 +775,7 @@ onUnmounted(() => {
         <!-- View toggle -->
         <div class="flex rounded-lg border border-[var(--border)] overflow-hidden shrink-0">
           <button
-            :class="['px-3 py-1.5 text-xs transition-colors', deviceView === 'table' ? 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
+            :class="['px-3 py-1.5 text-xs transition-colors', deviceView === 'table' ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
             title="Table view"
             @click="deviceView = 'table'"
           >
@@ -784,7 +784,7 @@ onUnmounted(() => {
             </svg>
           </button>
           <button
-            :class="['px-3 py-1.5 text-xs border-l border-[var(--border)] transition-colors', deviceView === 'cards' ? 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
+            :class="['px-3 py-1.5 text-xs border-l border-[var(--border)] transition-colors', deviceView === 'cards' ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]']"
             title="Card view"
             @click="deviceView = 'cards'"
           >
@@ -806,7 +806,7 @@ onUnmounted(() => {
         <label class="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded accent-[var(--accent-cyan)]"
+            class="h-4 w-4 rounded accent-[var(--primary)]"
             :checked="allSelected"
             :disabled="!selectableIds.length"
             @change="toggleSelectAll"
@@ -915,7 +915,7 @@ onUnmounted(() => {
                 <td class="px-4 py-3 w-10">
                   <input
                     type="checkbox"
-                    class="h-4 w-4 rounded accent-[var(--accent-cyan)]"
+                    class="h-4 w-4 rounded accent-[var(--primary)]"
                     :checked="isSelected(d.id)"
                     :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
                     @change="toggleRow(d)"
@@ -932,7 +932,7 @@ onUnmounted(() => {
                     />
                     <router-link
                       :to="`/devices/${d.id}`"
-                      class="font-mono text-xs text-[var(--text-primary)] hover:text-[var(--accent-cyan)] transition-colors truncate max-w-[200px]"
+                      class="font-mono text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate max-w-[200px]"
                       @click.stop
                     >
                       {{ d.device_uid }}
@@ -1063,7 +1063,7 @@ onUnmounted(() => {
             :class="[
               'rounded-xl border bg-[var(--bg-surface)] p-4 flex flex-col gap-3 transition-shadow hover:shadow-glow',
               d.state === 'claimed' ? 'cursor-pointer' : 'cursor-default',
-              isSelected(d.id) ? 'border-[var(--accent-cyan)]/40 bg-[var(--accent-cyan)]/5' : 'border-[var(--border)]',
+              isSelected(d.id) ? 'border-[var(--primary)]/40 bg-[var(--primary)]/5' : 'border-[var(--border)]',
             ]"
             :style="{ borderLeftWidth: '3px', borderLeftColor: cardHealthBorder(d.health) }"
             @click="onRowClick(d)"
@@ -1082,7 +1082,7 @@ onUnmounted(() => {
               <!-- Bulk checkbox -->
               <input
                 type="checkbox"
-                class="h-4 w-4 shrink-0 rounded accent-[var(--accent-cyan)]"
+                class="h-4 w-4 shrink-0 rounded accent-[var(--primary)]"
                 :checked="isSelected(d.id)"
                 :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
                 @change="toggleRow(d)"

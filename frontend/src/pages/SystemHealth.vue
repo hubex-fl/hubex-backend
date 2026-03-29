@@ -120,15 +120,15 @@ onUnmounted(() => {
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 function statusColor(status: string): string {
-  if (status === "ok" || status === "healthy") return "text-green-400";
-  if (status === "degraded" || status === "disabled") return "text-yellow-400";
-  return "text-red-400";
+  if (status === "ok" || status === "healthy") return "text-[var(--status-ok)]";
+  if (status === "degraded" || status === "disabled") return "text-[var(--status-warn)]";
+  return "text-[var(--status-bad)]";
 }
 
 function statusDot(status: string): string {
-  if (status === "ok" || status === "healthy") return "bg-green-400";
-  if (status === "degraded" || status === "disabled") return "bg-yellow-400";
-  return "bg-red-400";
+  if (status === "ok" || status === "healthy") return "bg-[var(--status-ok)]";
+  if (status === "degraded" || status === "disabled") return "bg-[var(--status-warn)]";
+  return "bg-[var(--status-bad)]";
 }
 
 function deviceHealthPercent(): number {
@@ -142,16 +142,14 @@ function deviceHealthPercent(): number {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-        </svg>
-        <h2 class="text-base font-semibold text-[var(--text-primary)]">System Health</h2>
-        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">System Health</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">Backend, database, and infrastructure status</p>
       </div>
 
       <div class="flex items-center gap-3">
+        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
         <span class="text-xs text-[var(--text-muted)]">
           Last checked: <span class="text-[var(--text-primary)]">{{ lastCheckedLabel }}</span>
         </span>

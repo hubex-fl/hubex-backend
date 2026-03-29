@@ -26,7 +26,7 @@ const router = createRouter({
     { path: "/pairing",      component: () => import("./pages/Pairing.vue"),         meta: { title: "Pairing" } },
     { path: "/system-health", component: () => import("./pages/SystemHealth.vue"),   meta: { title: "System Health" } },
     { path: "/automations",  component: () => import("./pages/Automations.vue"),     meta: { title: "Automations" } },
-    { path: "/api-docs",     component: () => import("./pages/ApiDocs.vue"),         meta: { title: "API Docs" } },
+    { path: "/developer",    component: () => import("./pages/ApiDocs.vue"),         meta: { title: "API Docs" } },
   ],
 });
 

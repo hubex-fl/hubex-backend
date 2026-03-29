@@ -36,7 +36,7 @@ function select() {
         : [
             'relative px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
             isActive
-              ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)]'
+              ? 'border-[var(--primary)] text-[var(--primary)]'
               : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border)]',
           ],
       disabled && 'opacity-40 cursor-not-allowed',

@@ -19,10 +19,26 @@
   --text-muted:     #5a5a72;
   --text-invert:    #0a0a0f;
 
+  --bg-hover:     #1e1e32;
+
   --accent-cyan:    #00d4ff;
   --accent-magenta: #ff006e;
   --accent-lime:    #b8ff00;
   --accent-amber:   #ffbe0b;
+
+  /* Warm Depth — primary & accent */
+  --primary:       #F5A623;
+  --primary-hover: #E09510;
+  --primary-dim:   rgba(245, 166, 35, 0.15);
+  --accent:        #2DD4BF;
+  --accent-dim:    rgba(45, 212, 191, 0.15);
+  --border-focus:  #F5A623;
+
+  /* Device category colors */
+  --cat-hardware: #F5A623;
+  --cat-service:  #3B82F6;
+  --cat-bridge:   #A855F7;
+  --cat-agent:    #2DD4BF;
 
   --status-ok:   #22c55e;
   --status-warn: #f59e0b;
@@ -33,6 +49,19 @@
   --status-warn-bg: rgba(245, 158, 11, 0.12);
   --status-bad-bg:  rgba(239, 68, 68, 0.12);
   --status-info-bg: rgba(59, 130, 246, 0.12);
+
+  /* Radius tokens */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Duration tokens */
+  --duration-fast:   100ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+
+  /* Shadow tokens */
+  --shadow-glow-primary: 0 0 16px rgba(245, 166, 35, 0.15);
 
   color-scheme: dark;
 }
@@ -53,10 +82,26 @@
   --text-muted:     #9898b0;
   --text-invert:    #ffffff;
 
+  --bg-hover:     #e8e8f0;
+
   --accent-cyan:    #0099cc;
   --accent-magenta: #cc0055;
   --accent-lime:    #5a8a00;
   --accent-amber:   #cc8800;
+
+  /* Warm Depth — primary & accent */
+  --primary:       #D4890A;
+  --primary-hover: #B87608;
+  --primary-dim:   rgba(212, 137, 10, 0.12);
+  --accent:        #0D9488;
+  --accent-dim:    rgba(13, 148, 136, 0.12);
+  --border-focus:  #D4890A;
+
+  /* Device category colors */
+  --cat-hardware: #D4890A;
+  --cat-service:  #2563EB;
+  --cat-bridge:   #9333EA;
+  --cat-agent:    #0D9488;
 
   --status-ok:   #16a34a;
   --status-warn: #d97706;
@@ -67,6 +112,19 @@
   --status-warn-bg: rgba(217, 119, 6, 0.1);
   --status-bad-bg:  rgba(220, 38, 38, 0.1);
   --status-info-bg: rgba(37, 99, 235, 0.1);
+
+  /* Radius tokens */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Duration tokens */
+  --duration-fast:   100ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+
+  /* Shadow tokens */
+  --shadow-glow-primary: 0 0 16px rgba(212, 137, 10, 0.12);
 
   color-scheme: light;
 }
@@ -131,15 +189,15 @@ a {
 }
 
 .nav a.router-link-active {
-  color: var(--accent-cyan);
-  background: rgba(0, 212, 255, 0.08);
+  color: var(--primary);
+  background: var(--primary-dim);
 }
 
 .nav-title {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 0.05em;
-  color: var(--accent-cyan);
+  color: var(--primary);
   padding: 4px 10px 12px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
@@ -210,8 +268,8 @@ a {
   align-items: center;
   gap: 6px;
   border: 1px solid var(--border);
-  background: var(--accent-cyan);
-  color: var(--bg-base);
+  background: var(--primary);
+  color: var(--text-invert);
   padding: 7px 14px;
   border-radius: 7px;
   cursor: pointer;
@@ -276,9 +334,9 @@ a {
 
 .input:focus {
   outline: none;
-  border-color: var(--accent-cyan);
+  border-color: var(--border-focus);
   background: var(--bg-surface);
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 0 3px var(--primary-dim);
 }
 
 .input::placeholder {
@@ -427,11 +485,11 @@ select.input option {
 .code-badge {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
-  background: rgba(0, 212, 255, 0.1);
-  color: var(--accent-cyan);
+  background: var(--accent-dim);
+  color: var(--accent);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
+  border: 1px solid rgba(45, 212, 191, 0.25);
 }
 
 .payload-preview {
@@ -618,7 +676,7 @@ select.input option {
 .link-button {
   background: none;
   border: none;
-  color: var(--accent-cyan);
+  color: var(--primary);
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -722,7 +780,7 @@ select.input option {
    Focus ring
    ============================================================ */
 :focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 

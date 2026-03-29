@@ -33,7 +33,7 @@ const posClasses: Record<string, string> = {
         v-if="visible"
         :class="[
           'absolute z-50 px-2 py-1 text-xs rounded whitespace-nowrap pointer-events-none',
-          'bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border)] shadow-lg',
+          'bg-[var(--bg-raised)] text-[var(--text-primary)] border border-[var(--border)] shadow-lg',
           posClasses[position],
         ]"
       >

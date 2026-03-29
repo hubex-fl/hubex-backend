@@ -83,10 +83,10 @@ watch(events, async () => {
     <!-- ── 0. Welcome Banner (fresh install / no devices) ─────────────────── -->
     <div
       v-if="!metricsLoading && metrics && metrics.devices.total === 0"
-      class="rounded-xl border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+      class="rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
     >
-      <div class="p-2.5 rounded-lg bg-[var(--accent-cyan)]/10 shrink-0">
-        <svg class="h-6 w-6 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <div class="p-2.5 rounded-lg bg-[var(--primary)]/10 shrink-0">
+        <svg class="h-6 w-6 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
         </svg>
       </div>
@@ -120,7 +120,7 @@ watch(events, async () => {
         <UCard padding="md" data-testid="card-devices-total">
           <div class="flex items-center gap-2 mb-3">
             <div class="p-1.5 rounded-lg bg-[var(--bg-raised)]">
-              <svg class="h-4 w-4 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <svg class="h-4 w-4 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
               </svg>
             </div>
@@ -214,10 +214,10 @@ watch(events, async () => {
       </template>
       <template v-else-if="metrics">
         <!-- Entities -->
-        <UCard padding="md" data-testid="card-entities" class="cursor-pointer hover:border-[var(--accent-cyan)]/40 transition-colors" @click="router.push('/entities')">
+        <UCard padding="md" data-testid="card-entities" class="cursor-pointer hover:border-[var(--primary)]/40 transition-colors" @click="router.push('/entities')">
           <div class="flex items-center gap-3">
             <div class="p-2 rounded-lg bg-[var(--bg-raised)] shrink-0">
-              <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <svg class="h-5 w-5 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
               </svg>
             </div>
@@ -382,12 +382,12 @@ watch(events, async () => {
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <UCard
         padding="md"
-        class="cursor-pointer hover:border-[var(--accent-cyan)]/50 transition-colors group"
+        class="cursor-pointer hover:border-[var(--primary)]/50 transition-colors group"
         @click="router.push('/devices')"
       >
         <div class="flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-[var(--accent-cyan)]/10 shrink-0 group-hover:bg-[var(--accent-cyan)]/20 transition-colors">
-            <svg class="h-5 w-5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <div class="p-2 rounded-lg bg-[var(--primary)]/10 shrink-0 group-hover:bg-[var(--primary)]/20 transition-colors">
+            <svg class="h-5 w-5 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
           </div>
@@ -403,7 +403,7 @@ watch(events, async () => {
 
       <UCard
         padding="md"
-        class="cursor-pointer hover:border-[var(--accent-cyan)]/40 transition-colors group"
+        class="cursor-pointer hover:border-[var(--primary)]/40 transition-colors group"
         @click="router.push('/devices')"
       >
         <div class="flex items-center gap-3">
@@ -445,7 +445,7 @@ watch(events, async () => {
 
       <UCard
         padding="md"
-        class="cursor-pointer hover:border-[var(--accent-cyan)]/40 transition-colors group"
+        class="cursor-pointer hover:border-[var(--primary)]/40 transition-colors group"
         @click="router.push('/entities')"
       >
         <div class="flex items-center gap-3">

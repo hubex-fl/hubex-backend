@@ -52,7 +52,7 @@ const alignClass: Record<string, string> = {
               <svg
                 v-if="col.sortable"
                 class="h-3 w-3"
-                :class="sortKey === col.key ? 'text-[var(--accent-cyan)]' : 'text-[var(--border)]'"
+                :class="sortKey === col.key ? 'text-[var(--primary)]' : 'text-[var(--border)]'"
                 fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
               >
                 <path v-if="sortKey === col.key && sortDir === 'asc'"  d="M5 15l7-7 7 7" />

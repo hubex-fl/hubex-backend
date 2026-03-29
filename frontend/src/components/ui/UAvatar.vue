@@ -23,11 +23,11 @@ const initials = computed(() => {
 
 function colorFromName(name: string): string {
   const palette = [
-    "bg-[#00d4ff]/20 text-[#00d4ff]",
-    "bg-[#7b61ff]/20 text-[#7b61ff]",
-    "bg-[#00e5a0]/20 text-[#00e5a0]",
-    "bg-[#ff6b6b]/20 text-[#ff6b6b]",
-    "bg-[#ffd93d]/20 text-[#ffd93d]",
+    "bg-[var(--primary-dim)] text-[var(--primary)]",
+    "bg-[var(--accent-dim)] text-[var(--accent)]",
+    "bg-[var(--cat-bridge)]/15 text-[var(--cat-bridge)]",
+    "bg-[var(--status-bad-bg)] text-[var(--status-bad)]",
+    "bg-[var(--cat-service)]/15 text-[var(--cat-service)]",
   ];
   let hash = 0;
   for (const c of name) hash = (hash << 5) - hash + c.charCodeAt(0);

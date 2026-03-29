@@ -17,7 +17,7 @@ const props = withDefaults(
 
 const classes = computed(() => {
   const base =
-    "inline-flex items-center gap-1.5 rounded-lg font-medium font-sans transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-cyan)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--bg-base)] disabled:opacity-40 disabled:cursor-not-allowed";
+    "inline-flex items-center gap-1.5 rounded-lg font-medium font-sans transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--bg-base)] disabled:opacity-40 disabled:cursor-not-allowed";
 
   const sizes: Record<Size, string> = {
     sm: "px-2.5 py-1 text-xs",
@@ -27,7 +27,7 @@ const classes = computed(() => {
 
   const variants: Record<Variant, string> = {
     primary:
-      "bg-[var(--accent-cyan)] text-[var(--bg-base)] border border-transparent hover:opacity-85 active:opacity-75",
+      "bg-[var(--primary)] text-[var(--text-invert)] border border-transparent hover:bg-[var(--primary-hover)] hover:shadow-[var(--shadow-glow-primary)] active:opacity-75",
     secondary:
       "bg-[var(--bg-raised)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--bg-overlay)] hover:border-[var(--border-hover)]",
     danger:
