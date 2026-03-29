@@ -22,6 +22,10 @@ import type { DeviceType } from "../composables/useDevices";
 import { getVariableHistory } from "../lib/variables";
 import type { VizDataPoint } from "../lib/viz-types";
 import VizSparkline from "../components/viz/VizSparkline.vue";
+import ActionBar from "../components/ActionBar.vue";
+import { useConnectPanel } from "../composables/useConnectPanel";
+
+const { open: openConnectPanel } = useConnectPanel();
 
 const route = useRoute();
 const router = useRouter();
@@ -1354,6 +1358,35 @@ onUnmounted(() => {
       <span class="text-sm font-mono text-[var(--text-muted)] truncate">
         {{ deviceInfo?.name || deviceInfo?.device_uid || `#${deviceId}` }}
       </span>
+    </div>
+
+    <!-- ── Progressive Action Bar ────────────────────────────────────────────── -->
+    <ActionBar
+      v-if="deviceInfo && !capsUnavailable"
+      :device-id="deviceInfo.id"
+      :has-variables="variables.length > 0"
+      :has-alerts="false"
+      :has-automations="false"
+      :has-name="!!deviceInfo.name"
+    />
+
+    <!-- Connect Panel Trigger -->
+    <div v-if="deviceInfo" class="flex justify-end">
+      <button
+        class="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+        @click="openConnectPanel({
+          type: 'device',
+          id: deviceInfo.id,
+          name: deviceInfo.name || deviceInfo.device_uid,
+          deviceUid: deviceInfo.device_uid,
+          deviceId: deviceInfo.id,
+        })"
+      >
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+        Connections
+      </button>
     </div>
 
     <!-- Unclaimed warning -->

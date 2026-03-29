@@ -455,23 +455,35 @@ const statusClass: Record<string, string> = {
           </button>
         </div>
 
-        <!-- Empty state -->
-        <UEmpty
+        <!-- Enhanced empty state -->
+        <div
           v-if="rules.length === 0"
-          title="No alert rules"
-          description="Alert rules notify you when devices go offline or metrics cross thresholds. Create your first rule to get started."
-          icon="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+          class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-8 py-12 text-center"
         >
-          <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
-            @click="openCreate"
-          >
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Create Rule
-          </button>
-        </UEmpty>
+          <div class="flex flex-col items-center gap-5">
+            <div class="h-14 w-14 rounded-xl bg-[var(--bg-raised)] flex items-center justify-center">
+              <svg class="h-7 w-7 text-[var(--status-warn)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+            </div>
+            <div class="space-y-1 max-w-sm">
+              <h3 class="text-base font-semibold text-[var(--text-primary)]">Get notified when something happens</h3>
+              <p class="text-sm text-[var(--text-muted)]">Alert rules fire when devices go offline, variables cross thresholds, or automation errors occur.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2.5 items-center">
+              <button
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+                @click="openCreate"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Create Alert Rule
+              </button>
+              <span class="text-xs text-[var(--text-muted)]">or go to a variable / device to create a rule in context</span>
+            </div>
+          </div>
+        </div>
 
         <div v-else class="space-y-2">
           <div

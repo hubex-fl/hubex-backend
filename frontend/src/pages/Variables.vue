@@ -30,6 +30,53 @@ import UModal  from "../components/ui/UModal.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import VizSparkline from "../components/viz/VizSparkline.vue";
 import VizWidget    from "../components/viz/VizWidget.vue";
+import ContextMenu from "../components/ContextMenu.vue";
+import { useConnectPanel } from "../composables/useConnectPanel";
+import { useRouter } from "vue-router";
+import type { ContextMenuItem } from "../components/ContextMenu.vue";
+
+const router = useRouter();
+const { open: openConnectPanel } = useConnectPanel();
+const varMenuOpenKey = ref<string | null>(null);
+
+function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
+  return [
+    {
+      label: "Edit Definition",
+      icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z",
+      action: () => openEditDef(def),
+    },
+    {
+      label: "Connections",
+      icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
+      action: () =>
+        openConnectPanel({
+          type: "variable",
+          id: def.key,
+          name: def.key,
+          variableKey: def.key,
+        }),
+    },
+    { label: "", icon: "", action: () => {}, divider: true },
+    {
+      label: "Create Alert",
+      icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
+      action: () => router.push("/alerts"),
+    },
+    {
+      label: "Create Automation",
+      icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
+      action: () => router.push("/automations"),
+    },
+    { label: "", icon: "", action: () => {}, divider: true },
+    {
+      label: "Delete",
+      icon: "M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0",
+      action: () => openDeleteDef(def),
+      destructive: true,
+    },
+  ];
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 type ScopeFilter = "all" | VariableScope;
@@ -433,13 +480,27 @@ onMounted(loadDefinitionsAndValues);
       <div v-for="i in 4" :key="i" class="skel-row" :style="{ animationDelay: `${i * 0.08}s` }" />
     </div>
 
-    <!-- ── Empty state ────────────────────────────────────────────── -->
-    <div v-else-if="!filteredRows.length" class="vars-empty">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#484f58" stroke-width="1.5">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-      </svg>
-      <p>No variables yet</p>
-      <UButton size="sm" @click="openCreate">Create the first variable</UButton>
+    <!-- ── Enhanced empty state ──────────────────────────────────── -->
+    <div v-else-if="!filteredRows.length" class="vars-empty-enhanced">
+      <div class="vars-empty-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="vars-empty-text">
+        <h3>No variables yet</h3>
+        <p>Variables appear automatically when devices send telemetry. Or create one manually.</p>
+      </div>
+      <div class="vars-empty-actions">
+        <UButton size="sm" @click="openCreate">
+          <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Create variable
+        </UButton>
+        <span class="vars-empty-hint">or connect a device to auto-discover →</span>
+        <a href="/devices" class="vars-empty-link">Devices →</a>
+      </div>
     </div>
 
     <!-- ── Table ─────────────────────────────────────────────────── -->
@@ -536,12 +597,24 @@ onMounted(loadDefinitionsAndValues);
                   <UButton size="sm" variant="ghost" @click.stop="openSetValue(def)" title="Set value">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </UButton>
-                  <UButton size="sm" variant="ghost" @click.stop="openEditDef(def)" title="Edit definition">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  </UButton>
-                  <UButton size="sm" variant="ghost" class="danger-btn" @click.stop="handleDeleteDef(def)" title="Delete definition">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                  </UButton>
+                  <!-- Context menu "..." -->
+                  <div class="relative">
+                    <UButton
+                      size="sm"
+                      variant="ghost"
+                      title="More actions"
+                      @click.stop="varMenuOpenKey = varMenuOpenKey === def.key ? null : def.key"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                      </svg>
+                    </UButton>
+                    <ContextMenu
+                      :items="varMenuItems(def)"
+                      :open="varMenuOpenKey === def.key"
+                      @close="varMenuOpenKey = null"
+                    />
+                  </div>
                 </div>
                 <div v-if="rowErrors[def.key]" class="row-err-text">{{ rowErrors[def.key] }}</div>
               </td>
@@ -806,6 +879,61 @@ onMounted(loadDefinitionsAndValues);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; padding: 60px 20px; color: #8b949e; font-size: 14px;
 }
+
+.vars-empty-enhanced {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 20px;
+  text-align: center;
+}
+
+.vars-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--bg-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.vars-empty-text h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.vars-empty-text p {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 320px;
+  margin: 0;
+}
+
+.vars-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.vars-empty-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.vars-empty-link {
+  font-size: 12px;
+  color: var(--primary);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.vars-empty-link:hover { opacity: 0.8; text-decoration: underline; }
 
 /* ── Table ───────────────────────────────────────────────── */
 .vars-table-wrap { overflow-x: auto; }

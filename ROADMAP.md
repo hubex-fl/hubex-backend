@@ -270,11 +270,11 @@
   - Technical View Toggle (raw JSON)
   - Edit Device Modal (Name, Category, Icon, Location)
 
-### Milestone 16: Kontextuelles Arbeiten [todo] ← AKTUELL
+### Milestone 16: Kontextuelles Arbeiten [done]
 > Von überall aus weiterverketten — der "rote Faden" durch die ganze Plattform.
 > Kein Navigieren durch 8 Menüs, sondern: Klick → nächster Schritt → fertig.
 
-- [ ] Step 1 — Connect-Panel (Slide-Over)
+- [x] Step 1 — Connect-Panel (Slide-Over)
   > Jedes Element (Variable, Device, Automation, Alert) bekommt ein ausklappbares
   > Seitenpanel: "Was hängt dran? Was kann ich anhängen?"
   - Panel zeigt: bestehende Verbindungen als Mini-Liste
@@ -284,7 +284,7 @@
   - Kontext bleibt erhalten: Variable X ist vorausgewählt, User muss nur
     die Bedingung/Aktion konfigurieren
 
-- [ ] Step 2 — Kontextmenüs
+- [x] Step 2 — Kontextmenüs
   > Rechtsklick / "..."-Menü auf jedes Element zeigt sinnvolle nächste Aktionen.
   - Variable: "Alert wenn Schwellwert", "Automation erstellen", "Im Dashboard",
     "History anzeigen", "Typ ändern"
@@ -293,7 +293,7 @@
   - Automation: "Testen", "Deaktivieren", "Flow anzeigen", "Duplizieren"
   - Alert: "Bestätigen", "Stummschalten", "Regel bearbeiten", "Device anzeigen"
 
-- [ ] Step 3 — Proaktive Empty States
+- [x] Step 3 — Proaktive Empty States
   > Leere Zustände sind Einstiegspunkte, nicht Sackgassen.
   > ABER: immer auch der direkte Weg für erfahrene User sichtbar.
   - Jede leere Seite zeigt: konkreten CTA UND normalen "+"-Button
@@ -303,7 +303,7 @@
   - Alerts leer: "Werde benachrichtigt wenn etwas passiert →" + "+ Alert-Regel"
   - Automations leer: Klickbare Templates + "+ Neue Automation" Button
 
-- [ ] Step 4 — Progressive Action-Bars
+- [x] Step 4 — Progressive Action-Bars
   > Jede Detail-Seite zeigt kontextuelle "Nächste Schritte" — aber nur
   > wenn relevant und nie aufdringlich. Skipbar, ausblendbar.
   - Device-Detail (neues Device): Action-Bar mit Vorschlägen
@@ -316,7 +316,7 @@
   - In Settings: "Hilfe-Hinweise zurücksetzen" Button
   - Prinzip: unterstützend, nie blockierend, alles mit einem Klick skippbar
 
-### Milestone 17: Realtime & Notifications [todo]
+### Milestone 17: Realtime & Notifications [todo] ← AKTUELL
 > WebSocket-Layer für Echtzeit-Updates und ein zentrales Notification Center.
 
 - [ ] Step 1 — WebSocket Layer

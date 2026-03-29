@@ -747,3 +747,46 @@ Full template rewrite from legacy CSS (`.card`, `.pill`, `.btn`) to design syste
 
 ### Next Step
 **PROMPT_PHASE_8B_1.md** — Device Detail Rewrite: grafische Ansicht mit Status-Ring, Input/Output Panels, Live Traffic (Milestone 8b Step 1)
+
+---
+
+## M16 — Kontextuelles Arbeiten (2026-03-29)
+
+### Implementiert
+**Step 1 — Connect-Panel (Slide-Over)**
+- `useConnectPanel.ts` — module-level singleton composable (isOpen, context refs)
+- `ConnectPanel.vue` — Teleport-to-body, backdrop + right-side slide-over (translateX animation)
+- Fetches: variables via `/api/v1/variables/device/{uid}`, alerts/rules, automations
+- Quick Actions grid + Connected Variables + Alert Rules + Automations sections
+- Mounted globally in App.vue
+
+**Step 2 — Kontextmenüs**
+- `ContextMenu.vue` — floating dropdown, outside-click + Escape close, `@keyframes ctx-in`
+- `Devices.vue` — "..." button on cards (group-hover), deviceMenuItems() mit View/Connections/Alerts/Automations/Unclaim
+- `Variables.vue` — "..." in actions column, varMenuItems() mit Edit/Connections/Alert/Automation
+
+**Step 3 — Proaktive Empty States**
+- `Devices.vue` — dual CTAs "Pair Hardware Device" + "Add Device/API Device", guidance text
+- `Variables.vue` — icon + h3 + guidance + dual CTAs + auto-discover hint
+- `Alerts.vue` — warning icon + "Get notified when something happens" + Create Alert CTA
+- `Automations.vue` — 3 clickable quick-template cards + "Start from scratch" button; `openFromTemplate()` pre-fills form
+
+**Step 4 — Progressive Action-Bars**
+- `useActionBar.ts` — localStorage-backed per-device dismissal (`hubex_action_bar` key)
+- `ActionBar.vue` — 4 contextual suggestions, individual × dismiss + header × for full bar hide
+- `DeviceDetail.vue` — ActionBar nach Breadcrumb, Connections-Button im Header
+
+### Neue Dateien
+- `frontend/src/composables/useConnectPanel.ts`
+- `frontend/src/composables/useActionBar.ts`
+- `frontend/src/components/ContextMenu.vue`
+- `frontend/src/components/ConnectPanel.vue`
+- `frontend/src/components/ActionBar.vue`
+
+### Verifikation
+- `tsc --noEmit` → EXIT 0
+- `vite build` → 503+ modules, EXIT 0, ✓ built in ~10s
+- Build-Größe DeviceDetail.js: 63.44 kB, Devices.js: 54.07 kB
+
+### Next Step
+**M17 — Realtime & Notifications**: WebSocket Layer + Notification Center

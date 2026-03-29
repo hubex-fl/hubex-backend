@@ -15,6 +15,64 @@ import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import UModal from "../components/ui/UModal.vue";
 import UToggle from "../components/ui/UToggle.vue";
+import ContextMenu from "../components/ContextMenu.vue";
+import { useConnectPanel } from "../composables/useConnectPanel";
+import type { ContextMenuItem } from "../components/ContextMenu.vue";
+
+const { open: openConnectPanel } = useConnectPanel();
+
+// ── Context menu per device card ──────────────────────────────────────────────
+const openMenuId = ref<number | null>(null);
+
+function toggleMenu(e: MouseEvent, deviceId: number) {
+  e.stopPropagation();
+  openMenuId.value = openMenuId.value === deviceId ? null : deviceId;
+}
+
+function closeMenu() {
+  openMenuId.value = null;
+}
+
+function deviceMenuItems(d: Device): ContextMenuItem[] {
+  return [
+    {
+      label: "View Details",
+      icon: "M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z",
+      action: () => router.push(`/devices/${d.id}`),
+    },
+    {
+      label: "Connections",
+      icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
+      action: () =>
+        openConnectPanel({
+          type: "device",
+          id: d.id,
+          name: d.name || d.device_uid,
+          deviceUid: d.device_uid,
+          deviceId: d.id,
+        }),
+    },
+    { label: "", icon: "", action: () => {}, divider: true },
+    {
+      label: "Alert Rules",
+      icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
+      action: () => router.push("/alerts"),
+    },
+    {
+      label: "Automations",
+      icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
+      action: () => router.push("/automations"),
+    },
+    { label: "", icon: "", action: () => {}, divider: true },
+    {
+      label: "Unclaim",
+      icon: "M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z",
+      action: () => router.push(`/devices/${d.id}`),
+      destructive: true,
+      disabled: !d.claimed,
+    },
+  ];
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -1045,14 +1103,42 @@ onUnmounted(() => {
         >
           <UButton size="sm" variant="secondary" @click="clearFilters">Clear filters</UButton>
         </UEmpty>
-        <UEmpty
+        <!-- Enhanced empty state: first-time guidance + direct action -->
+        <div
           v-else-if="!visibleDevices.length"
-          title="No devices yet"
-          description="Pair your first device to get started."
-          icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
+          class="flex flex-col items-center text-center py-16 px-6 gap-6"
         >
-          <UButton size="sm" @click="pairingOpen = true">Pair Device</UButton>
-        </UEmpty>
+          <div class="h-16 w-16 rounded-2xl bg-[var(--bg-raised)] flex items-center justify-center">
+            <svg class="h-8 w-8 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+            </svg>
+          </div>
+          <div class="space-y-1.5 max-w-xs">
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">Connect your first device</h3>
+            <p class="text-sm text-[var(--text-muted)]">
+              Hardware, APIs, bridges, agents — everything connects here.
+            </p>
+          </div>
+          <!-- Primary CTA + secondary action -->
+          <div class="flex flex-col sm:flex-row items-center gap-3">
+            <UButton @click="pairingOpen = true">
+              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+              </svg>
+              Pair Hardware Device
+            </UButton>
+            <UButton variant="secondary">
+              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+              </svg>
+              Add API Device
+            </UButton>
+          </div>
+          <!-- Helpful hint -->
+          <p class="text-xs text-[var(--text-muted)] max-w-sm">
+            Devices auto-discover variables from telemetry and integrate with alerts &amp; automations out of the box.
+          </p>
+        </div>
 
         <!-- Device cards grid -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -1068,7 +1154,7 @@ onUnmounted(() => {
             :style="{ borderLeftWidth: '3px', borderLeftColor: cardHealthBorder(d.health) }"
             @click="onRowClick(d)"
           >
-            <!-- Card header: online dot + UID + checkbox -->
+            <!-- Card header: online dot + UID + actions -->
             <div class="flex items-start justify-between gap-2 min-w-0">
               <div class="flex items-center gap-2 min-w-0">
                 <span
@@ -1076,18 +1162,36 @@ onUnmounted(() => {
                   :class="d.online ? 'bg-[var(--status-ok)] animate-pulse-slow' : 'bg-[var(--bg-raised)]'"
                 />
                 <span class="font-mono text-xs font-semibold text-[var(--text-primary)] truncate">
-                  {{ d.device_uid }}
+                  {{ d.name || d.device_uid }}
                 </span>
               </div>
-              <!-- Bulk checkbox -->
-              <input
-                type="checkbox"
-                class="h-4 w-4 shrink-0 rounded accent-[var(--primary)]"
-                :checked="isSelected(d.id)"
-                :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
-                @change="toggleRow(d)"
-                @click.stop
-              />
+              <div class="flex items-center gap-1 shrink-0" @click.stop>
+                <!-- Bulk checkbox -->
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 shrink-0 rounded accent-[var(--primary)]"
+                  :checked="isSelected(d.id)"
+                  :disabled="selectMode === 'unclaim' ? !isBulkUnclaimable(d) : !isBulkPurgeable(d)"
+                  @change="toggleRow(d)"
+                />
+                <!-- Context menu trigger -->
+                <div class="relative">
+                  <button
+                    class="h-6 w-6 flex items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)] transition-colors"
+                    title="Actions"
+                    @click="toggleMenu($event, d.id)"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                  </button>
+                  <ContextMenu
+                    :items="deviceMenuItems(d)"
+                    :open="openMenuId === d.id"
+                    @close="closeMenu"
+                  />
+                </div>
+              </div>
             </div>
 
             <!-- Device type -->

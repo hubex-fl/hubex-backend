@@ -286,6 +286,62 @@ function openCreate() {
   modalOpen.value = true;
 }
 
+// ── Quick-start templates ─────────────────────────────────────────────────────
+interface AutomationTemplate {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  triggerType: string;
+  actionType: string;
+  prefill?: () => void;
+}
+
+const quickTemplates: AutomationTemplate[] = [
+  {
+    name: "Alert when variable exceeds threshold",
+    description: "Fires when a numeric variable goes above a set value",
+    icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
+    color: "var(--primary)",
+    triggerType: "variable_threshold",
+    actionType: "create_alert_event",
+    prefill: () => {
+      trigOperator.value = "gt";
+      trigValue.value = 100;
+    },
+  },
+  {
+    name: "Notify when device goes offline",
+    description: "Sends a webhook when a device becomes unreachable",
+    icon: "M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z",
+    color: "var(--status-bad)",
+    triggerType: "device_offline",
+    actionType: "send_webhook",
+    prefill: () => {},
+  },
+  {
+    name: "Set variable on event",
+    description: "Updates a variable value when a custom event fires",
+    icon: "M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75.125v-1.5",
+    color: "var(--accent)",
+    triggerType: "event_received",
+    actionType: "set_variable",
+    prefill: () => {},
+  },
+];
+
+function openFromTemplate(tpl: AutomationTemplate) {
+  modalMode.value = "create";
+  editingId.value = null;
+  resetForm();
+  formName.value = tpl.name;
+  formTriggerType.value = tpl.triggerType;
+  formActionType.value = tpl.actionType;
+  if (tpl.prefill) tpl.prefill();
+  modalError.value = null;
+  modalOpen.value = true;
+}
+
 function openEdit(rule: AutomationRuleOut) {
   modalMode.value = "edit";
   editingId.value = rule.id;
@@ -532,23 +588,55 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
       <div v-for="i in 3" :key="i" class="h-20 rounded-xl bg-[var(--bg-surface)] animate-pulse" />
     </div>
 
-    <!-- Empty state -->
+    <!-- Enhanced empty state with templates -->
     <template v-else-if="rules.length === 0">
-      <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-8 py-16 text-center">
-        <svg class="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-        <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">No automation rules</h3>
-        <p class="text-sm text-[var(--text-muted)] mb-4">Create your first automation to trigger actions when conditions are met.</p>
-        <button
-          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
-          @click="openCreate"
-        >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Create your first automation
-        </button>
+      <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-6 py-10">
+        <div class="flex flex-col items-center text-center gap-5 mb-8">
+          <div class="h-14 w-14 rounded-xl bg-[var(--bg-raised)] flex items-center justify-center">
+            <svg class="h-7 w-7 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+            </svg>
+          </div>
+          <div class="space-y-1.5 max-w-sm">
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">Automate device behavior</h3>
+            <p class="text-sm text-[var(--text-muted)]">React automatically to device events, variable changes and sensor thresholds.</p>
+          </div>
+        </div>
+
+        <!-- Quick-start template cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <button
+            v-for="tpl in quickTemplates"
+            :key="tpl.name"
+            class="flex flex-col gap-2.5 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] text-left hover:border-[var(--border-strong)] hover:bg-[var(--bg-raised)] transition-colors group"
+            @click="openFromTemplate(tpl)"
+          >
+            <div
+              class="h-8 w-8 rounded-lg flex items-center justify-center"
+              :style="{ background: `color-mix(in srgb, ${tpl.color} 15%, transparent)` }"
+            >
+              <svg class="h-4 w-4" :style="{ color: tpl.color }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" :d="tpl.icon" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors leading-tight">{{ tpl.name }}</p>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-tight">{{ tpl.description }}</p>
+            </div>
+          </button>
+        </div>
+
+        <div class="text-center">
+          <button
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+            @click="openCreate"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Start from scratch
+          </button>
+        </div>
       </div>
     </template>
 
