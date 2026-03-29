@@ -70,6 +70,10 @@ CAPABILITY_REGISTRY: set[str] = {
     "automations.write",
     "types.read",
     "types.write",
+    "dashboards.read",
+    "dashboards.write",
+    "notifications.read",
+    "notifications.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -243,6 +247,23 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("DELETE", "/api/v1/types/semantic/{type_id}"): ["types.write"],
     ("GET", "/api/v1/types/semantic/{type_id}/triggers"): ["types.read"],
     ("GET", "/api/v1/types/semantic/{type_id}/conversions"): ["types.read"],
+    # Dashboards
+    ("GET", "/api/v1/dashboards"): ["dashboards.read"],
+    ("POST", "/api/v1/dashboards"): ["dashboards.write"],
+    ("GET", "/api/v1/dashboards/default"): ["dashboards.read"],
+    ("GET", "/api/v1/dashboards/{dashboard_id}"): ["dashboards.read"],
+    ("PUT", "/api/v1/dashboards/{dashboard_id}"): ["dashboards.write"],
+    ("DELETE", "/api/v1/dashboards/{dashboard_id}"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/widgets"): ["dashboards.write"],
+    ("PUT", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
+    ("DELETE", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
+    ("PUT", "/api/v1/dashboards/{dashboard_id}/layout"): ["dashboards.write"],
+    # Notifications
+    ("GET", "/api/v1/notifications"): ["notifications.read"],
+    ("GET", "/api/v1/notifications/unread-count"): ["notifications.read"],
+    ("PATCH", "/api/v1/notifications/{notification_id}/read"): ["notifications.write"],
+    ("PATCH", "/api/v1/notifications/read-all"): ["notifications.write"],
+    ("DELETE", "/api/v1/notifications/{notification_id}"): ["notifications.write"],
 }
 
 # Public whitelist (auth-free, minimal, static).
