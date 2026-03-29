@@ -790,3 +790,38 @@ Full template rewrite from legacy CSS (`.card`, `.pill`, `.btn`) to design syste
 
 ### Next Step
 **M17 — Realtime & Notifications**: WebSocket Layer + Notification Center
+
+---
+
+## M17 — Realtime & Notifications Steps 1+2 (2026-03-30)
+
+### Implementiert
+
+**Backend — WebSocket Layer**
+- `app/realtime.py` — `UserHub` class: `push()`, `push_notification()`, `broadcast_event()`, `connection_count`
+- `app/api/v1/ws_user.py` — User WS endpoint `/api/v1/ws?token=JWT` mit JWT-Auth, 30s ping keepalive, max 100 connections
+- `app/main.py` — `user_ws_router` eingebunden, CORS auf Port 5174 erweitert
+
+**Backend — Notification Center**
+- `app/db/models/notifications.py` — `Notification` model (user_id, type, severity, title, message, entity_ref, read_at, created_at)
+- `app/core/notification_service.py` — `create_notification()` + `create_notification_all_users()` mit WS-Push
+- `app/api/v1/notifications.py` — CRUD: GET list, GET unread-count, PATCH read, PATCH read-all, DELETE
+- `app/api/v1/router.py` — notifications router included
+- `alembic/versions/54b50ffdaa88_add_notifications_table.py` — Migration, applied ✅
+- `app/core/alert_worker.py` — `create_notification_all_users()` bei Alert-Fire
+
+**Frontend — useWebSocket + NotificationBell**
+- `frontend/src/composables/useWebSocket.ts` — Module-level singleton, Auto-Reconnect mit Backoff (1s→30s), Notification + Event handler sets
+- `frontend/src/lib/notifications.ts` — API client: fetchNotifications, fetchUnreadCount, markRead, markAllRead, deleteNotification
+- `frontend/src/components/NotificationBell.vue` — Bell + Badge + Dropdown Panel; WS-Handler für Live-Updates; formatTime()
+- `frontend/src/layouts/DefaultLayout.vue` — NotificationBell eingebunden, `ws.start()` in onMounted
+
+### Verifikation
+- `alembic upgrade head` → notifications table erstellt
+- `tsc --noEmit` → EXIT 0 (main + worktree)
+- `vite build` → EXIT 0, ✓ ~10s (main + worktree)
+
+### Steps 3+4 (Preferences + Email) → TODO für späteres Milestone-Update
+
+### Next Step
+**M18 — Dashboard Builder**: Dashboard/Widget Model + Grid Editor + Steuerungs-Widgets

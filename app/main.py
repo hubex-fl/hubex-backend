@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.api.v1.router import router as v1_router
 from app.api.v1.telemetry import ws_router as telemetry_ws_router
+from app.api.v1.ws_user import ws_router as user_ws_router
 from app.core.cache import CacheMiddleware
 from app.core.config import settings
 from app.core.logging_config import configure_logging, is_test_env
@@ -120,6 +121,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -132,6 +135,7 @@ app.add_middleware(SecurityMiddleware)
 
 app.include_router(v1_router, prefix="/api/v1")
 app.include_router(telemetry_ws_router, prefix="/api/v1")
+app.include_router(user_ws_router, prefix="/api/v1")
 
 
 # ---------------------------------------------------------------------------

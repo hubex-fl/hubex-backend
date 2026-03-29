@@ -32,6 +32,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.system_events import emit_system_event
+from app.core.notification_service import create_notification_all_users
 from app.db.models.alerts import AlertEvent, AlertRule
 from app.db.models.device import Device
 from app.db.models.effects import EffectV1
@@ -268,6 +269,18 @@ async def run_alert_cycle(db: AsyncSession, now: datetime) -> None:
                 "message": message,
                 "alert_event_id": event.id,
             })
+            # Push notification to all users
+            try:
+                await create_notification_all_users(
+                    db,
+                    type="alert_fired",
+                    title=f"Alert: {rule.name}",
+                    message=message,
+                    severity=rule.severity if rule.severity in ("info", "warning", "error", "critical") else "warning",
+                    entity_ref=f"alert_rule:{rule.id}",
+                )
+            except Exception:
+                logger.exception("alert_worker: failed to create notification rule_id=%d", rule.id)
         else:
             # Condition cleared — auto-resolve open events
             for ev in open_events:

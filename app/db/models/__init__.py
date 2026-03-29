@@ -31,6 +31,7 @@ from .orgs import Organization, OrganizationUser
 from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
 from .automation import AutomationRule, AutomationFireLog
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
+from .notifications import Notification
 
 __all__ = [
     "User",
@@ -80,4 +81,5 @@ __all__ = [
     "SemanticType",
     "TriggerTemplate",
     "UnitConversion",
+    "Notification",
 ]

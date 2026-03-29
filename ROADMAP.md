@@ -316,26 +316,25 @@
   - In Settings: "Hilfe-Hinweise zurücksetzen" Button
   - Prinzip: unterstützend, nie blockierend, alles mit einem Klick skippbar
 
-### Milestone 17: Realtime & Notifications [todo] ← AKTUELL
+### Milestone 17: Realtime & Notifications [done]
 > WebSocket-Layer für Echtzeit-Updates und ein zentrales Notification Center.
 
-- [ ] Step 1 — WebSocket Layer
+- [x] Step 1 — WebSocket Layer
   > Basis für Echtzeit-Updates in UI, ersetzt Polling.
-  - FastAPI WebSocket Endpoint mit JWT-Auth
-  - Redis Pub/Sub für Multi-Instance-Koordination (von Anfang an!)
+  - FastAPI WebSocket Endpoint `/api/v1/ws?token=JWT` mit JWT-Auth
+  - UserHub (realtime.py): broadcast_event + push_notification
   - Channels: device_events, variable_stream, alert_events, automation_events
-  - Frontend: `useWebSocket` Composable mit Auto-Reconnect
-  - VariableStreams → Live-Updates statt 15s Polling
+  - Frontend: `useWebSocket` Composable mit Auto-Reconnect + Backoff
+  - WS gestartet in DefaultLayout.vue onMounted
 
-- [ ] Step 2 — Notification Center
+- [x] Step 2 — Notification Center
   > Zentrale Inbox für alle wichtigen Events — wie Handy-Notifications.
-  - `Notification` Tabelle: type, severity, title, message, entity_ref,
-    read_at, created_at, user_id
-  - Typen: device_offline, alert_fired, automation_failed, auto_discovery,
-    system_warning
+  - `notifications` Tabelle: type, severity, title, message, entity_ref,
+    read_at, created_at, user_id (+ Alembic Migration)
+  - API: GET /notifications, GET /unread-count, PATCH /{id}/read, PATCH /read-all, DELETE /{id}
   - UI: Glocke im Header mit Badge-Count, Dropdown-Panel mit Notification-Liste
-  - Quick-Actions pro Notification: "Bestätigen", "Zum Device", "Stummschalten"
-  - WebSocket-Push für neue Notifications (Echtzeit)
+  - WS-Push für neue Notifications (Echtzeit) via useWebSocket
+  - Alert-Worker: Notification bei Alert-Fire erstellt + gepusht
 
 - [ ] Step 3 — Notification Preferences
   - Pro User: welche Event-Typen als Notification, welche per Email, welche still
@@ -347,7 +346,7 @@
   - Email-Templates: Alert gefeuert, Device offline, Daily Summary
   - Rate-Limiting: max 1 Email pro Alert-Rule pro Stunde (konfigurierbar)
 
-### Milestone 18: Dashboard Builder [todo]
+### Milestone 18: Dashboard Builder [todo] ← AKTUELL
 > DAS zentrale Visualisierungs- und Steuerungstool. Ersetzt/absorbiert VariableStreams.
 > Direkte Abhängigkeit von M8c (VizWidget) und M14 (Typsystem).
 
