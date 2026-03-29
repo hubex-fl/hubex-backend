@@ -90,6 +90,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/devices/{device_id}/task-history"): ["tasks.read"],
     ("POST", "/api/v1/devices/{device_id}/tasks/{task_id}/cancel"): ["tasks.write"],
     ("PATCH", "/api/v1/devices/{device_id}/type"): ["devices.write"],
+    ("PATCH", "/api/v1/devices/{device_id}"): ["devices.write"],
     ("POST", "/api/v1/devices/{device_id}/token/reissue"): ["devices.token.reissue"],
     ("POST", "/api/v1/devices/{device_id}/unclaim"): ["devices.unclaim"],
     ("POST", "/api/v1/devices/{device_id}/purge"): ["devices.purge"],

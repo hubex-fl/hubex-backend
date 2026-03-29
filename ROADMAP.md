@@ -237,79 +237,40 @@
   - Create/Edit Modal, expandierbare Trigger-Templates + Konvertierungen
   - `lib/semantic-types.ts` API-Wrapper, Sidebar-Eintrag
 
-### Milestone 15: Device Experience Reboot [todo] ← AKTUELL
-> Devices bekommen eine reichere Identität, ein besseres Onboarding und
-> kontextuelle Verbindungen zu allem was daran hängt.
+### Milestone 15: Device Experience Reboot [done] ✅
+> Devices mit reicherer Identität, Onboarding-Wizard und kontextuellen Verbindungen.
 
-- [ ] Step 1 — Device Identity erweitern
-  > Jedes Device bekommt mehr als nur UID und Name.
-  - DB: `category` Enum (hardware/service/bridge/agent), `icon` (string/emoji),
-    `location_name` (Freitext), `location_lat`/`location_lng` (optional GPS),
-    `location_hierarchy_id` (FK, optional)
-  - `LocationHierarchy` Tabelle (optional): id, parent_id, name, level_type
-    (building/floor/room/zone), Selbst-Referenz für Baumstruktur
-  - Standort ist NIE Pflicht — Maker mit Arduino brauchen das nicht,
-    Enterprise mit Liegenschaften schon
-  - API: PATCH Device mit allen neuen Feldern
+- [x] Step 1 — Device Identity erweitern
+  - DB: `category` (hardware/service/bridge/agent), `icon`, `location_name`, `location_lat/lng`, `auto_discovery`
+  - `PATCH /api/v1/devices/{id}` — alle neuen Felder + name updatebar
+  - DeviceListItem + DeviceDetailItem Schemas erweitert
 
-- [ ] Step 2 — Device Cards Redesign
-  > Device-Liste zeigt auf einen Blick: was ist es, wo ist es, was tut es.
-  - Jede Card zeigt: Sprechender Name, Kategorie-Badge (Hardware/Service/Bridge/Agent)
-    mit Icon und Farbe, Status-Dot (Online grün pulsierend, Offline rot statisch),
-    Standort (wenn gesetzt), letzte Aktivität ("23.5°C · 2 min ago"),
-    Gruppenzugehörigkeit, Anzahl Variablen
-  - Referenz: `brand_04_screen_device.html` Device-Liste
-  - Ansichtsmodi: Cards (Grid) und kompakte Tabelle (Liste)
-  - Filter: nach Kategorie, Status, Gruppe, Standort
+- [x] Step 2 — Device Cards Redesign
+  - Card-Grid mit Name, Kategorie-Badge (--cat-* Farben), pulsierendem Status-Dot
+  - Location-Pin, Variable-Count, Gruppen-Chips, Quick-Actions
+  - Kategorie-Filter (All/Hardware/Service/Bridge/Agent), Suche inkl. Name
 
-- [ ] Step 3 — Inline-Gruppierung
-  > Gruppierung direkt in der Device-Liste, nicht auf separater Entities-Seite.
-  - Mehrfachauswahl (Checkboxen) → Toolbar: "Zur Gruppe hinzufügen"
-  - Drag & Drop von Devices zwischen Gruppen (wenn Gruppen-Ansicht aktiv)
-  - Schnell-Aktion: Rechtsklick → "Neue Gruppe aus Auswahl"
-  - Entities/Groups-Seite bleibt für Detailmanagement, aber Grundaktionen
-    sind direkt in der Device-Liste möglich
+- [x] Step 3 — Inline-Gruppierung
+  - Mehrfachauswahl mit Group-Mode, Selection-Toolbar
+  - "Add to group" Dropdown + "Create new group" Modal
+  - Bulk-Bind via POST /entities/{id}/devices
 
-- [ ] Step 4 — Universal "Add Device" Wizard
-  > Ein geführter Flow für JEDE Art von Anbindung.
-  - Schritt 1: "Was willst du anbinden?" — 4 große Kacheln:
-    🔧 Hardware (ESP32, Shelly, physische Sensoren)
-    ☁️ Service (REST-API, Wetter, externe Dienste)
-    🔗 Bridge (MQTT, Modbus, BLE Protokoll-Übersetzer)
-    🖥️ Agent (Software auf Rechner, RPi, Windows-Service)
-  - Schritt 2: Typspezifischer Setup (je nach Auswahl)
-    - Hardware: Pairing-Code/QR oder manuelle UID-Eingabe
-    - Service: URL, Auth (API-Key/OAuth/None), Poll-Intervall, Test-Request
-    - Bridge: Protokoll-Config (MQTT Broker URL, Topics, Credentials)
-    - Agent: SDK-Download-Link + Pairing-Token generieren
-  - Schritt 3: "Verbindung testen" — visuelles Feedback ob Daten ankommen
-  - Schritt 4: Zusammenfassung + "Device benennen, Icon wählen, Standort setzen"
+- [x] Step 4 — Universal "Add Device" Wizard
+  - AddDeviceWizard.vue: 3-Step Modal (Kategorie → Setup → Summary)
+  - Hardware: Pairing, Service: URL+Auth, Bridge: Protokoll, Agent: SDK
+  - Name, Icon, Location, Auto-Discovery Toggle
 
-- [ ] Step 5 — Auto-Discovery
-  > Wenn ein Device zum ersten Mal Telemetrie sendet, erkennt HubEx die Felder
-  > automatisch und legt Variable-Definitionen an.
-  - Standardmäßig AN (pro Device als Toggle abschaltbar)
-  - Bei eingehender Telemetrie: Felder extrahieren, Basis-Typ inferieren
-    (Zahl → float, true/false → bool, String → string, Objekt → json)
-  - Semantischen Typ vorschlagen: "temperature" → Typ Temperatur, "humidity" →
-    Typ Luftfeuchtigkeit, "battery" → Typ Prozent (Keyword-Matching + Heuristik)
-  - Variablen werden automatisch angelegt, Notification an User:
-    "3 neue Variablen erkannt: temperature (Temperatur), humidity (Luftfeuchtigkeit),
-    battery (Prozent)"
-  - User kann nachträglich Typ ändern, Variable löschen oder Auto-Discovery ausschalten
+- [x] Step 5 — Auto-Discovery
+  - 27+ Keyword-Mappings in Telemetry-Bridge (temperature→Temperature, etc.)
+  - Automatische VariableDefinition-Erstellung mit semantic_type_id
+  - `variable.auto_discovered` System-Event
 
-- [ ] Step 6 — Device Detail: "Platinen-Ansicht"
-  > Auf der Device-Detail-Seite: visuell sehen, was an diesem Device hängt.
-  - Mini-Flow-Graph: Device → [Variable A, B, C] → [Alert X auf A] →
-    [Automation Y] → [Webhook Z] → [n8n]
-  - Kontextuelle Aktionen: Von jeder Variable "Alert erstellen",
-    "Automation erstellen", "Im Dashboard anzeigen"
-  - Toggle: "Technische Ansicht" für Power-User (raw JSON, UID, Firmware-Version,
-    Connection-Details, Telemetry-Log) — standardmäßig verborgen
-  - Empty State mit Vorschlägen: "Dieses Device hat noch keine Variablen —
-    sende Telemetrie oder erstelle manuell eine Variable"
+- [x] Step 6 — Device Detail: "Platinen-Ansicht"
+  - Connections-Card: Device → Variables → Alerts + Automations (Flow-Darstellung)
+  - Technical View Toggle (raw JSON)
+  - Edit Device Modal (Name, Category, Icon, Location)
 
-### Milestone 16: Kontextuelles Arbeiten [todo]
+### Milestone 16: Kontextuelles Arbeiten [todo] ← AKTUELL
 > Von überall aus weiterverketten — der "rote Faden" durch die ganze Plattform.
 > Kein Navigieren durch 8 Menüs, sondern: Klick → nächster Schritt → fertig.
 

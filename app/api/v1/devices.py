@@ -691,6 +691,26 @@ async def update_device_type(
     return DeviceTypeUpdateOut(device_id=device.id, device_type=dt)
 
 
+# M15: Update device identity fields
+from app.schemas.device import DevicePatch
+
+@router.patch("/{device_id}")
+async def update_device_identity(
+    device_id: int,
+    payload: DevicePatch,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    device = await _get_owned_device(device_id, db, user)
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    for k, v in updates.items():
+        setattr(device, k, v)
+    await db.commit()
+    return {"device_id": device.id, "updated_fields": list(updates.keys())}
+
+
 @router.get("/{device_id}/telemetry/recent", response_model=list[UserTelemetryOut])
 async def get_device_telemetry_recent(
     device_id: int,

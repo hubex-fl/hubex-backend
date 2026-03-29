@@ -1,5 +1,5 @@
 ﻿from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime, func, ForeignKey, Boolean, JSON
+from sqlalchemy import String, DateTime, func, ForeignKey, Boolean, JSON, text
 
 from app.db.base import Base
 
@@ -32,3 +32,11 @@ class Device(Base):
     org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # M15: Device Identity
+    category: Mapped[str] = mapped_column(String(16), server_default=text("'hardware'"), nullable=False)
+    icon: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    location_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(nullable=True)
+    location_lng: Mapped[float | None] = mapped_column(nullable=True)
+    auto_discovery: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
