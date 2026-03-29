@@ -109,6 +109,25 @@
         :maxHeight="height"
       />
 
+      <!-- Control: Toggle -->
+      <div v-else-if="resolvedType === 'control_toggle'" class="control-center">
+        <VizControlToggle
+          :model-value="Boolean(controlValue)"
+          @change="handleControlChange"
+        />
+      </div>
+
+      <!-- Control: Slider -->
+      <div v-else-if="resolvedType === 'control_slider'" class="control-center">
+        <VizControlSlider
+          :model-value="Number(controlValue) || 0"
+          :min="min ?? 0"
+          :max="max ?? 100"
+          :unit="unit"
+          @change="handleControlChange"
+        />
+      </div>
+
       <!-- Fallback -->
       <div v-else class="widget-unknown">
         <code>{{ currentValue }}</code>
@@ -138,19 +157,37 @@ import VizLogView        from "./VizLogView.vue";
 import VizJsonViewer     from "./VizJsonViewer.vue";
 import VizMapView        from "./VizMapView.vue";
 import VizImageView      from "./VizImageView.vue";
+import VizControlToggle  from "./VizControlToggle.vue";
+import VizControlSlider  from "./VizControlSlider.vue";
 
-const props = withDefaults(defineProps<VizWidgetProps>(), {
+// Extended props for control widgets
+interface VizWidgetExtProps extends VizWidgetProps {
+  writable?: boolean;
+  onControlChange?: (value: unknown) => void;
+}
+
+const props = withDefaults(defineProps<VizWidgetExtProps>(), {
   points:      () => [],
   loading:     false,
   compact:     false,
   showHeader:  true,
   height:      220,
   timeRange:   "1h",
+  writable:    false,
 });
 
 const emit = defineEmits<{
   "range-change": [range: TimeRange];
+  "control-change": [value: unknown];
 }>();
+
+const controlValue = ref<unknown>(props.currentValue ?? null);
+
+function handleControlChange(val: unknown) {
+  controlValue.value = val;
+  emit("control-change", val);
+  if (props.onControlChange) props.onControlChange(val);
+}
 
 const TIME_RANGES: TimeRange[] = ["1h", "6h", "24h", "7d", "30d"];
 const currentRange = ref<TimeRange>(props.timeRange ?? "1h");
@@ -174,15 +211,17 @@ const widgetColor = computed(() => {
 
 const vizIcon = computed(() => {
   const icons: Record<string, string> = {
-    sparkline:  "〜",
-    line_chart: "📈",
-    gauge:      "◎",
-    bool:       "●",
-    log:        "≡",
-    json:       "{}",
-    map:        "⌖",
-    image:      "🖼",
-    auto:       "◈",
+    sparkline:       "〜",
+    line_chart:      "📈",
+    gauge:           "◎",
+    bool:            "●",
+    log:             "≡",
+    json:            "{}",
+    map:             "⌖",
+    image:           "🖼",
+    control_toggle:  "⏻",
+    control_slider:  "⊟",
+    auto:            "◈",
   };
   return icons[resolvedType.value] ?? "◈";
 });
@@ -346,6 +385,14 @@ const category = computed(() => (props as unknown as { category?: string }).cate
   font-size: 12px;
   color: #8b949e;
   word-break: break-all;
+}
+.control-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 80px;
+  padding: 8px;
 }
 
 /* ── Loading skeleton ───────────────────────────────────── */

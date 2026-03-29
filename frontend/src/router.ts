@@ -28,6 +28,8 @@ const router = createRouter({
     { path: "/system-health", component: () => import("./pages/SystemHealth.vue"),   meta: { title: "System Health" } },
     { path: "/automations",  component: () => import("./pages/Automations.vue"),     meta: { title: "Automations" } },
     { path: "/developer",    component: () => import("./pages/ApiDocs.vue"),         meta: { title: "API Docs" } },
+    { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
+    { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
   ],
 });
 

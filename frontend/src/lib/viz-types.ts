@@ -3,15 +3,17 @@
 // Compatible with M20 Dashboard Builder (widgets are self-contained).
 
 export type VizType =
-  | "sparkline"    // SVG inline sparkline — int/float list view
-  | "line_chart"   // Chart.js time series — int/float detail
-  | "gauge"        // SVG radial gauge — int/float with min/max
-  | "bool"         // Status dot + event timeline — bool
-  | "log"          // Scrolling monospace log — string
-  | "json"         // Collapsible JSON tree — json/object
-  | "map"          // Leaflet pin (lazy) — json {lat,lng}
-  | "image"        // Auto-refreshing img — string (URL)
-  | "auto";        // Resolved at render time from value_type
+  | "sparkline"        // SVG inline sparkline — int/float list view
+  | "line_chart"       // Chart.js time series — int/float detail
+  | "gauge"            // SVG radial gauge — int/float with min/max
+  | "bool"             // Status dot + event timeline — bool
+  | "log"              // Scrolling monospace log — string
+  | "json"             // Collapsible JSON tree — json/object
+  | "map"              // Leaflet pin (lazy) — json {lat,lng}
+  | "image"            // Auto-refreshing img — string (URL)
+  | "control_toggle"   // Interactive toggle — bool (read_write)
+  | "control_slider"   // Interactive slider — int/float (read_write)
+  | "auto";            // Resolved at render time from value_type
 
 // A single time-series data point from /api/v1/variables/history
 export interface VizDataPoint {

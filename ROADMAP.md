@@ -207,6 +207,32 @@
   - Status-Tokens (--status-ok/warn/bad) in SystemHealth, Alerts
   - Device-Kategorie-Farben (--cat-*) in useDevices
 
+  SIDEBAR-HIERARCHIE (Lücke 1):
+  - Sidebar in 3 Gruppen neu strukturieren (auf-/zuklappbar):
+    OBEN (immer sichtbar): Dashboard, Devices, Dashboards-Builder
+    MITTE ("Daten & Logik", zuklappbar): Variables, Automations, Alerts
+    UNTEN ("System", zuklappbar): Settings, API Docs, Webhooks, Events/Audit
+  - Prominenter "+ Neu" Button ganz oben → Universal-Wizard
+  - Default: Oben offen, Rest zugeklappt für neue User
+  - Zustand per User-Preference speichern
+  - Kontextuelles Dimming: OTA wenn keine Hardware-Devices → ausgegraut, nicht versteckt
+
+  SETTINGS-NEUSTRUKTURIERUNG (Lücke 5):
+  - Akkordeon-Sektionen: Profil & Account | Organisation & Team |
+    Geräte & Daten | Benachrichtigungen | Darstellung | Entwickler | System
+  - Suchfeld oben: "Einstellungen durchsuchen..."
+
+  NOTIZ Responsive Breakpoints (Lücke 10):
+  - Design Tokens definieren: --breakpoint-mobile: 640px,
+    --breakpoint-tablet: 1024px, --breakpoint-desktop: 1440px
+  - Alle neuen Komponenten: keine fixen Pixel-Breiten
+  - Mobile-Implementierung kommt in M34 (PWA)
+
+  NOTIZ OTA dimmen (Lücke 8):
+  - OTA/Firmware in Sidebar: ausgegraut wenn keine Hardware-Devices
+  - Nicht versteckt, aber visuell zurückgenommen
+  - Bei Klick: Empty State mit Erklärung
+
 ### Milestone 14: Semantisches Typsystem [done] ✅
 > Zweistufiges Typsystem: Basis-Datentyp + Semantischer Typ mit Triggern, Viz, Einheiten.
 
@@ -270,6 +296,24 @@
   - Technical View Toggle (raw JSON)
   - Edit Device Modal (Name, Category, Icon, Location)
 
+- [ ] Step 7 — Variables Page Redesign
+  > Variablen gruppiert und mit Kontext, nicht als flache Liste.
+
+  GRUPPIERUNG (umschaltbar):
+  - "Nach Device" (Default) | "Nach Typ" | "Flat" (klassische Liste)
+
+  BULK-AKTIONEN:
+  - Mehrfachauswahl → Toolbar: "Typ ändern", "Zum Dashboard hinzufügen",
+    "Alert-Regel erstellen", "Löschen"
+
+  SCHNELLVERGLEICH:
+  - 2-3 Variablen auswählen → "Vergleichen"
+  - Overlay: Variablen als überlagerte Lines in einem Chart
+
+  FILTER:
+  - Nach Device, nach semantischem Typ, nach Direction (read/write/rw),
+    nach Status (aktiv/inaktiv), nach letztem Update
+
 ### Milestone 16: Kontextuelles Arbeiten [done]
 > Von überall aus weiterverketten — der "rote Faden" durch die ganze Plattform.
 > Kein Navigieren durch 8 Menüs, sondern: Klick → nächster Schritt → fertig.
@@ -316,6 +360,39 @@
   - In Settings: "Hilfe-Hinweise zurücksetzen" Button
   - Prinzip: unterstützend, nie blockierend, alles mit einem Klick skippbar
 
+  NACH ALERT-AKTION (Lücke 3):
+  - Nach "Acknowledge": Inline-Hinweis mit Links zu Device, Automation erstellen,
+    Alert stummschalten
+  - Nach "Resolve": Links zu Problem-Historie, ähnliche Alerts
+  - Bei wiederkehrenden Alerts (>3x in 24h): "Automation erstellen?" CTA
+
+  FEHLER-FEEDBACK (Lücke 4):
+  - Action-Bars zeigen auch "Probleme" bei fehlerhaften Elementen:
+  - Automation fehlgeschlagen: Roter Banner mit Kurz-Grund + Links
+  - Webhook nicht zugestellt: Warnung mit Delivery-Log-Link
+  - Device offline: Warnung mit letztem Timestamp + Verbindungstest-Link
+  - Banner-Farben: Rot = Fehler, Orange = Warnung, Blau = Info
+  - Alle Banner per "×" dismissbar (kommt zurück bei neuem Fehler)
+
+- [ ] Step 5 — Globale Suche (Cmd+K)
+  > Schnellzugriff auf alles in HubEx — Devices, Variablen, Alerts,
+  > Automationen, Dashboards. Für Power-User der schnellste Weg.
+
+  - Shortcut: Cmd+K / Ctrl+K öffnet Such-Overlay (zentriertes Modal)
+  - Suche über: Device-Namen, Variable-Keys, Alert-Rule-Namen,
+    Automation-Namen, Dashboard-Namen
+  - Ergebnisse gruppiert nach Typ mit Icons, Status-Badge, Kurzinfo
+  - Enter → Navigation zum Element
+  - Backend: ILIKE-Suche über relevante name/key/description Felder
+  - Später: Fuzzy-Search, letzte Suchen, Slash-Commands (/device:, /var:, /alert:)
+
+  NOTIZ Keyboard Shortcuts (Lücke 9):
+  - Cmd+K / Ctrl+K → Globale Suche
+  - Escape → Modal/Panel/Overlay schließen
+  - Cmd+N / Ctrl+N → Neues Element im aktuellen Kontext
+  - ? → Shortcut-Übersicht
+  - Zentrale Shortcut-Registry, kein Hardcoding pro Seite
+
 ### Milestone 17: Realtime & Notifications [done]
 > WebSocket-Layer für Echtzeit-Updates und ein zentrales Notification Center.
 
@@ -346,11 +423,11 @@
   - Email-Templates: Alert gefeuert, Device offline, Daily Summary
   - Rate-Limiting: max 1 Email pro Alert-Rule pro Stunde (konfigurierbar)
 
-### Milestone 18: Dashboard Builder [todo] ← AKTUELL
+### Milestone 18: Dashboard Builder [done]
 > DAS zentrale Visualisierungs- und Steuerungstool. Ersetzt/absorbiert VariableStreams.
 > Direkte Abhängigkeit von M8c (VizWidget) und M14 (Typsystem).
 
-- [ ] Step 1 — Dashboard/Widget Model + CRUD API
+- [x] Step 1 — Dashboard/Widget Model + CRUD API
   - `Dashboard` Tabelle: name, description, layout_config (JSON), is_default,
     owner_id, org_id, sharing_mode (private/org/public)
   - `DashboardWidget` Tabelle: dashboard_id, widget_type (aus VizType + neue),
@@ -358,50 +435,37 @@
   - CRUD API: Dashboards + Widgets
   - Widget-Types: alle bestehenden VizTypes + Steuerungs-Widgets (siehe Step 3)
 
-- [ ] Step 2 — Drag & Drop Grid Editor
-  - vue-grid-layout Integration
-  - Widgets hinzufügen: "+" → Typ wählen → Datenquelle wählen → platzieren
-  - Widgets verschiedener Devices auf einem Dashboard mischbar
-  - Resize, Reorder, Delete per Drag & Drop
-  - "Edit Mode" Toggle: im View-Mode keine Drag-Handles sichtbar
-  - Auto-Save der Layout-Änderungen
+- [x] Step 2 — CSS Grid Editor (vue-grid-layout verschoben auf M18.2)
+  - CSS Grid (12-Spalten) mit konfigurierbaren grid_col/grid_row/grid_span_w/grid_span_h
+  - Widgets hinzufügen: "+" → Typ wählen → Variable/Device → Größe wählen → platzieren
+  - Edit Mode Toggle: im View-Mode keine Edit-Overlays sichtbar
+  - Widget entfernen mit Confirm-Dialog, Widget konfigurieren per Overlay-Button
 
-- [ ] Step 3 — Steuerungs-Widgets
-  > Nicht nur Anzeige, auch Interaktion. Für write-fähige Variablen.
-  - Toggle-Switch: für Boolean (read_write)
-  - Slider: für numerische Werte (read_write) mit min/max aus SemanticType
-  - Button: für Aktionen ("Relais AN", "Reset Counter")
-  - Farbpicker: für Farb-Variablen (read_write)
-  - Eingabefeld: für Zahlenwert direkt setzen
-  - Widget-Typ wird automatisch aus SemanticType + Direction vorgeschlagen
+- [x] Step 3 — Steuerungs-Widgets
+  - VizControlToggle: Toggle-Switch für Boolean read_write
+  - VizControlSlider: Slider für int/float mit min/max, schreibt Variable zurück
+  - control_toggle / control_slider als neue VizTypes in viz-types.ts + viz-resolve.ts
+  - VizWidget erweitert: writable prop, onControlChange Event, handleControlChange()
 
-- [ ] Step 4 — Auto-Suggest bei Widget-Erstellung
-  > "Wähle eine Datenquelle" → HubEx schlägt automatisch den passenden Widget-Typ vor.
-  - Temperatur → Line Chart, Prozent → Gauge, GPS → Map,
-    Boolean → Toggle/Status-Dot, Counter → Bar Chart
-  - Vorschlag ist änderbar — User kann jeden Widget-Typ für jede Variable wählen
-  - "Empfohlen"-Badge auf dem vorgeschlagenen Typ
+- [x] Step 4 — Auto-Suggest / Widget-Typ-Dropdown bei Widget-Erstellung
+  - Widget-Typ Selector mit Gruppen: Visualizations / Controls
+  - Einheit + Min/Max Felder für numerische Widgets
+  - Grid-Größe (Width/Height in Spalten/Zeilen) direkt im Formular wählbar
 
-- [ ] Step 5 — Dashboard-Templates
-  > Vorgefertigte Layouts als Schnelleinstieg.
-  - Built-in: "Klimaüberwachung", "Server-Monitoring", "Flottentracking",
-    "Energie-Dashboard", "Allgemein"
-  - Template enthält: Layout + Widget-Platzhalter + empfohlene Datenquellen
-  - User wählt Template → mappt eigene Variablen auf die Platzhalter → fertig
-  - Custom Templates speichern: eigenes Dashboard als Template exportieren
+- [x] Step 5 — Dashboard-Templates (5 built-in)
+  - Blank, Climate Monitor, Server Monitor, Fleet Tracking, Energy Dashboard
+  - Template wählt Widgets vor, User mappt eigene Variable Keys nach Erstellung
+  - Wizard: Step 1 Template-Auswahl → Step 2 Name + Optionen → Dashboards anlegen
 
-- [ ] Step 6 — VariableStreams Migration
+- [ ] Step 6 — VariableStreams Migration (pending M19)
   > Bestehende Streams-Seite wird zum "Quick View" innerhalb des Dashboard Builders.
-  - `/variables/streams` redirected auf Default-Dashboard oder wird Schnellansicht
-  - Alle bestehenden Stream-Funktionalität im Dashboard Builder verfügbar
-  - TimeRange-Selector, Auto-Refresh, Fullscreen — alles übernommen
 
-- [ ] Step 7 — Dashboard Sharing + Embed
+- [ ] Step 7 — Dashboard Sharing + Embed (pending)
   - Sharing: per Link (read-only), per Org, per Capability
   - Embed Mode: iframe mit Public Link, Kiosk-Modus (keine Sidebar/Header)
   - Export: Dashboard als PNG/PDF Screenshot
 
-### Milestone 19: Unified Automation Engine [todo]
+### Milestone 19: Unified Automation Engine [todo] ← AKTUELL
 > Zusammenlegung der bestehenden Automation Engine (M10.5) mit der geplanten
 > Rules Engine (M16 alt). Ein System, nicht zwei. Darstellung wächst mit Komplexität.
 
@@ -611,6 +675,212 @@
 - [ ] Step 3 — Edge-Erstellung: Verbindungen ziehen zwischen Nodes
 - [ ] Step 4 — Inline-Konfiguration: Node anklicken → Settings direkt im Canvas
 - [ ] Step 5 — Flow-Deployment: Änderungen im Canvas → Automationen/Alerts erstellen
+
+---
+
+## Phase 8: Hardware-Plattform & Produkt-Modus [todo]
+> HubEx wird vom Software-Tool zum vollständigen IoT-Ökosystem.
+> ESP32 als universeller Hardware-Baustein, Integration bestehender Smart-Systeme,
+> und die Möglichkeit, eigene Produkte für Endkunden auf HubEx aufzubauen.
+>
+> **Abhängigkeiten:** M14 (Typsystem), M15 (Device Wizard), M18 (Dashboard Builder),
+> M19 (Automations-Engine), M13.2 (Branding), M26.3 (RBAC)
+
+### Milestone H1: Hardware Abstraction Layer [todo]
+> Grundlage für alle Hardware-Features. Board-Profile, Pin-Mapping, Shield-Definitionen.
+
+- [ ] Step 1 — Board-Profile System
+  - `BoardProfile` Model: name, chip (esp32/esp32s3/esp32c3/atmega328/atmega2560),
+    pins (JSON: [{number, capabilities: [digital_io, adc, pwm, i2c, spi, uart]}]),
+    flash_size, ram_size, wifi_capable, bluetooth_capable
+  - Built-in Profile: ESP32 DevKit, ESP32-S3, ESP32-C3, Arduino Uno, Nano, Mega,
+    Raspberry Pi Pico W
+  - CRUD API + Frontend: Board-Verwaltung in Settings
+
+- [ ] Step 2 — Shield/Hat-Definitionen
+  - `ShieldProfile` Model: name, target_board, occupied_pins, exposed_pins,
+    bus_type (serial/spi/i2c), description
+  - Built-in: "HubEx Arduino Bridge Shield", "HubEx RS485 Gateway Module"
+  - UI: Shield auswählen → belegte Pins automatisch ausgeblendet
+
+- [ ] Step 3 — Visueller Pin-Konfigurator
+  - UI-Komponente: Board-Grafik mit klickbaren Pins
+  - Pin auswählen → Funktion zuweisen (Sensor-Input, Aktor-Output, Bus-Pin)
+  - Farbkodierung: belegte / freie / Bus / Power Pins
+  - Validierung: Warnung bei inkompatiblen Pin-Funktionen
+
+### Milestone H2: Bridge Protocol & Firmware [todo]
+> ESP als WiFi-Bridge für nicht-internet-fähige Mikrocontroller.
+
+- [ ] Step 1 — HubEx Bridge Protocol Spec
+  - Textbasiertes Serial-Protokoll (Arduino-kompatibel, geringer RAM-Verbrauch)
+  - Befehle: VAR, SET, ACK, NACK, PING/PONG, META
+  - Checksummen pro Nachricht, Retry bei Timeout
+  - Beispiel: `>V:temperature:23.5:A3\n` / `<ACK:A3\n`
+  - Dokumentation als Teil der Developer Docs
+
+- [ ] Step 2 — HubEx Bridge OS (ESP-Firmware)
+  - Feste Firmware für ESP im Bridge-Modus
+  - WiFi + HubEx API-Client + OTA (für sich selbst)
+  - Serial-Bridge: Bridge-Protokoll → HubEx-Variablen
+  - Remote-Flash des angeschlossenen MC (STK500 für AVR)
+  - Dualer Betrieb: ESP-eigene Pins + Bridge gleichzeitig
+
+- [ ] Step 3 — Arduino Client Library
+  - Lightweight Library: `HubExBridge.h`
+  - API: `hubex.send("temperature", 23.5)` | `hubex.get("target_temp")` |
+    `hubex.onChange("heater_on", callback)`
+  - Automatisches Heartbeat, Reconnect, Checksum-Handling
+  - Beispiel-Sketches: Sensor-Auslese, Aktor-Steuerung, Bidirektional
+
+- [ ] Step 4 — Bridge-Mode im Device Wizard
+  - Neue Option: "ESP als Bridge für Arduino/anderen MC"
+  - Flow: Ziel-Board → Shield (optional) → Pins → Bridge-Firmware flashen →
+    Arduino-Sketch generieren
+
+### Milestone H3: Component Library (Hardware-Bausteine) [todo]
+> Visuelle Bausteine für Sensoren, Aktoren und Module.
+
+- [ ] Step 1 — Baustein-Manifest-Format
+  - JSON pro Komponente: name, category (sensor/actuator/display/module),
+    pin_requirements, libraries_required, code_template,
+    semantic_type_output, wiring_diagram (SVG optional)
+
+- [ ] Step 2 — Built-in Bausteine (20-30 Stück)
+  - Sensoren: DHT22, BME280, DS18B20, BH1750, HC-SR04, PIR, Analog-Input, Button
+  - Aktoren: Relais, Servo, LED (PWM), Neopixel/WS2812, Buzzer, Motor, Magnetventil
+  - Module: SSD1306 Display, SD-Card, GPS NEO-6M, RFID RC522
+  - Jeder Baustein: Code-Template, Pinbelegung, semantischer Typ, Default-Widget
+
+- [ ] Step 3 — Community-Bausteine
+  - Import/Export (JSON)
+  - Marketplace-Vorbereitung: taggen, bewerten, teilen
+  - Custom-Code-Baustein: eigenen Code einbetten der mit HubEx-Variablen interagiert
+
+### Milestone H4: Code Generator [todo]
+> Aus UI-Konfiguration wird funktionierender Mikrocontroller-Code.
+
+- [ ] Step 1 — Code-Generator Engine
+  - Input: Board-Profil + Pin-Config + Bausteine + Variable-Mappings
+  - Output: Vollständiger Arduino/ESP-Sketch (.ino) oder PlatformIO-Projekt
+  - Enthält: WiFi, HubEx-Verbindung, OTA, Sensor-Logik, Telemetrie,
+    Variable-Empfang, Heartbeat, Error-Handling
+  - Bridge-Modus: zwei separate Sketches (Arduino + ESP)
+
+- [ ] Step 2 — Code-Export & Download
+  - "Code generieren" Button in Device-Config
+  - Download als .zip (Sketch + Libraries + platformio.ini + README)
+  - Inline-Code-Preview (Syntax-highlighted, read-only)
+  - Anleitung: "So flashst du den Code auf dein Board"
+
+- [ ] Step 3 — Cloud-Compile (Premium/Enterprise)
+  - PlatformIO CLI auf dem HubEx-Server
+  - Generierter Code → serverseitig kompiliert → .bin-Download oder
+    direkt per OTA auf das Device
+  - Sandboxed Compilation, Build-Log im UI
+
+### Milestone H5: Retrofit Gateway & Smart-Device Integration [todo]
+> Bestehende Geräte smart machen — industriell und Consumer.
+
+- [ ] Step 1 — Device-Profile System
+  - `DeviceProfile` Model: name, manufacturer, protocol
+    (modbus_rtu/modbus_tcp/canbus/mqtt/rest_api/ir),
+    connection_config, register_map/topic_map/endpoint_map,
+    variables (auto-generiert mit semantischen Typen), writable_registers
+
+- [ ] Step 2 — Built-in Profile (30+ Geräte)
+  - Industrie: Energiezähler (DDM18SD, Eastron SDM), Wechselrichter (Sungrow,
+    GoodWe, Fronius), SPS-Grundtypen (Siemens S7 Basis)
+  - Smart Home: Shelly (gängige Modelle), Tasmota, Broadlink (IR), Sonoff
+  - Sensoren: Modbus-Temperatur, Modbus-Luftqualität
+
+- [ ] Step 3 — Wizard: "Bestehendes Gerät anbinden"
+  - Neue Suboption im Device Wizard: "Bestehendes Gerät (Profil auswählen)"
+  - Suche/Browse Device-Profile → Profil wählen → Verbindung konfigurieren →
+    Test → Variablen auto-angelegt
+  - Fallback: "Mein Gerät ist nicht in der Liste" → manuelles Profil
+
+- [ ] Step 4 — Community Device-Profile Marketplace
+  - Profile hochladen, taggen, bewerten
+  - Qualitäts-Stufen: Community (ungeprüft), Verified (getestet), Official (Hersteller)
+
+### Milestone H6: Produkt-Modus (White-Label) [todo]
+> HubEx als Plattform, um eigene IoT-Produkte für Endkunden auszuliefern.
+
+- [ ] Step 1 — Rollenbasierte Ansichten
+  - RBAC-Erweiterung (baut auf M26 Step 3 auf):
+    Developer (voller Zugang) | Operator (reduziert) | Viewer (nur Dashboards) |
+    Kiosk (kein UI-Chrome)
+  - Operator: reduzierte Sidebar, keine Config-Seiten, Steuerung möglich
+  - Viewer: kein Sidebar, nur zugewiesene Dashboards, Fullscreen
+  - Kiosk: kein UI-Chrome, Auto-Rotate, Touch-optimiert
+
+- [ ] Step 2 — Dashboard-Zuweisung pro Rolle/User
+  - Developer weist Dashboards Rollen zu
+  - Viewer sieht NUR zugewiesene Dashboards
+  - Default Dashboard pro Rolle konfigurierbar
+
+- [ ] Step 3 — White-Label Branding pro Organisation
+  - Baut auf M13 Step 2 (Branding-Abstraction) auf
+  - Pro Organisation: Logo, Produktname, Primärfarbe, Favicon
+  - Im Viewer/Kiosk: kein "HubEx" sichtbar, nur Custom-Branding
+  - Login-Seite mit Custom-Logo
+  - Enterprise: Custom Domain (myproduct.example.com)
+
+- [ ] Step 4 — Endkunden-Onboarding
+  - Vereinfachter Registrierungsflow für Viewer-Accounts
+  - Optional: Geräte-PIN-basiert (PIN liegt dem Produkt bei →
+    Account + Device auto-verknüpft)
+
+- [ ] Step 5 — Deployment-Package Export
+  - Dashboard-Layouts + Automationen + Device-Profile + Branding + Rollen
+  - Import auf anderer HubEx-Instanz
+  - Basis für "Baue 1x, deploye 100x"
+
+### Milestone H7: Edge Logic [todo]
+> Automationen lokal auf dem ESP — Offline-fähig, Echtzeit.
+
+- [ ] Step 1 — Edge-fähige Automationen markieren
+  - Toggle "Edge-fähig (lokal auf Device)" im Automations-Builder
+  - Initial: nur einfache If→Then, keine externen Aktionen, nur lokale Pin-Steuerung
+  - Validierung: "Diese Automation kann nicht Edge-fähig sein weil [Grund]"
+
+- [ ] Step 2 — Edge-Logic Compiler
+  - Automation-Regeln → kompilierte C-Logik für ESP
+  - Eingebettet in ESP-Firmware (Teil des Code-Generators aus H4)
+  - Läuft lokal auch ohne WiFi/Internet
+
+- [ ] Step 3 — Status-Sync bei Reconnect
+  - ESP speichert Ausführungen lokal (Circular Buffer im Flash)
+  - Bei Reconnect: Batch-Upload an HubEx
+  - HubEx aktualisiert Variablen-History und Automation-Logs
+
+### Phase 8 — Abhängigkeits-Graph
+
+```
+Phase 5-7 (Fundament)
+  │
+  ├── M14 (Typsystem) ──────────────► H3 (Component Library)
+  ├── M15 (Device Wizard) ──────────► H4 (Code Generator)
+  ├── M18 (Dashboard Builder) ──────► H6 (Produkt-Modus)
+  ├── M19 (Automations-Engine) ─────► H7 (Edge Logic)
+  ├── M13.2 (Branding) ────────────► H6 (White-Label)
+  └── M26.3 (RBAC) ────────────────► H6 (Rollen)
+
+Phase 8 intern:
+  H1 (Hardware Abstraction) ← ZUERST
+    └─► H2 (Bridge Protocol)
+    └─► H3 (Component Library)
+          └─► H4 (Code Generator)
+  H5 (Retrofit/Smart-Devices) ← parallel, unabhängig
+  H6 (Produkt-Modus) ← parallel, braucht nur Phase 5-7
+  H7 (Edge Logic) ← braucht H4 + M19
+```
+
+> **HINWEIS:** Phase 8 baut auf Phase 5-7 auf. Architektur-Entscheidungen
+> in Phase 5 (Typsystem, Device-Kategorien, Branding-Abstraction, RBAC)
+> müssen so gebaut werden, dass Phase 8 später darauf aufsetzen kann.
+> Die alte Bridge/Gateway-Architektur aus früheren Planungen ist in H2/H5 aufgegangen.
 
 ---
 

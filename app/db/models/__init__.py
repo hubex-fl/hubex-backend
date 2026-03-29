@@ -32,6 +32,7 @@ from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
 from .automation import AutomationRule, AutomationFireLog
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
 from .notifications import Notification
+from .dashboard import Dashboard, DashboardWidget
 
 __all__ = [
     "User",
@@ -82,4 +83,6 @@ __all__ = [
     "TriggerTemplate",
     "UnitConversion",
     "Notification",
+    "Dashboard",
+    "DashboardWidget",
 ]

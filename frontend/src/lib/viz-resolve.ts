@@ -8,15 +8,17 @@ type ValueType = "string" | "int" | "float" | "bool" | "json";
 
 // Explicit display_hint values from the backend
 const HINT_MAP: Record<string, VizType> = {
-  line_chart: "line_chart",
-  gauge:      "gauge",
-  sparkline:  "sparkline",
-  map:        "map",
-  image:      "image",
-  toggle:     "bool",
-  log:        "log",
-  json:       "json",
-  auto:       "auto",
+  line_chart:      "line_chart",
+  gauge:           "gauge",
+  sparkline:       "sparkline",
+  map:             "map",
+  image:           "image",
+  toggle:          "bool",
+  log:             "log",
+  json:            "json",
+  control_toggle:  "control_toggle",
+  control_slider:  "control_slider",
+  auto:            "auto",
 };
 
 // Default viz per value_type when no hint is set or hint is "auto"
@@ -57,15 +59,17 @@ export function resolveVizType(
  */
 export function vizTypeLabel(type: VizType): string {
   const labels: Record<VizType, string> = {
-    sparkline:  "Sparkline",
-    line_chart: "Line Chart",
-    gauge:      "Gauge",
-    bool:       "Status",
-    log:        "Log",
-    json:       "JSON",
-    map:        "Map",
-    image:      "Image",
-    auto:       "Auto",
+    sparkline:       "Sparkline",
+    line_chart:      "Line Chart",
+    gauge:           "Gauge",
+    bool:            "Status",
+    log:             "Log",
+    json:            "JSON",
+    map:             "Map",
+    image:           "Image",
+    control_toggle:  "Toggle Control",
+    control_slider:  "Slider Control",
+    auto:            "Auto",
   };
   return labels[type] ?? type;
 }
