@@ -258,6 +258,46 @@ watch(events, async () => {
       </template>
     </div>
 
+    <!-- ── 3b. Quick Actions (M20) ────────────────────────────────────────── -->
+    <div v-if="!metricsLoading && metrics" class="flex flex-wrap gap-2">
+      <button
+        class="quick-action-btn"
+        @click="router.push('/alerts')"
+      >
+        <svg class="h-3.5 w-3.5 text-[var(--status-bad)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        Active Alerts ({{ metrics.alerts.firing }})
+      </button>
+      <button
+        class="quick-action-btn"
+        @click="router.push('/devices')"
+      >
+        <svg class="h-3.5 w-3.5 text-[var(--status-warn)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l8.735 8.735m0 0a.374.374 0 11.53.53m-.53-.53l.53.53m-.53-.53L21 21" />
+        </svg>
+        Offline Devices ({{ metrics.devices.offline }})
+      </button>
+      <button
+        class="quick-action-btn"
+        @click="router.push('/automations')"
+      >
+        <svg class="h-3.5 w-3.5 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+        </svg>
+        Automations
+      </button>
+      <button
+        class="quick-action-btn"
+        @click="router.push('/dashboards')"
+      >
+        <svg class="h-3.5 w-3.5 text-[var(--accent-cyan)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6z" />
+        </svg>
+        Dashboards
+      </button>
+    </div>
+
     <!-- ── 4. Device Health Ring + Recent Alerts ───────────────────────────── -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Device Health Ring -->
@@ -530,3 +570,25 @@ watch(events, async () => {
     </UCard>
   </div>
 </template>
+
+<style scoped>
+.quick-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.quick-action-btn:hover {
+  border-color: var(--primary);
+  color: var(--text-base);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+</style>

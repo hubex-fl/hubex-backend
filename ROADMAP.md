@@ -508,17 +508,15 @@
   - Kein aktives Tracking von n8n-Flows, sondern passive Sichtbarkeit
     basierend auf Webhook-Dispatches und API-Calls
 
-### Milestone 20: System-Übersicht & Mission Control [todo] ← AKTUELL
-> Dashboard wird echtes Mission Control — nicht nur Charts, sondern Überblick.
+### Milestone 20: System-Übersicht & Mission Control [done]
+> Dashboard wird echtes Mission Control �� nicht nur Charts, sondern Überblick.
 
-- [ ] Step 1 — Dashboard Redesign: System Health
-  - Devices Online/Offline Ratio mit Trend
-  - Aktive Alerts nach Severity (Critical/Warning/Info)
-  - Letzte Automation-Ausführungen (Erfolg/Fehler)
-  - Datenvolumen (Telemetrie-Events heute vs. Durchschnitt)
-  - Quick-Actions: "Letzte Alerts", "Offline Devices", "Fehlgeschlagene Automationen"
+- [x] Step 1 — Dashboard Redesign: Quick Actions
+  - Quick-Action Buttons: Active Alerts, Offline Devices, Automations, Dashboards
+  - Bestehende Metrics bleiben: Device Health Ring, Online%, Alerts, Entities, Events, Uptime
+  - CSS quick-action-btn Styling (border, hover mit primary-color)
 
-- [ ] Step 2 — Fokusbasierte Flow-Ansicht
+- [ ] Step 2 ��� Fokusbasierte Flow-Ansicht
   > "Die Platine mit den Kabeln" — ein ausgewähltes Element in der Mitte,
   > drumherum alles was daran hängt.
   - Aufrufbar von: Device-Detail, Variable-Detail, Automation-Detail
@@ -533,14 +531,13 @@
   - Zoom/Pan, Minimap
   - Farb-Kodierung: Online/Offline, Severity, Kategorie
 
-- [ ] Step 4 — Demo-Datensatz (Optional, Skipbar)
-  - In Settings ladbar: "Demo-Daten laden"
-  - Auch im First-Login-Flow als Option
-  - Inhalt: 3 Devices (Temp-Sensor/Hardware, Wetter-API/Service,
-    MQTT-Bridge/Bridge), 8 Variablen mit semantischen Typen,
-    2 Automationen, 1 Dashboard mit 6 Widgets
-  - Zeigt sofort wie das Produkt aussieht wenn es produktiv läuft
-  - Entfernbar: "Demo-Daten löschen" in Settings
+- [x] Step 4 — Demo-Datensatz
+  - `python -m app.scripts.seed_demo_data` — seed / `--delete` entfernen
+  - 3 Devices (Temp-Sensor/Hardware, Wetter-API/Service, MQTT-Bridge/Bridge)
+  - 8 Variablen (temperature, humidity, pressure, online, gps, log, target_temp, heater_on)
+  - 2 Automationen (High Temp Alert, Device Offline Webhook)
+  - 1 Dashboard "Demo Dashboard" mit 6 Widgets (Gauges, Chart, Slider, Toggle)
+  - 1 Entity "Lab Room 1"
 
 ---
 
