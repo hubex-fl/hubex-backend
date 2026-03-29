@@ -66,6 +66,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "ota.write",
     "ota.admin",
     "edge.config",
+    "automations.read",
+    "automations.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -220,6 +222,16 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # Edge
     ("GET", "/api/v1/edge/config"): ["edge.config"],
     ("POST", "/api/v1/edge/heartbeat"): ["edge.config"],
+    # Automations
+    ("GET", "/api/v1/automations"): ["automations.read"],
+    ("POST", "/api/v1/automations"): ["automations.write"],
+    ("GET", "/api/v1/automations/{rule_id}"): ["automations.read"],
+    ("PATCH", "/api/v1/automations/{rule_id}"): ["automations.write"],
+    ("DELETE", "/api/v1/automations/{rule_id}"): ["automations.write"],
+    ("POST", "/api/v1/automations/{rule_id}/test"): ["automations.write"],
+    ("GET", "/api/v1/automations/{rule_id}/history"): ["automations.read"],
+    # Variables bulk-set
+    ("POST", "/api/v1/variables/bulk-set"): ["vars.write"],
 }
 
 # Public whitelist (auth-free, minimal, static).
