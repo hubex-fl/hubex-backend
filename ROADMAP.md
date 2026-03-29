@@ -207,56 +207,37 @@
   - Status-Tokens (--status-ok/warn/bad) in SystemHealth, Alerts
   - Device-Kategorie-Farben (--cat-*) in useDevices
 
-### Milestone 14: Semantisches Typsystem [todo] ← AKTUELL
-> Variablen bekommen echte Typen mit Validierung, Einheiten, Default-Visualisierungen
-> und automatischen Trigger-Templates. Das ist das Fundament für Dashboard Builder,
-> Automationen und Device-Onboarding.
+### Milestone 14: Semantisches Typsystem [done] ✅
+> Zweistufiges Typsystem: Basis-Datentyp + Semantischer Typ mit Triggern, Viz, Einheiten.
 
-- [ ] Step 1 — Backend: SemanticType Model + CRUD API
-  > Zweistufiges System: Basis-Datentyp (bool/int/float/string/json) +
-  > Semantischer Typ (Temperatur, GPS, Geschwindigkeit, etc.)
-  - `SemanticType` Tabelle: name, base_type, unit, unit_symbol, value_schema (JSON),
-    min_value, max_value, default_viz_type, icon, color, is_builtin, is_custom
-  - CRUD API: `GET/POST/PATCH/DELETE /api/v1/types/semantic`
-  - `direction` Feld auf VariableDefinition: read_only / write_only / read_write
-  - Migration: bestehende display_hint + value_type → SemanticType-Referenz
+- [x] Step 1 — Backend: SemanticType Model + CRUD API
+  - `SemanticType`, `TriggerTemplate`, `UnitConversion` Tabellen + Alembic-Migration
+  - 7 API-Endpoints: `GET/POST/PATCH/DELETE /api/v1/types/semantic` + triggers + conversions
+  - `direction` (read_only/write_only/read_write) + `semantic_type_id` auf VariableDefinition
+  - Capabilities: `types.read`, `types.write`
 
-- [ ] Step 2 — Grundbibliothek: 20 Built-in Typen
-  > Werden beim ersten Start automatisch angelegt (Seed-Data).
-  - **Numerisch:** Temperatur (°C/°F), Luftfeuchtigkeit (%), Druck (hPa),
-    Spannung (V), Strom (A), Leistung (W), Energie (kWh), Prozent/Batterie (%),
-    Geschwindigkeit (km/h), Helligkeit (lux), Lautstärke (dB), Winkel (°)
-  - **Komplex:** GPS-Position (json: {lat, lng, alt?}), Farbe (string: #RRGGBB)
-  - **Diskret:** Boolean/Schalter, Zähler/Counter (int, monoton steigend)
-  - **Text:** Status-String, Bild-URL
-  - Jeder Typ definiert: default_viz_type, sinnvolle min/max, Icon, Farbe
+- [x] Step 2 — Grundbibliothek: 20 Built-in Typen
+  - `app/scripts/seed_semantic_types.py` — idempotentes Seed-Script
+  - 20 Typen: temperature, humidity, pressure, voltage, current, power, energy, percent,
+    battery, speed, brightness, volume_db, angle, gps_position, color_hex, boolean_switch,
+    counter, status_string, image_url, generic_number
 
-- [ ] Step 3 — Trigger-Templates pro Typ
-  > Jeder semantische Typ bringt seine verfügbaren Trigger-Operationen mit.
-  - Basis-Trigger (alle numerischen Typen): gt, gte, lt, lte, eq, ne, rate_of_change
+- [x] Step 3 — Trigger-Templates pro Typ (114 Templates)
+  - Numerisch: gt, gte, lt, lte, eq, ne, range_exit (7 pro Typ)
+  - Temperature: + rate_of_change
   - Boolean: changed_to_true, changed_to_false, toggled
-  - GPS: entered_geofence, exited_geofence, speed_exceeded, distance_from_point
-  - Temperatur/Prozent: zusätzlich range_exit (Wert verlässt definierten Bereich)
-  - Counter: increment_exceeded (Zähler steigt um > X in Zeitraum Y)
-  - `TriggerTemplate` Tabelle: semantic_type_id, trigger_name, config_schema,
-    description, icon
-  - API: `GET /api/v1/types/semantic/{id}/triggers`
+  - GPS: entered/exited_geofence, speed_exceeded, distance_from_point
+  - Counter: + increment_exceeded
 
-- [ ] Step 4 — Einheiten-Konvertierung
-  > Devices senden in einer Einheit, User sehen in einer anderen.
-  - `UnitConversion` Tabelle: from_unit, to_unit, formula (z.B. "value * 9/5 + 32")
-  - Konvertierung auf Display-Ebene (Frontend), nicht auf Storage-Ebene
-  - User-Preference: bevorzugte Einheit pro semantischem Typ (z.B. "ich will °F")
-  - Fallback: Anzeige in Originaleinheit wenn keine Konvertierung definiert
+- [x] Step 4 — Einheiten-Konvertierung (14 Konvertierungen)
+  - °C→°F, °C→K, hPa→mmHg, km/h→mph, lux→fc, kWh→Wh, W→kW, V→mV, A→mA u.a.
 
-- [ ] Step 5 — Frontend: Type Management UI
-  - Seite `/settings/types` — Übersicht aller semantischen Typen (Built-in + Custom)
-  - Create-Modal für Custom Types: Name, Basis-Typ, Einheit, Bereich, Icon, Default-Viz
-  - Trigger-Templates sichtbar pro Typ
-  - Preview: "So würde eine Variable dieses Typs aussehen" (Mini-Widget)
-  - Built-in Typen: read-only, aber kopierbar als Vorlage für Custom
+- [x] Step 5 — Frontend: Type Management UI
+  - `/settings/types` — SemanticTypes.vue mit Card-Grid, Filter (base_type, origin)
+  - Create/Edit Modal, expandierbare Trigger-Templates + Konvertierungen
+  - `lib/semantic-types.ts` API-Wrapper, Sidebar-Eintrag
 
-### Milestone 15: Device Experience Reboot [todo]
+### Milestone 15: Device Experience Reboot [todo] ← AKTUELL
 > Devices bekommen eine reichere Identität, ein besseres Onboarding und
 > kontextuelle Verbindungen zu allem was daran hängt.
 

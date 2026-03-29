@@ -68,6 +68,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "edge.config",
     "automations.read",
     "automations.write",
+    "types.read",
+    "types.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -232,6 +234,14 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/automations/{rule_id}/history"): ["automations.read"],
     # Variables bulk-set
     ("POST", "/api/v1/variables/bulk-set"): ["vars.write"],
+    # Semantic Types
+    ("GET", "/api/v1/types/semantic"): ["types.read"],
+    ("POST", "/api/v1/types/semantic"): ["types.write"],
+    ("GET", "/api/v1/types/semantic/{type_id}"): ["types.read"],
+    ("PATCH", "/api/v1/types/semantic/{type_id}"): ["types.write"],
+    ("DELETE", "/api/v1/types/semantic/{type_id}"): ["types.write"],
+    ("GET", "/api/v1/types/semantic/{type_id}/triggers"): ["types.read"],
+    ("GET", "/api/v1/types/semantic/{type_id}/conversions"): ["types.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).

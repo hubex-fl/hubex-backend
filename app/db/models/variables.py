@@ -48,6 +48,11 @@ class VariableDefinition(Base):
     # Visualization & organization
     display_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)
     category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Semantic type system (M14)
+    direction: Mapped[str] = mapped_column(String(16), server_default=text("'read_write'"), nullable=False)
+    semantic_type_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("semantic_types.id", ondelete="SET NULL"), nullable=True
+    )
 
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

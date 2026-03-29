@@ -20,6 +20,7 @@ const router = createRouter({
     { path: "/observability",component: () => import("./pages/Observability.vue"),   meta: { title: "Observability" } },
     { path: "/settings",     component: () => import("./pages/Settings.vue"),        meta: { title: "Settings" } },
     { path: "/settings/auth", redirect: "/settings" },
+    { path: "/settings/types", component: () => import("./pages/SemanticTypes.vue"), meta: { title: "Semantic Types" } },
     { path: "/token",        component: () => import("./pages/TokenInspector.vue"),  meta: { title: "Token Inspector" } },
     { path: "/variables",    component: () => import("./pages/Variables.vue"),       meta: { title: "Variables" } },
     { path: "/variables/streams", component: () => import("./pages/VariableStreams.vue"), meta: { title: "Variable Streams" } },
