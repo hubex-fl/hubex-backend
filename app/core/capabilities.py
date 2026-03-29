@@ -237,6 +237,12 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("DELETE", "/api/v1/automations/{rule_id}"): ["automations.write"],
     ("POST", "/api/v1/automations/{rule_id}/test"): ["automations.write"],
     ("GET", "/api/v1/automations/{rule_id}/history"): ["automations.read"],
+    ("GET", "/api/v1/automations/{rule_id}/steps"): ["automations.read"],
+    ("POST", "/api/v1/automations/{rule_id}/steps"): ["automations.write"],
+    ("PUT", "/api/v1/automations/{rule_id}/steps/{step_id}"): ["automations.write"],
+    ("DELETE", "/api/v1/automations/{rule_id}/steps/{step_id}"): ["automations.write"],
+    ("GET", "/api/v1/automations/trigger-templates"): ["automations.read"],
+    ("GET", "/api/v1/automations/templates"): ["automations.read"],
     # Variables bulk-set
     ("POST", "/api/v1/variables/bulk-set"): ["vars.write"],
     # Semantic Types

@@ -29,7 +29,7 @@ from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
 from .orgs import Organization, OrganizationUser
 from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
-from .automation import AutomationRule, AutomationFireLog
+from .automation import AutomationRule, AutomationFireLog, AutomationStep
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
 from .notifications import Notification
 from .dashboard import Dashboard, DashboardWidget
@@ -79,6 +79,7 @@ __all__ = [
     "DeviceOtaStatus",
     "AutomationRule",
     "AutomationFireLog",
+    "AutomationStep",
     "SemanticType",
     "TriggerTemplate",
     "UnitConversion",

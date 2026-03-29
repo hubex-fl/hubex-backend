@@ -82,3 +82,73 @@ export async function testAutomation(id: number): Promise<{ success: boolean; me
 export async function getAutomationHistory(id: number): Promise<AutomationFireLogOut[]> {
   return apiFetch<AutomationFireLogOut[]>(`${BASE}/${id}/history`);
 }
+
+// ── Automation Steps (M19: Ketten & Sequenzen) ────────────────────────────
+
+export interface AutomationStepOut {
+  id: number;
+  rule_id: number;
+  step_order: number;
+  action_type: string;
+  action_config: Record<string, unknown>;
+  delay_seconds: number;
+  condition_type: string | null;
+  condition_config: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AutomationStepCreate {
+  step_order?: number;
+  action_type: string;
+  action_config: Record<string, unknown>;
+  delay_seconds?: number;
+  condition_type?: string | null;
+  condition_config?: Record<string, unknown> | null;
+}
+
+export async function listSteps(ruleId: number): Promise<AutomationStepOut[]> {
+  return apiFetch<AutomationStepOut[]>(`${BASE}/${ruleId}/steps`);
+}
+
+export async function createStep(ruleId: number, data: AutomationStepCreate): Promise<AutomationStepOut> {
+  return apiFetch<AutomationStepOut>(`${BASE}/${ruleId}/steps`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStep(ruleId: number, stepId: number): Promise<void> {
+  await apiFetch<void>(`${BASE}/${ruleId}/steps/${stepId}`, { method: "DELETE" });
+}
+
+// ── Templates (M19) ──────────────────────────────────────────────────────
+
+export interface AutomationTemplateOut {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  trigger_type: string;
+  trigger_config: Record<string, unknown>;
+  action_type: string;
+  action_config: Record<string, unknown>;
+  cooldown_seconds: number;
+}
+
+export async function listAutomationTemplates(): Promise<AutomationTemplateOut[]> {
+  return apiFetch<AutomationTemplateOut[]>(`${BASE}/templates`);
+}
+
+export interface TriggerTemplateOut {
+  id: number;
+  trigger_name: string;
+  display_name: string;
+  description: string | null;
+  config_schema: Record<string, unknown> | null;
+  semantic_type_name: string | null;
+  icon: string | null;
+}
+
+export async function listTriggerTemplates(): Promise<TriggerTemplateOut[]> {
+  return apiFetch<TriggerTemplateOut[]>(`${BASE}/trigger-templates`);
+}

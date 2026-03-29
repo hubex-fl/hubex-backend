@@ -44,6 +44,25 @@ class AutomationRule(Base):
     )
 
 
+class AutomationStep(Base):
+    """Individual step in a multi-step automation chain."""
+    __tablename__ = "automation_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_id: Mapped[int] = mapped_column(
+        ForeignKey("automation_rules.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    action_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    action_config: Mapped[dict] = mapped_column(_JSON_TYPE, nullable=False, default=dict)
+    delay_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    condition_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "branch", None
+    condition_config: Mapped[dict | None] = mapped_column(_JSON_TYPE, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class AutomationFireLog(Base):
     __tablename__ = "automation_fire_log"
 

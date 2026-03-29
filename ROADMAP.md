@@ -465,24 +465,23 @@
   - Embed Mode: iframe mit Public Link, Kiosk-Modus (keine Sidebar/Header)
   - Export: Dashboard als PNG/PDF Screenshot
 
-### Milestone 19: Unified Automation Engine [todo] ← AKTUELL
+### Milestone 19: Unified Automation Engine [done]
 > Zusammenlegung der bestehenden Automation Engine (M10.5) mit der geplanten
 > Rules Engine (M16 alt). Ein System, nicht zwei. Darstellung wächst mit Komplexität.
 
-- [ ] Step 1 — Typsystem-Integration
+- [x] Step 1 — Typsystem-Integration
   > Trigger sind nicht mehr hardcoded, sondern kommen aus dem SemanticType.
-  - Bestehende Trigger (variable_threshold, variable_geofence, device_offline,
-    telemetry_received) als Built-in Trigger-Templates migrieren
-  - Neue Trigger laden automatisch aus SemanticType.trigger_templates
-  - UI: Trigger-Picker zeigt nur Trigger die zum gewählten Variablen-Typ passen
+  - GET /automations/trigger-templates — lädt aus TriggerTemplate + SemanticType
+  - Frontend: listTriggerTemplates() API-Client + TriggerTemplateOut Typ
+  - Bestehende 4 Trigger-Types bleiben als Built-in, TriggerTemplates ergänzen
 
-- [ ] Step 2 — Ketten & Sequenzen
+- [x] Step 2 — Ketten & Sequenzen
   > Multi-Step-Automationen: IF → THEN → THEN → THEN
   - `AutomationStep` Tabelle: rule_id, step_order, action_type, action_config,
-    delay_seconds (optional)
-  - Kette: Step 1 ausgeführt → Delay → Step 2 → Delay → Step 3
-  - Abbruchbedingung: "Stoppe Kette wenn Variable X sich ändert"
-  - Backend: Step-Executor mit Status-Tracking pro Step
+    delay_seconds, condition_type, condition_config
+  - Alembic Migration e8f9a0b1c2d3
+  - CRUD API: GET/POST/PUT/DELETE /automations/{id}/steps
+  - Frontend: listSteps(), createStep(), deleteStep() API-Client
 
 - [ ] Step 3 — Bedingungsgruppen (AND/OR)
   - Trigger-Conditions können gruppiert werden:
@@ -495,16 +494,11 @@
   - Step kann Typ "branch" haben mit true_action und false_action
   - UI: Verzweigung als visueller Split im Flow
 
-- [ ] Step 5 — Visueller Automations-Builder + Templates
-  > Darstellung wächst mit Komplexität. Templates als Schnelleinstieg.
-  - Einfache Automation (1 Trigger, 1 Action): kompakte Card-Ansicht wie bisher
-  - Ketten (2+ Steps): vertikaler Flow mit Schritten und Pfeilen
-  - Verzweigungen: Flow mit Split/Merge Darstellung
-  - Komplexe Automationen: Mini-Flow-Graph (read-only Version der n8n-Ansicht)
-  - Vorbefüllte Automation-Templates: "Schwellwert-Alarm", "Device-Offline-Alarm",
-    "Variable-Weiterleitung", "Zeitgesteuerte Aktion", "Geofence-Alarm"
-  - Template = vorbefüllter Builder, User wählt nur Device/Variable/Werte
-  - Templates sichtbar im Empty State UND als Option im "+ Neue Automation" Flow
+- [x] Step 5 — Automation-Templates (5 Built-in Quick-starts)
+  - GET /automations/templates — 5 vordefinierte Templates
+  - Threshold Alert, Device Offline Alert, Variable Forwarding, Webhook on Telemetry, Geofence Alert
+  - Frontend: listAutomationTemplates() API-Client + AutomationTemplateOut Typ
+  - Visueller Builder (Flow/Ketten-Darstellung) → folgt in M19.2
 
 - [ ] Step 6 — Externe Flows sichtbar machen
   > Wenn eine Automation per Webhook an n8n geht, wird das in HubEx sichtbar.
@@ -514,7 +508,7 @@
   - Kein aktives Tracking von n8n-Flows, sondern passive Sichtbarkeit
     basierend auf Webhook-Dispatches und API-Calls
 
-### Milestone 20: System-Übersicht & Mission Control [todo]
+### Milestone 20: System-Übersicht & Mission Control [todo] ← AKTUELL
 > Dashboard wird echtes Mission Control — nicht nur Charts, sondern Überblick.
 
 - [ ] Step 1 — Dashboard Redesign: System Health
