@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { branding } from '@/lib/branding';
+import { branding } from '../lib/branding';
 defineProps<{ size?: number; showText?: boolean }>();
 </script>
 <template>
