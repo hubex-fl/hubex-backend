@@ -11,7 +11,9 @@ import UToast from "../components/ui/UToast.vue";
 import UOfflineBanner from "../components/ui/UOfflineBanner.vue";
 import CommandPalette from "../components/CommandPalette.vue";
 import NotificationBell from "../components/NotificationBell.vue";
+import WelcomeScreen from "../components/WelcomeScreen.vue";
 import { useWebSocket } from "../composables/useWebSocket";
+import { usePreferencesStore } from "../stores/preferences";
 
 const route = useRoute();
 const caps = useCapabilities();
@@ -21,11 +23,38 @@ const toastStore = useToastStore();
 const serverHealth = useServerHealthStore();
 
 const ws = useWebSocket();
+const prefsStore = usePreferencesStore();
 
-onMounted(() => {
+// Collapsible sidebar groups
+const collapsedGroups = ref<Set<string>>(new Set());
+const showNewMenu = ref(false);
+
+function toggleGroup(label: string) {
+  if (label === "Core") return; // Core always open
+  const next = new Set(collapsedGroups.value);
+  if (next.has(label)) next.delete(label);
+  else next.add(label);
+  collapsedGroups.value = next;
+  prefsStore.update("sidebar_collapsed_groups", [...next]);
+}
+
+function isGroupCollapsed(label: string): boolean {
+  return collapsedGroups.value.has(label);
+}
+
+// Welcome screen
+const showWelcome = computed(() =>
+  hasToken() && prefsStore.loaded && prefsStore.get("onboarding_completed", false) === false
+);
+
+onMounted(async () => {
   themeStore.initFromStorage();
   refreshCapabilities(signal);
-  ws.start(); // connect user WebSocket
+  ws.start();
+  await prefsStore.load();
+  // Restore collapsed groups from preferences
+  const saved = prefsStore.get<string[]>("sidebar_collapsed_groups", []);
+  if (saved.length) collapsedGroups.value = new Set(saved);
 });
 
 // Show "reconnected" toast when server comes back online
@@ -148,23 +177,74 @@ function handleNavClick() {
         </span>
       </div>
 
+      <!-- + New Button -->
+      <div v-if="!collapsed" class="px-2.5 pt-2 pb-1">
+        <div class="relative">
+          <button
+            class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+            @click="showNewMenu = !showNewMenu"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            New
+          </button>
+          <div
+            v-if="showNewMenu"
+            class="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-lg py-1"
+          >
+            <router-link to="/devices?wizard=open" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
+              <span>+ Device</span>
+            </router-link>
+            <router-link to="/automations?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
+              <span>+ Automation</span>
+            </router-link>
+            <router-link to="/alerts?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
+              <span>+ Alert Rule</span>
+            </router-link>
+            <router-link to="/dashboards?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
+              <span>+ Dashboard</span>
+            </router-link>
+          </div>
+        </div>
+      </div>
+      <div v-else class="px-2 pt-2 pb-1">
+        <button
+          class="w-full flex items-center justify-center p-1.5 rounded-lg text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+          title="Create new..."
+          @click="showNewMenu = !showNewMenu"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+        </button>
+      </div>
+
       <!-- Nav Items -->
       <nav class="flex-1 overflow-y-auto py-2">
         <template v-for="group in visibleNavGroups" :key="group.label">
-          <!-- Section label (hidden when collapsed) -->
-          <div
+          <!-- Section label — clickable to collapse (except Core) -->
+          <button
             v-if="!collapsed"
-            class="text-[10px] uppercase tracking-widest font-semibold text-[var(--text-muted)] px-3.5 pb-1 mt-3 first:mt-1"
+            :class="[
+              'w-full flex items-center justify-between text-[10px] uppercase tracking-widest font-semibold text-[var(--text-muted)] px-3.5 pb-1 mt-3 first:mt-1',
+              group.label !== 'Core' ? 'cursor-pointer hover:text-[var(--text-primary)]' : 'cursor-default',
+            ]"
+            @click="toggleGroup(group.label)"
           >
-            {{ group.label }}
-          </div>
-          <!-- Collapsed: subtle divider between groups -->
+            <span>{{ group.label }}</span>
+            <svg
+              v-if="group.label !== 'Core'"
+              :class="['h-3 w-3 transition-transform duration-200', isGroupCollapsed(group.label) ? '-rotate-90' : '']"
+              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <!-- Collapsed sidebar: subtle divider between groups -->
           <div v-else class="my-1 mx-2 border-t border-[var(--border)] opacity-40 first:hidden" />
 
           <template v-for="item in group.items" :key="item.to">
             <!-- Coming Soon item (non-interactive) -->
             <div
               v-if="item.comingSoon"
+              v-show="!isGroupCollapsed(group.label)"
               :title="collapsed ? item.label + ' — Coming Soon' : undefined"
               class="flex items-center gap-2.5 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-lg text-sm opacity-40 cursor-not-allowed select-none"
             >
@@ -177,6 +257,7 @@ function handleNavClick() {
             <!-- Normal nav item -->
             <router-link
               v-else
+              v-show="!isGroupCollapsed(group.label)"
               :to="item.to"
               :title="collapsed ? item.label : undefined"
               :class="[
@@ -368,6 +449,9 @@ function handleNavClick() {
 
     <!-- Command Palette -->
     <CommandPalette v-model:open="paletteOpen" />
+
+    <!-- Welcome Screen (first login only) -->
+    <WelcomeScreen v-if="showWelcome" />
   </div>
 </template>
 

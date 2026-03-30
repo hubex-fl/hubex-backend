@@ -275,6 +275,13 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # MCP
     ("POST", "/api/v1/mcp/tools/list"): ["mcp.read"],
     ("POST", "/api/v1/mcp/tools/call"): ["mcp.execute"],
+    # Search
+    ("GET", "/api/v1/search"): ["devices.read"],
+    # System / Demo Data
+    ("POST", "/api/v1/system/demo-data"): ["devices.write"],
+    ("DELETE", "/api/v1/system/demo-data"): ["devices.write"],
+    # User preferences
+    ("PATCH", "/api/v1/users/me/preferences"): ["users.read"],
 }
 
 # Public whitelist (auth-free, minimal, static).

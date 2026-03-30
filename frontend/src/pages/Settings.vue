@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { apiFetch, getToken, clearToken } from "../lib/api";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useRouter } from "vue-router";
+import { usePreferencesStore } from "../stores/preferences";
 import UCard from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
 import UInput from "../components/ui/UInput.vue";
@@ -12,6 +13,50 @@ import UEmpty from "../components/ui/UEmpty.vue";
 
 const router = useRouter();
 const caps = useCapabilities();
+const prefs = usePreferencesStore();
+
+// ── Demo Data ────────────────────────────────────────────────────────────────
+const demoLoading = ref(false);
+const demoDeleting = ref(false);
+const demoResult = ref("");
+
+async function loadDemoData() {
+  demoLoading.value = true;
+  demoResult.value = "";
+  try {
+    const r = await apiFetch<{ created: Record<string, number> }>("/api/v1/system/demo-data", { method: "POST" });
+    demoResult.value = `Created: ${JSON.stringify(r.created)}`;
+  } catch (e: unknown) {
+    demoResult.value = "Failed to load demo data";
+  } finally {
+    demoLoading.value = false;
+  }
+}
+
+async function deleteDemoData() {
+  demoDeleting.value = true;
+  demoResult.value = "";
+  try {
+    const r = await apiFetch<{ deleted: Record<string, number> }>("/api/v1/system/demo-data", { method: "DELETE" });
+    demoResult.value = `Deleted: ${JSON.stringify(r.deleted)}`;
+  } catch {
+    demoResult.value = "Failed to delete demo data";
+  } finally {
+    demoDeleting.value = false;
+  }
+}
+
+async function resetOnboarding() {
+  await prefs.update("onboarding_completed", false);
+  router.push("/");
+}
+
+function resetActionBars() {
+  // Clear all localStorage action bar dismiss state
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith("hubex_actionbar_"));
+  keys.forEach((k) => localStorage.removeItem(k));
+  demoResult.value = `Reset ${keys.length} action bar preferences`;
+}
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 type TabKey = "account" | "organization" | "api" | "developer";
@@ -323,6 +368,52 @@ onMounted(() => {
               <p class="text-[10px] text-[var(--text-muted)]">System health metrics</p>
             </div>
           </router-link>
+        </div>
+      </UCard>
+
+      <!-- Demo Data -->
+      <UCard>
+        <template #header>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Demo Data</h3>
+          <span class="text-xs text-[var(--text-muted)]">Sample devices, variables, automations</span>
+        </template>
+        <div class="flex items-center gap-3">
+          <button
+            :disabled="demoLoading"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors disabled:opacity-50"
+            @click="loadDemoData"
+          >
+            {{ demoLoading ? 'Loading...' : 'Load Demo Data' }}
+          </button>
+          <button
+            :disabled="demoDeleting"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            @click="deleteDemoData"
+          >
+            {{ demoDeleting ? 'Deleting...' : 'Delete Demo Data' }}
+          </button>
+          <span v-if="demoResult" class="text-xs text-[var(--text-muted)]">{{ demoResult }}</span>
+        </div>
+      </UCard>
+
+      <!-- Reset Help Hints -->
+      <UCard>
+        <template #header>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">UX Preferences</h3>
+        </template>
+        <div class="flex items-center gap-3">
+          <button
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]/80 transition-colors"
+            @click="resetOnboarding"
+          >
+            Reset Welcome Screen
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]/80 transition-colors"
+            @click="resetActionBars"
+          >
+            Reset Help Hints
+          </button>
         </div>
       </UCard>
     </div>

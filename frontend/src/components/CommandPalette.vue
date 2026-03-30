@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { hasCap } from "../lib/capabilities";
+import { apiFetch } from "../lib/api";
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: "update:open", v: boolean): void }>();
@@ -10,6 +11,9 @@ const router = useRouter();
 const query = ref("");
 const activeIndex = ref(0);
 const inputRef = ref<HTMLInputElement | null>(null);
+const searchResults = ref<Command[]>([]);
+const searching = ref(false);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface Command {
   id: string;
@@ -37,12 +41,56 @@ const allCommands: Command[] = [
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase();
   const base = allCommands.filter((c) => c.cap == null || hasCap(c.cap));
-  if (!q) return base;
-  return base.filter(
-    (c) =>
-      c.label.toLowerCase().includes(q) ||
-      (c.description || "").toLowerCase().includes(q)
-  );
+  const commands = !q
+    ? base
+    : base.filter(
+        (c) =>
+          c.label.toLowerCase().includes(q) ||
+          (c.description || "").toLowerCase().includes(q)
+      );
+  // Merge entity search results after commands
+  return [...commands, ...searchResults.value];
+});
+
+// Debounced entity search
+watch(query, (q) => {
+  if (searchTimer) clearTimeout(searchTimer);
+  const trimmed = q.trim();
+  if (trimmed.length < 2) {
+    searchResults.value = [];
+    return;
+  }
+  searching.value = true;
+  searchTimer = setTimeout(async () => {
+    try {
+      const data = await apiFetch<Record<string, Array<{ id?: number; label: string; key?: string; uid?: string }>>>(
+        `/api/v1/search?q=${encodeURIComponent(trimmed)}`
+      );
+      const results: Command[] = [];
+      const deviceIcon = "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z";
+      const varIcon = "M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5";
+      const autoIcon = "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z";
+      const alertIcon = "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0";
+
+      for (const d of data.devices ?? []) {
+        results.push({ id: `dev-${d.id}`, label: d.label, description: `Device · ${d.uid}`, icon: deviceIcon, action: () => router.push(`/devices/${d.id}`) });
+      }
+      for (const v of data.variables ?? []) {
+        results.push({ id: `var-${v.key}`, label: v.label, description: `Variable · ${v.key}`, icon: varIcon, action: () => router.push("/variables") });
+      }
+      for (const a of data.automations ?? []) {
+        results.push({ id: `auto-${a.id}`, label: a.label, description: "Automation", icon: autoIcon, action: () => router.push("/automations") });
+      }
+      for (const al of data.alerts ?? []) {
+        results.push({ id: `alert-${al.id}`, label: al.label, description: "Alert Rule", icon: alertIcon, action: () => router.push("/alerts") });
+      }
+      searchResults.value = results;
+    } catch {
+      searchResults.value = [];
+    } finally {
+      searching.value = false;
+    }
+  }, 300);
 });
 
 watch(filtered, () => { activeIndex.value = 0; });
