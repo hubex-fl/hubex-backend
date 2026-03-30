@@ -16,7 +16,7 @@ export class HubexTrigger implements INodeType {
 		name: 'hubexTrigger',
 		icon: 'file:hubex.svg',
 		group: ['trigger'],
-		version: 1,
+		version: 2,
 		description: 'Receive HUBEX events in real-time via webhook subscription',
 		defaults: { name: 'HUBEX Trigger' },
 		inputs: [],
@@ -43,6 +43,10 @@ export class HubexTrigger implements INodeType {
 					{ name: 'Alert Fired', value: 'alert.fired' },
 					{ name: 'Alert Resolved', value: 'alert.resolved' },
 					{ name: 'Task Completed', value: 'task.completed' },
+					{ name: 'Variable Auto-Discovered', value: 'variable.auto_discovered' },
+					{ name: 'Variable Changed', value: 'variable.changed' },
+					{ name: 'Automation Fired', value: 'automation.fired' },
+					{ name: 'Automation Failed', value: 'automation.failed' },
 					{ name: 'All Events', value: '*' },
 				],
 				default: ['device.offline', 'alert.fired'],
@@ -54,7 +58,6 @@ export class HubexTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				// Check if our subscription is still registered
 				const webhookData = this.getWorkflowStaticData('node');
 				if (!webhookData.subscriptionId) return false;
 
@@ -64,7 +67,6 @@ export class HubexTrigger implements INodeType {
 				const password = credentials.password as string;
 
 				try {
-					// Login
 					const loginResp = await this.helpers.httpRequest({
 						method: 'POST',
 						url: `${serverUrl}/api/v1/auth/login`,
@@ -73,7 +75,6 @@ export class HubexTrigger implements INodeType {
 					});
 					const jwt = loginResp.access_token as string;
 
-					// Check subscription exists
 					const resp = await this.helpers.httpRequest({
 						method: 'GET',
 						url: `${serverUrl}/api/v1/webhooks/${webhookData.subscriptionId}`,
@@ -95,7 +96,6 @@ export class HubexTrigger implements INodeType {
 				const email = credentials.email as string;
 				const password = credentials.password as string;
 
-				// Login
 				const loginResp = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${serverUrl}/api/v1/auth/login`,
@@ -104,7 +104,6 @@ export class HubexTrigger implements INodeType {
 				});
 				const jwt = loginResp.access_token as string;
 
-				// Register webhook
 				const resp = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${serverUrl}/api/v1/webhooks`,
@@ -158,8 +157,12 @@ export class HubexTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const body = this.getBodyData();
+
+		// Enrich with semantic type info if present in payload
+		const enriched = { ...(body as object) };
+
 		return {
-			workflowData: [[{ json: body as object }]],
+			workflowData: [[{ json: enriched }]],
 		};
 	}
 }

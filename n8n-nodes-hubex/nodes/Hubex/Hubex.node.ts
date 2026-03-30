@@ -38,9 +38,9 @@ export class Hubex implements INodeType {
 		name: 'hubex',
 		icon: 'file:hubex.svg',
 		group: ['transform'],
-		version: 1,
+		version: 2,
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
-		description: 'Interact with HUBEX IoT platform — devices, telemetry, alerts, variables, variable streams',
+		description: 'Interact with HUBEX IoT platform — devices, telemetry, alerts, variables, automations, dashboards, semantic types',
 		defaults: { name: 'HUBEX' },
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,6 +60,9 @@ export class Hubex implements INodeType {
 					{ name: 'Alert', value: 'alert' },
 					{ name: 'Variable', value: 'variable' },
 					{ name: 'Variable Stream', value: 'variableStream' },
+					{ name: 'Automation', value: 'automation' },
+					{ name: 'Dashboard', value: 'dashboard' },
+					{ name: 'Semantic Type', value: 'semanticType' },
 				],
 				default: 'device',
 			},
@@ -228,12 +231,11 @@ export class Hubex implements INodeType {
 				options: [
 					{ name: 'Get History', value: 'getHistory', action: 'Get variable history', description: 'Get time-series data for a variable' },
 					{ name: 'Get Snapshot', value: 'getSnapshot', action: 'Get variable snapshot', description: 'Get current values of all variables for a scope/device' },
-					{ name: 'Get Definitions', value: 'getDefinitions', action: 'List variable definitions', description: 'List all variable definitions' },
+					{ name: 'Get Definitions', value: 'getDefinitions', action: 'List variable definitions', description: 'List all variable definitions with semantic type info' },
 					{ name: 'Bulk Set', value: 'bulkSet', action: 'Bulk set variables', description: 'Set multiple variables at once' },
 				],
 				default: 'getHistory',
 			},
-			// --- getHistory params ---
 			{
 				displayName: 'Variable Key',
 				name: 'variableKey',
@@ -288,7 +290,6 @@ export class Hubex implements INodeType {
 				default: 500,
 				displayOptions: { show: { resource: ['variableStream'], operation: ['getHistory'] } },
 			},
-			// --- bulkSet params ---
 			{
 				displayName: 'Variables (JSON)',
 				name: 'bulkVariables',
@@ -305,6 +306,122 @@ export class Hubex implements INodeType {
 				default: true,
 				displayOptions: { show: { resource: ['variableStream'], operation: ['bulkSet'] } },
 				description: 'If true, continue setting variables even if some fail',
+			},
+
+			// ------------------------------------------------------------------
+			// Automation operations (M21)
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['automation'] } },
+				options: [
+					{ name: 'List Automations', value: 'list', action: 'List automation rules' },
+					{ name: 'Enable/Disable', value: 'toggle', action: 'Enable or disable an automation' },
+					{ name: 'Test Run', value: 'test', action: 'Test-fire an automation rule' },
+					{ name: 'Get History', value: 'history', action: 'Get fire history for an automation' },
+					{ name: 'List Templates', value: 'templates', action: 'List built-in automation templates' },
+				],
+				default: 'list',
+			},
+			{
+				displayName: 'Rule ID',
+				name: 'ruleId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: { show: { resource: ['automation'], operation: ['toggle', 'test', 'history'] } },
+				description: 'The automation rule ID',
+			},
+			{
+				displayName: 'Enabled',
+				name: 'enabled',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { resource: ['automation'], operation: ['toggle'] } },
+				description: 'Set to true to enable, false to disable the automation',
+			},
+			{
+				displayName: 'Enabled Filter',
+				name: 'enabledFilter',
+				type: 'options',
+				options: [
+					{ name: 'All', value: '' },
+					{ name: 'Enabled Only', value: 'true' },
+					{ name: 'Disabled Only', value: 'false' },
+				],
+				default: '',
+				displayOptions: { show: { resource: ['automation'], operation: ['list'] } },
+			},
+
+			// ------------------------------------------------------------------
+			// Dashboard operations (M21)
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['dashboard'] } },
+				options: [
+					{ name: 'List Dashboards', value: 'list', action: 'List all dashboards' },
+					{ name: 'Get Dashboard', value: 'get', action: 'Get dashboard with widgets' },
+					{ name: 'Create Dashboard', value: 'create', action: 'Create a new dashboard' },
+					{ name: 'Delete Dashboard', value: 'delete', action: 'Delete a dashboard' },
+				],
+				default: 'list',
+			},
+			{
+				displayName: 'Dashboard ID',
+				name: 'dashboardId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: { show: { resource: ['dashboard'], operation: ['get', 'delete'] } },
+			},
+			{
+				displayName: 'Name',
+				name: 'dashboardName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['dashboard'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Description',
+				name: 'dashboardDescription',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['dashboard'], operation: ['create'] } },
+			},
+
+			// ------------------------------------------------------------------
+			// Semantic Type operations (M21)
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['semanticType'] } },
+				options: [
+					{ name: 'List Types', value: 'list', action: 'List semantic types', description: 'List all semantic types with units, triggers, and viz hints' },
+					{ name: 'Get Type', value: 'get', action: 'Get a semantic type', description: 'Get a specific semantic type by ID' },
+					{ name: 'List Trigger Templates', value: 'triggers', action: 'List trigger templates', description: 'List trigger templates for a semantic type' },
+					{ name: 'List Conversions', value: 'conversions', action: 'List unit conversions', description: 'List unit conversions for a semantic type' },
+				],
+				default: 'list',
+			},
+			{
+				displayName: 'Type ID',
+				name: 'typeId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: { show: { resource: ['semanticType'], operation: ['get', 'triggers', 'conversions'] } },
+				description: 'The semantic type ID',
 			},
 		],
 	};
@@ -477,12 +594,124 @@ export class Hubex implements INodeType {
 					json: true,
 				});
 			}
+		} else if (resource === 'automation') {
+			if (operation === 'list') {
+				const enabledFilter = this.getNodeParameter('enabledFilter', 0) as string;
+				const qs = enabledFilter ? `?enabled=${enabledFilter}` : '';
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/automations${qs}`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'toggle') {
+				const ruleId = this.getNodeParameter('ruleId', 0) as number;
+				const enabled = this.getNodeParameter('enabled', 0) as boolean;
+				responseData = await this.helpers.httpRequest({
+					method: 'PATCH',
+					url: `${serverUrl}/api/v1/automations/${ruleId}`,
+					headers: authHeader,
+					body: { enabled },
+					json: true,
+				});
+			} else if (operation === 'test') {
+				const ruleId = this.getNodeParameter('ruleId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'POST',
+					url: `${serverUrl}/api/v1/automations/${ruleId}/test`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'history') {
+				const ruleId = this.getNodeParameter('ruleId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/automations/${ruleId}/history`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'templates') {
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/automations/templates`,
+					headers: authHeader,
+					json: true,
+				});
+			}
+		} else if (resource === 'dashboard') {
+			if (operation === 'list') {
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/dashboards`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'get') {
+				const dashId = this.getNodeParameter('dashboardId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/dashboards/${dashId}`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'create') {
+				const name = this.getNodeParameter('dashboardName', 0) as string;
+				const description = this.getNodeParameter('dashboardDescription', 0) as string;
+				responseData = await this.helpers.httpRequest({
+					method: 'POST',
+					url: `${serverUrl}/api/v1/dashboards`,
+					headers: authHeader,
+					body: { name, description },
+					json: true,
+				});
+			} else if (operation === 'delete') {
+				const dashId = this.getNodeParameter('dashboardId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'DELETE',
+					url: `${serverUrl}/api/v1/dashboards/${dashId}`,
+					headers: authHeader,
+					json: true,
+				});
+			}
+		} else if (resource === 'semanticType') {
+			if (operation === 'list') {
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/types/semantic`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'get') {
+				const typeId = this.getNodeParameter('typeId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/types/semantic/${typeId}`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'triggers') {
+				const typeId = this.getNodeParameter('typeId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/types/semantic/${typeId}/triggers`,
+					headers: authHeader,
+					json: true,
+				});
+			} else if (operation === 'conversions') {
+				const typeId = this.getNodeParameter('typeId', 0) as number;
+				responseData = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${serverUrl}/api/v1/types/semantic/${typeId}/conversions`,
+					headers: authHeader,
+					json: true,
+				});
+			}
 		}
 
 		// Wrap array or single object into n8n items
 		const items = Array.isArray(responseData)
 			? (responseData as object[]).map((item) => ({ json: item }))
-			: [{ json: responseData as object }];
+			: [{ json: (responseData ?? { success: true }) as object }];
 
 		return [items];
 	}

@@ -1,0 +1,53 @@
+{
+  "name": "n8n-nodes-hubex",
+  "version": "0.2.0",
+  "description": "n8n community node for HUBEX IoT platform",
+  "keywords": [
+    "n8n-community-node-package",
+    "hubex",
+    "iot",
+    "devices",
+    "telemetry",
+    "variableStream",
+    "automations",
+    "dashboards",
+    "semanticTypes"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/your-org/hubex",
+  "author": {
+    "name": "HUBEX"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/hubex.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "eslint nodes credentials --ext .ts",
+    "test:compat": "npx tsx tests/api-compat.test.ts"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/HubexApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Hubex/Hubex.node.js",
+      "dist/nodes/Hubex/HubexTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "n8n-workflow": "*",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
