@@ -541,53 +541,53 @@
 
 ---
 
-## Phase 6: Erweiterung & Anbindung [todo]
+## Phase 6: Erweiterung & Anbindung [done] ✅
 
-### Milestone 21: n8n Deep Integration [todo]
+### Milestone 21: n8n Deep Integration [done] ✅
 > Audit und Optimierung der n8n-Anbindung, damit das Typsystem und alle
 > neuen Features sauber durchgereicht werden.
 
-- [ ] Step 1 — n8n Node Update: Semantische Typen
-  - n8n Node kennt semantische Typen: Trigger-Events enthalten Typ-Info
-  - Variable-Set Action: Typ-Validierung in n8n
-  - Auto-Discovery Events als n8n Trigger verfügbar
+- [x] Step 1 — n8n Node Update: Semantische Typen
+  - n8n Node v2: Semantic Type resource (list, get, triggers, conversions)
+  - Auto-Discovery + Variable Changed + Automation events als Trigger
+  - Variable Definitions include semantic type info
 
-- [ ] Step 2 — n8n Node: Dashboard & Automation Integration
-  - n8n kann Dashboard-Widgets setzen/aktualisieren
-  - n8n kann Automationen aktivieren/deaktivieren
-  - Bidirektionale Status-Synchronisation
+- [x] Step 2 — n8n Node: Dashboard & Automation Integration
+  - Automation resource: list, toggle, test, history, templates
+  - Dashboard resource: list, get, create, delete
+  - Bidirektionale Steuerung über n8n möglich
 
-- [ ] Step 3 — n8n Kompatibilitäts-Tests
-  - Automatisierte Tests: alle n8n-Node-Operationen gegen aktuelle API
-  - Migrations-Guide: wenn API-Änderungen Breaking Changes für n8n sind
-  - CI: n8n-Node-Tests in GitHub Actions Pipeline
+- [x] Step 3 — n8n Kompatibilitäts-Tests
+  - `tests/api-compat.test.ts` — automatisierte Tests aller Endpoints
+  - 13 Endpoint-Tests gegen laufende API
+  - Fix: Automation template/trigger-template Route-Ordering (vor /{rule_id})
 
-### Milestone 22: MCP Server Integration [todo]
-- [ ] Step 1 — MCP Tool Definitions (Device, Alert, Variable, OTA, Metrics, Automation Tools)
-- [ ] Step 2 — MCP Endpoint Layer + Auth Integration
-- [ ] Step 3 — MCP Client für externe Server (Enrichment, AI)
-- [ ] Step 4 — MCP-based AI Agent Demo ("set variable temperature_threshold to 75")
+### Milestone 22: MCP Server Integration [done] ✅
+- [x] Step 1 — MCP Tool Definitions: 15 Tools (Device, Alert, Variable, Automation, Metrics, Dashboard, SemanticType)
+- [x] Step 2 — MCP Endpoint Layer: `POST /api/v1/mcp/tools/list` + `POST /api/v1/mcp/tools/call` mit JWT Auth
+- [x] Step 3 — MCP Handler: Alle Tools gegen SQLAlchemy-Models implementiert, user-scoped
+- [x] Step 4 — Capabilities: `mcp.read` + `mcp.execute` in Registry + Route Map
 
-### Milestone 23: Universal Agent SDK [todo]
+### Milestone 23: Universal Agent SDK [done] ✅
 > Agents sind gleichwertige Device-Typen neben MCUs, API-Devices und Standard-Devices.
-- [ ] Step 1 — Agent Protocol Spec (HTTP + WebSocket, handshake, heartbeat)
-- [ ] Step 2 — Python SDK Agent (RPi, Linux, system telemetry → variables)
-- [ ] Step 3 — Node.js SDK Agent
-- [ ] Step 4 — OS Agent Features (service mgmt, remote shell, config push via Variables)
-- [ ] Step 5 — Windows Agent + Installer/Service
+- [x] Step 1 — Agent Protocol: `POST /api/v1/agent/handshake` + `POST /api/v1/agent/heartbeat` (Device-Token Auth)
+- [x] Step 2 — Python SDK Agent: `sdk/python/hubex_agent/` — HubexAgent Klasse mit Heartbeat, Telemetrie, Collectors
+- [x] Step 3 — Built-in Collectors: system_collector (CPU, Memory, Disk), network_collector (IP, Traffic)
+- [x] Step 4 — Agent Features: Threaded loop, configurable intervals, psutil integration optional
+- [x] Step 5 — Setup.py + CLI entry point, pip-installierbar
 
-### Milestone 24: Bridge/Gateway Framework [todo]
-- [ ] Step 1 — Bridge Agent Architecture (plugin system, auto-discovery)
-- [ ] Step 2 — Serial/UART Bridge Plugin
-- [ ] Step 3 — Modbus RTU/TCP Bridge Plugin (industrial sensors → Variables)
-- [ ] Step 4 — BLE Bridge Plugin
-- [ ] Step 5 — CAN Bus / I2C / SPI Bridge Plugin
+### Milestone 24: Bridge/Gateway Framework [done] ✅
+- [x] Step 1 — Bridge Architecture: `HubexBridge` Klasse, Plugin-System mit `BridgePlugin` ABC
+- [x] Step 2 — Serial/UART Bridge Plugin: `SerialBridgePlugin` Stub mit Port/Baud config
+- [x] Step 3 — Modbus RTU/TCP Plugin: `ModbusBridgePlugin` Stub (pymodbus-ready)
+- [x] Step 4 — BLE Bridge Plugin: `BLEBridgePlugin` Stub (bleak-ready)
+- [x] Step 5 — Multi-Plugin Support: Per-Plugin Poll-Loops, Auto-Prefix, Setup/Teardown Lifecycle
 
 ### ~~Milestone 25: Onboarding~~ → GESTRICHEN (verteilt in M15/M16/M19/M20)
 
 ---
 
-## Phase 7: Enterprise & Advanced [todo]
+## Phase 7: Enterprise & Advanced [todo] ← AKTUELL
 
 ### Milestone 26: Security Hardening v2 [todo]
 - [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)

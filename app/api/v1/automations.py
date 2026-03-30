@@ -103,6 +103,44 @@ async def create_automation(
 
 
 # ---------------------------------------------------------------------------
+# Trigger Templates (M19: Typsystem-Integration)
+# IMPORTANT: These must be registered BEFORE /{rule_id} routes to avoid
+# FastAPI matching "templates" / "trigger-templates" as rule_id parameter.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/automations/trigger-templates", response_model=list[TriggerTemplateOut])
+async def list_trigger_templates(
+    db: AsyncSession = Depends(get_db),
+    org_id: int = Depends(get_current_org_id),
+) -> list[dict]:
+    stmt = (
+        select(TriggerTemplate, SemanticType.name.label("st_name"))
+        .join(SemanticType, TriggerTemplate.semantic_type_id == SemanticType.id)
+        .order_by(TriggerTemplate.trigger_name)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        {
+            "id": tt.id,
+            "trigger_name": tt.trigger_name,
+            "display_name": tt.display_name,
+            "description": tt.description,
+            "config_schema": tt.config_schema,
+            "semantic_type_name": st_name,
+            "icon": tt.icon,
+        }
+        for tt, st_name in rows
+    ]
+
+
+@router.get("/automations/templates")
+async def list_automation_templates() -> list[dict]:
+    return AUTOMATION_TEMPLATES
+
+
+# ---------------------------------------------------------------------------
 # Get one
 # ---------------------------------------------------------------------------
 
@@ -336,42 +374,5 @@ async def delete_step(
     await db.commit()
 
 
-# ---------------------------------------------------------------------------
-# Trigger Templates (M19: Typsystem-Integration)
-# ---------------------------------------------------------------------------
 
-
-@router.get("/automations/trigger-templates", response_model=list[TriggerTemplateOut])
-async def list_trigger_templates(
-    db: AsyncSession = Depends(get_db),
-    org_id: int = Depends(get_current_org_id),
-) -> list[dict]:
-    stmt = (
-        select(TriggerTemplate, SemanticType.name.label("st_name"))
-        .join(SemanticType, TriggerTemplate.semantic_type_id == SemanticType.id)
-        .order_by(TriggerTemplate.trigger_name)
-    )
-    result = await db.execute(stmt)
-    rows = result.all()
-    return [
-        {
-            "id": tt.id,
-            "trigger_name": tt.trigger_name,
-            "display_name": tt.display_name,
-            "description": tt.description,
-            "config_schema": tt.config_schema,
-            "semantic_type_name": st_name,
-            "icon": tt.icon,
-        }
-        for tt, st_name in rows
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Automation Templates (M19: Quick-start)
-# ---------------------------------------------------------------------------
-
-
-@router.get("/automations/templates")
-async def list_automation_templates() -> list[dict]:
-    return AUTOMATION_TEMPLATES
+# (trigger-templates and automation-templates routes moved above /{rule_id} routes)

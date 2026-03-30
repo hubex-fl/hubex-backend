@@ -8,10 +8,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_auth import get_current_user
 from app.db.models.alerts import AlertEvent
 from app.db.models.device import Device
 from app.db.models.entities import Entity
 from app.db.models.events import EventV1
+from app.db.models.user import User
 from app.db.models.webhooks import WebhookSubscription
 
 router = APIRouter(tags=["metrics"])
@@ -45,18 +47,25 @@ class MetricsOut(BaseModel):
 
 
 @router.get("/metrics", response_model=MetricsOut)
-async def get_metrics(db: AsyncSession = Depends(get_db)):
+async def get_metrics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     now = datetime.now(timezone.utc)
 
     cutoff_online = now - timedelta(seconds=ONLINE_WINDOW_SECONDS)
     cutoff_stale = now - timedelta(seconds=STALE_WINDOW_SECONDS)
     cutoff_24h = now - timedelta(hours=24)
 
-    # Devices
-    total_devices = (await db.execute(select(func.count()).select_from(Device))).scalar_one()
+    # Devices — scoped to current user
+    user_device_filter = Device.owner_user_id == current_user.id
+    total_devices = (await db.execute(
+        select(func.count()).select_from(Device).where(user_device_filter)
+    )).scalar_one()
     online_devices = (
         await db.execute(
             select(func.count()).select_from(Device).where(
+                user_device_filter,
                 Device.last_seen_at.is_not(None),
                 Device.last_seen_at >= cutoff_online,
             )
@@ -65,6 +74,7 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     stale_devices = (
         await db.execute(
             select(func.count()).select_from(Device).where(
+                user_device_filter,
                 Device.last_seen_at.is_not(None),
                 Device.last_seen_at >= cutoff_stale,
                 Device.last_seen_at < cutoff_online,

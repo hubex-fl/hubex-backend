@@ -30,6 +30,8 @@ from .automations import router as automations_router
 from .semantic_types import router as semantic_types_router
 from .notifications import router as notifications_router
 from .dashboards import router as dashboards_router
+from app.mcp.endpoint import router as mcp_router
+from .agent_protocol import router as agent_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -62,3 +64,5 @@ router.include_router(automations_router, tags=["automations"])
 router.include_router(semantic_types_router, tags=["semantic-types"])
 router.include_router(notifications_router, tags=["notifications"])
 router.include_router(dashboards_router, tags=["dashboards"])
+router.include_router(mcp_router, tags=["mcp"])
+router.include_router(agent_router, tags=["agent"])

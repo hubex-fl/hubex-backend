@@ -74,6 +74,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "dashboards.write",
     "notifications.read",
     "notifications.write",
+    "mcp.read",
+    "mcp.execute",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -270,6 +272,9 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PATCH", "/api/v1/notifications/{notification_id}/read"): ["notifications.write"],
     ("PATCH", "/api/v1/notifications/read-all"): ["notifications.write"],
     ("DELETE", "/api/v1/notifications/{notification_id}"): ["notifications.write"],
+    # MCP
+    ("POST", "/api/v1/mcp/tools/list"): ["mcp.read"],
+    ("POST", "/api/v1/mcp/tools/call"): ["mcp.execute"],
 }
 
 # Public whitelist (auth-free, minimal, static).
