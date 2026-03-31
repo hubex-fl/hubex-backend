@@ -115,14 +115,12 @@
 
               <!-- Variable key -->
               <div class="field">
-                <label class="field-label">Variable Key</label>
-                <input v-model="newWidget.variable_key" class="field-input" placeholder="e.g. temperature" />
+                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="Variable" />
               </div>
 
               <!-- Device UID (optional) -->
               <div class="field">
-                <label class="field-label">Device UID <span class="field-opt">(optional)</span></label>
-                <input v-model="newWidget.device_uid" class="field-input" placeholder="device uid for scoped variables" />
+                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="Device" placeholder="Select device..." :optional="true" />
               </div>
 
               <!-- Label -->
@@ -212,6 +210,7 @@ import { getVariableHistory } from "../lib/variables";
 import type { VizDataPoint } from "../lib/viz-types";
 import type { TimeRange } from "../composables/useVariableHistory";
 import { apiFetch } from "../lib/api";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 function rangeToFrom(range: TimeRange): number {
   const now = Math.floor(Date.now() / 1000);

@@ -12,6 +12,7 @@ import UModal from "../components/ui/UModal.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UToggle from "../components/ui/UToggle.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 const caps = useCapabilities();
 const { entities, loading, error, reload } = useEntities();
@@ -693,11 +694,11 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           Binding to entity:
           <span class="font-mono font-medium text-[var(--text-primary)]">{{ bindTargetEntityId }}</span>
         </div>
-        <UInput
+        <UEntitySelect
           v-model="bindDeviceId"
-          label="Device ID"
-          type="number"
-          placeholder="e.g. 42"
+          entity-type="device"
+          label="Device"
+          placeholder="Select device..."
         />
         <UInput
           v-model="bindPriority"

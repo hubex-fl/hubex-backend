@@ -7,6 +7,7 @@ import { createPoller } from "../lib/poller";
 import UCard from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
 import UInput from "../components/ui/UInput.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
@@ -212,7 +213,7 @@ onUnmounted(() => { stopPolling(); });
         <div class="flex flex-col sm:flex-row gap-3 mb-3">
           <div class="flex-1">
             <label class="block text-xs text-[var(--text-muted)] mb-1">Stream</label>
-            <UInput v-model="stream" placeholder="tenant.system" class="w-full" />
+            <UEntitySelect v-model="stream" entity-type="stream" class="w-full" />
           </div>
           <div class="flex-1">
             <label class="block text-xs text-[var(--text-muted)] mb-1">Trace ID filter</label>

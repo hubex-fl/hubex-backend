@@ -13,6 +13,7 @@ import {
 } from "../lib/automations";
 import { useToastStore } from "../stores/toast";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 const toast = useToastStore();
 
@@ -817,10 +818,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
 
             <!-- Variable Threshold config -->
             <template v-if="formTriggerType === 'variable_threshold'">
-              <div class="space-y-1">
-                <label :class="labelClass">Variable Key <span class="text-red-400">*</span></label>
-                <input v-model="trigVarKey" type="text" placeholder="e.g. temperature" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">Operator</label>
@@ -833,10 +831,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                   <input v-model.number="trigValue" type="number" step="any" :class="inputClass" />
                 </div>
               </div>
-              <div class="space-y-1">
-                <label :class="labelClass">Device UID <span class="text-[var(--text-muted)]">(optional)</span></label>
-                <input v-model="trigDeviceUid" type="text" placeholder="Leave empty for global variable" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
             </template>
 
             <!-- Variable Geofence config -->
@@ -844,14 +839,8 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
               <p class="text-[10px] text-[var(--text-muted)] bg-[var(--bg-raised)] rounded px-2 py-1">
                 GPS variable should contain <code class="font-mono">{{"{"}}lat: number, lng: number{{"}"}}</code>
               </p>
-              <div class="space-y-1">
-                <label :class="labelClass">Variable Key <span class="text-red-400">*</span></label>
-                <input v-model="trigVarKey" type="text" placeholder="e.g. gps_location" :class="inputClass" />
-              </div>
-              <div class="space-y-1">
-                <label :class="labelClass">Device UID <span class="text-[var(--text-muted)]">(optional)</span></label>
-                <input v-model="trigDeviceUid" type="text" placeholder="Leave empty for any device" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">Geofence Type</label>
@@ -895,18 +884,12 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
 
             <!-- Device Offline config -->
             <template v-else-if="formTriggerType === 'device_offline'">
-              <div class="space-y-1">
-                <label :class="labelClass">Device UID <span class="text-[var(--text-muted)]">(optional — empty = any device)</span></label>
-                <input v-model="trigDeviceUid" type="text" placeholder="Leave empty for any device" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
             </template>
 
             <!-- Telemetry Received config -->
             <template v-else-if="formTriggerType === 'telemetry_received'">
-              <div class="space-y-1">
-                <label :class="labelClass">Device UID <span class="text-[var(--text-muted)]">(optional)</span></label>
-                <input v-model="trigDeviceUid" type="text" placeholder="Leave empty for any device" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
               <div class="space-y-1">
                 <label :class="labelClass">Event Type <span class="text-[var(--text-muted)]">(optional)</span></label>
                 <input v-model="trigEventType" type="text" placeholder="e.g. sensor.reading" :class="inputClass" />
@@ -946,10 +929,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
 
             <!-- Set Variable config -->
             <template v-if="formActionType === 'set_variable'">
-              <div class="space-y-1">
-                <label :class="labelClass">Variable Key</label>
-                <input v-model="actVarKey" type="text" placeholder="e.g. status" :class="inputClass" />
-              </div>
+              <UEntitySelect v-model="actVarKey" entity-type="variable" label="Variable Key" />
               <div class="space-y-1">
                 <label :class="labelClass">Value (JSON)</label>
                 <input v-model="actVarValue" type="text" placeholder='"alert"' :class="[inputClass, 'font-mono']" />
@@ -962,10 +942,7 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                     <option value="device">device</option>
                   </select>
                 </div>
-                <div class="space-y-1">
-                  <label :class="labelClass">Device UID <span class="text-[var(--text-muted)]">(optional)</span></label>
-                  <input v-model="actVarDeviceUid" type="text" placeholder="device scope only" :class="inputClass" />
-                </div>
+                <UEntitySelect v-model="actVarDeviceUid" entity-type="device" label="Device UID" placeholder="device scope only" :optional="true" />
               </div>
             </template>
 

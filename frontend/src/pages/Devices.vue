@@ -195,7 +195,7 @@ const singlePurgeConfirmText = ref("");
 
 const selectModeOptions = computed(() => {
   const opts: Array<{ value: string; label: string }> = [{ value: "unclaim", label: "Unclaim mode" }];
-  if (canShowPurge.value) opts.push({ value: "purge", label: "Purge mode" });
+  if (canShowPurge.value) opts.push({ value: "purge", label: "Delete mode" });
   return opts;
 });
 
@@ -530,7 +530,7 @@ function openBulkPurgeModal() {
 }
 
 async function bulkPurge() {
-  if (!selectedIds.value.length || bulkPurgeConfirmText.value !== "PURGE") return;
+  if (!selectedIds.value.length || bulkPurgeConfirmText.value !== "DELETE") return;
   bulkPurgeBusy.value = true;
   try {
     const res: any = await apiFetch("/api/v1/devices/purge", {
@@ -540,7 +540,7 @@ async function bulkPurge() {
     const results: any[] = Array.isArray(res?.results) ? res.results : [];
     for (const item of results) {
       if (!item || typeof item.id !== "number") continue;
-      bulkPurgeStatus.value[item.id] = item.ok ? "Purged" : item.error || "Purge failed";
+      bulkPurgeStatus.value[item.id] = item.ok ? "Deleted" : item.error || "Delete failed";
     }
   } catch (err: unknown) {
     actionError.value = formatError(err, "Bulk purge failed");
@@ -561,19 +561,19 @@ function openSinglePurgeModal(d: Device) {
 }
 
 async function confirmSinglePurge() {
-  if (!singlePurgeDevice.value || singlePurgeConfirmText.value !== "PURGE") return;
+  if (!singlePurgeDevice.value || singlePurgeConfirmText.value !== "DELETE") return;
   const d = singlePurgeDevice.value;
   try {
     await apiFetch(`/api/v1/devices/${d.id}/purge`, {
       method: "POST",
       body: JSON.stringify({ reason: "ui" }),
     });
-    bulkPurgeStatus.value[d.id] = "Purged";
+    bulkPurgeStatus.value[d.id] = "Deleted";
     showSinglePurgeModal.value = false;
     singlePurgeDevice.value = null;
     await reload();
   } catch (err: unknown) {
-    actionError.value = formatError(err, "Purge failed");
+    actionError.value = formatError(err, "Delete failed");
   }
 }
 
@@ -1053,7 +1053,7 @@ onUnmounted(() => {
                       variant="danger"
                       @click.stop="openSinglePurgeModal(d)"
                     >
-                      Purge
+                      Delete
                     </UButton>
                     <span
                       v-if="bulkUnclaimStatus[d.id]"
@@ -1322,7 +1322,7 @@ onUnmounted(() => {
     <!-- ── 6. Bulk Purge Modal ─────────────────────────────────────────────── -->
     <UModal
       :open="showBulkPurgeModal"
-      title="Confirm Bulk Purge"
+      title="Confirm Bulk Delete"
       size="sm"
       @close="showBulkPurgeModal = false"
     >
@@ -1335,8 +1335,8 @@ onUnmounted(() => {
         <div class="bulk-confirm">
           <UInput
             v-model="bulkPurgeConfirmText"
-            placeholder="Type PURGE to confirm"
-            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'PURGE' ? 'Type PURGE in uppercase' : undefined"
+            placeholder="Type DELETE to confirm"
+            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'PURGE' ? 'Type DELETE in uppercase' : undefined"
           />
         </div>
       </div>
@@ -1351,7 +1351,7 @@ onUnmounted(() => {
             :disabled="bulkPurgeConfirmText !== 'PURGE' || bulkPurgeBusy"
             @click="bulkPurge"
           >
-            Confirm purge
+            Confirm delete
           </UButton>
         </div>
       </template>
@@ -1360,7 +1360,7 @@ onUnmounted(() => {
     <!-- ── 7. Single Device Purge Modal ───────────────────────────────────── -->
     <UModal
       :open="showSinglePurgeModal"
-      title="Confirm Device Purge"
+      title="Confirm Device Delete"
       size="sm"
       @close="showSinglePurgeModal = false"
     >
@@ -1372,8 +1372,8 @@ onUnmounted(() => {
         </p>
         <UInput
           v-model="singlePurgeConfirmText"
-          placeholder="Type PURGE to confirm"
-          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'PURGE' ? 'Type PURGE in uppercase' : undefined"
+          placeholder="Type DELETE to confirm"
+          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'PURGE' ? 'Type DELETE in uppercase' : undefined"
         />
       </div>
       <template #footer>
@@ -1384,7 +1384,7 @@ onUnmounted(() => {
             :disabled="singlePurgeConfirmText !== 'PURGE'"
             @click="confirmSinglePurge"
           >
-            Purge device
+            Delete device
           </UButton>
         </div>
       </template>

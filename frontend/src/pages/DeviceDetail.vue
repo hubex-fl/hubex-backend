@@ -234,6 +234,9 @@ const dataFlowInputCount = computed(() => telemetry.value.length);
 const dataFlowOutputCount = computed(() => variables.value.length);
 const dataFlowTaskCount = computed(() => taskHistory.value.length);
 
+// Progressive Disclosure — technical details collapsed by default
+const showTechnical = ref(false);
+
 // ── Hero ring helpers ─────────────────────────────────────────────────────────
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -1552,16 +1555,36 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Live telemetry indicator -->
-        <div v-if="latestPayloadFields.length" class="flex items-center gap-1.5 ml-auto">
+        <!-- Live telemetry indicator / offline notice -->
+        <div v-if="heroRingOnline && latestPayloadFields.length" class="flex items-center gap-1.5 ml-auto">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse shrink-0" />
           <span class="text-xs text-[var(--text-muted)]">{{ latestPayloadFields.length }} live fields</span>
+        </div>
+        <div v-else-if="!heroRingOnline && fmtDeviceLastSeen" class="flex items-center gap-1.5 ml-auto">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] shrink-0" />
+          <span class="text-xs text-[var(--text-muted)]">Last known values · {{ fmtDeviceLastSeen }}</span>
         </div>
       </div>
     </div>
 
+    <!-- ── Technical Details Toggle ──────────────────────────────── -->
+    <button
+      v-if="!restrictUnclaimed"
+      class="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-raised)] transition-colors text-left"
+      @click="showTechnical = !showTechnical"
+    >
+      <svg
+        :class="['h-3.5 w-3.5 text-[var(--text-muted)] transition-transform duration-200', showTechnical ? 'rotate-90' : '']"
+        fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+      </svg>
+      <span class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Technical Details</span>
+      <span class="text-[10px] text-[var(--text-muted)]">System context, data flow, raw I/O</span>
+    </button>
+
     <!-- ── System Context — Data Flow Node ──────────────────────────────── -->
-    <div v-if="!restrictUnclaimed" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+    <div v-if="!restrictUnclaimed" v-show="showTechnical" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
       <!-- Section header -->
       <div class="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center justify-between">
         <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">System Context</h3>

@@ -31,6 +31,7 @@ import UToggle from "../components/ui/UToggle.vue";
 import VizSparkline from "../components/viz/VizSparkline.vue";
 import VizWidget    from "../components/viz/VizWidget.vue";
 import ContextMenu from "../components/ContextMenu.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 import { useRouter } from "vue-router";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
@@ -465,7 +466,7 @@ onMounted(loadDefinitionsAndValues);
         <option value="global">Global</option>
         <option value="device">Device</option>
       </USelect>
-      <UInput v-model="deviceUid" placeholder="Device UID (for device scope)" class="toolbar-device" />
+      <UEntitySelect v-model="deviceUid" entity-type="device" placeholder="Filter by device..." :optional="true" class="toolbar-device" />
       <label class="toolbar-toggle">
         <UToggle v-model="showSecrets" size="sm" />
         <span>Secrets</span>
@@ -692,7 +693,7 @@ onMounted(loadDefinitionsAndValues);
           </div>
           <div v-if="crScope === 'device'" class="form-field">
             <label>Device UID</label>
-            <UInput v-model="crDeviceUid" placeholder="device-uid" />
+            <UEntitySelect v-model="crDeviceUid" entity-type="device" placeholder="Select device..." :optional="true" />
           </div>
           <div class="form-field">
             <label>Value type</label>

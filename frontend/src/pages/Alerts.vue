@@ -7,6 +7,7 @@ import type { AlertRule, AlertEvent } from "../composables/useAlerts";
 import { useToastStore } from "../stores/toast";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { relativeTime } from "../composables/useRecentAlerts";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 const caps = useCapabilities();
 const toast = useToastStore();
@@ -602,15 +603,7 @@ const statusClass: Record<string, string> = {
 
           <!-- Variable Threshold config (only when condition_type === variable_threshold) -->
           <template v-if="form.condition_type === 'variable_threshold'">
-            <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Variable Key</label>
-              <input
-                v-model="vtKey"
-                type="text"
-                placeholder="e.g. temperature, smoke_level"
-                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-              />
-            </div>
+            <UEntitySelect v-model="vtKey" entity-type="variable" label="Variable Key" />
             <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
                 <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
@@ -631,15 +624,7 @@ const statusClass: Record<string, string> = {
                 />
               </div>
             </div>
-            <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Device UID <span class="text-[var(--text-muted)]">(optional — empty = global scope)</span></label>
-              <input
-                v-model="vtDeviceUid"
-                type="text"
-                placeholder="Leave empty for global variable"
-                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-              />
-            </div>
+            <UEntitySelect v-model="vtDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
           </template>
 
           <!-- Severity -->
@@ -656,15 +641,7 @@ const statusClass: Record<string, string> = {
           </div>
 
           <!-- Entity ID -->
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-[var(--text-muted)]">Entity ID <span class="text-[var(--text-muted)]">(optional)</span></label>
-            <input
-              v-model="form.entity_id"
-              type="text"
-              placeholder="e.g. sensor.temperature"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-            />
-          </div>
+          <UEntitySelect v-model="form.entity_id" entity-type="entity" label="Entity ID" :optional="true" />
 
           <!-- Cooldown -->
           <div class="space-y-1">
