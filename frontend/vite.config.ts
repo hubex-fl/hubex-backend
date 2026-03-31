@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
         "/api": { target: apiTarget, changeOrigin: true },
         "/health": { target: apiTarget, changeOrigin: true },
         "/ready": { target: apiTarget, changeOrigin: true },
+        "/docs": { target: apiTarget, changeOrigin: true },
+        "/redoc": { target: apiTarget, changeOrigin: true },
+        "/openapi.json": { target: apiTarget, changeOrigin: true },
       },
     },
   };

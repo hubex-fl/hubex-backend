@@ -44,7 +44,7 @@ class DashboardWidget(Base):
     # widget_type: sparkline, line_chart, gauge, bool, log, json, map, image,
     #              toggle_control, slider_control
     widget_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    variable_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    variable_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     device_uid: Mapped[str | None] = mapped_column(String(128), nullable=True)
     label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)

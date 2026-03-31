@@ -824,12 +824,12 @@ onUnmounted(() => {
             :value="opt.value"
           >{{ opt.label }}</option>
         </select>
-        <UToggle
-          v-if="caps.status === 'ready' && hasCap('cap.admin')"
-          v-model="showUnclaimedAdmin"
-          label="Admin view"
-          size="sm"
-        />
+        <details v-if="caps.status === 'ready' && hasCap('cap.admin')" class="text-xs text-[var(--text-muted)]">
+          <summary class="cursor-pointer hover:text-[var(--text-primary)] select-none">Advanced</summary>
+          <div class="mt-1">
+            <UToggle v-model="showUnclaimedAdmin" label="Show all (incl. unclaimed)" size="sm" />
+          </div>
+        </details>
         <!-- View toggle -->
         <div class="flex rounded-lg border border-[var(--border)] overflow-hidden shrink-0">
           <button

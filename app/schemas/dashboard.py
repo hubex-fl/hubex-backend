@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class DashboardWidgetCreate(BaseModel):
     widget_type: str
-    variable_key: str
+    variable_key: Optional[str] = None
     device_uid: Optional[str] = None
     label: Optional[str] = None
     unit: Optional[str] = None
@@ -37,7 +37,7 @@ class DashboardWidgetOut(BaseModel):
     id: int
     dashboard_id: int
     widget_type: str
-    variable_key: str
+    variable_key: Optional[str]
     device_uid: Optional[str]
     label: Optional[str]
     unit: Optional[str]
