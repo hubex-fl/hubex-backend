@@ -189,8 +189,8 @@ onUnmounted(() => { stopPolling(); });
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Events Viewer</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time event stream reader</p>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Events</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time system events. Select a stream and start monitoring.</p>
       </div>
       <div class="flex gap-2">
         <UButton variant="secondary" size="sm" @click="retryAll">Retry</UButton>
@@ -231,9 +231,9 @@ onUnmounted(() => { stopPolling(); });
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput">Set cursor</UButton>
-            <UButton variant="secondary" size="sm" @click="jumpToNext">Jump to next</UButton>
-            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor">ACK</UButton>
+            <UButton variant="secondary" size="sm" @click="setCursorFromInput" title="Cursor auf bestimmte Position setzen">Set cursor</UButton>
+            <UButton variant="secondary" size="sm" @click="jumpToNext" title="Zum nächsten ungelesenen Event springen">Jump to next</UButton>
+            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" title="Alle Events bis zur aktuellen Position als gelesen markieren">ACK</UButton>
           </div>
         </div>
 

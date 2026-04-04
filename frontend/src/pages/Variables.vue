@@ -62,12 +62,12 @@ function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
     {
       label: "Create Alert",
       icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
-      action: () => router.push("/alerts"),
+      action: () => router.push({ path: "/alerts", query: { create: "true", variable_key: def.key } }),
     },
     {
       label: "Create Automation",
       icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
-      action: () => router.push("/automations"),
+      action: () => router.push({ path: "/automations", query: { create: "true", variable_key: def.key } }),
     },
     { label: "", icon: "", action: () => {}, divider: true },
     {
@@ -440,6 +440,36 @@ const filteredRows = computed(() => {
 
 const isNumeric = (vt: string) => vt === "int" || vt === "float";
 
+// Group variables by device for better overview
+type VarGroup = { deviceUid: string | null; label: string; defs: VariableDefinition[] };
+const groupedRows = computed<VarGroup[]>(() => {
+  const globals: VariableDefinition[] = [];
+  const byDevice = new Map<string, VariableDefinition[]>();
+  for (const def of filteredRows.value) {
+    if (def.scope === "global") {
+      globals.push(def);
+    } else {
+      const uid = (def as unknown as { device_uid?: string }).device_uid || "device-scoped";
+      if (!byDevice.has(uid)) byDevice.set(uid, []);
+      byDevice.get(uid)!.push(def);
+    }
+  }
+  const groups: VarGroup[] = [];
+  if (globals.length) groups.push({ deviceUid: null, label: "Global Variables", defs: globals });
+  for (const [uid, defs] of byDevice) {
+    const label = uid === "device-scoped" ? "Device Variables" : uid;
+    groups.push({ deviceUid: uid === "device-scoped" ? null : uid, label, defs });
+  }
+  return groups;
+});
+const hasMultipleGroups = computed(() => groupedRows.value.length > 1 || (groupedRows.value.length === 1 && groupedRows.value[0].deviceUid !== null));
+
+// Delete confirmation
+const deleteConfirmDef = ref<VariableDefinition | null>(null);
+function openDeleteDef(def: VariableDefinition) {
+  deleteConfirmDef.value = def;
+}
+
 watch([scopeFilter, deviceUid], loadDefinitionsAndValues);
 onMounted(loadDefinitionsAndValues);
 </script>
@@ -467,7 +497,7 @@ onMounted(loadDefinitionsAndValues);
         <option value="device">Device</option>
       </USelect>
       <UEntitySelect v-model="deviceUid" entity-type="device" placeholder="Filter by device..." :optional="true" class="toolbar-device" />
-      <label class="toolbar-toggle">
+      <label class="toolbar-toggle" title="Geheime Variablen in der Übersicht anzeigen/maskieren (z.B. API-Keys, Passwörter)">
         <UToggle v-model="showSecrets" size="sm" />
         <span>Secrets</span>
       </label>
@@ -521,7 +551,28 @@ onMounted(loadDefinitionsAndValues);
           </tr>
         </thead>
         <tbody>
-          <template v-for="def in filteredRows" :key="def.key">
+          <template v-for="group in groupedRows" :key="group.label">
+            <!-- Device group header -->
+            <tr v-if="hasMultipleGroups" class="group-header-row">
+              <td colspan="9" class="group-header-cell">
+                <div class="flex items-center gap-2">
+                  <svg v-if="group.deviceUid" class="h-3.5 w-3.5 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                  </svg>
+                  <svg v-else class="h-3.5 w-3.5 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                  </svg>
+                  <template v-if="group.deviceUid">
+                    <router-link :to="`/devices/${group.deviceUid}`" class="text-xs font-semibold text-[var(--primary)] hover:underline">
+                      {{ group.label }}
+                    </router-link>
+                  </template>
+                  <span v-else class="text-xs font-semibold text-[var(--text-muted)]">{{ group.label }}</span>
+                  <span class="text-[10px] text-[var(--text-muted)]">({{ group.defs.length }})</span>
+                </div>
+              </td>
+            </tr>
+          <template v-for="def in group.defs" :key="def.key">
             <!-- Main row -->
             <tr
               class="vars-row"
@@ -671,6 +722,7 @@ onMounted(loadDefinitionsAndValues);
                 </div>
               </td>
             </tr>
+          </template>
           </template>
         </tbody>
       </table>
@@ -837,6 +889,14 @@ onMounted(loadDefinitionsAndValues);
 </template>
 
 <style scoped>
+/* ── Device group header ───────────────────────────────── */
+.group-header-row { background: transparent; }
+.group-header-cell {
+  padding: 12px 12px 4px !important;
+  border-bottom: none !important;
+}
+.group-header-row + .vars-row { border-top: none; }
+
 /* ── Page shell ─────────────────────────────────────────── */
 .vars-page {
   display: flex; flex-direction: column; gap: 16px;

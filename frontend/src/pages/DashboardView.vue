@@ -196,6 +196,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UButton from "../components/ui/UButton.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import VizWidget from "../components/viz/VizWidget.vue";
@@ -266,6 +267,31 @@ onMounted(loadDashboard);
 
 watch(currentRange, () => {
   if (dashboard.value) loadAllHistory();
+});
+
+// Auto-suggest widget type + label when variable is selected
+watch(() => newWidget.value.variable_key, async (varKey) => {
+  if (!varKey) return;
+  try {
+    const defs = await apiFetch<Array<{ key: string; value_type: string; display_hint?: string; unit?: string; description?: string }>>("/api/v1/variables/definitions");
+    const def = defs.find((d: { key: string }) => d.key === varKey);
+    if (def) {
+      // Auto-fill label from key
+      if (!newWidget.value.label) newWidget.value.label = def.description || def.key;
+      // Auto-fill unit
+      if (!newWidget.value.unit && def.unit) newWidget.value.unit = def.unit;
+      // Auto-suggest widget type based on display_hint or value_type
+      const hint = def.display_hint;
+      if (hint && hint !== "auto") {
+        newWidget.value.widget_type = hint;
+      } else {
+        const typeMap: Record<string, string> = {
+          int: "gauge", float: "line_chart", bool: "bool", string: "log", json: "json",
+        };
+        newWidget.value.widget_type = typeMap[def.value_type] ?? "line_chart";
+      }
+    }
+  } catch { /* ignore — auto-suggest is best-effort */ }
 });
 
 async function loadDashboard() {
@@ -401,7 +427,8 @@ async function submitAddWidget() {
     newWidget.value = defaultNewWidget();
     if (w.variable_key) loadWidgetHistory(w);
   } catch (e: unknown) {
-    addError.value = e instanceof Error ? e.message : "Failed to add widget";
+    const info = parseApiError(e);
+    addError.value = mapErrorToUserText(info, "Widget konnte nicht erstellt werden. Bitte prüfe die Eingaben.");
   } finally {
     adding.value = false;
   }

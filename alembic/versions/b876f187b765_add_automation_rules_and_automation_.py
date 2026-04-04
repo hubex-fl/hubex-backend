@@ -55,7 +55,13 @@ def upgrade() -> None:
     op.drop_constraint(op.f('uq_config_v1_namespace_key'), 'config_v1', type_='unique')
     op.create_index(op.f('ix_config_v1_key'), 'config_v1', ['key'], unique=False)
     op.drop_index(op.f('uq_device_tokens_active_device_id'), table_name='device_tokens', postgresql_where='(is_active = true)')
-    op.drop_column('devices', 'reporting_interval_seconds')
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='devices' AND column_name='reporting_interval_seconds'"
+    ))
+    if result.fetchone():
+        op.drop_column('devices', 'reporting_interval_seconds')
     op.drop_index(op.f('ix_effects_v1_created_at'), table_name='effects_v1')
     op.drop_constraint(op.f('uq_effects_v1_effect_id'), 'effects_v1', type_='unique')
     op.create_index(op.f('ix_effects_v1_effect_id'), 'effects_v1', ['effect_id'], unique=True)

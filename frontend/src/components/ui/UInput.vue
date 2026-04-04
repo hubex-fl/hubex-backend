@@ -25,7 +25,7 @@ const emit = defineEmits<{ (e: "update:modelValue", v: string): void }>();
     <div class="relative">
       <span
         v-if="variant === 'search'"
-        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
         aria-hidden="true"
       >
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -42,9 +42,9 @@ const emit = defineEmits<{ (e: "update:modelValue", v: string): void }>();
         :disabled="disabled"
         :class="[
           'input w-full',
-          variant === 'search' && 'pl-8',
           error && 'border-[var(--status-bad)] focus:ring-[var(--status-bad)]',
         ]"
+        :style="variant === 'search' ? 'padding-left: 32px' : undefined"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
     </div>

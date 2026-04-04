@@ -164,6 +164,10 @@ let lastRefreshRequestMs = 0;
 let nowBucketTimer: number | null = null;
 const editingVarKey = ref<string | null>(null);
 const editingVarValue = ref<string>("");
+const editingVarShowMeta = ref(false);
+const editingVarUnit = ref("");
+const editingVarDescription = ref("");
+const editingVarDisplayHint = ref("auto");
 const reissueBusy = ref(false);
 const reissueError = ref<string | null>(null);
 const reissueToken = ref<string | null>(null);
@@ -236,6 +240,8 @@ const dataFlowTaskCount = computed(() => taskHistory.value.length);
 
 // Progressive Disclosure — technical details collapsed by default
 const showTechnical = ref(false);
+const showInputPanel = ref(false);
+const showOutputPanel = ref(false);
 
 // ── Hero ring helpers ─────────────────────────────────────────────────────────
 const RING_R = 52;
@@ -895,11 +901,33 @@ async function loadVariablesApplied(uid: string): Promise<void> {
 function openEditVariable(row: EffectiveVariableOut) {
   editingVarKey.value = row.key;
   editingVarValue.value = JSON.stringify(row.value ?? "");
+  editingVarShowMeta.value = false;
+  editingVarUnit.value = (row as any).unit ?? "";
+  editingVarDescription.value = (row as any).description ?? "";
+  editingVarDisplayHint.value = (row as any).display_hint ?? "auto";
 }
 
 function closeEditVariable() {
   editingVarKey.value = null;
   editingVarValue.value = "";
+  editingVarShowMeta.value = false;
+}
+
+async function saveVariableMetadata(row: EffectiveVariableOut) {
+  try {
+    await apiFetch(`/api/v1/variables/definitions/${encodeURIComponent(row.key)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        description: editingVarDescription.value || null,
+        unit: editingVarUnit.value || null,
+        displayHint: editingVarDisplayHint.value !== "auto" ? editingVarDisplayHint.value : null,
+      }),
+    });
+    closeEditVariable();
+    loadVariables();
+  } catch (e: any) {
+    variablesError.value = formatApiError(e, "Failed to update variable metadata");
+  }
 }
 
 function parseValueInput(raw: string) {
@@ -1012,6 +1040,44 @@ function refreshNow() {
   refreshAll("manual");
   loadTelemetry();
   loadAuditEntries();
+}
+
+// ── Inline name editing ────────────────────────────────────────────────────
+const editingName = ref(false);
+const editNameValue = ref("");
+const editNameSaving = ref(false);
+
+function startEditName() {
+  editNameValue.value = deviceInfo.value?.name || "";
+  editingName.value = true;
+}
+
+async function saveEditName() {
+  if (!deviceInfo.value) return;
+  const newName = editNameValue.value.trim();
+  if (newName === (deviceInfo.value.name || "")) {
+    editingName.value = false;
+    return;
+  }
+  editNameSaving.value = true;
+  try {
+    await apiFetch(`/api/v1/devices/${deviceInfo.value.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: newName || null }),
+    });
+    if (deviceInfo.value) deviceInfo.value.name = newName || null;
+    editingName.value = false;
+  } catch (err) {
+    const info = parseApiError(err);
+    const msg = mapErrorToUserText(info, "Failed to update name");
+    import("../stores/toast").then(({ useToastStore }) => useToastStore().addToast(msg, "error"));
+  } finally {
+    editNameSaving.value = false;
+  }
+}
+
+function cancelEditName() {
+  editingName.value = false;
 }
 
 async function copyUid() {
@@ -1367,6 +1433,7 @@ onUnmounted(() => {
     <ActionBar
       v-if="deviceInfo && !capsUnavailable"
       :device-id="deviceInfo.id"
+      :device-uid="deviceInfo.device_uid"
       :has-variables="variables.length > 0"
       :has-alerts="false"
       :has-automations="false"
@@ -1404,6 +1471,8 @@ onUnmounted(() => {
       <span v-if="restrictUnclaimed" class="ml-1 text-[var(--text-muted)]">Claim to view full details.</span>
     </div>
 
+    <!-- Offline ActionBar removed — status shown ONCE in hero card -->
+
     <!-- ── Hero Card ─────────────────────────────────────────────────────────── -->
     <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
       <!-- Top: device identity + actions -->
@@ -1437,7 +1506,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Device info -->
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 group">
           <div class="flex items-center gap-3 flex-wrap mb-1">
             <div v-if="deviceInfoLoading" class="flex gap-2">
               <USkeleton height="1.5rem" width="5rem" rounded="full" />
@@ -1447,9 +1516,7 @@ onUnmounted(() => {
               <span :class="['text-xl font-bold tracking-widest font-mono', heroStatusClass]">
                 {{ heroStatusLabel }}
               </span>
-              <UBadge v-if="deviceInfo?.state" :status="stateBadgeStatus">
-                {{ deviceInfo.state.replace(/_/g, ' ') }}
-              </UBadge>
+              <!-- State badge hidden — claimed is obvious, offline shown above -->
             </template>
           </div>
           <div v-if="deviceInfoLoading">
@@ -1457,9 +1524,40 @@ onUnmounted(() => {
             <USkeleton height="0.875rem" width="35%" />
           </div>
           <template v-else>
-            <h1 class="text-lg font-mono font-bold text-[var(--text-primary)] truncate">
-              {{ deviceInfo?.name || deviceInfo?.device_uid || `Device #${deviceId}` }}
-            </h1>
+            <!-- Inline editable name -->
+            <div class="flex items-center gap-2">
+              <template v-if="editingName">
+                <input
+                  v-model="editNameValue"
+                  class="text-lg font-mono font-bold text-[var(--text-primary)] bg-transparent border-b-2 border-[var(--primary)] outline-none px-0 py-0 w-auto min-w-[120px]"
+                  :disabled="editNameSaving"
+                  @keyup.enter="saveEditName"
+                  @keyup.escape="cancelEditName"
+                  @blur="saveEditName"
+                  autofocus
+                  placeholder="Device name..."
+                />
+                <span v-if="editNameSaving" class="text-xs text-[var(--text-muted)]">saving...</span>
+              </template>
+              <template v-else>
+                <h1
+                  class="text-lg font-mono font-bold text-[var(--text-primary)] truncate cursor-pointer hover:text-[var(--primary)] transition-colors"
+                  title="Click to edit name"
+                  @click="startEditName"
+                >
+                  {{ deviceInfo?.name || deviceInfo?.device_uid || `Device #${deviceId}` }}
+                </h1>
+                <button
+                  class="p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                  title="Edit device name"
+                  @click="startEditName"
+                >
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                  </svg>
+                </button>
+              </template>
+            </div>
             <p v-if="deviceInfo?.name" class="text-xs font-mono text-[var(--text-muted)]">{{ deviceInfo.device_uid }}</p>
             <p v-if="deviceInfo?.device_type && deviceInfo.device_type !== 'unknown'" class="text-xs text-[var(--text-muted)] mt-0.5">
               <span class="inline-flex items-center gap-1">
@@ -1471,8 +1569,14 @@ onUnmounted(() => {
               <span v-if="deviceInfo.firmware_version" class="ml-2 text-[var(--text-muted)]">&middot; FW {{ deviceInfo.firmware_version }}</span>
             </p>
             <p class="text-xs text-[var(--text-muted)] mt-0.5">
-              Gerät verbunden &middot; Letztes Update:
-              <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
+              <template v-if="heroRingOnline">
+                Connected &middot; Last update:
+                <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
+              </template>
+              <template v-else>
+                Last seen:
+                <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
+              </template>
             </p>
           </template>
         </div>
@@ -1491,24 +1595,20 @@ onUnmounted(() => {
           <UButton v-if="deviceInfo?.state === 'pairing_active'" variant="secondary" size="sm" @click="openPairingPanel">
             Pairing Panel
           </UButton>
+          <UButton
+            v-if="!heroRingOnline && deviceInfo?.device_uid"
+            size="sm"
+            @click="$router.push({ path: '/alerts', query: { create: 'true', device_uid: deviceInfo.device_uid } })"
+          >
+            Set up Alert
+          </UButton>
         </div>
       </div>
 
-      <!-- Status bar -->
+      <!-- Status bar — compact, no duplicate offline info -->
       <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-6">
-        <!-- Verbindung -->
-        <div class="flex items-center gap-2">
-          <svg class="h-4 w-4 shrink-0" :class="heroRingOnline ? 'text-[var(--status-ok)]' : 'text-[var(--text-muted)]'" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
-          </svg>
-          <div>
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Verbindung</p>
-            <p class="text-xs font-semibold text-[var(--text-primary)]">{{ connectionLabel }}</p>
-          </div>
-        </div>
-
-        <!-- Signal (from telemetry if available) -->
-        <div v-if="telemetrySignal" class="flex items-center gap-2">
+        <!-- Signal (only when online and available) -->
+        <div v-if="heroRingOnline && telemetrySignal" class="flex items-center gap-2">
           <svg class="h-4 w-4 shrink-0 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
           </svg>
@@ -1518,8 +1618,8 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Battery (from telemetry if available) -->
-        <div v-if="telemetryBattery" class="flex items-center gap-2">
+        <!-- Battery (only when online and available) -->
+        <div v-if="heroRingOnline && telemetryBattery" class="flex items-center gap-2">
           <svg class="h-4 w-4 shrink-0 text-[var(--accent-lime)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M4.5 10.5H18V15H4.5v-4.5zM3.75 18h15A2.25 2.25 0 0021 15.75v-1.5a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 001.5 14.25v1.5A2.25 2.25 0 003.75 18z" />
           </svg>
@@ -1529,8 +1629,8 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Task -->
-        <div class="flex items-center gap-2">
+        <!-- Task (only when online or has active task) -->
+        <div v-if="heroRingOnline || currentTask?.has_active_lease" class="flex items-center gap-2">
           <svg class="h-4 w-4 shrink-0 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
           </svg>
@@ -1560,10 +1660,7 @@ onUnmounted(() => {
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse shrink-0" />
           <span class="text-xs text-[var(--text-muted)]">{{ latestPayloadFields.length }} live fields</span>
         </div>
-        <div v-else-if="!heroRingOnline && fmtDeviceLastSeen" class="flex items-center gap-1.5 ml-auto">
-          <span class="h-1.5 w-1.5 rounded-full bg-[var(--text-muted)] shrink-0" />
-          <span class="text-xs text-[var(--text-muted)]">Last known values · {{ fmtDeviceLastSeen }}</span>
-        </div>
+        <!-- Offline "Last seen" removed — shown in Offline ActionBar above -->
       </div>
     </div>
 
@@ -1580,62 +1677,66 @@ onUnmounted(() => {
         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
       </svg>
       <span class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Technical Details</span>
-      <span class="text-[10px] text-[var(--text-muted)]">System context, data flow, raw I/O</span>
+      <span class="text-[10px] text-[var(--text-muted)]">UID, Firmware, RSSI, raw I/O</span>
     </button>
 
-    <!-- ── System Context — Data Flow Node ──────────────────────────────── -->
-    <div v-if="!restrictUnclaimed" v-show="showTechnical" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+    <!-- Technical Details Content (collapsible) -->
+    <div v-if="showTechnical && deviceInfo" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-5 py-4 space-y-3">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        <div>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Device UID</p>
+          <p class="font-mono text-[var(--text-primary)]">{{ deviceInfo?.device_uid }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Type</p>
+          <p class="text-[var(--text-primary)]">{{ deviceInfo?.device_type || 'unknown' }}</p>
+        </div>
+        <div v-if="deviceInfo?.firmware_version">
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Firmware</p>
+          <p class="font-mono text-[var(--text-primary)]">{{ deviceInfo.firmware_version }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Health</p>
+          <p :class="deviceInfo?.health === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">{{ deviceInfo?.health }}</p>
+        </div>
+        <div v-if="deviceInfo?.last_seen_at">
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Last Seen (raw)</p>
+          <p class="font-mono text-[var(--text-muted)]">{{ deviceInfo.last_seen_at }}</p>
+        </div>
+        <div v-if="deviceInfo?.state">
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">State</p>
+          <p class="text-[var(--text-primary)]">{{ deviceInfo.state }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── System Context — always visible (Herzstück "Verstehen"-Ebene) ── -->
+    <div v-if="!restrictUnclaimed" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
       <!-- Section header -->
       <div class="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center justify-between">
         <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">System Context</h3>
         <span class="text-[10px] text-[var(--text-muted)]">Where this device fits in your infrastructure</span>
       </div>
 
-      <!-- Data Flow Visualization -->
-      <div class="px-5 py-6">
-        <div class="flex items-center justify-center gap-0 overflow-x-auto">
-          <!-- Input sources -->
-          <div class="flex flex-col items-end gap-2 min-w-[120px] shrink-0">
-            <div class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-3 py-2 text-right">
-              <p class="text-[10px] text-[var(--primary)] uppercase tracking-wide font-semibold">Telemetry</p>
-              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowInputCount }}</p>
-              <p class="text-[10px] text-[var(--text-muted)]">events received</p>
-            </div>
-            <div class="rounded-lg border border-[var(--text-muted)]/20 bg-[var(--bg-raised)] px-3 py-2 text-right">
-              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold">Tasks</p>
-              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowTaskCount }}</p>
-              <p class="text-[10px] text-[var(--text-muted)]">executed</p>
-            </div>
-          </div>
+      <!-- Data Flow — Real Elements (klickbar) -->
+      <div class="px-5 py-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-          <!-- Arrow in -->
-          <div class="flex flex-col items-center px-2 shrink-0">
-            <svg class="h-5 w-16 text-[var(--primary)]" viewBox="0 0 64 20" fill="none">
-              <path d="M0 10h52" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
-              <path d="M48 4l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </div>
-
-          <!-- Device Node (center) -->
-          <div class="relative shrink-0">
+          <!-- LEFT: Device Info -->
+          <div class="flex flex-col items-center gap-3">
             <div
-              class="w-40 rounded-xl border-2 p-4 flex flex-col items-center gap-2 shadow-lg"
+              class="relative w-full max-w-[160px] rounded-xl border-2 p-4 flex flex-col items-center gap-2"
               :style="{
                 borderColor: DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'var(--border)',
                 backgroundColor: 'var(--bg-surface)',
-                boxShadow: `0 0 20px ${DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'transparent'}15`,
               }"
             >
-              <svg class="h-8 w-8" :style="{ color: DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'var(--text-muted)' }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <svg class="h-7 w-7" :style="{ color: DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.color ?? 'var(--text-muted)' }" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" :d="DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.icon ?? DEVICE_TYPE_META.unknown.icon" />
               </svg>
               <p class="text-xs font-mono font-bold text-[var(--text-primary)] text-center truncate w-full">
                 {{ deviceInfo?.name || deviceInfo?.device_uid?.slice(-8) || '...' }}
               </p>
-              <p class="text-[10px] text-[var(--text-muted)]">
-                {{ DEVICE_TYPE_META[(deviceInfo?.device_type as DeviceType) ?? 'unknown']?.label ?? 'Device' }}
-              </p>
-              <!-- Health indicator dot -->
               <span
                 class="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-[var(--bg-surface)]"
                 :class="{
@@ -1645,27 +1746,61 @@ onUnmounted(() => {
                 }"
               />
             </div>
-          </div>
-
-          <!-- Arrow out -->
-          <div class="flex flex-col items-center px-2 shrink-0">
-            <svg class="h-5 w-16 text-[var(--accent-lime)]" viewBox="0 0 64 20" fill="none">
-              <path d="M0 10h52" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
-              <path d="M48 4l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </div>
-
-          <!-- Output targets -->
-          <div class="flex flex-col items-start gap-2 min-w-[120px] shrink-0">
-            <div class="rounded-lg border border-[var(--accent-lime)]/30 bg-[var(--accent-lime)]/5 px-3 py-2">
-              <p class="text-[10px] text-[var(--accent-lime)] uppercase tracking-wide font-semibold">Variables</p>
-              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ dataFlowOutputCount }}</p>
-              <p class="text-[10px] text-[var(--text-muted)]">configured</p>
+            <div class="flex gap-3 text-[10px] text-[var(--text-muted)]">
+              <span>{{ dataFlowInputCount }} Telemetry</span>
+              <span>{{ dataFlowTaskCount }} Tasks</span>
             </div>
-            <div v-if="entityMemberships.length" class="rounded-lg border border-[var(--accent-purple, #a78bfa)]/30 bg-[var(--accent-purple, #a78bfa)]/5 px-3 py-2">
-              <p class="text-[10px] text-[var(--accent-purple, #a78bfa)] uppercase tracking-wide font-semibold">Entities</p>
-              <p class="text-lg font-mono font-bold text-[var(--text-primary)]">{{ entityMemberships.length }}</p>
-              <p class="text-[10px] text-[var(--text-muted)]">memberships</p>
+          </div>
+
+          <!-- CENTER: Variables (echte Elemente, klickbar) -->
+          <div class="space-y-1.5">
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-2">Variables ({{ variables.length }})</p>
+            <div v-if="!variables.length" class="text-xs text-[var(--text-muted)] italic py-2">No variables detected yet</div>
+            <router-link
+              v-for="v in variablesSorted.slice(0, 8)"
+              :key="v.key"
+              :to="`/variables`"
+              class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] hover:border-[var(--primary)]/40 transition-colors text-left"
+              @click.stop="openConnectPanel({ type: 'variable', id: v.key, name: v.key, variableKey: v.key })"
+            >
+              <span class="text-[10px] font-mono text-[var(--primary)] truncate flex-1">{{ v.key }}</span>
+              <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.effective_value) }}</span>
+            </router-link>
+            <p v-if="variablesSorted.length > 8" class="text-[10px] text-[var(--text-muted)] px-2.5">+{{ variablesSorted.length - 8 }} more</p>
+          </div>
+
+          <!-- RIGHT: Connected Alerts + Automations -->
+          <div class="space-y-3">
+            <!-- Entity memberships -->
+            <div v-if="entityMemberships.length">
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Groups</p>
+              <router-link
+                v-for="em in entityMemberships"
+                :key="em.entity_id"
+                to="/entities"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--accent-purple, #a78bfa)]/20 bg-[var(--accent-purple, #a78bfa)]/5 hover:border-[var(--accent-purple, #a78bfa)]/40 transition-colors text-[10px] text-[var(--accent-purple, #a78bfa)] mb-1"
+              >
+                {{ em.entity_name }} <span class="text-[var(--text-muted)]">({{ em.role }})</span>
+              </router-link>
+            </div>
+
+            <!-- Quick actions -->
+            <div>
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Connect</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
+                  @click="$router.push({ path: '/alerts', query: { create: 'true', device_uid: deviceInfo?.device_uid } })"
+                >+ Alert</button>
+                <button
+                  class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
+                  @click="$router.push({ path: '/automations', query: { create: 'true', device_uid: deviceInfo?.device_uid } })"
+                >+ Automation</button>
+                <button
+                  class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
+                  @click="openConnectPanel({ type: 'device', id: deviceInfo?.id, name: deviceInfo?.name || deviceInfo?.device_uid, deviceUid: deviceInfo?.device_uid, deviceId: deviceInfo?.id })"
+                >🔗 Connections</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1712,10 +1847,16 @@ onUnmounted(() => {
     <!-- ── Main panels ─────────────────────────────────────────────────────── -->
     <div v-if="!restrictUnclaimed" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-      <!-- Telemetry / Inputs panel -->
+      <!-- Telemetry / Inputs panel (collapsible) -->
       <UCard padding="none" class="border-l-2 border-l-[var(--primary)]">
         <template #header>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 cursor-pointer" @click="showInputPanel = !showInputPanel">
+            <svg
+              :class="['h-3 w-3 text-[var(--text-muted)] shrink-0 transition-transform duration-200', showInputPanel ? 'rotate-90' : '']"
+              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
             <span
               v-if="!telemetryError && telemetry.length"
               class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse"
@@ -1723,6 +1864,7 @@ onUnmounted(() => {
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">
               <span class="text-[var(--primary)] mr-1">↓</span>Input
               <span class="text-[var(--text-muted)] font-normal ml-1">· Telemetry</span>
+              <span v-if="!showInputPanel && telemetry.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ telemetry.length }})</span>
             </h3>
             <span v-if="latestTelemetry" class="text-xs text-[var(--text-muted)]">
               {{ latestTelemetry.event_type || "data" }} · {{ fmtRelative(latestTelemetry.received_at) }}
@@ -1739,6 +1881,7 @@ onUnmounted(() => {
           </UButton>
         </template>
 
+        <div v-show="showInputPanel">
         <!-- Caps error -->
         <div v-if="!canReadTelemetry" class="p-4 text-xs text-[var(--text-muted)]">
           Missing capability: telemetry.read
@@ -1813,16 +1956,26 @@ onUnmounted(() => {
           description="Device must POST /api/v1/telemetry to send data."
           icon="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z"
         />
+        </div>
       </UCard>
 
-      <!-- Variables / Outputs panel -->
+      <!-- Variables / Outputs panel (collapsible) -->
       <UCard padding="none" class="border-l-2 border-l-[var(--accent-lime)]">
         <template #header>
+          <div class="flex items-center gap-2 cursor-pointer" @click="showOutputPanel = !showOutputPanel">
+            <svg
+              :class="['h-3 w-3 text-[var(--text-muted)] shrink-0 transition-transform duration-200', showOutputPanel ? 'rotate-90' : '']"
+              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
             <span class="text-[var(--accent-lime)] mr-1">↑</span>Output
             <span class="text-[var(--text-muted)] font-normal ml-1">· Variables</span>
+            <span v-if="!showOutputPanel && variables.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ variables.length }})</span>
           </h3>
-          <div class="flex gap-1">
+          </div>
+          <div class="flex gap-1" @click.stop>
             <UButton size="sm" variant="ghost" @click="loadVariables">
               <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -1838,6 +1991,7 @@ onUnmounted(() => {
           </div>
         </template>
 
+        <div v-show="showOutputPanel">
         <!-- Warnings -->
         <div
           v-if="deviceInfo?.busy"
@@ -1893,15 +2047,44 @@ onUnmounted(() => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs font-mono font-semibold text-[var(--text-primary)] truncate">{{ row.key }}</span>
-                <UBadge :status="row.source === 'device_override' ? 'info' : 'neutral'" class="shrink-0">
-                  {{ variableSourceLabel(row) }}
+                <UBadge v-if="row.value_type" :status="(row.value_type === 'int' || row.value_type === 'float') ? 'ok' : row.value_type === 'bool' ? 'warn' : 'neutral'" size="sm" class="shrink-0">
+                  {{ row.value_type }}{{ row.unit ? ` · ${row.unit}` : '' }}
                 </UBadge>
               </div>
               <!-- Edit mode -->
-              <div v-if="editingVarKey === row.key" class="mt-1.5 flex gap-2">
-                <UInput v-model="editingVarValue" class="flex-1" />
-                <UButton size="sm" @click="saveVariableOverride(row)">Save</UButton>
-                <UButton size="sm" variant="secondary" @click="closeEditVariable">✕</UButton>
+              <div v-if="editingVarKey === row.key" class="mt-1.5 space-y-2">
+                <!-- Value edit row -->
+                <div class="flex gap-2">
+                  <UInput v-model="editingVarValue" placeholder="Value" class="flex-1" />
+                  <UButton size="sm" @click="saveVariableOverride(row)">Save Value</UButton>
+                  <UButton size="sm" variant="secondary" @click="closeEditVariable">✕</UButton>
+                </div>
+                <!-- Metadata toggle -->
+                <button
+                  class="text-[10px] text-[var(--primary)] hover:underline"
+                  @click="editingVarShowMeta = !editingVarShowMeta"
+                >{{ editingVarShowMeta ? '▾ Metadaten ausblenden' : '▸ Einheit, Beschreibung, Visualisierung ändern' }}</button>
+                <!-- Metadata fields (collapsible) -->
+                <div v-if="editingVarShowMeta" class="grid grid-cols-3 gap-2">
+                  <UInput v-model="editingVarUnit" placeholder="Einheit (°C, %, m/s)" />
+                  <UInput v-model="editingVarDescription" placeholder="Beschreibung" />
+                  <select
+                    v-model="editingVarDisplayHint"
+                    class="px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="line_chart">Line Chart</option>
+                    <option value="gauge">Gauge</option>
+                    <option value="sparkline">Sparkline</option>
+                    <option value="bool">Boolean</option>
+                    <option value="map">Map</option>
+                    <option value="log">Log</option>
+                    <option value="json">JSON</option>
+                  </select>
+                  <div class="col-span-3 flex justify-end">
+                    <UButton size="sm" @click="saveVariableMetadata(row)">Metadaten speichern</UButton>
+                  </div>
+                </div>
               </div>
               <!-- View mode -->
               <div v-else class="flex items-center gap-2 mt-0.5">
@@ -1930,6 +2113,15 @@ onUnmounted(() => {
               >
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                </svg>
+              </button>
+              <button
+                class="p-1 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-raised)] transition-colors"
+                title="Show connections"
+                @click="openConnectPanel({ type: 'variable', id: row.key, name: row.key, variableKey: row.key })"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </button>
               <button
@@ -1970,6 +2162,7 @@ onUnmounted(() => {
           >
             View in Streams →
           </RouterLink>
+        </div>
         </div>
       </UCard>
     </div>
@@ -2090,7 +2283,7 @@ onUnmounted(() => {
     <!-- ── Danger Zone ────────────────────────────────────────────────────── -->
     <UCard v-if="!restrictUnclaimed && canUnclaim" padding="md" class="border-[var(--status-bad)]/20">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--status-bad)]">Danger Zone</h3>
+        <h3 class="text-sm font-semibold text-[var(--status-bad)]">Remove Device</h3>
       </template>
 
       <p class="text-xs text-[var(--text-muted)] mb-3">

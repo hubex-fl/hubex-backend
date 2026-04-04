@@ -56,7 +56,7 @@ function parseRoadmap() {
 
   for (const line of md.split('\n')) {
     // Phase headers: ## Phase N: Name [possibly status / ✅ / ← AKTUELL]
-    const phMatch = line.match(/^## Phase (\d+): (.+)/);
+    const phMatch = line.match(/^## Phase (\d+\w*): (.+)/);
     if (phMatch) {
       const status = deriveStatus(line);
       currentPhase = { name: cleanName(phMatch[2]), status, milestones: [] };
@@ -65,7 +65,7 @@ function parseRoadmap() {
     }
 
     // Milestone headers: ### Milestone N[.x]: Name [possibly status / ✅]
-    const msMatch = line.match(/^#{2,3} (Milestone [\d.a-zA-Z]+):\s*(.+)/);
+    const msMatch = line.match(/^#{2,3} (Milestone [\d.a-zA-Z_-]+):\s*(.+)/);
     if (msMatch) {
       const status = deriveStatus(line);
       current = { id: msMatch[1], name: cleanName(msMatch[2]), status, steps: [] };

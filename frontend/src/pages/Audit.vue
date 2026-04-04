@@ -119,7 +119,7 @@ onUnmounted(() => { selectedId.value = null; });
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-[var(--text-primary)]">Audit Log</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Read-only audit trail</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Track who changed what and when. Every API action is logged here.</p>
       </div>
       <UButton variant="secondary" size="sm" @click="retryList">Refresh</UButton>
     </div>

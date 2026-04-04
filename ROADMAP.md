@@ -541,11 +541,23 @@
 
 ---
 
-## Phase 6: Erweiterung & Anbindung [done] ✅
+> **Offene Steps aus Phase 5 — Zuordnung:**
+> Die folgenden Steps stehen noch als `[ ]` in M15-M20 und werden in Phase 5b oder 7 adressiert:
+> - M15 Step 7 (Variables Page Redesign) → **Teilweise erledigt** (Gruppierung ✓), Rest in UX-C Step 4
+> - M16 Step 5 (Globale Suche Cmd+K) → **Phase 7** (eigenes Feature, niedrigere Prio)
+> - M17 Step 3 (Notification Preferences) → **Phase 7** (M17 erweitern)
+> - M17 Step 4 (Email-Dispatch) → **Phase 7** (M19b Step 1 enthält Email-Action)
+> - M18 Step 6 (Streams Migration) → **Phase 7** (niedrige Prio, Streams funktioniert)
+> - M18 Step 7 (Dashboard Sharing) → **Phase 7** M18b (Embed + Sicherheitsstufen)
+> - M19 Step 3 (AND/OR Groups) → **Phase 7** (M19b erweitert die Engine)
+> - M19 Step 4 (If/Else Branching) → **Phase 7** (M19b erweitert die Engine)
+> - M19 Step 6 (Externe Flows) → **Phase 7** (M21 Steps 4-7 deckt Integration ab)
+> - M20 Step 2 (Flow-Ansicht) → **Phase 7** M36 (Flow Editor)
+> - M20 Step 3 (System Map) → **Phase 5b** UX-E Step 1-2 (vereinfacht als Node-Graph)
 
-### Milestone 21: n8n Deep Integration [done] ✅
-> Audit und Optimierung der n8n-Anbindung, damit das Typsystem und alle
-> neuen Features sauber durchgereicht werden.
+---
+
+## Phase 6: Erweiterung & Anbindung [done] ✅
 
 - [x] Step 1 — n8n Node Update: Semantische Typen
   - n8n Node v2: Semantic Type resource (list, get, triggers, conversions)
@@ -587,24 +599,264 @@
 
 ---
 
-## Phase 7: Enterprise & Advanced [todo] ← AKTUELL
+## Phase 5b: UX Completion [done] ✅
+> **Leitsatz:** Die Milestones M13-M20 sind als "done" markiert, aber viele Steps sind noch "pending"
+> und die UX-Vision aus der Gesamtspezifikation ist nicht erfüllt. Diese Phase schließt ALLE Lücken
+> bevor Enterprise-Features beginnen. Kontextuelles Arbeiten, Erklärungen, Wizards — alles was der
+> User sofort spürt.
+>
+> **UX-Grundregel für ALLE zukünftigen Features:**
+> 1. Progressive Disclosure: Default zugeklappt, aufklappbar per Klick
+> 2. Selektoren statt ID-Eingabe: ÜBERALL
+> 3. Kontextuelles Arbeiten: Von jedem Element zum nächsten Schritt MIT Kontext
+> 4. Unterstützend, nie aufdringlich: Wizards skippbar, Hilfe ausblendbar
+> 5. Minimalistisch: Nur was relevant ist, keine rohen JSON-Fehler
+> 6. Wächst mit Komplexität: Einfache Setups = einfach, komplexe = detaillierter
+> 7. Verständliche Sprache: Tooltips, klare Buttons, Bestätigung bei Destruktivem
+
+### Milestone UX-A: Flow-Korrekturen & Foundation [done] ✅
+> Kontextuelles Arbeiten reparieren — der "rote Faden" muss funktionieren.
+
+- [x] Step 1 — ActionBar Context-Navigation (~2h)
+  - DeviceDetail ActionBar: `/alerts?create=true&device_uid=X`, `/automations?create=true&device_uid=X`
+  - Nicht mehr nur `/alerts` ohne Kontext
+  - Datei: `components/ActionBar.vue`
+
+- [x] Step 2 — Alert Post-Acknowledge Action-Bar (~2h)
+  - Nach Ack: Inline-Bar "Alert bestätigt → [Zum Device] [Automation erstellen] [Stummschalten]"
+  - Bei wiederkehrenden Alerts (>3x in 24h): "Automation erstellen?" CTA
+  - Datei: `pages/Alerts.vue`
+
+- [x] Step 3 — Alert-Events klickbar + verlinkt (~1h)
+  - Alert-Event-Zeile: Device/Variable-Name als `<router-link>` zum Device
+  - Klick → springt zum betroffenen Device
+  - Datei: `pages/Alerts.vue`
+
+- [x] Step 4 — Alerts→Automations Link (~1h)
+  - "Create Automation" Button auf Alerts-Seite
+  - Navigiert mit `?create=true&variable_key=X` zum Automations-Builder
+  - Datei: `pages/Alerts.vue`
+
+- [x] Step 5 — DeviceDetail Input/Output zugeklappt (~1h)
+  - Beide UCard-Panels (Input/Telemetry + Output/Variables) default collapsed
+  - Aufklappbar per Chevron-Klick
+  - Datei: `pages/DeviceDetail.vue`
+
+- [x] Step 6 — Selektoren-Audit abschließen (~1h)
+  - Grep nach `<UInput` in Formularen, jedes Entity-Referenz-Feld → UEntitySelect
+  - Automations: `trigVarKey`, `actVarKey`, `trigDeviceUid` verifizieren
+  - Alert Rules: `vtKey`, `vtDeviceUid` verifizieren
+
+### Milestone UX-B: Erklärungen, Tooltips & Bug-Fixes [done] ✅
+> Jede Seite erklärt sich selbst. Keine unklaren Icons. Keine JSON-Fehler.
+
+- [x] Step 1 — Events-Seite Erklärungstext + Tooltips (~1h)
+  - Header: "Events zeigen System-Ereignisse in Echtzeit"
+  - Tooltips auf: "Set cursor", "Jump to next", "ACK", "Stream"
+  - Datei: `pages/Events.vue`
+
+- [x] Step 2 — Audit-Seite Erklärungstext (~0.5h)
+  - Header: "Das Audit-Log zeigt wer wann was im System geändert hat"
+  - Visuell von Events unterscheiden
+  - Datei: `pages/Audit.vue`
+
+- [x] Step 3 — Entities Tooltips (~0.5h)
+  - "Priority": Tooltip "Reihenfolge bei mehreren Bindings (höher = wichtiger)"
+  - "Enable Binding": Tooltip "Deaktivierte Bindings bleiben gespeichert, werden aber ignoriert"
+  - Datei: `pages/EntitiesPage.vue`
+
+- [x] Step 4 — Automations Builder Tooltips (~1h)
+  - Geofence Polygon: "JSON-Array von Koordinaten [[lat,lng], ...]"
+  - Webhook Headers: "JSON-Objekt mit HTTP-Headern"
+  - Cooldown: "Wartezeit in Sekunden bevor die Regel erneut feuern kann"
+  - Datei: `pages/Automations.vue`
+
+- [ ] Step 5 — Bug-Fixes: Dashboard-Template JSON-Fehler (~2h)
+  - Root Cause analysieren und fixen
+  - Dateien: `pages/DashboardView.vue`, Backend-Endpoints
+
+- [ ] Step 6 — Bug-Fixes: API-Docs/Swagger 404 + Useful Links (~1h)
+  - Links zu `/api/v1/docs` und Redoc verifizieren und reparieren
+  - Useful Links in Settings prüfen
+  - Dateien: `pages/ApiDocs.vue`, `pages/Settings.vue`
+
+- [ ] Step 7 — Bug-Fix: Acknowledge-Alert (~1h)
+  - Alert-Acknowledge schlägt fehl → Backend-Endpoint prüfen
+  - Dateien: `pages/Alerts.vue`, Backend
+
+- [ ] Step 8 — Grafik-Bug Suchfeld-Placeholder (~0.5h)
+  - Placeholder-Rendering in Suchfeldern prüfen
+  - Dateien: `pages/Devices.vue`, `pages/EntitiesPage.vue`
+
+- [x] Step 9 — Secrets Toggle Tooltip + Streams-Seite Erklärung (~1h)
+  - Variables: Tooltip auf Secrets-Toggle
+  - VariableStreams: Erklärungstext oben, Progressive Disclosure
+
+- [x] Step 10 — System Health: Redis Tooltip + klickbare Links (~0.5h)
+  - Redis → Tooltip "In-Memory Cache"
+  - Devices Online/Offline → klickbarer Link zur Devices-Seite (gefiltert)
+  - Active Alerts → Link zur Alerts-Seite
+
+- [ ] Step 11 — Dashboard Home aufräumen (~2h)
+  - Minimalistischer: nur wichtigste KPIs sichtbar
+  - Weniger Kacheln, klarere Aussage
+
+### Milestone UX-C: DeviceDetail Komplett-Überholung [done] ✅
+> Das Herzstück der "Verstehen"-Ebene — Device als Platine mit klickbaren Elementen.
+
+- [x] Step 1 — System Context mit echten Elementen (~4h)
+  - Statt "Variables 21" → Liste der tatsächlichen Variablen mit Name, Wert, Typ-Icon
+  - Jede klickbar (Link zur Variable oder Connect-Panel)
+  - Verknüpfte Alerts und Automations anzeigen als Nodes
+  - Datei: `pages/DeviceDetail.vue`
+
+- [x] Step 2 — Variable-Typ editierbar (~2h)
+  - Edit-Modal erweitern: Typ (string/int/float/bool/json), Einheit, Direction
+  - Nicht nur Value, sondern auch Metadaten änderbar
+  - Datei: `pages/DeviceDetail.vue`
+
+- [x] Step 3 — Connect-Button pro Variable (~1h)
+  - 🔗 Icon pro Variable-Zeile → öffnet ConnectPanel mit dieser Variable
+  - Datei: `pages/DeviceDetail.vue`
+
+- [x] Step 4 — Variablen-Bereich: Typ-Icons + Einheiten (~2h)
+  - Jede Variable: Typ-Icon (🌡️/💧/🔋), Name, Wert MIT Einheit, Sparkline
+  - Kein "Default" Badge mehr
+  - Datei: `pages/DeviceDetail.vue`
+
+- [x] Step 5 — Offline-Fehlerzustand ActionBar (~1h)
+  - Bei Offline: "🔴 Offline seit 3h · Letzter Kontakt: 14:23"
+  - Buttons: [Verbindung testen] [Alert einrichten]
+  - Datei: `pages/DeviceDetail.vue`
+
+### Milestone UX-D: Add Device Wizard [done] ✅
+> Ebene 1 der Vision: "Was willst du anbinden?" — 4 geführte Flows.
+
+- [x] Step 1 — Wizard-Komponente (~3h)
+  - Multi-Step-Wizard: Step-Indicator, Back/Next/Skip, ein Feld pro Screen
+  - Datei: `components/DeviceWizard.vue` (neu)
+
+- [x] Step 2 — Flow A: Hardware (ESP32/Shelly) (~3h)
+  - Verbindungsart → Pairing/MQTT → Live-Status → Benennen → Geschafft
+  - 5 Steps mit "Überspringen →" auf jedem
+
+- [x] Step 3 — Flow B: Service/API (~3h)
+  - URL eingeben → Auth wählen → Testen + Felder erkennen → Benennen → Geschafft
+
+- [x] Step 4 — Flow C: Bridge (MQTT/Modbus/CAN) (~2h)
+  - Protokoll wählen → Config → Testen → Benennen → Geschafft
+
+- [x] Step 5 — Flow D: Agent (Software) (~2h)
+  - System wählen → Install-Command (Copy-to-Clipboard) → Warten → Benennen → Geschafft
+
+- [x] Step 6 — WelcomeScreen + Devices Integration (~1h)
+  - WelcomeScreen: Klick auf Kategorie → startet Wizard mit richtigem Flow
+  - Devices-Seite: "+ Device" Button → öffnet Wizard
+
+### Milestone UX-E: System Context Platinen-Ansicht + Dashboard Intelligence [done] ✅
+> Ebene 2 + 3 der Vision: Visueller Schaltplan + smartes Dashboard.
+
+- [x] Step 1 — Node-Graph-Komponente (~4h)
+  - SVG-basiert: Device-Node → Variable-Nodes → Alert/Automation-Nodes
+  - Verbindungslinien, klickbare Nodes
+  - Datei: `components/SystemContextGraph.vue` (neu)
+
+- [x] Step 2 — Integration in DeviceDetail (~2h)
+  - Ersetzt die aktuellen statischen Boxen
+  - API: GET `/devices/{id}/context` → variables, alerts, automations
+
+- [x] Step 3 — Dashboard Widget Auto-Suggest (~2h)
+  - Nach Variable-Auswahl: Widget-Typ basierend auf `display_hint`/`value_type`
+  - Label + Unit Auto-Fill aus Variable-Definition
+
+- [x] Step 4 — Connect-Panel Inline-Forms (~3h)
+  - "[+ Alert]" im Panel → Inline-Formular IM Panel, kein Navigation weg
+  - Variable vorausgewählt, nur Bedingung konfigurieren
+
+---
+
+## Phase 6: Erweiterung & Anbindung [done] ✅
+> M11 und M21 werden langfristig generalisiert zu "Externe Integrationen"
+> und "Deep Integrations & Ecosystem" (nicht nur n8n).
+> **Grundprinzip:** Jedes neue Feature MUSS per REST-API, Webhook und
+> ggf. MQTT erreichbar sein. Universelle Kompatibilität mit n8n, Node-RED,
+> Home Assistant, Make, Zapier, Power Automate und Custom Scripts.
+
+### Milestone 21: n8n Deep Integration → Externe Integrationen [done] ✅
+> Langfristig generalisiert: Node-RED, Home Assistant, Make/Zapier Support geplant.
+- [x] Step 1 — n8n Node Update: Semantische Typen
+- [x] Step 2 — n8n Node: Dashboard & Automation Integration
+- [x] Step 3 — n8n Kompatibilitäts-Tests
+- [ ] Step 4 — Node-RED Node Package (npm: node-red-contrib-hubex)
+- [ ] Step 5 — MQTT Integration erweitern (Home Assistant Discovery Protocol)
+- [ ] Step 6 — Webhook-System härten (Payload-Templates, Custom Headers, Auth)
+- [ ] Step 7 — Integrations-Dokumentation (n8n, Node-RED, HA, Make, Python, curl)
+
+### Milestone 22: MCP Server Integration [done] ✅
+- [x] Step 1 — MCP Tool Definitions: 15 Tools
+- [x] Step 2 — MCP Endpoint Layer
+- [x] Step 3 — MCP Handler
+- [x] Step 4 — Capabilities
+
+### Milestone 23: Universal Agent SDK [done] ✅
+- [x] Step 1 — Agent Protocol
+- [x] Step 2 — Python SDK Agent
+- [x] Step 3 — Built-in Collectors
+- [x] Step 4 — Agent Features
+- [x] Step 5 — Setup.py + CLI
+
+### Milestone 24: Bridge/Gateway Framework [done] ✅
+- [x] Step 1 — Bridge Architecture
+- [x] Step 2 — Serial/UART Bridge Plugin
+- [x] Step 3 — Modbus RTU/TCP Plugin
+- [x] Step 4 — BLE Bridge Plugin
+- [x] Step 5 — Multi-Plugin Support
+
+---
+
+## Phase 7: Enterprise, Business & Advanced [todo] ← AKTUELL
+> Erweitert um Business-kritische Features aus der Lücken-Analyse:
+> Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
+> Custom API Builder, Mandanten-Hierarchie, Report-Generator.
+
+### Milestone 14b: Computed Variables & Snapshots [todo]
+> Business-kritisch: Backend-berechnete Variablen + unveränderliche Stichtagswerte.
+- [ ] Step 1 — Computed Variables Backend (Scope: computed/system, Formel-Engine)
+- [ ] Step 2 — Berechnungs-Trigger (reaktiv, Cron/Schedule, manuell)
+- [ ] Step 3 — Computed Variables UI (Formel-Editor, Preview, Dashboard-nutzbar)
+- [ ] Step 4 — Variable Snapshots (Stichtagswerte, immutable, Timeline)
+
+### Milestone 19b: Automation Engine Erweiterung [todo]
+> 8 neue Action-Typen, 5 neue Trigger, visueller Builder.
+- [ ] Step 1 — Neue Actions (Email, HTTP, Data Export, Snapshot, Delay, Push, Audit)
+- [ ] Step 2 — Neue Trigger (Cron, Snapshot-Created, Webhook, Computed-Changed, Multi-Var)
+- [ ] Step 3 — Visueller Builder UX (Kachel-Katalog, Live-Preview, Test-Modus)
+
+### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [todo]
+> 3 Sicherheitsstufen: Public, PIN-geschützt, Token-authentifiziert.
+- [ ] Step 1 — Public Link (kryptographischer Token, read-only)
+- [ ] Step 2 — PIN-geschützt (4-6 Stellen, QR-Code-druckbar)
+- [ ] Step 3 — Token-authentifiziert (Scoped Access, Rate-Limited, Audit)
 
 ### Milestone 26: Security Hardening v2 [todo]
 - [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)
-- [ ] Step 2 — API Key Management (service-to-service auth)
+- [ ] Step 2 — Scoped API Key Management (service-to-service + Embed-Tokens)
 - [ ] Step 3 — RBAC Roles (admin, operator, viewer, custom)
 - [ ] Step 4 — Session Management UI + Device Token Rotation
 
 ### Milestone 27: Skalierungs-Grundlagen [todo]
-> Vorbereitung für Enterprise-Scale (tausende bis Millionen Devices).
-- [ ] Step 1 — variable_history Partitioning (zeitbasiert, monatlich)
-  > PostgreSQL native Partitioning oder TimescaleDB Extension evaluieren
-- [ ] Step 2 — Telemetrie-Ingestion Pipeline
-  > Bei hohem Volumen: Message Queue (Redis Streams oder Celery) vor DB-Write
+> Vorbereitung für Enterprise-Scale.
+- [ ] Step 1 — variable_history Partitioning (zeitbasiert)
+- [ ] Step 2 — Telemetrie-Ingestion Pipeline (Redis Streams/Celery)
 - [ ] Step 3 — Automation-Engine Worker Pool
-  > Bestehenden asyncio-Loop abstrahieren für spätere Celery/Worker-Migration
 - [ ] Step 4 — Horizontal Scaling Documentation
-  > Docker Compose → Multi-Instance hinter Load Balancer, Redis-koordiniert
+
+### Milestone 27b: Custom API Builder [todo]
+> Visuell konfigurierbare API-Endpoints die HubEx-Daten in eigenem Format ausgeben.
+- [ ] Step 1 — Endpoint-Builder (Route, Method, Params, Response-Mapping)
+- [ ] Step 2 — Token-Management + Rate-Limiting pro Endpoint
+- [ ] Step 3 — Auto-generierte Swagger/OpenAPI Doku für Custom Endpoints
+- [ ] Step 4 — API Traffic Dashboard (Requests/Tag, Latenz, Fehlerrate)
 
 ### Milestone 28: Advanced Observability [todo]
 - [ ] Step 1 — Trace/Timeline View (execution traces, event correlation)
@@ -629,12 +881,22 @@
 - [ ] Step 2 — Policy Management (capability policies, plan enforcement)
 - [ ] Step 3 — Provider Health Dashboard + System Status
 
-### Milestone 31: Multi-User Collaboration [todo]
-> Vollumfassend, aber ganz am Ende der Roadmap.
+### Milestone 28b: Report-Generator (PDF) [todo]
+> Template-basierter Report-Generator für Abrechnungen, Übersichten, Berichte.
+- [ ] Step 1 — Report-Template System (Layout, Logo, Tabellen, Charts, Platzhalter)
+- [ ] Step 2 — Datenquellen (Variablen, Computed Variables, Snapshots, Aggregationen)
+- [ ] Step 3 — PDF-Generierung (serverseitig, WeasyPrint/Puppeteer)
+- [ ] Step 4 — Automation-Action: "Report generieren + per Email senden"
+- [ ] Step 5 — Scheduled Reports ("Am 15.01. Jahresabrechnung für alle Einheiten")
+
+### Milestone 31: Multi-User & Mandanten-Hierarchie [todo]
+> Erweitert um Mandanten-Hierarchie mit Sichtbarkeits-Steuerung.
 - [ ] Step 1 — Rollen-basierte Sichtbarkeit (wer sieht welches Dashboard/Device)
-- [ ] Step 2 — Aktivitäts-Feed ("Max hat Alert-Rule X geändert")
-- [ ] Step 3 — Gleichzeitige Bearbeitung (Conflict Resolution bei Dashboard-Edits)
-- [ ] Step 4 — Team-Dashboards vs. persönliche Dashboards
+- [ ] Step 2 — Mandanten-Hierarchie (Organisation → Kunden → Gebäude → Einheiten → Devices)
+- [ ] Step 3 — Sichtbarkeit nach Hierarchie-Ebene (Admin/Vermieter/Mieter)
+- [ ] Step 4 — Dashboard-Zuweisung pro Hierarchie-Ebene
+- [ ] Step 5 — Aktivitäts-Feed ("Max hat Alert-Rule X geändert")
+- [ ] Step 6 — Team-Dashboards vs. persönliche Dashboards
 
 ### Milestone 32: Plugins Framework [todo]
 - [ ] Step 1 — Plugin Manifest + Lifecycle
@@ -880,31 +1142,31 @@ Phase 8 intern:
 ```
 Phase 1-4 (Core + UI + Data + Integration) ✅
   │
-  └─► Phase 5: UX-Überholung & Fundament
+  └─► Phase 5: UX-Überholung & Fundament (M13-M20) ✅
         │
-        ├─► M13 (Design System Reboot) — ZUERST, alles andere baut darauf auf
-        │     └─► M14 (Typsystem) — braucht neue UI-Komponenten
-        │           ├─► M15 (Device Experience) — braucht Typsystem für Auto-Discovery
-        │           ├─► M18 (Dashboard Builder) — braucht Typsystem für Auto-Suggest
-        │           └─► M19 (Automation Engine) — braucht Typsystem für Trigger-Templates
-        │
-        ├─► M16 (Kontextuelles Arbeiten) — parallel zu M15, baut auf neuen Components auf
-        ├─► M17 (Realtime) — WebSocket unabhängig, Notifications brauchen neues Design
-        └─► M20 (System-Übersicht) — braucht M17 (Realtime) + M18 (Dashboard Builder)
+        └─► Phase 5b: UX Completion ← AKTUELL
               │
-              └─► Phase 6: Erweiterung
-                    ├─► M21 (n8n Deep) — braucht M14 (Typsystem) + M19 (Automations)
-                    ├─► M22 (MCP) — unabhängig
-                    ├─► M23 (Agent SDK) — braucht M15 (Device Wizard)
-                    ├─► M24 (Bridges) — braucht M23 (Agent SDK)
-                    └─► (M25 gestrichen — Onboarding verteilt in M15/M16/M19/M20)
+              ├─► UX-A (Flow-Korrekturen) — ZUERST
+              ├─► UX-B (Erklärungen + Bugs) — parallel zu UX-A
+              ├─► UX-C (DeviceDetail) — braucht UX-A
+              ├─► UX-D (Device Wizard) — braucht UX-C
+              └─► UX-E (System Context + Dashboard) — braucht UX-C
+                    │
+                    └─► Phase 6: Erweiterung (M21-M24) ✅
                           │
-                          └─► Phase 7: Enterprise
-                                ├─► M26 (Security) — unabhängig
+                          └─► Phase 7: Enterprise & Business
+                                ├─► M14b (Computed Variables) — braucht M14
+                                ├─► M19b (Automation Erweiterung) — braucht M19 + M14b
+                                ├─► M18b (Dashboard Embed) — braucht M18 + M26
+                                ├─► M26 (Security/RBAC) — unabhängig
                                 ├─► M27 (Skalierung) — unabhängig
+                                ├─► M27b (Custom API Builder) — braucht M26
+                                ├─► M28b (Report-Generator) — braucht M14b
                                 ├─► M29 (Export/Templates) — braucht M14 + M18 + M19
-                                ├─► M31 (Multi-User) — braucht M26 (RBAC)
-                                └─► M36 (Flow Editor) — braucht M20 (System Map)
+                                ├─► M31 (Multi-User + Mandanten) — braucht M26
+                                └─► M36 (Flow Editor) — braucht M20
+                                      │
+                                      └─► Phase 8: Hardware & Produkt-Modus (H1-H7)
 ```
 
 ---
@@ -913,8 +1175,16 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
 
 | Sprint | Milestone | Fokus | Abhängigkeit |
 |--------|-----------|-------|--------------|
-| **Sprint 1** | M13 Steps 1-3 | Design Tokens + Branding + i18n Foundation | — |
-| **Sprint 2** | M13 Steps 4-5 | Component Library + Screen Redesign | Sprint 1 |
-| **Sprint 3** | M14 Steps 1-3 | Typsystem Backend + Grundbibliothek + Triggers | Sprint 2 |
-| **Sprint 4** | M14 Steps 4-5 + M15 Steps 1-3 | Typsystem Frontend + Device Identity + Gruppierung | Sprint 3 |
-| **Sprint 5** | M15 Steps 4-6 + M16 Steps 1-4 | Device Wizard + Auto-Discovery + Kontextuelles Arbeiten + Action-Bars | Sprint 4 |
+| **Sprint UX-1** | UX-A Steps 1-6 | Flow-Korrekturen: Kontext-Navigation, Alert-Actions, Input/Output zugeklappt | — |
+| **Sprint UX-2** | UX-B Steps 1-11 | Erklärungen, Tooltips, Bug-Fixes, Dashboard aufräumen | parallel zu UX-1 |
+| **Sprint UX-3** | UX-C Steps 1-5 | DeviceDetail: System Context, Variable-Typ-Edit, Offline-ActionBar | Sprint UX-1 |
+| **Sprint UX-4** | UX-D Steps 1-6 | Add Device Wizard (4 Flows: Hardware/Service/Bridge/Agent) | Sprint UX-3 |
+| **Sprint UX-5** | UX-E Steps 1-4 | Platinen-Ansicht Node-Graph, Dashboard Auto-Suggest, Connect-Panel Inline | Sprint UX-3 |
+
+> **Grundregel für ALLE zukünftigen Features:**
+> Bei JEDEM neuen Feature wird geprüft:
+> 1. Per REST-API erreichbar? (immer: ja)
+> 2. Per Webhook triggerbar? (wenn Event-basiert: ja)
+> 3. Per MQTT erreichbar? (wenn Echtzeit-relevant: ja)
+> 4. Folgt es den 7 UX-Prinzipien? (Progressive Disclosure, Selektoren, Kontextuelles Arbeiten, Unterstützend, Minimalistisch, Wächst mit Komplexität, Verständliche Sprache)
+> 5. In der API-Dokumentation beschrieben? (immer: ja)

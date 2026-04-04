@@ -700,15 +700,19 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           label="Device"
           placeholder="Select device..."
         />
-        <UInput
-          v-model="bindPriority"
-          label="Priority"
-          type="number"
-          placeholder="0"
-        />
+        <div>
+          <UInput
+            v-model="bindPriority"
+            label="Priority"
+            type="number"
+            placeholder="0"
+          />
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">Reihenfolge bei mehreren Bindings (höher = wichtiger)</p>
+        </div>
         <div class="flex flex-col gap-1">
           <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Enabled</span>
           <UToggle v-model="bindEnabled" label="Enable binding" />
+          <p class="text-[10px] text-[var(--text-muted)]">Deaktivierte Bindings bleiben gespeichert, werden aber ignoriert</p>
         </div>
         <div
           v-if="bindError"

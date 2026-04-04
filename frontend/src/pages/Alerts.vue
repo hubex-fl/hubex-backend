@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useAlerts } from "../composables/useAlerts";
 import UEmpty from "../components/ui/UEmpty.vue";
@@ -9,6 +10,7 @@ import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { relativeTime } from "../composables/useRecentAlerts";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+const alertRoute = useRoute();
 const caps = useCapabilities();
 const toast = useToastStore();
 
@@ -62,18 +64,29 @@ function ruleNameFor(ruleId: number): string {
 // ── Event Actions ─────────────────────────────────────────────────────────
 const ackingIds = ref(new Set<number>());
 const resolvingIds = ref(new Set<number>());
+const justAckedId = ref<number | null>(null);
+const justAckedRuleId = ref<number | null>(null);
 
 async function handleAck(event: AlertEvent) {
   ackingIds.value.add(event.id);
   try {
     await ackEvent(event.id);
     toast.addToast(`Alert acknowledged`, "success");
+    justAckedId.value = event.id;
+    justAckedRuleId.value = event.rule_id;
+    // Auto-dismiss after 15s
+    setTimeout(() => { if (justAckedId.value === event.id) justAckedId.value = null; }, 15000);
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to acknowledge alert"), "error");
   } finally {
     ackingIds.value.delete(event.id);
   }
+}
+
+function dismissAckBar() {
+  justAckedId.value = null;
+  justAckedRuleId.value = null;
 }
 
 async function handleResolve(event: AlertEvent) {
@@ -192,6 +205,21 @@ function openCreate() {
   modalError.value = null;
   modalOpen.value = true;
 }
+
+// Auto-open create modal with pre-filled context from Variables or DeviceDetail
+watch(() => loading.value, (isLoading) => {
+  if (!isLoading && alertRoute.query.create === "true") {
+    openCreate();
+    if (alertRoute.query.variable_key) {
+      form.value.condition_type = "variable_threshold";
+      vtKey.value = String(alertRoute.query.variable_key);
+    }
+    if (alertRoute.query.device_uid) {
+      vtDeviceUid.value = String(alertRoute.query.device_uid);
+    }
+    activeTab.value = "rules";
+  }
+}, { immediate: true });
 
 function openEdit(rule: AlertRule) {
   modalMode.value = "edit";
@@ -380,6 +408,18 @@ const statusClass: Record<string, string> = {
             <option value="all">All Rules</option>
             <option v-for="r in rules" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
+
+          <!-- Contextual: Create Automation from alerts -->
+          <button
+            class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+            title="Create automation to handle these alerts"
+            @click="$router.push({ path: '/automations', query: { create: 'true' } })"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+            </svg>
+            Create Automation
+          </button>
         </div>
 
         <!-- Event list -->
@@ -416,6 +456,17 @@ const statusClass: Record<string, string> = {
                 <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
               </div>
               <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ ev.message }}</p>
+              <!-- Clickable device link -->
+              <router-link
+                v-if="ev.device_id"
+                :to="`/devices/${ev.device_id}`"
+                class="inline-flex items-center gap-1 text-xs text-[var(--primary)] hover:underline mt-0.5"
+              >
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                </svg>
+                Device #{{ ev.device_id }}
+              </router-link>
             </div>
 
             <!-- Actions -->
@@ -437,6 +488,29 @@ const statusClass: Record<string, string> = {
                 {{ resolvingIds.has(ev.id) ? "…" : "Resolve" }}
               </button>
             </div>
+          </div>
+
+          <!-- Post-Acknowledge Action Bar -->
+          <div
+            v-if="justAckedId === ev.id"
+            class="flex items-center gap-3 px-4 py-2 mt-1 rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 text-xs"
+          >
+            <span class="text-[var(--text-muted)]">Alert acknowledged.</span>
+            <router-link
+              v-if="ev.device_uid || ev.device_id"
+              :to="`/devices/${ev.device_uid || ev.device_id}`"
+              class="text-[var(--primary)] hover:underline"
+            >Zum Device</router-link>
+            <button
+              class="text-[var(--primary)] hover:underline"
+              @click="$router.push({ path: '/automations', query: { create: 'true', variable_key: ev.variable_key || '' } })"
+            >Create Automation</button>
+            <button
+              class="text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-auto"
+              @click="dismissAckBar"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         </div>
       </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import {
   listAutomations,
   createAutomation,
@@ -15,6 +16,7 @@ import { useToastStore } from "../stores/toast";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+const route = useRoute();
 const toast = useToastStore();
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -40,7 +42,20 @@ async function reload() {
   }
 }
 
-onMounted(reload);
+onMounted(async () => {
+  await reload();
+  // Auto-open create modal with pre-filled context from Variables or DeviceDetail
+  if (route.query.create === "true") {
+    openCreate();
+    if (route.query.variable_key) {
+      formTriggerType.value = "variable_threshold";
+      trigVarKey.value = String(route.query.variable_key);
+    }
+    if (route.query.device_uid) {
+      trigDeviceUid.value = String(route.query.device_uid);
+    }
+  }
+});
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
@@ -546,6 +561,12 @@ const actionTypeLabel = computed(() => ACTION_TYPES.find((t) => t.value === form
 
 const inputClass = "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors";
 const labelClass = "text-xs font-medium text-[var(--text-muted)]";
+
+// Compact card expansion
+const expandedRuleId = ref<number | null>(null);
+function toggleRuleExpand(id: number) {
+  expandedRuleId.value = expandedRuleId.value === id ? null : id;
+}
 </script>
 
 <template>
@@ -641,57 +662,49 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
       </div>
     </template>
 
-    <!-- Rules list -->
-    <div v-else class="space-y-2">
+    <!-- Rules list — compact cards -->
+    <div v-else class="space-y-1.5">
       <div
         v-for="rule in rules"
         :key="rule.id"
         :class="[
-          'rounded-xl border bg-[var(--bg-surface)] px-4 py-3 transition-colors',
+          'rounded-xl border bg-[var(--bg-surface)] transition-colors',
           rule.enabled ? 'border-[var(--border)]' : 'border-[var(--border)] opacity-60',
         ]"
       >
-        <!-- Top row: name + toggle + actions -->
-        <div class="flex items-start gap-3">
-          <div class="flex-1 min-w-0">
-            <!-- Rule name + description -->
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ rule.name }}</span>
-              <span v-if="!rule.enabled" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)]">disabled</span>
-            </div>
-            <p v-if="rule.description" class="text-xs text-[var(--text-muted)] mb-2">{{ rule.description }}</p>
+        <!-- Compact row: name + IF→THEN summary + status + toggle -->
+        <button
+          class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--bg-raised)]/50 transition-colors rounded-xl"
+          @click="toggleRuleExpand(rule.id)"
+        >
+          <!-- Expand chevron -->
+          <svg
+            :class="['h-3.5 w-3.5 text-[var(--text-muted)] shrink-0 transition-transform duration-200', expandedRuleId === rule.id ? 'rotate-90' : '']"
+            fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
 
-            <!-- IF → THEN badges -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <!-- Trigger badge -->
-              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
-                IF {{ rule.trigger_type.replace("_", " ") }}
-              </span>
-              <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
+          <!-- Name -->
+          <span class="text-sm font-medium text-[var(--text-primary)] truncate min-w-0 shrink">{{ rule.name }}</span>
 
-              <!-- Arrow -->
-              <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
+          <!-- IF→THEN one-liner -->
+          <span class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-mono truncate flex-1 min-w-0">
+            <span class="text-blue-400">IF</span>
+            <span class="truncate">{{ triggerSummary(rule) }}</span>
+            <svg class="h-3 w-3 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+            <span class="text-[var(--primary)]">THEN</span>
+            <span class="truncate">{{ actionSummary(rule) }}</span>
+          </span>
 
-              <!-- Action badge -->
-              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
-                THEN {{ rule.action_type.replace("_", " ") }}
-              </span>
-              <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
-            </div>
+          <!-- Status badges -->
+          <div class="shrink-0 flex items-center gap-2">
+            <span v-if="!rule.enabled" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)]">off</span>
+            <span v-if="rule.fire_count > 0" class="text-[10px] text-[var(--text-muted)]">{{ rule.fire_count }}x</span>
 
-            <!-- Stats -->
-            <div class="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-              <span>Fired: <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
-              <span>Last: <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
-              <span>Cooldown: <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
-            </div>
-          </div>
-
-          <!-- Controls -->
-          <div class="shrink-0 flex items-center gap-1.5">
-            <!-- Toggle -->
+            <!-- Toggle (stop propagation to prevent expand) -->
             <button
               :title="rule.enabled ? 'Disable rule' : 'Enable rule'"
               :disabled="togglingId === rule.id"
@@ -699,12 +712,42 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 'relative h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
                 rule.enabled ? 'bg-[var(--primary)]/70' : 'bg-[var(--bg-raised)]',
               ]"
-              @click="handleToggle(rule)"
+              @click.stop="handleToggle(rule)"
             >
               <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform', rule.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
             </button>
+          </div>
+        </button>
 
-            <!-- History -->
+        <!-- Expanded details -->
+        <div v-if="expandedRuleId === rule.id" class="px-4 pb-3 pt-0 border-t border-[var(--border)]">
+          <!-- Description -->
+          <p v-if="rule.description" class="text-xs text-[var(--text-muted)] mt-2 mb-2">{{ rule.description }}</p>
+
+          <!-- IF → THEN detail (visible on mobile too) -->
+          <div class="flex items-center gap-2 flex-wrap mt-2">
+            <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
+              IF {{ rule.trigger_type.replace(/_/g, " ") }}
+            </span>
+            <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
+            <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+            <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
+              THEN {{ rule.action_type.replace(/_/g, " ") }}
+            </span>
+            <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
+          </div>
+
+          <!-- Stats -->
+          <div class="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
+            <span>Fired: <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
+            <span>Last: <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
+            <span>Cooldown: <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="mt-3 flex items-center gap-1.5">
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               title="View history"
@@ -714,8 +757,6 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-
-            <!-- Edit -->
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               title="Edit rule"
@@ -725,8 +766,6 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
               </svg>
             </button>
-
-            <!-- Test fire -->
             <button
               :disabled="testingId === rule.id"
               :class="[
@@ -735,12 +774,11 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10',
               ]"
+              title="Test fire rule"
               @click="handleTest(rule.id)"
             >
-              {{ testingId === rule.id ? '…' : testConfirmId === rule.id ? 'Confirm?' : 'Test' }}
+              {{ testingId === rule.id ? '...' : testConfirmId === rule.id ? 'Confirm?' : 'Test' }}
             </button>
-
-            <!-- Delete -->
             <button
               :disabled="deletingId === rule.id"
               :class="[
@@ -749,9 +787,10 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10',
               ]"
+              title="Delete rule"
               @click="handleDelete(rule.id)"
             >
-              {{ deletingId === rule.id ? '…' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
+              {{ deletingId === rule.id ? '...' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
             </button>
           </div>
         </div>
@@ -1008,9 +1047,9 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
           <div class="space-y-3">
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Settings</h4>
             <div class="space-y-1">
-              <label :class="labelClass">Cooldown: {{ formCooldown }}s</label>
+              <label :class="labelClass" title="Wartezeit in Sekunden bevor die Regel nach dem Feuern erneut auslösen kann">Cooldown: {{ formCooldown }}s</label>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
-              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (no cooldown)</span><span>1h</span></div>
+              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (kein Cooldown)</span><span>1h</span></div>
             </div>
             <div class="flex items-center gap-2">
               <input id="form-enabled" v-model="formEnabled" type="checkbox" class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]" />

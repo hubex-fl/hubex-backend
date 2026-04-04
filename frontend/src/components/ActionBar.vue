@@ -5,6 +5,7 @@ import { useActionBar } from "../composables/useActionBar";
 
 const props = defineProps<{
   deviceId: number | string;
+  deviceUid?: string;
   hasVariables?: boolean;
   hasAlerts?: boolean;
   hasAutomations?: boolean;
@@ -51,7 +52,7 @@ const actions = computed((): Action[] => {
       done: false,
       onClick: () => {
         dismissAction("variables");
-        router.push("/variables");
+        router.push({ path: "/variables", query: props.deviceUid ? { device: props.deviceUid } : undefined });
       },
     });
   }
@@ -66,7 +67,7 @@ const actions = computed((): Action[] => {
       done: false,
       onClick: () => {
         dismissAction("alerts");
-        router.push("/alerts");
+        router.push({ path: "/alerts", query: { create: "true", ...(props.deviceUid ? { device_uid: props.deviceUid } : {}) } });
       },
     });
   }
@@ -81,7 +82,7 @@ const actions = computed((): Action[] => {
       done: false,
       onClick: () => {
         dismissAction("automations");
-        router.push("/automations");
+        router.push({ path: "/automations", query: { create: "true", ...(props.deviceUid ? { device_uid: props.deviceUid } : {}) } });
       },
     });
   }
