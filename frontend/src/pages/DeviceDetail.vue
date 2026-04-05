@@ -250,6 +250,41 @@ async function loadEntityMemberships(): Promise<void> {
   entityMembershipsLoading.value = false;
 }
 
+// ── Entity Management (UX-G) ────────────────────────────────────────────────
+const showAddGroup = ref(false);
+const addGroupEntityId = ref("");
+const addGroupPriority = ref(0);
+const addGroupSaving = ref(false);
+const addGroupError = ref<string | null>(null);
+
+async function addToGroup() {
+  if (!addGroupEntityId.value.trim() || !deviceInfo.value) return;
+  addGroupSaving.value = true;
+  addGroupError.value = null;
+  try {
+    await apiFetch(`/api/v1/entities/${addGroupEntityId.value}/devices`, {
+      method: "POST",
+      body: JSON.stringify({ device_ids: [deviceInfo.value.id], priority: addGroupPriority.value }),
+    });
+    showAddGroup.value = false;
+    addGroupEntityId.value = "";
+    addGroupPriority.value = 0;
+    await loadEntityMemberships();
+  } catch (e: any) {
+    addGroupError.value = e?.message || "Failed to add to group";
+  } finally {
+    addGroupSaving.value = false;
+  }
+}
+
+async function removeFromGroup(entityId: string) {
+  if (!deviceInfo.value) return;
+  try {
+    await apiFetch(`/api/v1/entities/${entityId}/devices/${deviceInfo.value.id}`, { method: "DELETE" });
+    entityMemberships.value = entityMemberships.value.filter(m => m.entity_id !== entityId);
+  } catch { /* ignore */ }
+}
+
 // ── Device Config (SIM-2) ──────────────────────────────────────────────────
 const configEditing = ref(false);
 const configSaving = ref(false);
@@ -2021,7 +2056,37 @@ onUnmounted(() => {
             <span v-if="em.role !== 'member'" class="opacity-60">({{ em.role }})</span>
           </router-link>
         </div>
-        <span v-else class="text-[10px] text-[var(--text-muted)]">No entity memberships</span>
+        <button
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-dashed border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
+          @click="showAddGroup = true"
+        >
+          <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+          Add to Group
+        </button>
+        <span v-if="!entityMemberships.length" class="text-[10px] text-[var(--text-muted)]">No groups yet</span>
+
+        <!-- Quick remove: × button on each membership chip -->
+        <button
+          v-for="em in entityMemberships"
+          :key="'remove-' + em.entity_id"
+          class="text-[9px] text-[var(--text-muted)] hover:text-[var(--status-bad)] transition-colors ml-[-8px]"
+          title="Remove from group"
+          @click.stop="removeFromGroup(em.entity_id)"
+        >×</button>
+
+        <!-- Add to Group Modal -->
+        <UModal :open="showAddGroup" title="Add to Group" size="sm" @close="showAddGroup = false">
+          <div class="space-y-3 p-2">
+            <UEntitySelect v-model="addGroupEntityId" entity-type="entity" label="Select Group" placeholder="Choose a group..." />
+            <UInput v-model="addGroupPriority" label="Priority" type="number" placeholder="0" />
+            <p class="text-[10px] text-[var(--text-muted)]">Higher priority = processed first when multiple groups apply</p>
+            <div v-if="addGroupError" class="text-xs text-[var(--status-bad)]">{{ addGroupError }}</div>
+          </div>
+          <template #footer>
+            <UButton variant="ghost" @click="showAddGroup = false">Cancel</UButton>
+            <UButton :loading="addGroupSaving" @click="addToGroup">Add</UButton>
+          </template>
+        </UModal>
 
         <!-- Capabilities summary -->
         <div v-if="deviceCapsList.length" class="flex items-center gap-2 ml-auto">

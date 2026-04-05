@@ -840,9 +840,9 @@
 - [x] Step 4 — "Test Connection" Button (fetch + timeout + Status-Anzeige)
 - [x] Step 5 — Config-Panels für Bridge-Devices (Broker URL, Topic, Protocol, Port) + Agent (Interval, Install Command)
 
-### Milestone UX-G: Entities → DeviceDetail Integration [todo]
+### Milestone UX-G: Entities → DeviceDetail Integration [in-progress]
 > Entities dürfen nicht auf einer eigenen Insel leben — sie gehören zum Device.
-- [ ] Step 1 — "Groups & Memberships" Sektion auf DeviceDetail (Chips + Add/Remove)
+- [x] Step 1 — "Groups & Memberships" auf DeviceDetail: Chips + "Add to Group" Button + Remove (×) + Modal mit Entity-Selector
 - [ ] Step 2 — Entity.tags als semantische Variablen (location, tags, properties)
 - [ ] Step 3 — Quick-Create Entity direkt aus DeviceDetail ("Zu neuer Gruppe hinzufügen")
 - [ ] Step 4 — Entity-Location (lat/lng/name Felder auf Entity-Model)
