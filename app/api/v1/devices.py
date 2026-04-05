@@ -257,7 +257,7 @@ async def list_devices(
     include_unclaimed: bool = Query(False),
 ):
     now = datetime.now(timezone.utc)
-    online_window = timedelta(seconds=60)
+    online_window = timedelta(seconds=300)  # must match health "ok" threshold
     if include_unclaimed:
         if not _is_admin(user):
             raise_api_error(403, "DEVICE_LIST_FORBIDDEN", "include_unclaimed requires admin")
@@ -333,9 +333,9 @@ async def get_device(
     if last_seen:
         last_seen = _ensure_utc(last_seen)
         age_seconds = max(0, int((now - last_seen).total_seconds()))
-        if age_seconds <= 60:
+        if age_seconds <= 300:
             health = "ok"
-        elif age_seconds <= 300:
+        elif age_seconds <= 900:
             health = "stale"
     active_pairing_uids = await fetch_pairing_active_uids(
         db, [device.device_uid], now

@@ -873,7 +873,6 @@ onUnmounted(() => {
         v-if="caps.status === 'ready' && hasCap('cap.admin') && (canShowPurge || hasCap('devices.unclaim'))"
         class="px-4 py-1.5 border-b border-[var(--border)] flex items-center gap-3 text-xs text-[var(--text-muted)]"
       >
-        <span class="text-[10px] uppercase tracking-wide font-semibold text-[var(--text-muted)]">Admin</span>
         <USelect v-model="selectMode" :options="selectModeOptions" class="w-28 text-xs" />
         <label class="flex items-center gap-1.5 cursor-pointer select-none">
           <input

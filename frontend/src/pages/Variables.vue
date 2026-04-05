@@ -384,6 +384,23 @@ async function handleSetValue() {
   }
 }
 
+// ── Inline control change (toggle, slider) ──────────────────────────────────
+async function handleControlChange(def: VariableDefinition, val: unknown) {
+  try {
+    const duid = deviceUid.value.trim() || undefined;
+    await putValue({
+      key: def.key,
+      scope: def.scope,
+      deviceUid: duid,
+      value: val,
+      expectedVersion: valuesByKey.value[def.key]?.version ?? null,
+    });
+    await loadDefinitionsAndValues();
+  } catch (e) {
+    rowErrors.value = { ...rowErrors.value, [def.key]: fmtApiError(e, "Failed to update") };
+  }
+}
+
 // ── Delete definition ─────────────────────────────────────────────────────────
 async function handleDeleteDef(def: VariableDefinition) {
   if (!confirm(`Delete definition "${def.key}" and all its history? This cannot be undone.`)) return;
@@ -466,6 +483,31 @@ const groupedRows = computed<VarGroup[]>(() => {
   return groups;
 });
 const hasMultipleGroups = computed(() => groupedRows.value.length > 1 || (groupedRows.value.length === 1 && groupedRows.value[0].deviceUid !== null));
+
+// GPS edit helpers
+const gpsLat = computed(() => {
+  try {
+    const v = JSON.parse(setValueStr.value);
+    return v?.lat ?? '';
+  } catch { return ''; }
+});
+const gpsLng = computed(() => {
+  try {
+    const v = JSON.parse(setValueStr.value);
+    return v?.lng ?? '';
+  } catch { return ''; }
+});
+function onGpsInput(field: 'lat' | 'lng', val: string) {
+  try {
+    const cur = JSON.parse(setValueStr.value || '{}');
+    cur[field] = val ? parseFloat(val) : 0;
+    setValueStr.value = JSON.stringify(cur);
+  } catch {
+    const obj: Record<string, number> = {};
+    obj[field] = val ? parseFloat(val) : 0;
+    setValueStr.value = JSON.stringify(obj);
+  }
+}
 
 // Delete confirmation
 const deleteConfirmDef = ref<VariableDefinition | null>(null);
@@ -737,6 +779,8 @@ onMounted(async () => {
                     :compact="false"
                     :showHeader="true"
                     :timeRange="'24h'"
+                    :writable="!def.is_readonly"
+                    @control-change="(val: unknown) => handleControlChange(def, val)"
                   />
                 </div>
               </td>
@@ -882,7 +926,44 @@ onMounted(async () => {
         </div>
         <div class="form-field">
           <label>Value</label>
+          <!-- GPS/Map: friendly lat/lng inputs -->
+          <div v-if="setValueDef.display_hint === 'map' && setValueDef.value_type === 'json'" class="gps-edit">
+            <div class="gps-fields">
+              <div class="gps-field">
+                <label class="gps-label">Latitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  :value="gpsLat"
+                  class="gps-input"
+                  placeholder="e.g. 48.137"
+                  @input="onGpsInput('lat', ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+              <div class="gps-field">
+                <label class="gps-label">Longitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  :value="gpsLng"
+                  class="gps-input"
+                  placeholder="e.g. 11.576"
+                  @input="onGpsInput('lng', ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+            <p class="gps-hint">Enter decimal coordinates (WGS84)</p>
+          </div>
+          <!-- Bool: toggle switch -->
+          <div v-else-if="setValueDef.value_type === 'bool'" class="bool-edit">
+            <label class="bool-toggle">
+              <input type="checkbox" :checked="setValueStr === 'true'" @change="setValueStr = ($event.target as HTMLInputElement).checked ? 'true' : 'false'" />
+              <span class="bool-label">{{ setValueStr === 'true' ? 'ON (true)' : 'OFF (false)' }}</span>
+            </label>
+          </div>
+          <!-- Default: textarea -->
           <textarea
+            v-else
             v-model="setValueStr"
             class="value-textarea"
             rows="4"
@@ -1114,6 +1195,25 @@ onMounted(async () => {
   box-sizing: border-box;
 }
 .value-textarea:focus { outline: none; border-color: #58a6ff; }
+
+/* GPS edit */
+.gps-edit { display: flex; flex-direction: column; gap: 8px; }
+.gps-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gps-field { display: flex; flex-direction: column; gap: 4px; }
+.gps-label { font-size: 11px; color: #8b949e; font-weight: 500; }
+.gps-input {
+  width: 100%; font-family: monospace; font-size: 14px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+  color: #e6edf3; padding: 8px 10px; box-sizing: border-box;
+}
+.gps-input:focus { outline: none; border-color: #58a6ff; }
+.gps-hint { font-size: 11px; color: #6e7681; }
+
+/* Bool edit */
+.bool-edit { padding: 8px 0; }
+.bool-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.bool-toggle input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.bool-label { font-size: 14px; color: #e6edf3; font-weight: 500; }
 
 .conflict-banner {
   background: #332a00; border: 1px solid #6e4f00;
