@@ -824,18 +824,14 @@
 - [x] Step 2 — Variable Slider Scroll-Bug (Seite springt nach oben bei Änderung)
 - [x] Step 3 — Dashboard Device Health Donut entfernen (redundant zu Total Devices)
 
-### Milestone SIM-1: Device-Simulatoren [todo]
+### Milestone SIM-1: Device-Simulatoren [in-progress]
 > Echte Simulationen für alle 4 Device-Typen — damit die Plattform end-to-end testbar wird.
-- [ ] Step 1 — ESP32-Simulator (Python-Script das via /hello + WebSocket Telemetrie sendet)
-  > Simuliert: Temperatur-Schwankungen, Humidity, Heartbeat, Reconnect-Verhalten
-- [ ] Step 2 — API-Poll-Worker (Backend-Task der konfigurierte URLs periodisch abruft)
-  > Simuliert: Weather API, REST-Endpoints; schreibt Antworten in Variables
+- [x] Step 1 — ESP32-Simulator (`scripts/sim_esp32.py`: Auto-Pair, Heartbeat, Telemetrie mit realistischen Sensordaten)
+- [x] Step 2 — API-Poll-Worker (`scripts/api_device.py`: Open-Meteo Weather API, auto-pair, field extraction)
 - [ ] Step 3 — MQTT-Subscriber-Simulator (Verbindet sich mit Broker, empfängt Messages)
   > Simuliert: MQTT Bridge; parsed Messages in Variables
-- [ ] Step 4 — Agent-Simulator (Python-Script das als Software-Agent agiert)
-  > Simuliert: System-Monitoring, CPU/RAM/Disk als Variables
-- [ ] Step 5 — Demo-Data-Generator (erweitert Seed-Script um live-artige Daten)
-  > Periodische Value-Updates + History-Einträge, nicht nur statische Werte
+- [x] Step 4 — Agent-Simulator (`scripts/sim_agent.py`: CPU/RAM/Disk Monitoring, auto-pair)
+- [x] Step 5 — Fleet-Launcher (`scripts/sim_all.py`: Startet ESP32 + API + Agent parallel)
 
 ### Milestone SIM-2: API-Device Config-Panel [todo]
 > Devices vom Typ "Service" und "Bridge" brauchen editierbare Konfigurationsfelder.
