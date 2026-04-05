@@ -636,7 +636,7 @@ onMounted(async () => {
             <!-- Main row -->
             <tr
               class="vars-row"
-              :class="{ 'row-expanded': expandedKey === def.key, 'row-highlight': highlightKey === def.key }"
+              :class="{ 'row-expanded': expandedKey === def.key, 'row-highlight': highlightKey === def.key, 'row-no-value': deviceUid && def.scope === 'device' && !valuesByKey[def.key]?.value && valuesByKey[def.key]?.value !== 0 && valuesByKey[def.key]?.value !== false }"
               :data-var-key="def.key"
               @click="toggleExpand(def)"
             >
@@ -1114,6 +1114,7 @@ onMounted(async () => {
 .vars-row:hover { background: #161b22; }
 .vars-row.row-expanded { background: #161b22; }
 .vars-row.row-highlight { background: rgba(245, 166, 35, 0.12); outline: 1px solid rgba(245, 166, 35, 0.4); animation: highlight-fade 4s ease-out forwards; }
+.vars-row.row-no-value { opacity: 0.35; }
 @keyframes highlight-fade { 0%, 60% { background: rgba(245, 166, 35, 0.12); outline-color: rgba(245, 166, 35, 0.4); } 100% { background: transparent; outline-color: transparent; } }
 
 /* Col widths */

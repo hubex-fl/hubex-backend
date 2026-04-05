@@ -299,6 +299,9 @@ async def get_variable_history(
                        "count": row.cnt},
                 numeric_value=round(row.avg_val, 4) if row.avg_val is not None else None,
                 source="aggregated",
+                t=row.bucket_time.timestamp(),
+                v=round(row.avg_val, 4) if row.avg_val is not None else None,
+                raw=round(row.avg_val, 4) if row.avg_val is not None else None,
             )
             for row in rows
         ]
@@ -314,6 +317,9 @@ async def get_variable_history(
             value=row.value_json,
             numeric_value=row.numeric_value,
             source=row.source,
+            t=row.recorded_at.timestamp() if row.recorded_at else 0,
+            v=row.numeric_value,
+            raw=row.value_json,
         )
         for row in reversed(rows)  # oldest first
     ]

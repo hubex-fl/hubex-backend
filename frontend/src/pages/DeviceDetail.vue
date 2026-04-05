@@ -124,7 +124,9 @@ const variables = ref<EffectiveVariableOut[]>([]);
 const variablesSnapshotId = ref<string | null>(null);
 const variablesAppliedSummary = ref<string | null>(null);
 const variablesSorted = computed(() =>
-  [...variables.value].sort((a, b) => a.key.localeCompare(b.key))
+  [...variables.value]
+    .filter((v) => v.value !== null && v.value !== undefined)
+    .sort((a, b) => a.key.localeCompare(b.key))
 );
 // Sparkline history for numeric device variables (M8d Step 2)
 const sparklineData = ref<Record<string, VizDataPoint[]>>({});
@@ -1756,7 +1758,7 @@ onUnmounted(() => {
 
           <!-- CENTER: Variables (echte Elemente, klickbar) -->
           <div class="space-y-1.5">
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-2">Variables ({{ variables.length }})</p>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-2">Variables ({{ variablesSorted.length }})</p>
             <div v-if="!variables.length" class="text-xs text-[var(--text-muted)] italic py-2">No variables detected yet</div>
             <router-link
               v-for="v in variablesSorted.slice(0, 8)"

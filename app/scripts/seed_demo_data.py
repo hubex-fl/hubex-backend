@@ -31,8 +31,8 @@ async def seed(db) -> dict:
     from app.db.models.dashboard import Dashboard, DashboardWidget
     from app.db.models.entities import Entity
 
-    # Find first user for ownership
-    res = await db.execute(select(User).limit(1))
+    # Find first user for ownership (order by id to get the primary/seed user)
+    res = await db.execute(select(User).order_by(User.id).limit(1))
     user = res.scalar_one_or_none()
     if not user:
         print("ERROR: No user found. Create a user first.")
@@ -220,18 +220,58 @@ async def seed(db) -> dict:
         db.add(dash)
         await db.flush()
 
+        # All widgets reference the temp sensor device for correct values
+        sensor_uid = "demo-temp-sensor-01"
         widgets = [
-            {"widget_type": "gauge", "variable_key": "demo.temperature", "label": "Temperature", "unit": "C", "min_value": -20, "max_value": 60, "grid_col": 1, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
-            {"widget_type": "gauge", "variable_key": "demo.humidity", "label": "Humidity", "unit": "%", "min_value": 0, "max_value": 100, "grid_col": 5, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
-            {"widget_type": "sparkline", "variable_key": "demo.pressure", "label": "Pressure", "unit": "hPa", "grid_col": 9, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
-            {"widget_type": "line_chart", "variable_key": "demo.temperature", "label": "Temperature History", "unit": "C", "grid_col": 1, "grid_row": 4, "grid_span_w": 8, "grid_span_h": 4},
-            {"widget_type": "control_slider", "variable_key": "demo.target_temp", "label": "Target Temp", "unit": "C", "min_value": 10, "max_value": 40, "grid_col": 9, "grid_row": 4, "grid_span_w": 4, "grid_span_h": 4},
-            {"widget_type": "control_toggle", "variable_key": "demo.heater_on", "label": "Heater", "grid_col": 1, "grid_row": 8, "grid_span_w": 4, "grid_span_h": 2},
+            {"widget_type": "gauge", "variable_key": "demo.temperature", "device_uid": sensor_uid, "label": "Temperature", "unit": "C", "min_value": -20, "max_value": 60, "grid_col": 1, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
+            {"widget_type": "gauge", "variable_key": "demo.humidity", "device_uid": sensor_uid, "label": "Humidity", "unit": "%", "min_value": 0, "max_value": 100, "grid_col": 5, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
+            {"widget_type": "sparkline", "variable_key": "demo.pressure", "device_uid": "demo-weather-api-01", "label": "Pressure", "unit": "hPa", "grid_col": 9, "grid_row": 1, "grid_span_w": 4, "grid_span_h": 3},
+            {"widget_type": "line_chart", "variable_key": "demo.temperature", "device_uid": sensor_uid, "label": "Temperature History", "unit": "C", "grid_col": 1, "grid_row": 4, "grid_span_w": 8, "grid_span_h": 4},
+            {"widget_type": "control_slider", "variable_key": "demo.target_temp", "device_uid": sensor_uid, "label": "Target Temp", "unit": "C", "min_value": 10, "max_value": 40, "grid_col": 9, "grid_row": 4, "grid_span_w": 4, "grid_span_h": 4},
+            {"widget_type": "control_toggle", "variable_key": "demo.heater_on", "device_uid": sensor_uid, "label": "Heater", "grid_col": 1, "grid_row": 8, "grid_span_w": 4, "grid_span_h": 2},
         ]
         for i, w in enumerate(widgets):
             dw = DashboardWidget(dashboard_id=dash.id, sort_order=i, **w)
             db.add(dw)
         summary["dashboards"] += 1
+
+    # ── 4b. Synthetic History Data (24h of realistic values) ────────────
+    from app.db.models.variables import VariableHistory
+    import math
+
+    # Only generate if we don't already have enough history
+    existing_hist = await db.execute(
+        select(func.count()).select_from(VariableHistory).where(
+            VariableHistory.variable_key == "demo.temperature"
+        )
+    )
+    hist_count = existing_hist.scalar_one()
+    if hist_count < 50 and created_device_ids:
+        sensor_id = created_device_ids[0]  # temp sensor
+        weather_id = created_device_ids[1] if len(created_device_ids) > 1 else sensor_id
+        now = datetime.now(timezone.utc)
+
+        # Generate 24h of data, one point every 10 minutes (144 points)
+        for i in range(144):
+            t = now - timedelta(minutes=(143 - i) * 10)
+            hour_frac = (t.hour + t.minute / 60) / 24
+            # Temperature: sinusoidal 18-28°C with daily cycle
+            temp = 23 + 5 * math.sin(2 * math.pi * (hour_frac - 0.25)) + random.uniform(-0.5, 0.5)
+            # Humidity: inverse of temp, 50-80%
+            hum = 65 - 15 * math.sin(2 * math.pi * (hour_frac - 0.25)) + random.uniform(-2, 2)
+            # Pressure: slow drift 1008-1018 hPa
+            pres = 1013 + 5 * math.sin(2 * math.pi * hour_frac * 0.3) + random.uniform(-0.5, 0.5)
+
+            db.add(VariableHistory(variable_key="demo.temperature", scope="device", device_id=sensor_id, value_json=round(temp, 1), numeric_value=round(temp, 1), recorded_at=t, source="demo"))
+            db.add(VariableHistory(variable_key="demo.humidity", scope="device", device_id=sensor_id, value_json=round(hum, 1), numeric_value=round(hum, 1), recorded_at=t, source="demo"))
+            db.add(VariableHistory(variable_key="demo.pressure", scope="device", device_id=weather_id, value_json=round(pres, 1), numeric_value=round(pres, 1), recorded_at=t, source="demo"))
+
+        # Target temp: a few step changes over 24h
+        for hours_ago, val in [(20, 20.0), (14, 22.0), (8, 24.0), (4, 22.0), (1, 21.0)]:
+            t = now - timedelta(hours=hours_ago)
+            db.add(VariableHistory(variable_key="demo.target_temp", scope="device", device_id=sensor_id, value_json=val, numeric_value=val, recorded_at=t, source="demo"))
+
+        await db.flush()
 
     # ── 5. Demo Entity ─────────────────────────────────────────────────────
     entity_id = "demo-lab-room-01"
@@ -258,8 +298,12 @@ async def remove_demo(db) -> dict:
     from app.db.models.dashboard import Dashboard
     from app.db.models.entities import Entity
 
-    from app.db.models.variables import VariableValue
+    from app.db.models.variables import VariableValue, VariableHistory
     summary = {}
+
+    # Variable history with demo prefix
+    res = await db.execute(delete(VariableHistory).where(VariableHistory.variable_key.like("demo.%")))
+    summary["history_deleted"] = res.rowcount
 
     # Variable values with demo prefix (must delete before definitions due to FK)
     res = await db.execute(delete(VariableValue).where(VariableValue.variable_key.like("demo.%")))
