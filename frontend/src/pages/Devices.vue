@@ -868,25 +868,24 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Bulk mode toolbar (admin only) -->
+      <!-- Bulk mode toolbar (admin only) — compact inline bar -->
       <div
         v-if="caps.status === 'ready' && hasCap('cap.admin') && (canShowPurge || hasCap('devices.unclaim'))"
-        class="bulk-toolbar px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center gap-4"
+        class="px-4 py-1.5 border-b border-[var(--border)] flex items-center gap-3 text-xs text-[var(--text-muted)]"
       >
-        <div class="w-36">
-          <USelect v-model="selectMode" :options="selectModeOptions" />
-        </div>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
+        <span class="text-[10px] uppercase tracking-wide font-semibold text-[var(--text-muted)]">Admin</span>
+        <USelect v-model="selectMode" :options="selectModeOptions" class="w-28 text-xs" />
+        <label class="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded accent-[var(--primary)]"
+            class="h-3.5 w-3.5 rounded accent-[var(--primary)]"
             :checked="allSelected"
             :disabled="!selectableIds.length"
             @change="toggleSelectAll"
           />
-          <span class="text-xs text-[var(--text-secondary)]">Select all</span>
+          <span>Select all</span>
         </label>
-        <span v-if="selectedIds.length" class="text-xs text-[var(--text-muted)]">
+        <span v-if="selectedIds.length" class="text-[var(--text-secondary)]">
           {{ selectedIds.length }} selected
         </span>
       </div>

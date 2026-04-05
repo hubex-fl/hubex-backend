@@ -20,8 +20,8 @@ router = APIRouter(tags=["metrics"])
 
 _START_TIME = time.time()
 
-ONLINE_WINDOW_SECONDS = 30
-STALE_WINDOW_SECONDS = 120
+ONLINE_WINDOW_SECONDS = 300
+STALE_WINDOW_SECONDS = 900
 
 
 class DeviceMetrics(BaseModel):

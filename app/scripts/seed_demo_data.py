@@ -108,26 +108,37 @@ async def seed(db) -> dict:
         db.add(vdef)
         summary["variables"] += 1
 
-    # ── 2b. Demo Variable VALUES bound to demo devices ──────────────────
-    # Map device-scoped variables to demo devices with realistic values
-    demo_var_values = {
-        "demo.temperature": [23.5, 18.2, 21.7],
-        "demo.humidity": [65.0, 72.3, 58.1],
-        "demo.pressure": [1013.25, 1015.8, 1010.5],
-        "demo.online": [True, True, True],
-        "demo.gps": [
-            {"lat": 48.137, "lng": 11.576},
-            {"lat": 52.520, "lng": 13.405},
-            {"lat": 50.110, "lng": 8.682},
-        ],
-        "demo.target_temp": [22.0, 20.0, 24.0],
-        "demo.heater_on": [True, False, True],
-    }
+    # ── 2b. Demo Variable VALUES — sensible per device type ──────────────
+    # Device 0 = Temp Sensor (hardware): temperature, humidity, heater, target_temp, online
+    # Device 1 = Weather API (service): temperature, humidity, pressure
+    # Device 2 = MQTT Bridge (bridge): online, gps
+    device_var_map = [
+        # Temp Sensor — has physical sensors + heater control
+        {
+            "demo.temperature": 23.5,
+            "demo.humidity": 65.0,
+            "demo.target_temp": 22.0,
+            "demo.heater_on": False,
+            "demo.online": True,
+        },
+        # Weather API — reads weather data from external API
+        {
+            "demo.temperature": 18.2,
+            "demo.humidity": 72.3,
+            "demo.pressure": 1015.8,
+        },
+        # MQTT Bridge — connects via MQTT, has GPS for location tracking
+        {
+            "demo.online": True,
+            "demo.gps": {"lat": 50.110, "lng": 8.682},
+            "demo.pressure": 1010.5,
+        },
+    ]
 
-    for var_key, values in demo_var_values.items():
-        for i, device_id in enumerate(created_device_ids):
-            if i >= len(values):
-                break
+    for i, device_id in enumerate(created_device_ids):
+        if i >= len(device_var_map):
+            break
+        for var_key, value in device_var_map[i].items():
             existing_val = await db.execute(
                 select(VariableValue).where(
                     VariableValue.variable_key == var_key,
@@ -141,7 +152,7 @@ async def seed(db) -> dict:
                 variable_key=var_key,
                 scope="device",
                 device_id=device_id,
-                value_json=values[i],
+                value_json=value,
                 version=1,
             )
             db.add(val)

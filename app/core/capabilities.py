@@ -200,7 +200,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/alerts/{event_id}"): ["alerts.read"],
     ("POST", "/api/v1/alerts/{event_id}/ack"): ["alerts.write"],
     ("POST", "/api/v1/alerts/{event_id}/resolve"): ["alerts.write"],
-    ("GET", "/api/v1/metrics"): ["metrics.read"],
+    ("GET", "/api/v1/metrics"): [],  # no cap required — device counts are user-scoped
     ("POST", "/api/v1/auth/switch-org"): ["core.auth.login"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],

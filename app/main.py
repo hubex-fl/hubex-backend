@@ -35,6 +35,21 @@ if not is_test_env():
     configure_logging(log_level=settings.log_level, log_format=settings.log_format)
 
 
+async def _demo_heartbeat_loop() -> None:
+    """Keep demo devices online by refreshing last_seen_at every 60s."""
+    from sqlalchemy import text
+    while True:
+        await asyncio.sleep(60)
+        try:
+            async with AsyncSessionLocal() as db:
+                await db.execute(text(
+                    "UPDATE devices SET last_seen_at = NOW() WHERE device_uid LIKE 'demo-%'"
+                ))
+                await db.commit()
+        except Exception:
+            logger.debug("demo_heartbeat: error updating demo devices")
+
+
 async def _token_cleanup_loop() -> None:
     """Periodic cleanup of expired revoked-token entries (every 6h)."""
     while True:
@@ -63,8 +78,9 @@ async def lifespan(app: FastAPI):
     ota_task = asyncio.create_task(ota_worker_loop())
     retention_task = asyncio.create_task(history_retention_loop())
     automation_task = asyncio.create_task(automation_engine_loop())
+    demo_heartbeat_task = asyncio.create_task(_demo_heartbeat_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()
