@@ -47,6 +47,11 @@ def run_agent(server, email, password):
     run(server=server, email=email, password=password,
         uid="sim-agent-live", interval=10, auto_pair=True, token=None)
 
+def run_mqtt_bridge(server, email, password):
+    from sim_mqtt_bridge import run
+    run(server=server, email=email, password=password,
+        uid="sim-mqtt-live", interval=12, auto_pair=True, token=None)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Launch all HUBEX simulators")
@@ -59,7 +64,7 @@ if __name__ == "__main__":
     print(f"║   HUBEX Simulator Fleet               ║")
     print(f"╚═══════════════════════════════════════╝{RESET}")
     print(f"  Server: {args.server}")
-    print(f"  Starting 3 simulators…\n")
+    print(f"  Starting 4 simulators…\n")
 
     # Add scripts dir to path
     import os
@@ -68,6 +73,7 @@ if __name__ == "__main__":
     threads = [
         threading.Thread(target=run_esp32, args=(args.server, args.email, args.password), daemon=True, name="ESP32"),
         threading.Thread(target=run_api_device, args=(args.server, args.email, args.password), daemon=True, name="API-Device"),
+        threading.Thread(target=run_mqtt_bridge, args=(args.server, args.email, args.password), daemon=True, name="MQTT-Bridge"),
         threading.Thread(target=run_agent, args=(args.server, args.email, args.password), daemon=True, name="Agent"),
     ]
 
