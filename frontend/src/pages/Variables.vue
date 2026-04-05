@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import {
   type VariableDefinition,
@@ -36,9 +37,11 @@ import { useConnectPanel } from "../composables/useConnectPanel";
 import { useRouter } from "vue-router";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
+const route = useRoute();
 const router = useRouter();
 const { open: openConnectPanel } = useConnectPanel();
 const varMenuOpenKey = ref<string | null>(null);
+const highlightKey = ref<string | null>(null);
 
 function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
   return [
@@ -471,7 +474,22 @@ function openDeleteDef(def: VariableDefinition) {
 }
 
 watch([scopeFilter, deviceUid], loadDefinitionsAndValues);
-onMounted(loadDefinitionsAndValues);
+onMounted(async () => {
+  // Apply query params from navigation (e.g. from DeviceDetail)
+  if (route.query.device && typeof route.query.device === "string") {
+    deviceUid.value = route.query.device;
+  }
+  await loadDefinitionsAndValues();
+  // Highlight and scroll to the target variable
+  if (route.query.highlight && typeof route.query.highlight === "string") {
+    highlightKey.value = route.query.highlight;
+    await nextTick();
+    const el = document.querySelector(`[data-var-key="${CSS.escape(highlightKey.value)}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Clear highlight after 4 seconds
+    setTimeout(() => { highlightKey.value = null; }, 4000);
+  }
+});
 </script>
 
 <template>
@@ -576,7 +594,8 @@ onMounted(loadDefinitionsAndValues);
             <!-- Main row -->
             <tr
               class="vars-row"
-              :class="{ 'row-expanded': expandedKey === def.key }"
+              :class="{ 'row-expanded': expandedKey === def.key, 'row-highlight': highlightKey === def.key }"
+              :data-var-key="def.key"
               @click="toggleExpand(def)"
             >
               <!-- Expand chevron -->
@@ -1013,6 +1032,8 @@ onMounted(loadDefinitionsAndValues);
 .vars-row { cursor: pointer; transition: background 0.1s; }
 .vars-row:hover { background: #161b22; }
 .vars-row.row-expanded { background: #161b22; }
+.vars-row.row-highlight { background: rgba(245, 166, 35, 0.12); outline: 1px solid rgba(245, 166, 35, 0.4); animation: highlight-fade 4s ease-out forwards; }
+@keyframes highlight-fade { 0%, 60% { background: rgba(245, 166, 35, 0.12); outline-color: rgba(245, 166, 35, 0.4); } 100% { background: transparent; outline-color: transparent; } }
 
 /* Col widths */
 .col-expand { width: 28px; }

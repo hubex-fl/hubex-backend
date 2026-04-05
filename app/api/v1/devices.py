@@ -283,9 +283,9 @@ async def list_devices(
         if last_seen:
             last_seen = _ensure_utc(last_seen)
             age_seconds = max(0, int((now - last_seen).total_seconds()))
-            if age_seconds <= 60:
+            if age_seconds <= 300:
                 health = "ok"
-            elif age_seconds <= 300:
+            elif age_seconds <= 900:
                 health = "stale"
         online = bool(last_seen and (now - last_seen) <= online_window)
         pairing_active = device.device_uid in active_pairing_uids
@@ -304,6 +304,11 @@ async def list_devices(
                 state=state,
                 pairing_active=pairing_active,
                 busy=busy,
+                name=device.name,
+                category=device.category or "hardware",
+                icon=device.icon,
+                location_name=device.location_name,
+                auto_discovery=device.auto_discovery if device.auto_discovery is not None else True,
             )
         )
     return out

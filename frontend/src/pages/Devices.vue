@@ -868,9 +868,9 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Bulk mode toolbar -->
+      <!-- Bulk mode toolbar (admin only) -->
       <div
-        v-if="canShowPurge || (caps.status === 'ready' && hasCap('devices.unclaim'))"
+        v-if="caps.status === 'ready' && hasCap('cap.admin') && (canShowPurge || hasCap('devices.unclaim'))"
         class="bulk-toolbar px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center gap-4"
       >
         <div class="w-36">
@@ -898,7 +898,7 @@ onUnmounted(() => {
             <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
               <th class="w-10 px-4 py-3" />
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
-                UID
+                Device
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-32">
                 Type
@@ -1005,11 +1005,14 @@ onUnmounted(() => {
                     />
                     <router-link
                       :to="`/devices/${d.id}`"
-                      class="font-mono text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate max-w-[200px]"
+                      class="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate max-w-[220px]"
+                      :class="d.name ? 'font-medium' : 'font-mono'"
+                      :title="d.device_uid"
                       @click.stop
                     >
-                      {{ d.device_uid }}
+                      {{ d.name || d.device_uid }}
                     </router-link>
+                    <span v-if="d.name" class="text-[10px] font-mono text-[var(--text-muted)] truncate max-w-[140px]">{{ d.device_uid }}</span>
                   </div>
                 </td>
 

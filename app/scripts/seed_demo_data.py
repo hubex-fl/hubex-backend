@@ -47,22 +47,31 @@ async def seed(db) -> dict:
 
     # ── 1. Demo Devices ────────────────────────────────────────────────────
     demo_devices = [
-        {"uid": "demo-temp-sensor-01", "name": "Temperature Sensor (Demo)", "device_type": "hardware", "meta": {"location": "Lab Room 1", DEMO_TAG: True}},
-        {"uid": "demo-weather-api-01", "name": "Weather API Service (Demo)", "device_type": "service", "meta": {"provider": "OpenWeather", DEMO_TAG: True}},
-        {"uid": "demo-mqtt-bridge-01", "name": "MQTT Bridge (Demo)", "device_type": "bridge", "meta": {"protocol": "MQTT", DEMO_TAG: True}},
+        {"uid": "demo-temp-sensor-01", "name": "Temperature Sensor (Demo)", "device_type": "esp32", "category": "hardware", "meta": {"location": "Lab Room 1", DEMO_TAG: True}},
+        {"uid": "demo-weather-api-01", "name": "Weather API Service (Demo)", "device_type": "api_device", "category": "service", "meta": {"provider": "OpenWeather", DEMO_TAG: True}},
+        {"uid": "demo-mqtt-bridge-01", "name": "MQTT Bridge (Demo)", "device_type": "mqtt_bridge", "category": "bridge", "meta": {"protocol": "MQTT", DEMO_TAG: True}},
     ]
 
     created_device_ids = []
     for dd in demo_devices:
         existing = await db.execute(select(Device).where(Device.device_uid == dd["uid"]))
-        if existing.scalar_one_or_none():
+        existing_device = existing.scalar_one_or_none()
+        if existing_device:
+            # Always refresh last_seen_at and fix metadata so demo devices stay online
+            existing_device.last_seen_at = datetime.now(timezone.utc)
+            existing_device.is_claimed = True
+            existing_device.device_type = dd["device_type"]
+            existing_device.category = dd.get("category", "hardware")
+            created_device_ids.append(existing_device.id)
             continue
         device = Device(
             device_uid=dd["uid"],
             name=dd["name"],
             device_type=dd["device_type"],
+            category=dd.get("category", "hardware"),
             owner_user_id=user.id,
-            last_seen_at=datetime.now(timezone.utc) - timedelta(minutes=random.randint(0, 30)),
+            is_claimed=True,
+            last_seen_at=datetime.now(timezone.utc),
         )
         db.add(device)
         await db.flush()
@@ -98,6 +107,61 @@ async def seed(db) -> dict:
         )
         db.add(vdef)
         summary["variables"] += 1
+
+    # ── 2b. Demo Variable VALUES bound to demo devices ──────────────────
+    # Map device-scoped variables to demo devices with realistic values
+    demo_var_values = {
+        "demo.temperature": [23.5, 18.2, 21.7],
+        "demo.humidity": [65.0, 72.3, 58.1],
+        "demo.pressure": [1013.25, 1015.8, 1010.5],
+        "demo.online": [True, True, True],
+        "demo.gps": [
+            {"lat": 48.137, "lng": 11.576},
+            {"lat": 52.520, "lng": 13.405},
+            {"lat": 50.110, "lng": 8.682},
+        ],
+        "demo.target_temp": [22.0, 20.0, 24.0],
+        "demo.heater_on": [True, False, True],
+    }
+
+    for var_key, values in demo_var_values.items():
+        for i, device_id in enumerate(created_device_ids):
+            if i >= len(values):
+                break
+            existing_val = await db.execute(
+                select(VariableValue).where(
+                    VariableValue.variable_key == var_key,
+                    VariableValue.device_id == device_id,
+                    VariableValue.scope == "device",
+                )
+            )
+            if existing_val.scalar_one_or_none():
+                continue
+            val = VariableValue(
+                variable_key=var_key,
+                scope="device",
+                device_id=device_id,
+                value_json=values[i],
+                version=1,
+            )
+            db.add(val)
+
+    # Global demo log value
+    existing_log = await db.execute(
+        select(VariableValue).where(
+            VariableValue.variable_key == "demo.log",
+            VariableValue.scope == "global",
+        )
+    )
+    if not existing_log.scalar_one_or_none():
+        db.add(VariableValue(
+            variable_key="demo.log",
+            scope="global",
+            value_json="System started — demo mode active",
+            version=1,
+        ))
+
+    await db.flush()
 
     # ── 3. Demo Automations ────────────────────────────────────────────────
     demo_rules = [
@@ -183,13 +247,18 @@ async def remove_demo(db) -> dict:
     from app.db.models.dashboard import Dashboard
     from app.db.models.entities import Entity
 
+    from app.db.models.variables import VariableValue
     summary = {}
+
+    # Variable values with demo prefix (must delete before definitions due to FK)
+    res = await db.execute(delete(VariableValue).where(VariableValue.variable_key.like("demo.%")))
+    summary["variable_values_deleted"] = res.rowcount
 
     # Devices with demo uid prefix
     res = await db.execute(delete(Device).where(Device.device_uid.like("demo-%")))
     summary["devices_deleted"] = res.rowcount
 
-    # Variables with demo prefix
+    # Variable definitions with demo prefix
     res = await db.execute(delete(VariableDefinition).where(VariableDefinition.key.like("demo.%")))
     summary["variables_deleted"] = res.rowcount
 

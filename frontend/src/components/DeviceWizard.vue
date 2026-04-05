@@ -181,11 +181,16 @@ async function createDevice() {
       auto_discovery: true,
     };
 
-    // For hardware that already paired, just update the name
+    // For hardware that already paired, update name + type
     if (category.value === "hardware" && createdDeviceId.value) {
       await apiFetch(`/api/v1/devices/${createdDeviceId.value}`, {
         method: "PATCH",
-        body: JSON.stringify({ name: deviceName.value.trim() || null, location_name: deviceLocation.value.trim() || null }),
+        body: JSON.stringify({
+          name: deviceName.value.trim() || null,
+          device_type: hardwareType.value,
+          category: "hardware",
+          location_name: deviceLocation.value.trim() || null,
+        }),
       });
     } else {
       // Step 1: Register device via /hello
@@ -220,11 +225,17 @@ async function createDevice() {
         // Confirm may fail — OK for virtual devices
       }
 
-      // Step 5: Update name, category, location (device is now claimed)
+      // Step 5: Update name, category, type, location (device is now claimed)
+      const deviceType = category.value === "hardware"
+        ? hardwareType.value
+        : category.value === "service"
+          ? "api_device"
+          : category.value;
       await apiFetch(`/api/v1/devices/${hello.device_id}`, {
         method: "PATCH",
         body: JSON.stringify({
           name: deviceName.value.trim() || null,
+          device_type: deviceType,
           category: category.value,
           location_name: deviceLocation.value.trim() || null,
         }),

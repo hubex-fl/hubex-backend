@@ -452,8 +452,10 @@ async function refreshAll(reason: string) {
   logRefresh("start");
   pollInFlight = true;
   let hadError = false;
-  const [deviceOk, taskOk, historyOk, varsOk] = await Promise.all([
-    loadDeviceInfo(),
+  // Load device info first — other loaders depend on deviceInfo.value
+  const deviceOk = await loadDeviceInfo();
+  // Now load the rest in parallel (they need deviceInfo.device_uid)
+  const [taskOk, historyOk, varsOk] = await Promise.all([
     loadCurrentTask(),
     loadTaskHistory(),
     loadVariables(),
@@ -1759,12 +1761,11 @@ onUnmounted(() => {
             <router-link
               v-for="v in variablesSorted.slice(0, 8)"
               :key="v.key"
-              :to="`/variables`"
+              :to="{ path: '/variables', query: { highlight: v.key, device: deviceInfo?.device_uid } }"
               class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] hover:border-[var(--primary)]/40 transition-colors text-left"
-              @click.stop="openConnectPanel({ type: 'variable', id: v.key, name: v.key, variableKey: v.key })"
             >
               <span class="text-[10px] font-mono text-[var(--primary)] truncate flex-1">{{ v.key }}</span>
-              <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.effective_value) }}</span>
+              <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.value) }}</span>
             </router-link>
             <p v-if="variablesSorted.length > 8" class="text-[10px] text-[var(--text-muted)] px-2.5">+{{ variablesSorted.length - 8 }} more</p>
           </div>
