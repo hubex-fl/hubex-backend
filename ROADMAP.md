@@ -814,7 +814,64 @@
 
 ---
 
-## Phase 7: Enterprise, Business & Advanced [todo] ← AKTUELL
+## Phase 5c: Stabilität, Simulation & Integration [todo] ← AKTUELL
+> **Leitsatz:** Bevor Enterprise-Features kommen, muss die Basis stabil und testbar sein.
+> Echte Device-Simulationen, API-Config-Panel, Entities-Integration in DeviceDetail,
+> System Context als Node-Graph, Automations-Builder-Stabilität.
+
+### Milestone UX-F: Quick Fixes [done] ✅
+- [x] Step 1 — Dashboard Gauge ViewBox Fix (Bogen abgeschnitten)
+- [x] Step 2 — Variable Slider Scroll-Bug (Seite springt nach oben bei Änderung)
+- [x] Step 3 — Dashboard Device Health Donut entfernen (redundant zu Total Devices)
+
+### Milestone SIM-1: Device-Simulatoren [todo]
+> Echte Simulationen für alle 4 Device-Typen — damit die Plattform end-to-end testbar wird.
+- [ ] Step 1 — ESP32-Simulator (Python-Script das via /hello + WebSocket Telemetrie sendet)
+  > Simuliert: Temperatur-Schwankungen, Humidity, Heartbeat, Reconnect-Verhalten
+- [ ] Step 2 — API-Poll-Worker (Backend-Task der konfigurierte URLs periodisch abruft)
+  > Simuliert: Weather API, REST-Endpoints; schreibt Antworten in Variables
+- [ ] Step 3 — MQTT-Subscriber-Simulator (Verbindet sich mit Broker, empfängt Messages)
+  > Simuliert: MQTT Bridge; parsed Messages in Variables
+- [ ] Step 4 — Agent-Simulator (Python-Script das als Software-Agent agiert)
+  > Simuliert: System-Monitoring, CPU/RAM/Disk als Variables
+- [ ] Step 5 — Demo-Data-Generator (erweitert Seed-Script um live-artige Daten)
+  > Periodische Value-Updates + History-Einträge, nicht nur statische Werte
+
+### Milestone SIM-2: API-Device Config-Panel [todo]
+> Devices vom Typ "Service" und "Bridge" brauchen editierbare Konfigurationsfelder.
+- [ ] Step 1 — DB-Schema: device_config (endpoint_url, method, headers, auth_type, auth_credentials, poll_interval, field_mapping)
+- [ ] Step 2 — Backend: CRUD API für Device-Config + Validierung
+- [ ] Step 3 — Frontend: Config-Panel auf DeviceDetail (URL, Auth, Headers, Poll-Intervall, Feld-Mapping)
+- [ ] Step 4 — "Test Connection" Button (einmaliger Request + Antwort-Vorschau)
+- [ ] Step 5 — Config-Panels für Bridge-Devices (MQTT Broker, Topic, Protocol-Settings)
+
+### Milestone UX-G: Entities → DeviceDetail Integration [todo]
+> Entities dürfen nicht auf einer eigenen Insel leben — sie gehören zum Device.
+- [ ] Step 1 — "Groups & Memberships" Sektion auf DeviceDetail (Chips + Add/Remove)
+- [ ] Step 2 — Entity.tags als semantische Variablen (location, tags, properties)
+- [ ] Step 3 — Quick-Create Entity direkt aus DeviceDetail ("Zu neuer Gruppe hinzufügen")
+- [ ] Step 4 — Entity-Location (lat/lng/name Felder auf Entity-Model)
+- [ ] Step 5 — Entity-Variablen-Scope (scope: "entity" neben device/global)
+
+### Milestone UX-H: System Context Node-Graph [todo]
+> Die "Platinen-Ansicht" — visueller Fluss von Device → Variables → Alerts → Automations.
+- [ ] Step 1 — SVG Node-Graph Komponente (Nodes + Bezier-Edges + Klick-Interaktion)
+- [ ] Step 2 — Node-Typen: Device, Variable, Alert, Automation, Dashboard-Widget
+- [ ] Step 3 — Automatisches Layout (Dagre oder manuelles Column-Layout)
+- [ ] Step 4 — Klick-Navigation: Node anklicken → zum Detail navigieren
+- [ ] Step 5 — Datenquelle: Existierende APIs (Variables nach device_uid, Alerts nach variable_key)
+
+### Milestone UX-I: Automations-Builder Stabilität [todo]
+> Der Builder muss intuitiver und stabiler werden bevor neue Trigger/Actions kommen.
+- [ ] Step 1 — Builder-UX als Karten statt Formular (visuell geschlossene IF/THEN Blöcke)
+- [ ] Step 2 — Validierung + verständliche Fehlermeldungen
+- [ ] Step 3 — 3 neue Trigger: variable_change, device_online, schedule (cron)
+- [ ] Step 4 — 2 neue Actions: send_notification, log_to_audit
+- [ ] Step 5 — Inline-Test-Vorschau ("Was würde diese Rule auslösen?")
+
+---
+
+## Phase 7: Enterprise, Business & Advanced [todo]
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
@@ -1144,27 +1201,27 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
   │
   └─► Phase 5: UX-Überholung & Fundament (M13-M20) ✅
         │
-        └─► Phase 5b: UX Completion ← AKTUELL
+        └─► Phase 5b: UX Completion ✅
               │
-              ├─► UX-A (Flow-Korrekturen) — ZUERST
-              ├─► UX-B (Erklärungen + Bugs) — parallel zu UX-A
-              ├─► UX-C (DeviceDetail) — braucht UX-A
-              ├─► UX-D (Device Wizard) — braucht UX-C
-              └─► UX-E (System Context + Dashboard) — braucht UX-C
+              └─► Phase 6: Erweiterung (M21-M24) ✅
                     │
-                    └─► Phase 6: Erweiterung (M21-M24) ✅
+                    └─► Phase 5c: Stabilität & Simulation ← AKTUELL
                           │
-                          └─► Phase 7: Enterprise & Business
-                                ├─► M14b (Computed Variables) — braucht M14
-                                ├─► M19b (Automation Erweiterung) — braucht M19 + M14b
-                                ├─► M18b (Dashboard Embed) — braucht M18 + M26
-                                ├─► M26 (Security/RBAC) — unabhängig
-                                ├─► M27 (Skalierung) — unabhängig
-                                ├─► M27b (Custom API Builder) — braucht M26
-                                ├─► M28b (Report-Generator) — braucht M14b
-                                ├─► M29 (Export/Templates) — braucht M14 + M18 + M19
-                                ├─► M31 (Multi-User + Mandanten) — braucht M26
-                                └─► M36 (Flow Editor) — braucht M20
+                          ├─► UX-F (Quick Fixes) ✅
+                          ├─► SIM-1 (Device-Simulatoren) — ZUERST
+                          ├─► SIM-2 (API-Config-Panel) — braucht SIM-1
+                          ├─► UX-G (Entities → DeviceDetail) — parallel
+                          ├─► UX-H (System Context Graph) — braucht UX-G
+                          └─► UX-I (Automations-Builder) — parallel
+                                │
+                                └─► Phase 7: Enterprise & Business
+                                      ├─► M14b (Computed Variables)
+                                      ├─► M19b (Automation Erweiterung) — braucht UX-I
+                                      ├─► M18b (Dashboard Embed)
+                                      ├─► M26 (Security/RBAC)
+                                      ├─► M27 (Skalierung)
+                                      ├─► M33 (Simulator/Testbench) — braucht SIM-1
+                                      └─► M36 (Flow Editor) — braucht UX-H
                                       │
                                       └─► Phase 8: Hardware & Produkt-Modus (H1-H7)
 ```

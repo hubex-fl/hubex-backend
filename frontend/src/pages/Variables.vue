@@ -388,14 +388,20 @@ async function handleSetValue() {
 async function handleControlChange(def: VariableDefinition, val: unknown) {
   try {
     const duid = deviceUid.value.trim() || undefined;
-    await putValue({
+    const result = await putValue({
       key: def.key,
       scope: def.scope,
       deviceUid: duid,
       value: val,
       expectedVersion: valuesByKey.value[def.key]?.version ?? null,
     });
-    await loadDefinitionsAndValues();
+    // Update local state without full page reload (prevents scroll jump)
+    if (valuesByKey.value[def.key]) {
+      valuesByKey.value = {
+        ...valuesByKey.value,
+        [def.key]: { ...valuesByKey.value[def.key], value: val, version: (valuesByKey.value[def.key].version ?? 0) + 1 },
+      };
+    }
   } catch (e) {
     rowErrors.value = { ...rowErrors.value, [def.key]: fmtApiError(e, "Failed to update") };
   }

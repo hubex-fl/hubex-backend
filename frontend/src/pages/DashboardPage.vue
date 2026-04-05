@@ -298,79 +298,8 @@ watch(events, async () => {
       </button>
     </div>
 
-    <!-- ── 4. Device Health Ring + Recent Alerts ───────────────────────────── -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Device Health Ring -->
-      <UCard data-testid="device-health-ring">
-        <template #header>
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Device Health</h3>
-        </template>
-
-        <div v-if="metricsLoading" class="flex items-center justify-center py-10">
-          <USkeleton width="160px" height="160px" rounded="full" />
-        </div>
-        <div v-else class="flex flex-col items-center gap-4 py-4">
-          <!-- SVG Donut -->
-          <svg width="160" height="160" viewBox="0 0 160 160" aria-label="Device health donut chart">
-            <!-- Background ring -->
-            <circle cx="80" cy="80" r="60" fill="none" stroke="var(--bg-raised)" stroke-width="16" />
-            <!-- Segments -->
-            <circle
-              v-for="seg in donutSegments"
-              :key="seg.label"
-              cx="80" cy="80" r="60"
-              fill="none"
-              :style="{ stroke: seg.color }"
-              stroke-width="16"
-              :stroke-dasharray="`${seg.dash} ${seg.gap}`"
-              stroke-linecap="butt"
-              :transform="`rotate(${seg.startAngle} 80 80)`"
-            />
-            <!-- Center: total count -->
-            <text
-              x="80" y="75"
-              text-anchor="middle"
-              font-family="JetBrains Mono, ui-monospace, monospace"
-              font-size="26"
-              font-weight="700"
-              fill="var(--text-primary)"
-            >{{ metrics?.devices.total ?? "—" }}</text>
-            <text
-              x="80" y="93"
-              text-anchor="middle"
-              font-family="Inter, ui-sans-serif, sans-serif"
-              font-size="11"
-              fill="var(--text-muted)"
-            >devices</text>
-          </svg>
-
-          <!-- Legend -->
-          <div class="flex gap-5 flex-wrap justify-center">
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-ok)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Online</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.online ?? 0 }}
-              </span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-warn)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Stale</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.stale ?? 0 }}
-              </span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-bad)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Offline</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.offline ?? 0 }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </UCard>
-
+    <!-- ── 4. Recent Alerts (full width) ─────────────────────────────────── -->
+    <div>
       <!-- Recent Alerts -->
       <UCard data-testid="recent-alerts">
         <template #header>
