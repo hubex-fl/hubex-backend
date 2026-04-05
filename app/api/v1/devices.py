@@ -360,6 +360,7 @@ async def get_device(
         state=state,
         pairing_active=pairing_active,
         busy=busy,
+        category=device.category or "hardware",
         config=device.config,
     )
 
