@@ -701,6 +701,16 @@ const statusClass: Record<string, string> = {
             <UEntitySelect v-model="vtDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
           </template>
 
+          <!-- Device UID (for non-threshold conditions too) -->
+          <UEntitySelect
+            v-if="form.condition_type !== 'variable_threshold'"
+            v-model="vtDeviceUid"
+            entity-type="device"
+            label="Device"
+            placeholder="Select device (optional)"
+            :optional="true"
+          />
+
           <!-- Severity -->
           <div class="space-y-1">
             <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>

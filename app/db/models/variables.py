@@ -43,7 +43,7 @@ class VariableDefinition(Base):
     is_secret: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_readonly: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     user_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     allow_device_override: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     # Visualization & organization
     display_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)

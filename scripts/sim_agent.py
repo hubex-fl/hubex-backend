@@ -137,6 +137,14 @@ def run(server, email, password, uid, interval, auto_pair, token):
     elif not token:
         _err("No token"); return
 
+    if jwt:
+        try:
+            from sim_helpers import ensure_variable_definitions, AGENT_VARIABLES
+            n = ensure_variable_definitions(requests, server, jwt, AGENT_VARIABLES)
+            if n: _ok(f"Created {n} variable definitions")
+        except Exception:
+            pass
+
     _ok(f"Agent Simulator running — Ctrl+C to stop\n")
 
     cycle = 0

@@ -160,6 +160,14 @@ def run(server, email, password, uid, interval, auto_pair, token):
     elif not token:
         _err("No token"); return
 
+    if jwt:
+        try:
+            from sim_helpers import ensure_variable_definitions, MQTT_BRIDGE_VARIABLES
+            n = ensure_variable_definitions(requests, server, jwt, MQTT_BRIDGE_VARIABLES)
+            if n: _ok(f"Created {n} variable definitions")
+        except Exception:
+            pass
+
     _ok(f"MQTT Bridge running — Ctrl+C to stop\n")
 
     cycle = 0
