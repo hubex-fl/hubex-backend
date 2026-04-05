@@ -1748,9 +1748,9 @@ onUnmounted(() => {
                 }"
               />
             </div>
-            <div class="flex gap-3 text-[10px] text-[var(--text-muted)]">
-              <span>{{ dataFlowInputCount }} Telemetry</span>
-              <span>{{ dataFlowTaskCount }} Tasks</span>
+            <div v-if="dataFlowInputCount > 0 || dataFlowTaskCount > 0" class="flex gap-3 text-[10px] text-[var(--text-muted)]">
+              <span v-if="dataFlowInputCount > 0">{{ dataFlowInputCount }} Telemetry</span>
+              <span v-if="dataFlowTaskCount > 0">{{ dataFlowTaskCount }} Tasks</span>
             </div>
           </div>
 
@@ -1765,7 +1765,7 @@ onUnmounted(() => {
               class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] hover:border-[var(--primary)]/40 transition-colors text-left"
             >
               <span class="text-[10px] font-mono text-[var(--primary)] truncate flex-1">{{ v.key }}</span>
-              <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.value) }}</span>
+              <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.value) }}<span v-if="v.constraints?.unit" class="text-[var(--text-muted)] ml-0.5">{{ v.constraints.unit }}</span></span>
             </router-link>
             <p v-if="variablesSorted.length > 8" class="text-[10px] text-[var(--text-muted)] px-2.5">+{{ variablesSorted.length - 8 }} more</p>
           </div>

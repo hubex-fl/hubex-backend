@@ -830,7 +830,7 @@ onUnmounted(() => {
           <UInput
             v-model="searchQuery"
             variant="search"
-            placeholder="Search by UID…"
+            placeholder="Search devices…"
           />
         </div>
         <USelect v-model="sortBy" :options="sortOptions" />

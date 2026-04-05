@@ -73,6 +73,8 @@ export type EffectiveVariable = {
   updated_at: string | null;
   is_secret: boolean;
   source: "device_override" | "global_default";
+  constraints?: { unit?: string } | null;
+  resolved_type?: string | null;
 };
 
 export type EffectiveVariables = {
