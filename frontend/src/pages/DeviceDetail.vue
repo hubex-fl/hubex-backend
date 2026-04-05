@@ -31,6 +31,24 @@ const route = useRoute();
 const router = useRouter();
 const deviceId = ref(route.params.id as string);
 
+type DeviceConfig = {
+  endpoint_url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  auth_type?: string;
+  auth_credentials?: string;
+  poll_interval_seconds?: number;
+  field_mapping?: Record<string, string>;
+  broker_url?: string;
+  topic?: string;
+  protocol?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  install_command?: string;
+  report_interval_seconds?: number;
+};
+
 type DeviceInfo = {
   id: number;
   device_uid: string;
@@ -43,6 +61,8 @@ type DeviceInfo = {
   state?: "unprovisioned" | "provisioned_unclaimed" | "pairing_active" | "claimed" | "busy";
   pairing_active?: boolean;
   busy?: boolean;
+  config?: DeviceConfig | null;
+  category?: string;
   __sig?: string;
 };
 
@@ -228,6 +248,62 @@ async function loadEntityMemberships(): Promise<void> {
     entityMemberships.value = memberships;
   } catch { /* ignore */ }
   entityMembershipsLoading.value = false;
+}
+
+// ── Device Config (SIM-2) ──────────────────────────────────────────────────
+const configEditing = ref(false);
+const configSaving = ref(false);
+const configTesting = ref(false);
+const configError = ref<string | null>(null);
+const configTestResult = ref<{ ok: boolean; message: string } | null>(null);
+const configDraft = ref<Record<string, any>>({});
+
+function startConfigEdit() {
+  configDraft.value = { ...(deviceInfo.value?.config || {}) };
+  configEditing.value = true;
+  configError.value = null;
+  configTestResult.value = null;
+}
+
+function cancelConfigEdit() {
+  configEditing.value = false;
+  configError.value = null;
+}
+
+async function saveConfig() {
+  if (!deviceInfo.value) return;
+  configSaving.value = true;
+  configError.value = null;
+  try {
+    await apiFetch(`/api/v1/devices/${deviceInfo.value.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ config: configDraft.value }),
+    });
+    deviceInfo.value = { ...deviceInfo.value, config: { ...configDraft.value } };
+    configEditing.value = false;
+  } catch (e: any) {
+    configError.value = e?.message || "Failed to save config";
+  } finally {
+    configSaving.value = false;
+  }
+}
+
+async function testConnection() {
+  const url = deviceInfo.value?.config?.endpoint_url;
+  if (!url) return;
+  configTesting.value = true;
+  configTestResult.value = null;
+  try {
+    const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(10000) });
+    configTestResult.value = {
+      ok: r.ok,
+      message: r.ok ? `Connection OK — ${r.status} ${r.statusText}` : `Error — ${r.status} ${r.statusText}`,
+    };
+  } catch (e: any) {
+    configTestResult.value = { ok: false, message: `Connection failed — ${e.message}` };
+  } finally {
+    configTesting.value = false;
+  }
 }
 
 const deviceCapsList = computed(() => {
@@ -1713,6 +1789,119 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- ── Device Configuration (Service/Bridge/Agent only) ────────── -->
+    <UCard v-if="deviceInfo && deviceInfo.category && deviceInfo.category !== 'hardware'" padding="md">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
+            {{ deviceInfo.category === 'service' ? 'API Configuration' : deviceInfo.category === 'bridge' ? 'Bridge Configuration' : 'Agent Configuration' }}
+          </h3>
+          <div class="flex items-center gap-2">
+            <UButton v-if="!configEditing" size="sm" variant="ghost" @click="startConfigEdit">Edit</UButton>
+            <template v-else>
+              <UButton size="sm" variant="ghost" @click="cancelConfigEdit">Cancel</UButton>
+              <UButton size="sm" :loading="configSaving" @click="saveConfig">Save</UButton>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- Service (API) Config -->
+      <div v-if="deviceInfo.category === 'service'" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Endpoint URL</label>
+            <UInput v-if="configEditing" v-model="configDraft.endpoint_url" placeholder="https://api.example.com/data" class="mt-1" />
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.endpoint_url || '—' }}</p>
+          </div>
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Method</label>
+            <USelect v-if="configEditing" v-model="configDraft.method" class="mt-1">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+            </USelect>
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.method || 'GET' }}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Auth Type</label>
+            <USelect v-if="configEditing" v-model="configDraft.auth_type" class="mt-1">
+              <option value="none">None</option>
+              <option value="api_key">API Key</option>
+              <option value="bearer">Bearer Token</option>
+              <option value="basic">Basic Auth</option>
+            </USelect>
+            <p v-else class="text-xs text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.auth_type || 'none' }}</p>
+          </div>
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Poll Interval</label>
+            <UInput v-if="configEditing" v-model="configDraft.poll_interval_seconds" type="number" placeholder="30" class="mt-1" />
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.poll_interval_seconds || 30 }}s</p>
+          </div>
+        </div>
+        <div v-if="configEditing && configDraft.auth_type !== 'none'">
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Auth Credentials</label>
+          <UInput v-model="configDraft.auth_credentials" placeholder="API key or token" class="mt-1" />
+        </div>
+        <div v-if="configTestResult" class="text-xs px-3 py-2 rounded-lg" :class="configTestResult.ok ? 'bg-[var(--status-ok)]/10 text-[var(--status-ok)]' : 'bg-[var(--status-bad)]/10 text-[var(--status-bad)]'">
+          {{ configTestResult.message }}
+        </div>
+        <UButton v-if="!configEditing && deviceInfo.config?.endpoint_url" size="sm" variant="secondary" :loading="configTesting" @click="testConnection">
+          Test Connection
+        </UButton>
+      </div>
+
+      <!-- Bridge Config -->
+      <div v-else-if="deviceInfo.category === 'bridge'" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Broker URL</label>
+            <UInput v-if="configEditing" v-model="configDraft.broker_url" placeholder="mqtt://broker.example.com:1883" class="mt-1" />
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.broker_url || '—' }}</p>
+          </div>
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Topic</label>
+            <UInput v-if="configEditing" v-model="configDraft.topic" placeholder="sensors/#" class="mt-1" />
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.topic || '—' }}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Protocol</label>
+            <USelect v-if="configEditing" v-model="configDraft.protocol" class="mt-1">
+              <option value="mqtt">MQTT</option>
+              <option value="mqtts">MQTTS (TLS)</option>
+              <option value="ws">WebSocket</option>
+            </USelect>
+            <p v-else class="text-xs text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.protocol || 'mqtt' }}</p>
+          </div>
+          <div>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Port</label>
+            <UInput v-if="configEditing" v-model="configDraft.port" type="number" placeholder="1883" class="mt-1" />
+            <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.port || 1883 }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Config -->
+      <div v-else-if="deviceInfo.category === 'agent'" class="space-y-3">
+        <div>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Report Interval</label>
+          <UInput v-if="configEditing" v-model="configDraft.report_interval_seconds" type="number" placeholder="10" class="mt-1" />
+          <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.report_interval_seconds || 10 }}s</p>
+        </div>
+        <div>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Install Command</label>
+          <p class="text-xs font-mono text-[var(--text-muted)] mt-1 bg-[var(--bg-raised)] px-3 py-2 rounded">
+            {{ deviceInfo.config?.install_command || 'python scripts/sim_agent.py --server http://localhost:8000' }}
+          </p>
+        </div>
+      </div>
+
+      <div v-if="configError" class="text-xs text-[var(--status-bad)] mt-2">{{ configError }}</div>
+    </UCard>
 
     <!-- ── System Context — always visible (Herzstück "Verstehen"-Ebene) ── -->
     <div v-if="!restrictUnclaimed" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">

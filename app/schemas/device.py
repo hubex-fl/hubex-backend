@@ -57,6 +57,7 @@ class DeviceDetailItem(BaseModel):
     location_lat: Optional[float] = None
     location_lng: Optional[float] = None
     auto_discovery: bool = True
+    config: Optional[dict] = None
 
 
 class DevicePatch(BaseModel):
@@ -68,3 +69,4 @@ class DevicePatch(BaseModel):
     location_lat: Optional[float] = None
     location_lng: Optional[float] = None
     auto_discovery: Optional[bool] = None
+    config: Optional[dict] = None

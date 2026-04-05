@@ -40,3 +40,10 @@ class Device(Base):
     location_lat: Mapped[float | None] = mapped_column(nullable=True)
     location_lng: Mapped[float | None] = mapped_column(nullable=True)
     auto_discovery: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+
+    # SIM-2: Device configuration (API URL, auth, poll interval, headers, etc.)
+    # JSON structure depends on category:
+    #   service: { endpoint_url, method, headers, auth_type, auth_credentials, poll_interval_seconds, field_mapping }
+    #   bridge:  { broker_url, topic, protocol, port, username, password }
+    #   agent:   { install_command, report_interval_seconds }
+    config: Mapped[dict | None] = mapped_column(JSON, nullable=True)

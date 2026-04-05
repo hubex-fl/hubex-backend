@@ -832,13 +832,13 @@
 - [x] Step 4 — Agent-Simulator (`scripts/sim_agent.py`: CPU/RAM/Disk Monitoring, auto-pair)
 - [x] Step 5 — Fleet-Launcher (`scripts/sim_all.py`: Startet alle 4 Simulatoren parallel)
 
-### Milestone SIM-2: API-Device Config-Panel [todo]
+### Milestone SIM-2: API-Device Config-Panel [done] ✅
 > Devices vom Typ "Service" und "Bridge" brauchen editierbare Konfigurationsfelder.
-- [ ] Step 1 — DB-Schema: device_config (endpoint_url, method, headers, auth_type, auth_credentials, poll_interval, field_mapping)
-- [ ] Step 2 — Backend: CRUD API für Device-Config + Validierung
-- [ ] Step 3 — Frontend: Config-Panel auf DeviceDetail (URL, Auth, Headers, Poll-Intervall, Feld-Mapping)
-- [ ] Step 4 — "Test Connection" Button (einmaliger Request + Antwort-Vorschau)
-- [ ] Step 5 — Config-Panels für Bridge-Devices (MQTT Broker, Topic, Protocol-Settings)
+- [x] Step 1 — DB-Schema: `config` JSON-Feld am Device-Model (JSONB column, category-spezifische Struktur)
+- [x] Step 2 — Backend: Config via PATCH /devices/{id} (DevicePatch.config), DeviceDetailItem.config
+- [x] Step 3 — Frontend: Config-Panel auf DeviceDetail (Service: URL/Method/Auth/Poll, Bridge: Broker/Topic/Protocol, Agent: Interval/Install)
+- [x] Step 4 — "Test Connection" Button (fetch + timeout + Status-Anzeige)
+- [x] Step 5 — Config-Panels für Bridge-Devices (Broker URL, Topic, Protocol, Port) + Agent (Interval, Install Command)
 
 ### Milestone UX-G: Entities → DeviceDetail Integration [todo]
 > Entities dürfen nicht auf einer eigenen Insel leben — sie gehören zum Device.
