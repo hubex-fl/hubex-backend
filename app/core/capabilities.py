@@ -274,6 +274,12 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # Branding
     ("GET", "/api/v1/orgs/{org_id}/branding"): ["org.read"],
     ("PUT", "/api/v1/orgs/{org_id}/branding"): ["org.write"],
+    # Hardware
+    ("GET", "/api/v1/hardware/boards"): ["devices.read"],
+    ("GET", "/api/v1/hardware/boards/{board_id}"): ["devices.read"],
+    ("GET", "/api/v1/hardware/shields"): ["devices.read"],
+    ("GET", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.read"],
+    ("PUT", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.write"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],

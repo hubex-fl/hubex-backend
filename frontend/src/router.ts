@@ -35,6 +35,7 @@ const router = createRouter({
     { path: "/trace-timeline", component: () => import("./pages/TraceTimeline.vue"),  meta: { title: "Trace Timeline" } },
     { path: "/reports",       component: () => import("./pages/Reports.vue"),        meta: { title: "Reports" } },
     { path: "/plugins",       component: () => import("./pages/Plugins.vue"),        meta: { title: "Plugins" } },
+    { path: "/hardware",      component: () => import("./pages/HardwareBoards.vue"), meta: { title: "Hardware Boards" } },
     { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },

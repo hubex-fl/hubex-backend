@@ -42,6 +42,7 @@ from .custom_endpoints import router as custom_endpoints_router
 from .observability import router as observability_router
 from .reports import router as reports_router
 from .plugins import router as plugins_router
+from .hardware import router as hardware_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -86,3 +87,4 @@ router.include_router(custom_endpoints_router, tags=["custom-api"])
 router.include_router(observability_router, tags=["observability"])
 router.include_router(reports_router, tags=["reports"])
 router.include_router(plugins_router, tags=["plugins"])
+router.include_router(hardware_router, tags=["hardware"])

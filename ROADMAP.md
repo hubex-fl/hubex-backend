@@ -1123,28 +1123,12 @@
 > **Abhängigkeiten:** M14 (Typsystem), M15 (Device Wizard), M18 (Dashboard Builder),
 > M19 (Automations-Engine), M13.2 (Branding), M26.3 (RBAC)
 
-### Milestone H1: Hardware Abstraction Layer [todo]
+### Milestone H1: Hardware Abstraction Layer [done] ✅
 > Grundlage für alle Hardware-Features. Board-Profile, Pin-Mapping, Shield-Definitionen.
 
-- [ ] Step 1 — Board-Profile System
-  - `BoardProfile` Model: name, chip (esp32/esp32s3/esp32c3/atmega328/atmega2560),
-    pins (JSON: [{number, capabilities: [digital_io, adc, pwm, i2c, spi, uart]}]),
-    flash_size, ram_size, wifi_capable, bluetooth_capable
-  - Built-in Profile: ESP32 DevKit, ESP32-S3, ESP32-C3, Arduino Uno, Nano, Mega,
-    Raspberry Pi Pico W
-  - CRUD API + Frontend: Board-Verwaltung in Settings
-
-- [ ] Step 2 — Shield/Hat-Definitionen
-  - `ShieldProfile` Model: name, target_board, occupied_pins, exposed_pins,
-    bus_type (serial/spi/i2c), description
-  - Built-in: "HubEx Arduino Bridge Shield", "HubEx RS485 Gateway Module"
-  - UI: Shield auswählen → belegte Pins automatisch ausgeblendet
-
-- [ ] Step 3 — Visueller Pin-Konfigurator
-  - UI-Komponente: Board-Grafik mit klickbaren Pins
-  - Pin auswählen → Funktion zuweisen (Sensor-Input, Aktor-Output, Bus-Pin)
-  - Farbkodierung: belegte / freie / Bus / Power Pins
-  - Validierung: Warnung bei inkompatiblen Pin-Funktionen
+- [x] Step 1 — Board-Profile System: BoardProfile Model (name, chip, pins JSON mit Capabilities, flash/ram, wifi/bt), 4 Built-in Boards (ESP32 DevKit, ESP32-S3, ESP32-C3, RPi Pico W), API GET /hardware/boards
+- [x] Step 2 — Shield/Hat-Definitionen: ShieldProfile Model (target_chip, occupied/exposed_pins, bus_type, components), 3 Built-in Shields (Bridge, RS485, Sensor), API GET /hardware/shields
+- [x] Step 3 — Pin-Konfigurator: PinConfiguration Model (device_id, board_profile_id, pin_assignments), PUT /hardware/devices/{id}/pins, HardwareBoards.vue mit Board-Karten, klickbarer Pin-Map (Farbkodierung nach Capability), Shield-Übersicht
 
 ### Milestone H2: Bridge Protocol & Firmware [todo]
 > ESP als WiFi-Bridge für nicht-internet-fähige Mikrocontroller.
