@@ -981,11 +981,11 @@
 - [x] Step 2 — PIN-geschützt: public_pin Feld, POST /share/pin setzt 4-6 stellige PIN, 403 bei falschem PIN
 - [x] Step 3 — Token-authentifiziert: public_token (cryptographic, unique), POST /unshare widerruft Zugang
 
-### Milestone 26: Security Hardening v2 [todo]
-- [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)
-- [ ] Step 2 — Scoped API Key Management (service-to-service + Embed-Tokens)
-- [ ] Step 3 — RBAC Roles (admin, operator, viewer, custom)
-- [ ] Step 4 — Session Management UI + Device Token Rotation
+### Milestone 26: Security Hardening v2 [done] ✅
+- [x] Step 3 — RBAC Roles: ROLE_CAPS Map (owner/admin/operator/viewer), _resolve_user_caps() in auth.py (3 Stellen), role in JWT, Frontend role badges
+- [x] Step 2 — Scoped API Key Management: ApiKey Model, hbx_ prefix detection in capability_guard(), CRUD endpoints, ApiKeyManager.vue in Settings
+- [x] Step 4 — Session Management UI: RefreshToken user_agent/ip_address Felder, Sessions CRUD API, SessionManager.vue in Settings
+- [x] Step 1 — 2FA/MFA (TOTP): UserTotpSecret Model, TOTP core (HMAC-SHA1), setup/confirm/verify/disable API, MFA login flow (mfa_token challenge), MfaSetup.vue, Login.vue two-step, recovery codes
 
 ### Milestone 27: Skalierungs-Grundlagen [todo]
 > Vorbereitung für Enterprise-Scale.

@@ -33,6 +33,8 @@ from .automation import AutomationRule, AutomationFireLog, AutomationStep
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
 from .notifications import Notification
 from .dashboard import Dashboard, DashboardWidget
+from .api_key import ApiKey
+from .mfa import UserTotpSecret
 
 __all__ = [
     "User",
@@ -86,4 +88,6 @@ __all__ = [
     "Notification",
     "Dashboard",
     "DashboardWidget",
+    "ApiKey",
+    "UserTotpSecret",
 ]

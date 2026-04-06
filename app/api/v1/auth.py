@@ -18,7 +18,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.core.capabilities import validate_caps
+from app.core.capabilities import validate_caps, resolve_caps_for_role
 from app.core.system_events import emit_system_event
 from app.db.models.orgs import Organization, OrganizationUser, PLAN_DEFAULTS
 from app.db.models.user import User
@@ -135,13 +135,29 @@ def _hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-async def _create_refresh_token(db: AsyncSession, user_id: int) -> str:
+async def _create_refresh_token(
+    db: AsyncSession,
+    user_id: int,
+    request: Request | None = None,
+) -> str:
     raw = secrets.token_urlsafe(48)
     token_hash = _hash_refresh_token(raw)
     expires_at = datetime.now(timezone.utc) + timedelta(
         days=settings.refresh_token_exp_days
     )
-    db.add(RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at))
+    user_agent = None
+    ip_address = None
+    if request:
+        user_agent = (request.headers.get("user-agent") or "")[:512]
+        ip_address = _client_ip(request)
+
+    db.add(RefreshToken(
+        user_id=user_id,
+        token_hash=token_hash,
+        expires_at=expires_at,
+        user_agent=user_agent,
+        ip_address=ip_address,
+    ))
     await db.flush()
     return raw
 
@@ -159,6 +175,39 @@ async def _find_user_org(db: AsyncSession, user_id: int) -> int | None:
     if len(memberships) == 1:
         return memberships[0].org_id
     return None
+
+
+async def _resolve_user_caps(
+    db: AsyncSession, user: "User", org_id: int | None
+) -> tuple[list[str], str | None]:
+    """Resolve effective capabilities from org role + user.caps.
+
+    Returns (caps, role). Looks up the user's OrganizationUser.role
+    for the given org_id, maps it to capabilities via ROLE_CAPS,
+    and unions with user.caps. Falls back to user.caps alone if no
+    org membership found.
+    """
+    role: str | None = None
+    if org_id is not None:
+        res = await db.execute(
+            select(OrganizationUser).where(
+                OrganizationUser.org_id == org_id,
+                OrganizationUser.user_id == user.id,
+            )
+        )
+        membership = res.scalar_one_or_none()
+        if membership:
+            role = membership.role
+
+    user_caps = user.caps or []
+
+    if role:
+        caps = resolve_caps_for_role(role, user_caps=user_caps)
+    else:
+        # No org membership — fall back to legacy user.caps
+        caps = [cap for cap in user_caps if cap not in validate_caps(user_caps)]
+
+    return caps, role
 
 
 def _default_slug(email: str, user_id: int) -> str:
@@ -217,7 +266,7 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login")
 async def login(
     request: Request,
     data: RegisterIn,
@@ -237,14 +286,33 @@ async def login(
 
     await _clear_brute_force(ip)
 
-    caps = user.caps or []
-    unknown = validate_caps(caps)
-    if unknown:
-        logger.warning("auth login: dropping unknown caps: %s", unknown)
-        caps = [cap for cap in caps if cap not in unknown]
+    # MFA challenge: if user has MFA enabled, return challenge token
+    if user.mfa_enabled:
+        mfa_token = create_access_token(
+            str(user.id),
+            expires_seconds=300,  # 5 minutes
+            caps=[],
+        )
+        # Encode purpose into a separate short-lived token
+        from app.core.security import jwt, SECRET_KEY, ALGORITHM, ISSUER
+        from uuid import uuid4
+        import time as _time
+        now = _time.time()
+        mfa_payload = {
+            "sub": str(user.id),
+            "iss": ISSUER,
+            "iat": int(now),
+            "exp": int(now + 300),
+            "jti": uuid4().hex,
+            "purpose": "mfa_challenge",
+        }
+        mfa_token = jwt.encode(mfa_payload, SECRET_KEY, algorithm=ALGORITHM)
+        return {"mfa_required": True, "mfa_token": mfa_token, "methods": ["totp"]}
 
     org_id = await _find_user_org(db, user.id)
-    refresh_raw = await _create_refresh_token(db, user.id)
+    caps, role = await _resolve_user_caps(db, user, org_id)
+
+    refresh_raw = await _create_refresh_token(db, user.id, request=request)
     await db.commit()
 
     return TokenOut(
@@ -253,6 +321,7 @@ async def login(
             access_token_expire_seconds,
             caps=caps,
             org_id=org_id,
+            role=role,
         ),
         refresh_token=refresh_raw,
     )
@@ -285,17 +354,14 @@ async def refresh_token_endpoint(
     if not user:
         raise HTTPException(status_code=401, detail="user not found")
 
-    caps = user.caps or []
-    unknown = validate_caps(caps)
-    if unknown:
-        caps = [cap for cap in caps if cap not in unknown]
-
     org_id = await _find_user_org(db, user.id)
+    caps, role = await _resolve_user_caps(db, user, org_id)
+
     new_refresh_raw = await _create_refresh_token(db, user.id)
     await db.commit()
 
     return TokenOut(
-        access_token=create_access_token(str(user.id), caps=caps, org_id=org_id),
+        access_token=create_access_token(str(user.id), caps=caps, org_id=org_id, role=role),
         refresh_token=new_refresh_raw,
     )
 
@@ -320,11 +386,22 @@ async def switch_org(
         raise HTTPException(status_code=403, detail="not a member of this organization")
 
     user = await db.get(User, user_id)
-    caps = (user.caps or []) if user else []
-    unknown = validate_caps(caps)
-    if unknown:
-        caps = [cap for cap in caps if cap not in unknown]
+    if not user:
+        raise HTTPException(status_code=401, detail="user not found")
+
+    caps, role = await _resolve_user_caps(db, user, data.org_id)
 
     return TokenOut(
-        access_token=create_access_token(str(user_id), caps=caps, org_id=data.org_id)
+        access_token=create_access_token(str(user_id), caps=caps, org_id=data.org_id, role=role)
     )
+
+
+@router.get("/roles")
+async def list_roles():
+    """Return available built-in roles with their capability counts."""
+    from app.core.capabilities import ROLE_CAPS
+    return [
+        {"role": role, "caps_count": len(caps), "is_builtin": True}
+        for role, caps in ROLE_CAPS.items()
+        if role != "member"  # hide alias
+    ]

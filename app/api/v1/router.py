@@ -33,6 +33,9 @@ from .dashboards import router as dashboards_router
 from app.mcp.endpoint import router as mcp_router
 from .agent_protocol import router as agent_router
 from .search import router as search_router
+from .api_keys import router as api_keys_router
+from .sessions import router as sessions_router
+from .mfa import router as mfa_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -68,3 +71,6 @@ router.include_router(dashboards_router, tags=["dashboards"])
 router.include_router(mcp_router, tags=["mcp"])
 router.include_router(agent_router, tags=["agent"])
 router.include_router(search_router, tags=["search"])
+router.include_router(api_keys_router, tags=["api-keys"])
+router.include_router(sessions_router, tags=["sessions"])
+router.include_router(mfa_router, tags=["mfa"])

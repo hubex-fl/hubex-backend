@@ -76,6 +76,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "notifications.write",
     "mcp.read",
     "mcp.execute",
+    "apikeys.read",
+    "apikeys.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -202,6 +204,22 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/alerts/{event_id}/resolve"): ["alerts.write"],
     ("GET", "/api/v1/metrics"): [],  # no cap required — device counts are user-scoped
     ("POST", "/api/v1/auth/switch-org"): ["core.auth.login"],
+    ("POST", "/api/v1/auth/refresh"): ["core.auth.login"],
+    ("GET", "/api/v1/auth/roles"): [],  # public info
+    # API Keys
+    ("POST", "/api/v1/api-keys"): ["apikeys.write"],
+    ("GET", "/api/v1/api-keys"): ["apikeys.read"],
+    ("DELETE", "/api/v1/api-keys/{key_id}"): ["apikeys.write"],
+    # Sessions (self-service — no cap required)
+    ("GET", "/api/v1/auth/sessions"): [],
+    ("DELETE", "/api/v1/auth/sessions/{session_id}"): [],
+    ("DELETE", "/api/v1/auth/sessions"): [],
+    # MFA (self-service — no cap required)
+    ("POST", "/api/v1/auth/mfa/totp/setup"): [],
+    ("POST", "/api/v1/auth/mfa/totp/confirm"): [],
+    ("DELETE", "/api/v1/auth/mfa/totp"): [],
+    ("GET", "/api/v1/auth/mfa/status"): [],
+    ("POST", "/api/v1/auth/mfa/verify"): [],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
@@ -300,7 +318,86 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("GET", "/api/v1/pairing/status"),
     ("GET", "/api/v1/devices/pairing/status"),
     ("GET", "/api/v1/dashboards/public/{token}"),
+    ("POST", "/api/v1/auth/refresh"),
+    ("GET", "/api/v1/auth/roles"),
+    ("POST", "/api/v1/auth/mfa/verify"),
 }
+
+# ── RBAC: Role → Capability Mapping ──────────────────────────────────────────
+
+# Read-only capabilities (viewer role)
+_VIEWER_CAPS: list[str] = [
+    "devices.read", "telemetry.read", "vars.read", "entities.read",
+    "events.read", "alerts.read", "automations.read", "dashboards.read",
+    "metrics.read", "types.read", "webhooks.read", "tasks.read",
+    "groups.read", "effects.read", "signals.read", "executions.read",
+    "providers.read", "org.read", "org.members.read", "users.read",
+    "audit.read", "ota.read", "mcp.read", "notifications.read",
+    "pairing.status", "config.read", "secrets.read",
+]
+
+# Read + write capabilities (operator role)
+_OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
+    "devices.write", "devices.token.reissue", "devices.unclaim",
+    "vars.write", "vars.ack", "telemetry.emit",
+    "entities.write", "events.emit", "events.ack",
+    "alerts.write", "automations.write", "dashboards.write",
+    "types.write", "webhooks.write", "tasks.write",
+    "groups.write", "executions.write",
+    "pairing.start", "pairing.claim", "pairing.confirm",
+    "ota.write", "mcp.execute", "notifications.write",
+    "modules.read", "modules.write",
+    "apikeys.read", "apikeys.write",
+    "core.auth.login", "core.auth.register",
+]
+
+# Admin capabilities (all except cap.admin superuser flag)
+_ADMIN_CAPS: list[str] = _OPERATOR_CAPS + [
+    "config.write", "secrets.write", "audit.write",
+    "devices.purge", "devices.hello",
+    "org.write", "org.members.write",
+    "ota.admin", "providers.write", "signals.ingest",
+    "mic.admin",
+]
+
+# Owner has everything
+_OWNER_CAPS: list[str] = _ADMIN_CAPS + ["cap.admin", "org.admin"]
+
+ROLE_CAPS: dict[str, list[str]] = {
+    "owner": _OWNER_CAPS,
+    "admin": _ADMIN_CAPS,
+    "operator": _OPERATOR_CAPS,
+    "member": _OPERATOR_CAPS,  # backward compat alias
+    "viewer": _VIEWER_CAPS,
+}
+
+VALID_ROLES: set[str] = set(ROLE_CAPS.keys())
+
+
+def resolve_caps_for_role(
+    role: str,
+    user_caps: list[str] | None = None,
+    custom_role_caps: list[str] | None = None,
+) -> list[str]:
+    """Resolve effective capabilities from role + optional overrides.
+
+    Priority: custom_role_caps > ROLE_CAPS[role], then union with user_caps.
+    """
+    if custom_role_caps is not None:
+        base = list(custom_role_caps)
+    else:
+        base = list(ROLE_CAPS.get(role, []))
+
+    # Union with per-user caps (legacy field)
+    if user_caps:
+        cap_set = set(base)
+        for cap in user_caps:
+            if cap not in cap_set and cap in CAPABILITY_REGISTRY:
+                base.append(cap)
+
+    # Filter out unknown caps
+    return [cap for cap in base if cap in CAPABILITY_REGISTRY]
+
 
 def enforcement_enabled() -> bool:
     # Env override takes precedence (for tests), otherwise use settings.

@@ -11,6 +11,9 @@ import UInput from "../components/ui/UInput.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import ApiKeyManager from "../components/ApiKeyManager.vue";
+import SessionManager from "../components/SessionManager.vue";
+import MfaSetup from "../components/MfaSetup.vue";
 
 const router = useRouter();
 const caps = useCapabilities();
@@ -221,6 +224,12 @@ onMounted(() => {
                   <span class="text-xs text-[var(--text-muted)]">Clears your local token and redirects to login.</span>
                 </div>
               </UCard>
+              <UCard>
+                <MfaSetup />
+              </UCard>
+              <UCard>
+                <SessionManager />
+              </UCard>
             </template>
 
             <!-- Organization content -->
@@ -286,7 +295,7 @@ onMounted(() => {
               <p class="text-xs font-medium text-[var(--text-primary)] truncate">{{ member.email }}</p>
               <p class="text-[10px] text-[var(--text-muted)]">User #{{ member.user_id }}</p>
             </div>
-            <UBadge :status="member.role === 'owner' ? 'ok' : member.role === 'admin' ? 'info' : 'neutral'">
+            <UBadge :status="member.role === 'owner' ? 'ok' : member.role === 'admin' ? 'info' : member.role === 'operator' ? 'warning' : member.role === 'viewer' ? 'neutral' : 'neutral'">
               {{ member.role }}
             </UBadge>
           </div>
@@ -317,6 +326,9 @@ onMounted(() => {
                   <span v-for="cap in capList" :key="cap" class="inline-block px-2 py-0.5 rounded text-[10px] font-mono border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-secondary)]">{{ cap }}</span>
                 </div>
                 <p v-else class="text-xs text-[var(--text-muted)]">No capabilities loaded.</p>
+              </UCard>
+              <UCard>
+                <ApiKeyManager />
               </UCard>
               <UCard>
                 <template #header>
