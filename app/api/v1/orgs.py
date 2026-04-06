@@ -609,3 +609,70 @@ async def delete_tenant_node(
 
     await db.delete(node)
     await db.commit()
+
+
+# ── Branding / White-Label ────────────────────────────────────────────────────
+
+class BrandingOut(BaseModel):
+    product_name: str | None
+    logo_url: str | None
+    primary_color: str | None
+    accent_color: str | None
+    favicon_url: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BrandingUpdateIn(BaseModel):
+    product_name: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    accent_color: str | None = None
+    favicon_url: str | None = None
+
+
+@router.get("/{org_id}/branding", response_model=BrandingOut)
+async def get_branding(
+    org_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    org = await _get_org_or_404(org_id, db)
+    return BrandingOut(
+        product_name=org.product_name,
+        logo_url=org.logo_url,
+        primary_color=org.primary_color,
+        accent_color=org.accent_color,
+        favicon_url=org.favicon_url,
+    )
+
+
+@router.put("/{org_id}/branding", response_model=BrandingOut)
+async def update_branding(
+    org_id: int,
+    data: BrandingUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_jwt_user_id),
+):
+    uid = _require_auth(user_id)
+    org = await _get_org_or_404(org_id, db)
+    await _require_admin(org_id, uid, db)
+
+    if data.product_name is not None:
+        org.product_name = data.product_name or None
+    if data.logo_url is not None:
+        org.logo_url = data.logo_url or None
+    if data.primary_color is not None:
+        org.primary_color = data.primary_color or None
+    if data.accent_color is not None:
+        org.accent_color = data.accent_color or None
+    if data.favicon_url is not None:
+        org.favicon_url = data.favicon_url or None
+
+    await db.commit()
+    return BrandingOut(
+        product_name=org.product_name,
+        logo_url=org.logo_url,
+        primary_color=org.primary_color,
+        accent_color=org.accent_color,
+        favicon_url=org.favicon_url,
+    )

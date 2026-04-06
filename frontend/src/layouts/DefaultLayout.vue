@@ -8,6 +8,7 @@ import { useThemeStore } from "../stores/theme";
 import { useToastStore } from "../stores/toast";
 import { useServerHealthStore } from "../stores/serverHealth";
 import UToast from "../components/ui/UToast.vue";
+import { branding } from "../lib/branding";
 import UOfflineBanner from "../components/ui/UOfflineBanner.vue";
 import CommandPalette from "../components/CommandPalette.vue";
 import NotificationBell from "../components/NotificationBell.vue";
@@ -192,7 +193,7 @@ function handleNavClick() {
           v-if="!collapsed"
           class="font-mono font-bold text-sm tracking-widest text-[var(--text-primary)] transition-opacity"
         >
-          HUBEX
+          {{ branding.productName }}
         </span>
       </div>
 

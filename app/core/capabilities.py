@@ -271,6 +271,9 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/orgs/{org_id}/tenants"): ["org.read"],
     ("POST", "/api/v1/orgs/{org_id}/tenants"): ["org.admin"],
     ("DELETE", "/api/v1/orgs/{org_id}/tenants/{node_id}"): ["org.admin"],
+    # Branding
+    ("GET", "/api/v1/orgs/{org_id}/branding"): ["org.read"],
+    ("PUT", "/api/v1/orgs/{org_id}/branding"): ["org.write"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],
@@ -405,12 +408,16 @@ _ADMIN_CAPS: list[str] = _OPERATOR_CAPS + [
 # Owner has everything
 _OWNER_CAPS: list[str] = _ADMIN_CAPS + ["cap.admin", "org.admin"]
 
+# Kiosk: dashboard-only, no navigation
+_KIOSK_CAPS: list[str] = ["dashboards.read", "metrics.read"]
+
 ROLE_CAPS: dict[str, list[str]] = {
     "owner": _OWNER_CAPS,
     "admin": _ADMIN_CAPS,
     "operator": _OPERATOR_CAPS,
     "member": _OPERATOR_CAPS,  # backward compat alias
     "viewer": _VIEWER_CAPS,
+    "kiosk": _KIOSK_CAPS,
 }
 
 VALID_ROLES: set[str] = set(ROLE_CAPS.keys())

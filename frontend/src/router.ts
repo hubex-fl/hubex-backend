@@ -38,6 +38,8 @@ const router = createRouter({
     { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
+    { path: "/kiosk/:id",     component: () => import("./pages/DashboardView.vue"),meta: { title: "Kiosk", layout: "kiosk" } },
+    { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public" } },
   ],
 });
 

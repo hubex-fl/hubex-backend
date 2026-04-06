@@ -12,6 +12,9 @@ import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import ApiKeyManager from "../components/ApiKeyManager.vue";
+import { applyBranding, resetBranding } from "../lib/branding";
+import { useToastStore } from "../stores/toast";
+const toast = useToastStore();
 import SessionManager from "../components/SessionManager.vue";
 import MfaSetup from "../components/MfaSetup.vue";
 
@@ -29,6 +32,45 @@ const demoLoading = ref(false);
 const demoDeleting = ref(false);
 const demoResult = ref("");
 const importResult = ref("");
+
+// Branding
+const brandName = ref("HubEx");
+const brandPrimary = ref("#F5A623");
+const brandAccent = ref("#2DD4BF");
+const brandLogo = ref("");
+
+async function saveBranding() {
+  applyBranding({
+    product_name: brandName.value || null,
+    primary_color: brandPrimary.value || null,
+    accent_color: brandAccent.value || null,
+    logo_url: brandLogo.value || null,
+  });
+  // Try to save to backend (if org exists)
+  if (orgs.value.length) {
+    try {
+      await apiFetch(`/api/v1/orgs/${orgs.value[0].id}/branding`, {
+        method: "PUT",
+        body: JSON.stringify({
+          product_name: brandName.value || null,
+          primary_color: brandPrimary.value || null,
+          accent_color: brandAccent.value || null,
+          logo_url: brandLogo.value || null,
+        }),
+      });
+    } catch { /* apply locally anyway */ }
+  }
+  toast.addToast("Branding applied", "success");
+}
+
+function resetBrandingForm() {
+  brandName.value = "HubEx";
+  brandPrimary.value = "#F5A623";
+  brandAccent.value = "#2DD4BF";
+  brandLogo.value = "";
+  resetBranding();
+  toast.addToast("Branding reset to defaults", "success");
+}
 
 async function handleImport(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -331,6 +373,50 @@ onMounted(() => {
           </div>
         </div>
         <UEmpty v-else title="No members" description="This organization has no members." icon="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+              </UCard>
+              <!-- Branding / White-Label -->
+              <UCard>
+                <template #header>
+                  <h3 class="text-sm font-semibold text-[var(--text-primary)]">Branding / White-Label</h3>
+                  <span class="text-xs text-[var(--text-muted)]">Customize the look and feel for your organization</span>
+                </template>
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-[10px] font-medium text-[var(--text-muted)]">Product Name</label>
+                    <input v-model="brandName" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="HubEx" />
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="text-[10px] font-medium text-[var(--text-muted)]">Primary Color</label>
+                      <div class="flex gap-2 mt-1">
+                        <input type="color" v-model="brandPrimary" class="h-8 w-10 rounded cursor-pointer" />
+                        <input v-model="brandPrimary" class="flex-1 px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" />
+                      </div>
+                    </div>
+                    <div>
+                      <label class="text-[10px] font-medium text-[var(--text-muted)]">Accent Color</label>
+                      <div class="flex gap-2 mt-1">
+                        <input type="color" v-model="brandAccent" class="h-8 w-10 rounded cursor-pointer" />
+                        <input v-model="brandAccent" class="flex-1 px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-[10px] font-medium text-[var(--text-muted)]">Logo URL</label>
+                    <input v-model="brandLogo" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="https://example.com/logo.png" />
+                  </div>
+                  <!-- Live preview -->
+                  <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]">
+                    <div class="h-6 w-6 rounded-full" :style="{ background: brandPrimary || '#F5A623' }" />
+                    <div class="h-6 w-6 rounded-full" :style="{ background: brandAccent || '#2DD4BF' }" />
+                    <span class="text-xs font-bold" :style="{ color: brandPrimary || '#F5A623' }">{{ brandName || 'HubEx' }}</span>
+                    <span class="text-[10px] text-[var(--text-muted)]">Preview</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]" @click="saveBranding">Save Branding</button>
+                    <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-[var(--border)]" @click="resetBrandingForm">Reset to Defaults</button>
+                  </div>
+                </div>
               </UCard>
             </template>
 

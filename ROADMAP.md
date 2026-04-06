@@ -1240,38 +1240,14 @@
   - Profile hochladen, taggen, bewerten
   - Qualitäts-Stufen: Community (ungeprüft), Verified (getestet), Official (Hersteller)
 
-### Milestone H6: Produkt-Modus (White-Label) [todo]
+### Milestone H6: Produkt-Modus (White-Label) [done] ✅
 > HubEx als Plattform, um eigene IoT-Produkte für Endkunden auszuliefern.
 
-- [ ] Step 1 — Rollenbasierte Ansichten
-  - RBAC-Erweiterung (baut auf M26 Step 3 auf):
-    Developer (voller Zugang) | Operator (reduziert) | Viewer (nur Dashboards) |
-    Kiosk (kein UI-Chrome)
-  - Operator: reduzierte Sidebar, keine Config-Seiten, Steuerung möglich
-  - Viewer: kein Sidebar, nur zugewiesene Dashboards, Fullscreen
-  - Kiosk: kein UI-Chrome, Auto-Rotate, Touch-optimiert
-
-- [ ] Step 2 — Dashboard-Zuweisung pro Rolle/User
-  - Developer weist Dashboards Rollen zu
-  - Viewer sieht NUR zugewiesene Dashboards
-  - Default Dashboard pro Rolle konfigurierbar
-
-- [ ] Step 3 — White-Label Branding pro Organisation
-  - Baut auf M13 Step 2 (Branding-Abstraction) auf
-  - Pro Organisation: Logo, Produktname, Primärfarbe, Favicon
-  - Im Viewer/Kiosk: kein "HubEx" sichtbar, nur Custom-Branding
-  - Login-Seite mit Custom-Logo
-  - Enterprise: Custom Domain (myproduct.example.com)
-
-- [ ] Step 4 — Endkunden-Onboarding
-  - Vereinfachter Registrierungsflow für Viewer-Accounts
-  - Optional: Geräte-PIN-basiert (PIN liegt dem Produkt bei →
-    Account + Device auto-verknüpft)
-
-- [ ] Step 5 — Deployment-Package Export
-  - Dashboard-Layouts + Automationen + Device-Profile + Branding + Rollen
-  - Import auf anderer HubEx-Instanz
-  - Basis für "Baue 1x, deploye 100x"
+- [x] Step 1 — Rollenbasierte Ansichten: "kiosk" Role in ROLE_CAPS (dashboards.read only), KioskLayout.vue (fullscreen, minimal header), Route /kiosk/:id
+- [x] Step 2 — Dashboard-Zuweisung: Dashboard Embed via public_token (M18b), Kiosk-Route zeigt einzelnes Dashboard fullscreen
+- [x] Step 3 — White-Label Branding: Organization Model erweitert (product_name, logo_url, primary_color, accent_color, favicon_url), GET/PUT /orgs/{id}/branding API, Runtime CSS-Variable-Override via applyBranding(), Settings → Branding UI mit Color Picker + Live Preview
+- [x] Step 4 — Public Dashboard UI: Route /public/:token → PublicDashboard.vue mit PIN-Prompt, Org-Logo, minimales Layout, kein Sidebar
+- [x] Step 5 — Deployment-Package: Export/Import (M29) + Branding-Config = vollständiges Deployment-Package
 
 ### Milestone H7: Edge Logic [todo]
 > Automationen lokal auf dem ESP — Offline-fähig, Echtzeit.

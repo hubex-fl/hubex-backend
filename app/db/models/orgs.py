@@ -14,7 +14,7 @@ PLAN_DEFAULTS: dict[str, dict] = {
 }
 
 VALID_PLANS = set(PLAN_DEFAULTS)
-VALID_ROLES = {"owner", "admin", "operator", "member", "viewer"}
+VALID_ROLES = {"owner", "admin", "operator", "member", "viewer", "kiosk"}
 
 
 class Organization(Base):
@@ -32,6 +32,12 @@ class Organization(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # White-Label Branding
+    product_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    primary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)  # hex e.g. #F5A623
+    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    favicon_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
 
 class OrganizationUser(Base):
