@@ -8,6 +8,21 @@ import UEmpty from "../components/ui/UEmpty.vue";
 
 const toast = useToastStore();
 
+const CAP_LABELS: Record<string, string> = {
+  "devices.read": "View devices", "devices.write": "Manage devices",
+  "vars.read": "View variables", "vars.write": "Edit variables",
+  "alerts.read": "View alerts", "alerts.write": "Manage alerts",
+  "automations.read": "View automations", "automations.write": "Manage automations",
+  "telemetry.read": "View telemetry", "telemetry.emit": "Send telemetry",
+  "events.read": "View events", "audit.read": "View audit log",
+  "dashboards.read": "View dashboards", "dashboards.write": "Edit dashboards",
+  "config.read": "View config", "config.write": "Edit config",
+  "webhooks.read": "View webhooks", "webhooks.write": "Manage webhooks",
+  "org.read": "View organization", "org.admin": "Administer organization",
+  "modules.read": "View modules", "modules.write": "Manage modules",
+};
+function capLabel(cap: string): string { return CAP_LABELS[cap] || cap; }
+
 // ── Modules ──────────────────────────────────────────────────────────────────
 type Module = {
   key: string;
@@ -149,7 +164,8 @@ onMounted(() => {
               <span
                 v-for="cap in mod.capabilities.slice(0, 5)"
                 :key="cap"
-                class="text-[9px] px-1 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-muted)]"
+                :title="capLabel(cap)"
+                class="text-[9px] px-1 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-muted)] cursor-help"
               >{{ cap }}</span>
               <span v-if="mod.capabilities.length > 5" class="text-[9px] text-[var(--text-muted)]">+{{ mod.capabilities.length - 5 }} more</span>
             </div>

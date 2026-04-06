@@ -164,8 +164,8 @@ onMounted(loadKeys);
           </div>
           <div class="flex items-center gap-3 mt-1 text-[10px] text-[var(--text-muted)]">
             <span class="font-mono">{{ key.key_prefix }}...</span>
-            <span>{{ key.caps.length }} caps</span>
-            <span>used {{ relativeTime(key.last_used_at) }}</span>
+            <span :title="key.caps.join(', ')">{{ key.caps.length }} capabilities</span>
+            <span :class="key.last_used_at ? 'text-[var(--status-ok)]' : ''">{{ key.last_used_at ? 'Last used ' + relativeTime(key.last_used_at) : 'Never used' }}</span>
             <span v-if="key.expires_at">expires {{ new Date(key.expires_at).toLocaleDateString() }}</span>
           </div>
         </div>

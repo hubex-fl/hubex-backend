@@ -59,6 +59,8 @@ async function loadAll() {
   }
 }
 
+const selectedTrace = ref<TraceEntry | null>(null);
+
 function relativeTime(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime();
   const s = Math.floor(diff / 1000);
@@ -144,7 +146,7 @@ onMounted(loadAll);
       <div v-if="loading" class="text-xs text-[var(--text-muted)] py-4 text-center">Loading traces...</div>
       <div v-else-if="!traces.length" class="text-xs text-[var(--text-muted)] py-4 text-center">No traces in this time window</div>
       <div v-else class="space-y-1 max-h-[50vh] overflow-y-auto">
-        <div v-for="(t, i) in traces" :key="i" class="flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-[var(--bg-raised)] transition-colors">
+        <div v-for="(t, i) in traces" :key="i" class="flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-[var(--bg-raised)] transition-colors cursor-pointer" @click="selectedTrace = t">
           <!-- Timeline dot -->
           <div class="mt-1.5 shrink-0">
             <div class="h-2 w-2 rounded-full" :style="{ background: SOURCE_COLORS[t.source] || 'var(--text-muted)' }" />
@@ -161,6 +163,29 @@ onMounted(loadAll);
           <!-- Time -->
           <span class="text-[10px] text-[var(--text-muted)] shrink-0">{{ relativeTime(t.timestamp) }}</span>
         </div>
+      </div>
+    </UCard>
+
+    <!-- Trace Detail Panel -->
+    <UCard v-if="selectedTrace">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Trace Detail</h3>
+          <button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" @click="selectedTrace = null">Close</button>
+        </div>
+      </template>
+      <div class="space-y-2 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div><span class="text-[var(--text-muted)]">Source:</span> <span class="font-medium" :style="{ color: SOURCE_COLORS[selectedTrace.source] }">{{ selectedTrace.source }}</span></div>
+          <div><span class="text-[var(--text-muted)]">Type:</span> <span class="font-medium">{{ selectedTrace.type }}</span></div>
+          <div><span class="text-[var(--text-muted)]">Time:</span> <span>{{ new Date(selectedTrace.timestamp).toLocaleString() }}</span></div>
+          <div v-if="selectedTrace.trace_id"><span class="text-[var(--text-muted)]">Trace ID:</span> <span class="font-mono text-[10px]">{{ selectedTrace.trace_id }}</span></div>
+        </div>
+        <div v-if="selectedTrace.device_uid" class="flex items-center gap-2">
+          <span class="text-[var(--text-muted)]">Device:</span>
+          <router-link :to="`/devices`" class="text-[var(--primary)] hover:underline font-mono">{{ selectedTrace.device_uid }}</router-link>
+        </div>
+        <div class="rounded-lg bg-[var(--bg-raised)] p-2 text-[10px] font-mono text-[var(--text-secondary)] break-all">{{ selectedTrace.summary }}</div>
       </div>
     </UCard>
   </div>

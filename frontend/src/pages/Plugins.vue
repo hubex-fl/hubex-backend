@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -30,6 +30,13 @@ const formAuthor = ref("");
 const installing = ref(false);
 
 const error = ref<string | null>(null);
+const pluginFilter = ref<"all" | "enabled" | "disabled">("all");
+
+const filteredPlugins = computed(() => {
+  if (pluginFilter.value === "enabled") return plugins.value.filter(p => p.enabled);
+  if (pluginFilter.value === "disabled") return plugins.value.filter(p => !p.enabled);
+  return plugins.value;
+});
 
 async function loadPlugins() {
   loading.value = true;
@@ -126,7 +133,13 @@ onMounted(loadPlugins);
     </UEmpty>
 
     <div v-else class="space-y-3">
-      <div v-for="p in plugins" :key="p.key" class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4">
+      <div v-if="plugins.length" class="flex gap-1.5">
+        <button v-for="ft in [['all','All'],['enabled','Enabled'],['disabled','Disabled']]" :key="ft[0]"
+          :class="['px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors', pluginFilter === ft[0] ? 'bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]']"
+          @click="pluginFilter = ft[0] as any"
+        >{{ ft[1] }}</button>
+      </div>
+      <div v-for="p in filteredPlugins" :key="p.key" class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
@@ -136,15 +149,17 @@ onMounted(loadPlugins);
               <span class="text-[10px] text-[var(--text-muted)]">v{{ p.version }}</span>
             </div>
             <p v-if="p.description" class="text-[10px] text-[var(--text-muted)]">{{ p.description }}</p>
-            <div class="flex items-center gap-3 mt-2 text-[10px] text-[var(--text-muted)]">
-              <span v-if="p.author">by {{ p.author }}</span>
-              <span>{{ p.execution_count }} executions</span>
-              <span v-if="p.error_count" class="text-red-400">{{ p.error_count }} errors</span>
-              <span class="font-mono">sandbox: {{ p.sandbox_mode }}</span>
-            </div>
-            <div v-if="p.required_caps.length" class="flex flex-wrap gap-1 mt-1.5">
-              <span v-for="cap in p.required_caps.slice(0, 5)" :key="cap" class="text-[9px] px-1 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-muted)]">{{ cap }}</span>
-            </div>
+            <details class="mt-2">
+              <summary class="text-[10px] text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]">
+                {{ p.execution_count }} executions{{ p.error_count ? `, ${p.error_count} errors` : '' }}{{ p.author ? ` · by ${p.author}` : '' }} — details
+              </summary>
+              <div class="mt-1.5 space-y-1 text-[10px] text-[var(--text-muted)]">
+                <div>Sandbox: <span class="font-mono">{{ p.sandbox_mode }}</span></div>
+                <div v-if="p.required_caps.length" class="flex flex-wrap gap-1">
+                  <span v-for="cap in p.required_caps" :key="cap" class="px-1 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono">{{ cap }}</span>
+                </div>
+              </div>
+            </details>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <button v-if="p.enabled" class="px-2 py-1 rounded-lg text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10" @click="executePlugin(p)">Run</button>

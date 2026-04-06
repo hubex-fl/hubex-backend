@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -25,6 +25,13 @@ const reports = ref<Report[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const generating = ref<number | null>(null);
+const filterType = ref<"all" | "scheduled" | "manual">("all");
+
+const filteredTemplates = computed(() => {
+  if (filterType.value === "all") return templates.value;
+  if (filterType.value === "scheduled") return templates.value.filter(t => t.schedule_cron);
+  return templates.value.filter(t => !t.schedule_cron);
+});
 
 // Create modal
 const createOpen = ref(false);
@@ -136,7 +143,14 @@ onMounted(loadAll);
     </UEmpty>
 
     <div v-else class="space-y-3">
-      <div v-for="tpl in templates" :key="tpl.id" class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4">
+      <!-- Filter -->
+      <div class="flex gap-1.5">
+        <button v-for="ft in [['all','All'],['scheduled','Scheduled'],['manual','Manual']]" :key="ft[0]"
+          :class="['px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors', filterType === ft[0] ? 'bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]']"
+          @click="filterType = ft[0] as any"
+        >{{ ft[1] }} ({{ ft[0] === 'all' ? templates.length : ft[0] === 'scheduled' ? templates.filter(t=>t.schedule_cron).length : templates.filter(t=>!t.schedule_cron).length }})</button>
+      </div>
+      <div v-for="tpl in filteredTemplates" :key="tpl.id" class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">

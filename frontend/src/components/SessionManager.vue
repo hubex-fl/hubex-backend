@@ -31,7 +31,10 @@ async function loadSessions() {
 }
 
 async function revokeSession(id: number) {
-  if (!confirm("Revoke this session? The device will be logged out.")) return;
+  const session = sessions.value.find(s => s.id === id);
+  const browser = session ? parseBrowser(session.user_agent) : "Unknown";
+  const ip = session?.ip_address || "unknown IP";
+  if (!confirm(`Sign out "${browser}" (${ip})? This device will need to log in again.`)) return;
   try {
     await apiFetch(`/api/v1/auth/sessions/${id}`, { method: "DELETE" });
     toast.addToast("Session revoked", "success");
@@ -42,7 +45,8 @@ async function revokeSession(id: number) {
 }
 
 async function revokeAll() {
-  if (!confirm("Revoke all other sessions? Only this session will remain active.")) return;
+  const otherCount = sessions.value.filter(s => !s.is_current).length;
+  if (!confirm(`Sign out ${otherCount} other session${otherCount !== 1 ? 's' : ''}? Only your current session stays active.`)) return;
   try {
     await apiFetch("/api/v1/auth/sessions", { method: "DELETE" });
     toast.addToast("All other sessions revoked", "success");

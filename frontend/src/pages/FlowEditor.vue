@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
 
@@ -33,6 +33,13 @@ const zoom = ref(1);
 const connecting = ref<string | null>(null);
 const mousePos = ref({ x: 0, y: 0 });
 const loading = ref(true);
+const searchQuery = ref("");
+
+const visibleNodes = computed(() => {
+  if (!searchQuery.value) return nodes.value;
+  const q = searchQuery.value.toLowerCase();
+  return nodes.value.filter(n => n.label.toLowerCase().includes(q) || n.type.includes(q));
+});
 
 const NODE_COLORS: Record<string, string> = {
   device: "#F5A623",
@@ -187,6 +194,7 @@ onMounted(loadSystemGraph);
       <div class="flex items-center gap-2">
         <h1 class="text-sm font-semibold text-[var(--text-primary)]">Flow Editor</h1>
         <span class="text-[10px] text-[var(--text-muted)]">{{ nodes.length }} nodes, {{ edges.length }} edges</span>
+        <input v-model="searchQuery" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] w-28 text-[var(--text-primary)]" placeholder="Search nodes..." />
         <router-link to="/automations" class="text-[10px] text-[var(--primary)] hover:underline">Automations</router-link>
         <router-link to="/devices" class="text-[10px] text-[var(--primary)] hover:underline">Devices</router-link>
       </div>
@@ -242,7 +250,7 @@ onMounted(loadSystemGraph);
 
       <!-- Nodes -->
       <div
-        v-for="node in nodes"
+        v-for="node in visibleNodes"
         :key="node.id"
         :class="[
           'absolute rounded-lg border-2 px-3 py-2 cursor-move select-none transition-shadow',

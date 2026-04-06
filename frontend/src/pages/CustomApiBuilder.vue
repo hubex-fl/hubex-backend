@@ -241,10 +241,12 @@ onMounted(load);
           <label class="text-[10px] font-medium text-[var(--text-muted)]">Description</label>
           <input v-model="formDescription" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs" placeholder="Returns current temperature readings" />
         </div>
-        <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Response Mapping (JSON)</label>
-          <textarea v-model="formMapping" rows="5" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" />
-        </div>
+        <details class="border border-[var(--border)] rounded-lg p-3">
+          <summary class="text-[10px] font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]">
+            Response Mapping (JSON) — {{ formMapping.length > 5 ? 'configured' : 'not set' }}
+          </summary>
+          <textarea v-model="formMapping" rows="5" class="mt-2 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder='{"source": "variables", "filter": {"variable_key": "temperature"}}' />
+        </details>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] font-medium text-[var(--text-muted)]">Rate Limit (req/min)</label>

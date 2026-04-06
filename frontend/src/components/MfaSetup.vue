@@ -219,7 +219,7 @@ onMounted(loadStatus);
         <div class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-4 space-y-3">
           <p class="text-xs font-medium text-[var(--text-primary)]">Save your recovery codes</p>
           <p class="text-[10px] text-[var(--text-muted)]">Keep these codes safe. If you lose access to your authenticator app, use one of these codes to sign in instead.</p>
-          <div class="grid grid-cols-2 gap-1.5">
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
             <code v-for="code in recoveryCodes" :key="code" class="text-xs font-mono text-center py-1.5 rounded bg-[var(--bg-base)] border border-[var(--border)] select-all">{{ code }}</code>
           </div>
           <button
