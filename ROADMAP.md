@@ -814,7 +814,7 @@
 
 ---
 
-## Phase 5c: Stabilität, Simulation & Integration [todo] ← AKTUELL
+## Phase 5c: Stabilität, Simulation & Integration [done] ✅
 > **Leitsatz:** Bevor Enterprise-Features kommen, muss die Basis stabil und testbar sein.
 > Echte Device-Simulationen, API-Config-Panel, Entities-Integration in DeviceDetail,
 > System Context als Node-Graph, Automations-Builder-Stabilität.
@@ -874,7 +874,53 @@
 
 ---
 
-## Phase 7: Enterprise, Business & Advanced [todo]
+## Phase 7a: Production Readiness [todo] ← AKTUELL
+> Alle Lücken schließen bevor Enterprise-Features kommen.
+> Kern-Features stabilisieren, fehlende Infrastruktur nachrüsten,
+> Durchgängigkeit sicherstellen.
+
+### Milestone PR-1: Kritische Fixes [todo]
+> Dinge die kaputt oder unvollständig sind und sofort auffallen.
+- [ ] Step 1 — Notifications fixen: metrics.read Cap für Bell, notifications/unread-count 403 beheben
+- [ ] Step 2 — Widget-Positionen persistent: Move-Buttons rufen updateLayout API auf, Positionen in DB speichern
+- [ ] Step 3 — Tasks UI: "Send Task" Button auf DeviceDetail, Task-Type-Auswahl (OTA, Reboot, Config, Custom)
+- [ ] Step 4 — Auto-Discovery: Telemetrie-Bridge erstellt automatisch VariableDefinitions für unbekannte Keys
+- [ ] Step 5 — Error Boundary: Globaler Error-Handler wenn Backend nicht erreichbar, Retry-Banner
+
+### Milestone PR-2: Daten-Infrastruktur [todo]
+> Echte Daten-Ingestion statt nur Simulatoren.
+- [ ] Step 1 — Backend API-Poll-Worker: Background-Task der device.config.endpoint_url periodisch abruft und in Variables schreibt
+- [ ] Step 2 — Schedule-Trigger (Cron): Automation-Engine evaluiert cron-basierte Rules zeitgesteuert
+- [ ] Step 3 — Variable Direction UI: Read-Only Variablen ohne Edit-Button, Write-Only mit Send-Button, Read-Write mit beidem
+- [ ] Step 4 — SMTP-Setup: Email-Config in Settings, Email-Template-System, Email als Automation-Action nutzbar
+
+### Milestone PR-3: UX Durchgängigkeit [todo]
+> Alles muss zusammenpassen — Typen, Icons, Sprache.
+- [ ] Step 1 — SemanticType→Variable Durchgängigkeit: Variable mit category "sensor.temperature" zeigt automatisch 🌡️ Icon + °C Einheit aus SemanticType
+- [ ] Step 2 — Language Selector: Toggle DE/EN in Settings, i18n-Switch persistent pro User
+- [ ] Step 3 — i18n Cleanup: Alle hardcoded German Strings (Events-Tooltips, Entities-Labels, SystemHealth) in Locale-Files verschieben
+- [ ] Step 4 — Activity Feed: Chronologische Timeline "Was ist zuletzt passiert?" auf Dashboard (Events + Audit + Telemetry kombiniert)
+- [ ] Step 5 — Keyboard Shortcuts: Cmd+K (Suche), Escape (Modal), Cmd+N (Neues Device), Cmd+D (Dashboard)
+
+### Milestone PR-4: Fehlende Kern-Features [todo]
+> Features die für ein produktives System erwartet werden.
+- [ ] Step 1 — Webhook Management UI: Seite unter SYSTEM zum Erstellen/Bearbeiten/Testen von Webhook-Subscriptions
+- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope testen + fixen, Entity-Health im Dashboard-Widget
+- [ ] Step 3 — Branding-Konfiguration: Produktname, Logo, Primary-Color in Settings einstellbar (lib/branding.ts als UI)
+- [ ] Step 4 — User Preferences: Theme (Dark/Light), Default-Dashboard, Notification-Settings — persistent pro User
+- [ ] Step 5 — Globale Suche (Cmd+K): Suche über Devices, Variables, Entities, Automations, Dashboards
+
+### Milestone PR-5: Qualitätssicherung [todo]
+> Tests und Dokumentation bevor Enterprise gebaut wird.
+- [ ] Step 1 — Basis-Tests Backend: Unit-Tests für alle 7 Trigger-Evaluatoren + 6 Action-Executoren
+- [ ] Step 2 — API Integration Tests: Pairing-Flow, Telemetry-Bridge, Variable-CRUD, Automation-Lifecycle
+- [ ] Step 3 — Frontend Snapshot-Tests: Devices-Liste, DeviceDetail, Variables, Dashboard-Builder
+- [ ] Step 4 — OTA/Firmware UI: Upload + Deploy auf DeviceDetail für Hardware-Devices
+- [ ] Step 5 — Bulk-Operationen: Mehrere Devices Tasks senden, Variables setzen, Firmware updaten
+
+---
+
+## Phase 7b: Enterprise, Business & Advanced [todo]
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
@@ -1208,23 +1254,22 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
               │
               └─► Phase 6: Erweiterung (M21-M24) ✅
                     │
-                    └─► Phase 5c: Stabilität & Simulation ← AKTUELL
+                    └─► Phase 5c: Stabilität & Simulation ✅
                           │
-                          ├─► UX-F (Quick Fixes) ✅
-                          ├─► SIM-1 (Device-Simulatoren) — ZUERST
-                          ├─► SIM-2 (API-Config-Panel) — braucht SIM-1
-                          ├─► UX-G (Entities → DeviceDetail) — parallel
-                          ├─► UX-H (System Context Graph) — braucht UX-G
-                          └─► UX-I (Automations-Builder) — parallel
+                          └─► Phase 7a: Production Readiness ← AKTUELL
                                 │
-                                └─► Phase 7: Enterprise & Business
-                                      ├─► M14b (Computed Variables)
-                                      ├─► M19b (Automation Erweiterung) — braucht UX-I
-                                      ├─► M18b (Dashboard Embed)
-                                      ├─► M26 (Security/RBAC)
-                                      ├─► M27 (Skalierung)
-                                      ├─► M33 (Simulator/Testbench) — braucht SIM-1
-                                      └─► M36 (Flow Editor) — braucht UX-H
+                                ├─► PR-1 (Kritische Fixes) — ZUERST
+                                ├─► PR-2 (Daten-Infrastruktur) — braucht PR-1
+                                ├─► PR-3 (UX Durchgängigkeit) — parallel zu PR-2
+                                ├─► PR-4 (Fehlende Kern-Features) — braucht PR-1
+                                └─► PR-5 (Qualitätssicherung) — zuletzt
+                                      │
+                                      └─► Phase 7b: Enterprise & Business
+                                            ├─► M14b (Computed Variables)
+                                            ├─► M19b (Automation Erweiterung)
+                                            ├─► M18b (Dashboard Embed)
+                                            ├─► M26 (Security/RBAC)
+                                            └─► M36 (Flow Editor)
                                       │
                                       └─► Phase 8: Hardware & Produkt-Modus (H1-H7)
 ```
