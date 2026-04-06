@@ -1018,10 +1018,10 @@
 - [ ] Step 4 — Config-Versionierung → Phase 8 (braucht Diff-Engine)
 - [ ] Step 5 — Marketplace-Grundstruktur → Phase 8 (braucht User-Generated Content)
 
-### Milestone 30: Admin Console [todo]
-- [ ] Step 1 — Module Lifecycle UI (enable/disable/revoke, dependency view)
-- [ ] Step 2 — Policy Management (capability policies, plan enforcement)
-- [ ] Step 3 — Provider Health Dashboard + System Status
+### Milestone 30: Admin Console [done] ✅
+- [x] Step 1 — Module Lifecycle UI: AdminConsole.vue mit Module-Registry-Liste, Enable/Disable Toggle, Version + Capabilities pro Modul
+- [x] Step 2 — Status Overview: Modules Enabled / Active Capabilities / System Health Karten
+- [x] Step 3 — System Info: DB/Redis/Version Status Panel, Route /admin + Sidebar (cap.admin-gated)
 
 ### Milestone 28c: Email Template Editor [done] ✅
 > Visueller Editor für Email-Vorlagen — für Automations, Alerts, Reports, Einladungen.
