@@ -118,7 +118,12 @@ WEATHER_API_VARIABLES = [
 ]
 
 MQTT_BRIDGE_VARIABLES = [
-    {"key": "value", "scope": "device", "valueType": "float", "description": "MQTT sensor value", "displayHint": "line_chart", "category": "mqtt"},
+    {"key": "outdoor_temperature", "scope": "device", "valueType": "float", "description": "Outdoor temperature (MQTT)", "unit": "°C", "displayHint": "line_chart", "category": "sensor.temperature"},
+    {"key": "outdoor_humidity", "scope": "device", "valueType": "float", "description": "Outdoor humidity (MQTT)", "unit": "%", "displayHint": "gauge", "category": "sensor.humidity"},
+    {"key": "indoor_co2", "scope": "device", "valueType": "float", "description": "Indoor CO2 level (MQTT)", "unit": "ppm", "displayHint": "sparkline", "category": "air_quality"},
+    {"key": "indoor_light", "scope": "device", "valueType": "float", "description": "Indoor light level (MQTT)", "unit": "lux", "displayHint": "sparkline", "category": "light"},
+    {"key": "power_watts", "scope": "device", "valueType": "float", "description": "Power consumption (MQTT)", "unit": "W", "displayHint": "line_chart", "category": "energy"},
+    {"key": "hvac_status", "scope": "device", "valueType": "string", "description": "HVAC system status (MQTT)", "displayHint": "log", "category": "actuator"},
 ]
 
 AGENT_VARIABLES = [

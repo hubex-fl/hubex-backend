@@ -2201,8 +2201,8 @@ onUnmounted(() => {
               class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse"
             />
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-              <span class="text-[var(--primary)] mr-1">↓</span>Input
-              <span class="text-[var(--text-muted)] font-normal ml-1">· Telemetry</span>
+              <span class="text-[var(--primary)] mr-1">📡</span>Telemetry
+              <span class="text-[var(--text-muted)] font-normal ml-1">· Sensor Data</span>
               <span v-if="!showInputPanel && telemetry.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ telemetry.length }})</span>
             </h3>
             <span v-if="latestTelemetry" class="text-xs text-[var(--text-muted)]">
@@ -2309,7 +2309,7 @@ onUnmounted(() => {
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-            <span class="text-[var(--accent-lime)] mr-1">↑</span>Output
+            <span class="text-[var(--accent-lime)] mr-1">⚡</span>State
             <span class="text-[var(--text-muted)] font-normal ml-1">· Variables</span>
             <span v-if="!showOutputPanel && variables.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ variables.length }})</span>
           </h3>

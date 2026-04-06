@@ -110,33 +110,32 @@ SIMULATED_TOPICS = [
 ]
 
 def _simulate_mqtt_message(topic: str, cycle: int) -> dict:
-    """Generate a realistic MQTT payload for the given topic."""
+    """Generate realistic MQTT payload with variable-matching keys for the Bridge."""
     now = datetime.now(timezone.utc)
     hour = now.hour + now.minute / 60
 
     if "temperature" in topic:
         val = 15 + 10 * math.sin(2 * math.pi * (hour / 24 - 0.25)) + random.gauss(0, 0.5)
-        return {"topic": topic, "value": round(val, 1), "unit": "°C", "qos": 1}
+        return {"topic": topic, "outdoor_temperature": round(val, 1)}
     elif "humidity" in topic:
         val = 70 - 20 * math.sin(2 * math.pi * (hour / 24 - 0.25)) + random.gauss(0, 2)
-        return {"topic": topic, "value": round(max(20, min(99, val)), 1), "unit": "%", "qos": 1}
+        return {"topic": topic, "outdoor_humidity": round(max(20, min(99, val)), 1)}
     elif "co2" in topic:
         val = 400 + 200 * math.sin(2 * math.pi * (hour / 24 - 0.35)) + random.gauss(0, 20)
-        return {"topic": topic, "value": round(max(350, val)), "unit": "ppm", "qos": 0}
+        return {"topic": topic, "indoor_co2": round(max(350, val))}
     elif "light" in topic:
-        # Daylight: high during day, low at night
         daylight = max(0, math.sin(2 * math.pi * (hour / 24 - 0.25)))
         val = daylight * 800 + random.gauss(0, 30)
-        return {"topic": topic, "value": round(max(0, val)), "unit": "lux", "qos": 0}
+        return {"topic": topic, "indoor_light": round(max(0, val))}
     elif "hvac" in topic:
-        return {"topic": topic, "status": random.choice(["heating", "cooling", "idle", "idle", "idle"]),
-                "setpoint": 22.0, "qos": 1}
+        status = random.choice(["heating", "cooling", "idle", "idle", "idle"])
+        return {"topic": topic, "hvac_status": status}
     elif "power" in topic:
         base = 500 + 300 * math.sin(2 * math.pi * (hour / 24 - 0.5))
         val = base + random.gauss(0, 50)
-        return {"topic": topic, "value": round(max(50, val)), "unit": "W", "qos": 0}
+        return {"topic": topic, "power_watts": round(max(50, val))}
     else:
-        return {"topic": topic, "value": random.uniform(0, 100), "qos": 0}
+        return {"topic": topic, "outdoor_temperature": random.uniform(0, 30)}
 
 
 def run(server, email, password, uid, interval, auto_pair, token):
