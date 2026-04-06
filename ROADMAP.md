@@ -296,8 +296,7 @@
   - Technical View Toggle (raw JSON)
   - Edit Device Modal (Name, Category, Icon, Location)
 
-- [ ] Step 7 — Variables Page Redesign
-  > Variablen gruppiert und mit Kontext, nicht als flache Liste.
+- [x] Step 7 — Variables Page Redesign (Phase 5c: Gruppierung, Sparklines, Dimming, Only-Assigned Toggle, Highlight-Navigation)
 
   GRUPPIERUNG (umschaltbar):
   - "Nach Device" (Default) | "Nach Typ" | "Flat" (klassische Liste)
@@ -524,7 +523,7 @@
   - Klick auf Knoten → Navigation zum Detail oder Focus-Wechsel
   - Read-only, nicht editierbar (editierbare Version → Phase 7)
 
-- [ ] Step 3 — System Map (Gesamtansicht)
+- [x] Step 3 — System Map (vereinfacht als Flow-Pfeile in Phase 5c UX-H, vollständig in Phase 7b M36)
   > Alle Devices, Variablen, Automationen, Webhooks auf einer Seite.
   - Read-only Graph-Ansicht
   - Filter: nach Gerät, nach Gruppe, nach Automation-Kette
@@ -671,22 +670,10 @@
   - Cooldown: "Wartezeit in Sekunden bevor die Regel erneut feuern kann"
   - Datei: `pages/Automations.vue`
 
-- [ ] Step 5 — Bug-Fixes: Dashboard-Template JSON-Fehler (~2h)
-  - Root Cause analysieren und fixen
-  - Dateien: `pages/DashboardView.vue`, Backend-Endpoints
-
-- [ ] Step 6 — Bug-Fixes: API-Docs/Swagger 404 + Useful Links (~1h)
-  - Links zu `/api/v1/docs` und Redoc verifizieren und reparieren
-  - Useful Links in Settings prüfen
-  - Dateien: `pages/ApiDocs.vue`, `pages/Settings.vue`
-
-- [ ] Step 7 — Bug-Fix: Acknowledge-Alert (~1h)
-  - Alert-Acknowledge schlägt fehl → Backend-Endpoint prüfen
-  - Dateien: `pages/Alerts.vue`, Backend
-
-- [ ] Step 8 — Grafik-Bug Suchfeld-Placeholder (~0.5h)
-  - Placeholder-Rendering in Suchfeldern prüfen
-  - Dateien: `pages/Devices.vue`, `pages/EntitiesPage.vue`
+- [x] Step 5 — Bug-Fixes: Dashboard Widget Edit-Bug gefixt (Phase 5c UX-J)
+- [x] Step 6 — API-Docs/Swagger: Links funktionieren, Swagger UI öffnet /docs korrekt
+- [ ] Step 7 — Bug-Fix: Acknowledge-Alert — muss getestet werden → Phase 7a PR-1
+- [x] Step 8 — Suchfeld-Placeholder gefixt ("Search devices..." in Phase 5c)
 
 - [x] Step 9 — Secrets Toggle Tooltip + Streams-Seite Erklärung (~1h)
   - Variables: Tooltip auf Secrets-Toggle
@@ -697,9 +684,7 @@
   - Devices Online/Offline → klickbarer Link zur Devices-Seite (gefiltert)
   - Active Alerts → Link zur Alerts-Seite
 
-- [ ] Step 11 — Dashboard Home aufräumen (~2h)
-  - Minimalistischer: nur wichtigste KPIs sichtbar
-  - Weniger Kacheln, klarere Aussage
+- [x] Step 11 — Dashboard Home aufgeräumt (Phase 5c: Health Donut entfernt, Metrics funktionieren, KPIs sichtbar)
 
 ### Milestone UX-C: DeviceDetail Komplett-Überholung [done] ✅
 > Das Herzstück der "Verstehen"-Ebene — Device als Platine mit klickbaren Elementen.
@@ -886,6 +871,7 @@
 - [ ] Step 3 — Tasks UI: "Send Task" Button auf DeviceDetail, Task-Type-Auswahl (OTA, Reboot, Config, Custom)
 - [ ] Step 4 — Auto-Discovery: Telemetrie-Bridge erstellt automatisch VariableDefinitions für unbekannte Keys
 - [ ] Step 5 — Error Boundary: Globaler Error-Handler wenn Backend nicht erreichbar, Retry-Banner
+- [ ] Step 6 — Alert-Acknowledge Bug: Ack schlägt fehl → Backend-Endpoint prüfen + fixen (aus UX-B Step 7)
 
 ### Milestone PR-2: Daten-Infrastruktur [todo]
 > Echte Daten-Ingestion statt nur Simulatoren.
