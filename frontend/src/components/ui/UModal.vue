@@ -74,8 +74,8 @@ watch(
               </svg>
             </button>
           </div>
-          <!-- Body -->
-          <div class="p-5">
+          <!-- Body (scrollable) -->
+          <div class="p-5 max-h-[65vh] overflow-y-auto">
             <slot />
           </div>
           <!-- Footer -->

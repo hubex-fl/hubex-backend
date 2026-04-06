@@ -68,7 +68,7 @@ onMounted(async () => {
   if (saved !== null) {
     collapsedGroups.value = new Set(saved);
   } else {
-    collapsedGroups.value = new Set(["Daten", "System"]);
+    collapsedGroups.value = new Set(["System"]);
   }
 });
 

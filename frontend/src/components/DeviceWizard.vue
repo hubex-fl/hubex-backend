@@ -243,6 +243,8 @@ async function createDevice() {
     }
     step.value = "done";
     toast.addToast(t("devices.wizard.success"), "success");
+    // Auto-navigate to device detail after 2 seconds
+    setTimeout(() => { if (step.value === "done") goToDevice(); }, 2000);
   } catch (e: unknown) {
     const info = parseApiError(e);
     error.value = mapErrorToUserText(info, t("devices.wizard.error"));
