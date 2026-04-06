@@ -44,6 +44,7 @@ from .reports import router as reports_router
 from .plugins import router as plugins_router
 from .hardware import router as hardware_router
 from .components import router as components_router
+from .codegen import router as codegen_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -90,3 +91,4 @@ router.include_router(reports_router, tags=["reports"])
 router.include_router(plugins_router, tags=["plugins"])
 router.include_router(hardware_router, tags=["hardware"])
 router.include_router(components_router, tags=["components"])
+router.include_router(codegen_router, tags=["codegen"])

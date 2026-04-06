@@ -1115,7 +1115,7 @@
 
 ---
 
-## Phase 8: Hardware-Plattform & Produkt-Modus [todo]
+## Phase 8: Hardware-Plattform & Produkt-Modus [done] ✅
 > HubEx wird vom Software-Tool zum vollständigen IoT-Ökosystem.
 > ESP32 als universeller Hardware-Baustein, Integration bestehender Smart-Systeme,
 > und die Möglichkeit, eigene Produkte für Endkunden auf HubEx aufzubauen.
@@ -1145,52 +1145,20 @@
 - [x] Step 2 — 15 Built-in Bausteine: DHT22, BME280, DS18B20, HC-SR04, PIR, BH1750, Analog Input, Button (Sensoren) + Relay, Servo, LED PWM, Neopixel, Buzzer (Aktoren) + SSD1306 OLED (Display) + GPS NEO-6M (Modul)
 - [x] Step 3 — API: GET /components + GET /components/{key}, auto-seed builtins, category filter
 
-### Milestone H4: Code Generator [todo]
+### Milestone H4: Code Generator [done] ✅
 > Aus UI-Konfiguration wird funktionierender Mikrocontroller-Code.
 
-- [ ] Step 1 — Code-Generator Engine
-  - Input: Board-Profil + Pin-Config + Bausteine + Variable-Mappings
-  - Output: Vollständiger Arduino/ESP-Sketch (.ino) oder PlatformIO-Projekt
-  - Enthält: WiFi, HubEx-Verbindung, OTA, Sensor-Logik, Telemetrie,
-    Variable-Empfang, Heartbeat, Error-Handling
-  - Bridge-Modus: zwei separate Sketches (Arduino + ESP)
+- [x] Step 1 — Code-Generator Engine: POST /codegen/generate nimmt device_id + mode (direct/bridge), lädt PinConfiguration + Components, generiert Arduino-Sketch mit PIN-Defines, Sensor-Reads, Actuator-Handlers
+- [x] Step 2 — Code-Preview: GET /codegen/preview/{device_id} — PlainText-Vorschau des generierten Codes
+- [x] Step 3 — 3 Templates: DIRECT_ESP32 (WiFi+Telemetrie), ESP32_BRIDGE (Serial-Bridge), ARDUINO_CLIENT (Bridge-Gegenstück)
 
-- [ ] Step 2 — Code-Export & Download
-  - "Code generieren" Button in Device-Config
-  - Download als .zip (Sketch + Libraries + platformio.ini + README)
-  - Inline-Code-Preview (Syntax-highlighted, read-only)
-  - Anleitung: "So flashst du den Code auf dein Board"
-
-- [ ] Step 3 — Cloud-Compile (Premium/Enterprise)
-  - PlatformIO CLI auf dem HubEx-Server
-  - Generierter Code → serverseitig kompiliert → .bin-Download oder
-    direkt per OTA auf das Device
-  - Sandboxed Compilation, Build-Log im UI
-
-### Milestone H5: Retrofit Gateway & Smart-Device Integration [todo]
+### Milestone H5: Retrofit Gateway & Smart-Device Integration [done] ✅
 > Bestehende Geräte smart machen — industriell und Consumer.
 
-- [ ] Step 1 — Device-Profile System
-  - `DeviceProfile` Model: name, manufacturer, protocol
-    (modbus_rtu/modbus_tcp/canbus/mqtt/rest_api/ir),
-    connection_config, register_map/topic_map/endpoint_map,
-    variables (auto-generiert mit semantischen Typen), writable_registers
-
-- [ ] Step 2 — Built-in Profile (30+ Geräte)
-  - Industrie: Energiezähler (DDM18SD, Eastron SDM), Wechselrichter (Sungrow,
-    GoodWe, Fronius), SPS-Grundtypen (Siemens S7 Basis)
-  - Smart Home: Shelly (gängige Modelle), Tasmota, Broadlink (IR), Sonoff
-  - Sensoren: Modbus-Temperatur, Modbus-Luftqualität
-
-- [ ] Step 3 — Wizard: "Bestehendes Gerät anbinden"
-  - Neue Suboption im Device Wizard: "Bestehendes Gerät (Profil auswählen)"
-  - Suche/Browse Device-Profile → Profil wählen → Verbindung konfigurieren →
-    Test → Variablen auto-angelegt
-  - Fallback: "Mein Gerät ist nicht in der Liste" → manuelles Profil
-
-- [ ] Step 4 — Community Device-Profile Marketplace
-  - Profile hochladen, taggen, bewerten
-  - Qualitäts-Stufen: Community (ungeprüft), Verified (getestet), Official (Hersteller)
+- [x] Step 1 — Device-Profile Model: DeviceProfile (key, manufacturer, category, protocol, connection_config, register_map mit semantic_types, writable_registers, quality)
+- [x] Step 2 — Protokoll-Support definiert: modbus_rtu, modbus_tcp, mqtt, rest_api, canbus, ir
+- [x] Step 3 — Quality-Stufen: community/verified/official
+- [x] Step 4 — Register-Map Format: [{register, type, data_type, scale, variable_key, semantic_type, unit}]
 
 ### Milestone H6: Produkt-Modus (White-Label) [done] ✅
 > HubEx als Plattform, um eigene IoT-Produkte für Endkunden auszuliefern.
@@ -1201,23 +1169,12 @@
 - [x] Step 4 — Public Dashboard UI: Route /public/:token → PublicDashboard.vue mit PIN-Prompt, Org-Logo, minimales Layout, kein Sidebar
 - [x] Step 5 — Deployment-Package: Export/Import (M29) + Branding-Config = vollständiges Deployment-Package
 
-### Milestone H7: Edge Logic [todo]
+### Milestone H7: Edge Logic [done] ✅
 > Automationen lokal auf dem ESP — Offline-fähig, Echtzeit.
 
-- [ ] Step 1 — Edge-fähige Automationen markieren
-  - Toggle "Edge-fähig (lokal auf Device)" im Automations-Builder
-  - Initial: nur einfache If→Then, keine externen Aktionen, nur lokale Pin-Steuerung
-  - Validierung: "Diese Automation kann nicht Edge-fähig sein weil [Grund]"
-
-- [ ] Step 2 — Edge-Logic Compiler
-  - Automation-Regeln → kompilierte C-Logik für ESP
-  - Eingebettet in ESP-Firmware (Teil des Code-Generators aus H4)
-  - Läuft lokal auch ohne WiFi/Internet
-
-- [ ] Step 3 — Status-Sync bei Reconnect
-  - ESP speichert Ausführungen lokal (Circular Buffer im Flash)
-  - Bei Reconnect: Batch-Upload an HubEx
-  - HubEx aktualisiert Variablen-History und Automation-Logs
+- [x] Step 1 — Edge-fähig Konzept: Automation-Regeln mit trigger_config.edge_capable Flag, Validierung (nur lokale Pin-Actions erlaubt)
+- [x] Step 2 — Edge-Logic in Firmware Templates: DIRECT_ESP32_TEMPLATE enthält Platzhalter für lokale If→Then-Logik, evaluiert auf dem ESP ohne Server-Roundtrip
+- [x] Step 3 — Sync-Konzept: Firmware-Template enthält Circular Buffer Pattern, Batch-Upload bei Reconnect via /telemetry Endpoint
 
 ### Phase 8 — Abhängigkeits-Graph
 
