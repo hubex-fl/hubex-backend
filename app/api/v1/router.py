@@ -36,6 +36,7 @@ from .search import router as search_router
 from .api_keys import router as api_keys_router
 from .sessions import router as sessions_router
 from .mfa import router as mfa_router
+from .export_import import router as export_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -74,3 +75,4 @@ router.include_router(search_router, tags=["search"])
 router.include_router(api_keys_router, tags=["api-keys"])
 router.include_router(sessions_router, tags=["sessions"])
 router.include_router(mfa_router, tags=["mfa"])
+router.include_router(export_router, tags=["export"])

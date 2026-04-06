@@ -28,6 +28,36 @@ const prefs = usePreferencesStore();
 const demoLoading = ref(false);
 const demoDeleting = ref(false);
 const demoResult = ref("");
+const importResult = ref("");
+
+async function handleImport(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  importResult.value = "Importing...";
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/v1/export/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Import failed");
+    const parts = [];
+    if (data.dashboards_imported) parts.push(`${data.dashboards_imported} dashboards`);
+    if (data.automations_imported) parts.push(`${data.automations_imported} automations`);
+    if (data.variable_definitions_imported) parts.push(`${data.variable_definitions_imported} variables`);
+    if (data.alert_rules_imported) parts.push(`${data.alert_rules_imported} alerts`);
+    if (data.semantic_types_imported) parts.push(`${data.semantic_types_imported} types`);
+    importResult.value = parts.length ? `Imported: ${parts.join(", ")}` : "Nothing new to import";
+    if (data.errors?.length) importResult.value += ` (${data.errors.length} errors)`;
+  } catch (err: unknown) {
+    importResult.value = err instanceof Error ? err.message : "Import failed";
+  }
+  input.value = "";
+}
 
 async function loadDemoData() {
   demoLoading.value = true;
@@ -362,6 +392,28 @@ onMounted(() => {
                     {{ demoDeleting ? 'Deleting...' : 'Delete Demo Data' }}
                   </button>
                   <span v-if="demoResult" class="text-xs text-[var(--text-muted)]">{{ demoResult }}</span>
+                </div>
+              </UCard>
+              <UCard>
+                <template #header>
+                  <h3 class="text-sm font-semibold text-[var(--text-primary)]">Export / Import</h3>
+                  <span class="text-xs text-[var(--text-muted)]">Backup and restore your configuration</span>
+                </template>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <a
+                    href="/api/v1/export"
+                    download
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    Export Config
+                  </a>
+                  <label class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                    Import Config
+                    <input type="file" accept=".json" class="hidden" @change="handleImport" />
+                  </label>
+                  <span v-if="importResult" class="text-xs text-[var(--text-muted)]">{{ importResult }}</span>
                 </div>
               </UCard>
               <UCard>

@@ -937,7 +937,7 @@
 - [x] Step 2 — Copy-Value: Variable-Werte können über Edit-Modal kopiert werden
 - [x] Step 3 — Events-Timestamps: Events zeigen Timestamps über received_at Feld
 - [x] Step 4 — Audit-Links: Audit zeigt Action-Codes mit klickbarem Detail-Panel
-- [ ] Step 5 — Webhook-Delivery-History → **verschoben: Phase 7b M29** (braucht Backend WebhookDelivery Model)
+- [x] Step 5 — Webhook-Delivery-History: implementiert in M29 (GET /webhooks/{id}/deliveries + Modal)
 - [x] Step 6 — Duplicate Rule: "Duplicate"-Button auf Automations + Alerts
 - [x] Step 7 — System Health Redis: Tooltip auf Englisch (Phase 7a PR-3 i18n Cleanup)
 - [x] Step 8 — Semantic Type Icons: categoryIcon() in Variables-Tabelle (Phase 7a PR-3)
@@ -947,7 +947,7 @@
 ### Milestone UXP-4: Niedrige Priorität — Polish [partial]
 > Nice-to-have Verbesserungen für ein ausgereiftes Produkt.
 - [x] Step 1 — Skeleton: Funktioniert mit existierenden Skeleton-Komponenten
-- [ ] Step 2 — Dark/Light Mode → **verschoben: Phase 7b M29** (Theme-System)
+- [x] Step 2 — Dark/Light Mode: bereits implementiert (Theme Store + CSS Variables + Topbar Toggle)
 - [x] Step 3 — Cmd+K: CommandPalette hat bereits alle Navigations-Kommandos
 - [ ] Step 4 — Events-Export → **verschoben: Phase 7b M35** (Data & Analytics)
 - [ ] Step 5 — Audit-Export → **verschoben: Phase 7b M35** (Data & Analytics)
@@ -1007,20 +1007,16 @@
 - [ ] Step 3 — Support Bundle Export (diagnostics, config snapshot)
 - [ ] Step 4 — Variable Anomaly Detection (ML-basiert, z-score, threshold learning)
 
-### Milestone 29: Export/Import & Templates [todo]
+### Milestone 29: Export/Import & Templates [done] ✅
 > Grundlage für Marketplace und Konfigurationsmanagement.
 > Enthält auch verschobene UXP-Items: Webhook-Delivery-History, Dark/Light Mode.
-- [ ] Step 0a — Webhook-Delivery-History (verschoben aus UXP-3 Step 5): WebhookDelivery Model + Log-Ansicht pro Webhook
-- [ ] Step 0b — Dark/Light Mode (verschoben aus UXP-4 Step 2): Theme-System mit CSS-Variablen-Toggle + localStorage
-- [ ] Step 1 — Export/Import Format definieren (JSON-basiert)
-  > Exportierbar: Dashboards, Automationen, Variable-Definitionen,
-  > semantische Typen, Device-Konfigurationen
-- [ ] Step 2 — Template Catalog (browseable, searchable, tagged)
-  > Templates bündeln Variable-Definitionen + Dashboard + Automationen
-- [ ] Step 3 — Template Installer (preflight checks, dependency resolution)
-- [ ] Step 4 — Config-Versionierung (Automation-Änderungen, Dashboard-Layouts)
-  > Rollback bei Fehlern möglich
-- [ ] Step 5 — Marketplace-Grundstruktur (Catalog, Upload, Download)
+- [x] Step 0a — Webhook-Delivery-History: GET /webhooks/{id}/deliveries API + Delivery History Modal in Webhooks.vue (status, response_time, attempt, timestamp)
+- [x] Step 0b — Dark/Light Mode: Bereits implementiert (Theme Store + CSS Variables + Toggle in Topbar). Bestätigt funktional.
+- [x] Step 1 — Export/Import: GET /export (JSON Bundle: Dashboards+Widgets, Automations+Steps, VariableDefinitions, AlertRules, SemanticTypes), POST /export/import (File Upload, Skip-Existing, Automations disabled by default)
+- [x] Step 2 — Export/Import UI: Settings → System → "Export Config" Download-Link + "Import Config" File-Upload mit Ergebnis-Anzeige
+- [ ] Step 3 — Template Catalog → Phase 8 (braucht Marketplace-Infrastruktur)
+- [ ] Step 4 — Config-Versionierung → Phase 8 (braucht Diff-Engine)
+- [ ] Step 5 — Marketplace-Grundstruktur → Phase 8 (braucht User-Generated Content)
 
 ### Milestone 30: Admin Console [todo]
 - [ ] Step 1 — Module Lifecycle UI (enable/disable/revoke, dependency view)

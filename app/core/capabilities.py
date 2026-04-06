@@ -181,6 +181,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/webhooks"): ["webhooks.read"],
     ("GET", "/api/v1/webhooks/{webhook_id}"): ["webhooks.read"],
     ("DELETE", "/api/v1/webhooks/{webhook_id}"): ["webhooks.write"],
+    ("GET", "/api/v1/webhooks/{webhook_id}/deliveries"): ["webhooks.read"],
     ("POST", "/api/v1/entities"): ["entities.write"],
     ("PUT", "/api/v1/entities/{entity_id}"): ["entities.write"],
     ("DELETE", "/api/v1/entities/{entity_id}"): ["entities.write"],
@@ -220,6 +221,9 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("DELETE", "/api/v1/auth/mfa/totp"): [],
     ("GET", "/api/v1/auth/mfa/status"): [],
     ("POST", "/api/v1/auth/mfa/verify"): [],
+    # Export/Import
+    ("GET", "/api/v1/export"): ["config.read"],
+    ("POST", "/api/v1/export/import"): ["config.write"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
