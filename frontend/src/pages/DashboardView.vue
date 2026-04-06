@@ -53,8 +53,10 @@
       >
         <!-- Edit mode overlay -->
         <div v-if="editMode" class="widget-edit-overlay">
-          <button class="overlay-btn del" @click="confirmDeleteWidget(widget)" title="Remove widget">✕</button>
+          <button class="overlay-btn move" @click="moveWidget(widget, -1)" title="Move left/up">◀</button>
           <button class="overlay-btn cfg" @click="openWidgetConfig(widget)" title="Configure">⚙</button>
+          <button class="overlay-btn del" @click="confirmDeleteWidget(widget)" title="Remove widget">✕</button>
+          <button class="overlay-btn move" @click="moveWidget(widget, 1)" title="Move right/down">▶</button>
         </div>
 
         <VizWidget
@@ -104,7 +106,6 @@
                     <option value="log">Log</option>
                     <option value="json">JSON Viewer</option>
                     <option value="map">Map (GPS)</option>
-                    <option value="image">Image URL</option>
                   </optgroup>
                   <optgroup label="Controls">
                     <option value="control_toggle">Toggle Switch</option>
@@ -113,14 +114,13 @@
                 </select>
               </div>
 
-              <!-- Variable key -->
+              <!-- Device first, then variable (filtered by device) -->
               <div class="field">
-                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="Variable" />
+                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="1. Select Device" placeholder="Choose device first..." :optional="true" />
               </div>
 
-              <!-- Device UID (optional) -->
               <div class="field">
-                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="Device" placeholder="Select device..." :optional="true" />
+                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="2. Select Variable" :placeholder="newWidget.device_uid ? 'Variables for this device...' : 'Select device first or choose global...'" />
               </div>
 
               <!-- Label -->
@@ -309,11 +309,24 @@ async function loadDashboard() {
 
 const sortedWidgets = computed<DashboardWidget[]>(() => {
   if (!dashboard.value) return [];
-  return [...dashboard.value.widgets].sort((a, b) => {
-    if (a.grid_row !== b.grid_row) return a.grid_row - b.grid_row;
-    return a.grid_col - b.grid_col;
-  });
+  return [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
 });
+
+function moveWidget(widget: DashboardWidget, direction: number) {
+  if (!dashboard.value) return;
+  const widgets = dashboard.value.widgets;
+  const sorted = [...widgets].sort((a, b) => a.sort_order - b.sort_order);
+  const idx = sorted.findIndex(w => w.id === widget.id);
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= sorted.length) return;
+  // Swap sort_order
+  const tmp = sorted[idx].sort_order;
+  sorted[idx].sort_order = sorted[newIdx].sort_order;
+  sorted[newIdx].sort_order = tmp;
+  // Recalculate grid positions
+  recalcGridPositions(sorted);
+  dashboard.value.widgets = sorted;
+}
 
 async function loadAllHistory() {
   if (!dashboard.value) return;
@@ -458,11 +471,46 @@ async function submitAddWidget() {
   }
 }
 
+function recalcGridPositions(sorted: DashboardWidget[]) {
+  // Pack widgets into 12-column grid, flowing left-to-right then top-to-bottom
+  let col = 1;
+  let row = 1;
+  let rowHeight = 0;
+  for (const w of sorted) {
+    if (col + w.grid_span_w - 1 > 12) {
+      // Doesn't fit on current row → next row
+      col = 1;
+      row += rowHeight;
+      rowHeight = 0;
+    }
+    w.grid_col = col;
+    w.grid_row = row;
+    col += w.grid_span_w;
+    rowHeight = Math.max(rowHeight, w.grid_span_h);
+  }
+}
+
 function getNextGridPosition(): { col: number; row: number } {
   if (!dashboard.value?.widgets.length) return { col: 1, row: 1 };
-  const widgets = dashboard.value.widgets;
-  const maxRow = Math.max(...widgets.map((w) => w.grid_row + w.grid_span_h - 1));
-  return { col: 1, row: maxRow + 1 };
+  const sorted = [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
+  // Find first position that fits a 4-wide widget
+  let col = 1;
+  let row = 1;
+  let rowHeight = 0;
+  for (const w of sorted) {
+    if (col + w.grid_span_w - 1 > 12) {
+      col = 1;
+      row += rowHeight;
+      rowHeight = 0;
+    }
+    col += w.grid_span_w;
+    rowHeight = Math.max(rowHeight, w.grid_span_h);
+  }
+  if (col + 4 - 1 > 12) {
+    col = 1;
+    row += rowHeight;
+  }
+  return { col, row };
 }
 
 function confirmDeleteWidget(widget: DashboardWidget) {
@@ -623,6 +671,7 @@ function openAddWidget() {
 }
 .overlay-btn.del:hover { background: var(--status-bad); color: #fff; border-color: var(--status-bad); }
 .overlay-btn.cfg:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+.overlay-btn.move:hover { background: var(--bg-raised); color: var(--text-primary); }
 
 /* Add widget placeholder */
 .add-widget-cell {

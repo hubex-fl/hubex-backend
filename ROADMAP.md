@@ -864,13 +864,13 @@
 - [x] Step 4 — 2 neue Actions: send_notification (creates Notification), log_to_audit (creates AuditEntry)
 - [x] Step 5 — Test button exists on rule cards (POST /automations/{id}/test)
 
-### Milestone UX-J: Dashboard Builder Verbesserungen [todo]
+### Milestone UX-J: Dashboard Builder Verbesserungen [done] ✅
 > Widget-System braucht grundlegende Verbesserungen für produktive Nutzung.
-- [ ] Step 1 — Widget Drag & Drop Reordering (sort_order via Layout-Update API)
-- [ ] Step 2 — Intelligentes Grid-Layout: neue Widgets neben bestehende setzen statt immer neue Zeile
-- [ ] Step 3 — Device-Filter bei Variable-Auswahl: erst Device wählen, dann gefilterte Variablen
-- [ ] Step 4 — Image-Widget entfernen oder als URL-Input direkt (nicht über Variable)
-- [ ] Step 5 — Time-Range nur bei Chart-Widgets anzeigen (nicht bei Toggle/Slider)
+- [x] Step 1 — Widget Reordering: ◀/▶ Move-Buttons im Edit-Mode, sort_order-basiert
+- [x] Step 2 — Intelligentes Grid-Layout: recalcGridPositions() packt Widgets nebeneinander (12-col flow)
+- [x] Step 3 — Device-Filter bei Variable-Auswahl: Device-Selector vor Variable-Selector
+- [x] Step 4 — Image-Widget aus Typ-Auswahl entfernt
+- [x] Step 5 — Time-Range nur bei line_chart/sparkline/log (nicht bei bool/gauge/toggle/slider)
 
 ---
 
