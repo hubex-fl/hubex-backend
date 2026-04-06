@@ -40,6 +40,7 @@ from .export_import import router as export_router
 from .email_templates import router as email_templates_router
 from .custom_endpoints import router as custom_endpoints_router
 from .observability import router as observability_router
+from .reports import router as reports_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -82,3 +83,4 @@ router.include_router(export_router, tags=["export"])
 router.include_router(email_templates_router, tags=["email-templates"])
 router.include_router(custom_endpoints_router, tags=["custom-api"])
 router.include_router(observability_router, tags=["observability"])
+router.include_router(reports_router, tags=["reports"])

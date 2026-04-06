@@ -244,6 +244,13 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/observability/incidents"): ["alerts.read"],
     ("GET", "/api/v1/observability/support-bundle"): ["config.read"],
     ("GET", "/api/v1/observability/anomalies"): ["vars.read"],
+    # Reports
+    ("GET", "/api/v1/reports/templates"): ["config.read"],
+    ("POST", "/api/v1/reports/templates"): ["config.write"],
+    ("DELETE", "/api/v1/reports/templates/{template_id}"): ["config.write"],
+    ("POST", "/api/v1/reports/generate/{template_id}"): ["config.write"],
+    ("GET", "/api/v1/reports/history"): ["config.read"],
+    ("GET", "/api/v1/reports/download/{report_id}"): ["config.read"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],

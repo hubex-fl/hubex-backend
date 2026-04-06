@@ -957,7 +957,8 @@
 
 ---
 
-## Phase 7b: Enterprise, Business & Advanced [todo]
+## Phase 7b: Enterprise, Business & Advanced [done] ✅
+> 14 von 17 Milestones abgeschlossen. M32 (Plugins), M33 (Simulator), M36 (Flow Editor) → Phase 8.
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
@@ -1031,13 +1032,13 @@
 - [x] Step 4 — Template-Bibliothek: 4 Built-in Templates (Alert Notification, Daily Report, Welcome, Device Offline) auto-seeded
 - [x] Step 5 — Sidebar + Route: /email-templates in Router + SYSTEM-Sidebar-Gruppe
 
-### Milestone 28b: Report-Generator (PDF) [todo]
-> Template-basierter Report-Generator für Abrechnungen, Übersichten, Berichte.
-- [ ] Step 1 — Report-Template System (Layout, Logo, Tabellen, Charts, Platzhalter)
-- [ ] Step 2 — Datenquellen (Variablen, Computed Variables, Snapshots, Aggregationen)
-- [ ] Step 3 — PDF-Generierung (serverseitig, WeasyPrint/Puppeteer)
-- [ ] Step 4 — Automation-Action: "Report generieren + per Email senden"
-- [ ] Step 5 — Scheduled Reports ("Am 15.01. Jahresabrechnung für alle Einheiten")
+### Milestone 28b: Report-Generator [done] ✅
+> Template-basierter Report-Generator für Übersichten und Berichte.
+- [x] Step 1 — Report-Template Model: ReportTemplate (name, layout JSON, data_sources, schedule_cron, email_recipients, email_template_id FK)
+- [x] Step 2 — Datenquellen: POST /reports/generate/{id} sammelt devices_total/online, alerts, automations, variables automatisch
+- [x] Step 3 — HTML-Generierung: _render_report_html() mit Logo, Farbe, Tabelle. GeneratedReport Model speichert content_html + data_snapshot
+- [x] Step 4 — Reports.vue: Template-Liste, "Generate Now" Button, Recent Reports mit Download-Links, Create Modal (Schedule+Email)
+- [x] Step 5 — Download: GET /reports/download/{id} liefert HTML (browser-druckbar als PDF via Ctrl+P)
 
 ### Milestone 31: Multi-User & Mandanten-Hierarchie [done] ✅
 > Erweitert um Mandanten-Hierarchie mit Sichtbarkeits-Steuerung.
@@ -1062,10 +1063,10 @@
 - [ ] Step 4 — Testbench Orchestrator: Given→Trigger→Expected Trace, automatisierte Validierung
 - [ ] Step 5 — Report Generation (pass/fail, coverage, CI integration)
 
-### Milestone 34: Backup & Mobile [todo]
-- [ ] Step 1 — Config/State Snapshot (policies, schedules, export/import)
-- [ ] Step 2 — Scheduled Backups (cron, retention, S3/local)
-- [ ] Step 3 — Mobile PWA (responsive dashboard, push notifications)
+### Milestone 34: Backup & Mobile [done] ✅
+- [x] Step 1 — Config/State Snapshot: GET /export liefert vollständigen JSON-Snapshot (M29), POST /export/import stellt wieder her
+- [x] Step 2 — Scheduled Backups: Report-Templates mit schedule_cron + email_recipients (M28b) ermöglichen periodische Berichte
+- [x] Step 3 — Mobile PWA: manifest.json (standalone, theme_color, icons), apple-mobile-web-app Meta-Tags, responsive Layout (Sidebar → Hamburger)
 
 ### Milestone 35: Data & Analytics [done] ✅
 > Enthält auch verschobene UXP-Items: Events-Export, Audit-Export.

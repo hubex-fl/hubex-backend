@@ -37,6 +37,7 @@ from .api_key import ApiKey
 from .mfa import UserTotpSecret
 from .email_template import EmailTemplate
 from .custom_endpoint import CustomEndpoint
+from .report import ReportTemplate, GeneratedReport
 
 __all__ = [
     "User",
@@ -96,4 +97,6 @@ __all__ = [
     "UserTotpSecret",
     "EmailTemplate",
     "CustomEndpoint",
+    "ReportTemplate",
+    "GeneratedReport",
 ]
