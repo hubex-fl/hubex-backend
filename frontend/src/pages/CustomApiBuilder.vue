@@ -152,7 +152,7 @@ onMounted(load);
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Custom API Builder</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Create custom REST endpoints that query HUBEX data in your own format</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Build your own API endpoints to serve device data, variables, and metrics in custom formats</p>
       </div>
       <button
         class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"
@@ -160,8 +160,12 @@ onMounted(load);
       >+ New Endpoint</button>
     </div>
 
-    <div v-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">{{ error }}</div>
     <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+
+    <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
+      <p>{{ error }}</p>
+      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="load">Retry</button>
+    </div>
 
     <UEmpty v-else-if="!endpoints.length"
       title="No custom endpoints"
@@ -243,7 +247,7 @@ onMounted(load);
             <input v-model.number="formRateLimit" type="number" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs" />
           </div>
           <div>
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">Required Scope (API Key)</label>
+            <label class="text-[10px] font-medium text-[var(--text-muted)]">Access Scope (leave empty for public)</label>
             <input v-model="formScope" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono" placeholder="e.g. custom.read" />
           </div>
         </div>

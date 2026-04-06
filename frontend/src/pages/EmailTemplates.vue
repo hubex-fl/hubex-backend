@@ -164,12 +164,16 @@ onMounted(loadTemplates);
       </button>
     </div>
 
-    <div v-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">{{ error }}</div>
-
     <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+
+    <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
+      <p>{{ error }}</p>
+      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="loadTemplates">Retry</button>
+    </div>
 
     <div v-else-if="!templates.length" class="text-center py-8">
       <p class="text-sm text-[var(--text-muted)]">No templates yet</p>
+      <button class="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">Create your first template</button>
     </div>
 
     <div v-else class="space-y-3">

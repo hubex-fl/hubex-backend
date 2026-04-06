@@ -150,6 +150,7 @@ onMounted(loadStatus);
       <template v-else-if="!recoveryCodes">
         <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-3">
           <p class="text-xs text-[var(--text-primary)] font-medium">1. Scan this QR code with your authenticator app</p>
+          <p class="text-[10px] text-[var(--text-muted)]">Use Google Authenticator, Microsoft Authenticator, Authy, or any TOTP app</p>
           <div class="flex items-center justify-center py-3">
             <div class="bg-white p-3 rounded-lg">
               <img v-if="setupUri" :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(setupUri)}`" alt="QR Code" class="w-[180px] h-[180px]" />
@@ -186,7 +187,7 @@ onMounted(loadStatus);
       <template v-else>
         <div class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-4 space-y-3">
           <p class="text-xs font-medium text-[var(--text-primary)]">Save your recovery codes</p>
-          <p class="text-[10px] text-[var(--text-muted)]">Store these codes in a safe place. Each can be used once to log in if you lose your authenticator.</p>
+          <p class="text-[10px] text-[var(--text-muted)]">Keep these codes safe. If you lose access to your authenticator app, use one of these codes to sign in instead.</p>
           <div class="grid grid-cols-2 gap-1.5">
             <code v-for="code in recoveryCodes" :key="code" class="text-xs font-mono text-center py-1.5 rounded bg-[var(--bg-base)] border border-[var(--border)] select-all">{{ code }}</code>
           </div>

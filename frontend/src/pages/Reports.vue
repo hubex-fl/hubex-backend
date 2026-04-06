@@ -23,6 +23,7 @@ type Report = {
 const templates = ref<Template[]>([]);
 const reports = ref<Report[]>([]);
 const loading = ref(true);
+const error = ref<string | null>(null);
 const generating = ref<number | null>(null);
 
 // Create modal
@@ -35,6 +36,7 @@ const saving = ref(false);
 
 async function loadAll() {
   loading.value = true;
+  error.value = null;
   try {
     const [t, r] = await Promise.allSettled([
       apiFetch<Template[]>("/api/v1/reports/templates"),
@@ -42,6 +44,9 @@ async function loadAll() {
     ]);
     templates.value = t.status === "fulfilled" ? t.value : [];
     reports.value = r.status === "fulfilled" ? r.value : [];
+    if (t.status === "rejected" && r.status === "rejected") {
+      error.value = "Failed to load reports";
+    }
   } finally {
     loading.value = false;
   }
@@ -111,6 +116,11 @@ onMounted(loadAll);
     </div>
 
     <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+
+    <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
+      <p>{{ error }}</p>
+      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="loadAll">Retry</button>
+    </div>
 
     <!-- Templates -->
     <UEmpty v-else-if="!templates.length"
@@ -184,8 +194,14 @@ onMounted(loadAll);
           <input v-model="formDesc" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Overview of all devices and alerts" />
         </div>
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Schedule (cron, optional)</label>
-          <input v-model="formCron" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="0 8 * * 1 (Mondays 8am)" />
+          <label class="text-[10px] font-medium text-[var(--text-muted)]">Schedule (optional)</label>
+          <select v-model="formCron" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+            <option value="">Manual only</option>
+            <option value="0 8 * * *">Daily at 8:00 AM</option>
+            <option value="0 8 * * 1">Every Monday at 8:00 AM</option>
+            <option value="0 8 1 * *">First of month at 8:00 AM</option>
+            <option value="0 */6 * * *">Every 6 hours</option>
+          </select>
         </div>
         <div>
           <label class="text-[10px] font-medium text-[var(--text-muted)]">Email recipients (comma-separated)</label>

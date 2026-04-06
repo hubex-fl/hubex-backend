@@ -196,6 +196,9 @@ onMounted(loadKeys);
                 </button>
               </div>
             </div>
+            <div class="rounded-lg bg-[var(--bg-raised)] px-3 py-2 text-[10px] text-[var(--text-muted)] font-mono">
+              curl -H "Authorization: Bearer {{ createdKey?.slice(0, 16) }}..." {{ window?.location?.origin || 'https://your-hubex' }}/api/v1/devices
+            </div>
             <button
               class="w-full px-3 py-2 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               @click="closeCreate"

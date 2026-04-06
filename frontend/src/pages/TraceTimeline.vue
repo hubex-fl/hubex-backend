@@ -127,9 +127,9 @@ onMounted(loadAll);
       </template>
       <div class="space-y-2">
         <div v-for="a in anomalies" :key="a.variable_key + '-' + a.device_id" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[var(--status-warn)]/5 border border-[var(--status-warn)]/20">
-          <span class="text-xs font-mono font-medium text-[var(--status-warn)]">z={{ a.z_score }}</span>
+          <span class="text-xs font-medium text-[var(--status-warn)]">{{ a.z_score > 3 ? 'Very unusual' : 'Unusual' }}</span>
           <span class="text-xs text-[var(--text-primary)]">{{ a.variable_key }}</span>
-          <span class="text-[10px] text-[var(--text-muted)]">current: {{ a.current_value?.toFixed(1) }} | mean: {{ a.mean }} ± {{ a.stddev }}</span>
+          <span class="text-[10px] text-[var(--text-muted)]">{{ a.current_value?.toFixed(1) }} (normal: {{ a.mean }} ± {{ a.stddev }})</span>
         </div>
       </div>
     </UCard>

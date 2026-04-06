@@ -162,11 +162,16 @@ function addNode(type: FlowNode["type"]) {
 
 function deleteSelected() {
   if (!selectedNode.value) return;
+  if (!confirm(`Remove "${selectedNode.value.label}" from the flow?`)) return;
   const id = selectedNode.value.id;
   nodes.value = nodes.value.filter(n => n.id !== id);
   edges.value = edges.value.filter(e => e.from !== id && e.to !== id);
   selectedNode.value = null;
 }
+
+function zoomIn() { zoom.value = Math.min(zoom.value + 0.15, 2.5); }
+function zoomOut() { zoom.value = Math.max(zoom.value - 0.15, 0.3); }
+function zoomReset() { zoom.value = 1; }
 
 function getNodeCenter(node: FlowNode) {
   return { x: node.x + 70, y: node.y + 25 };
@@ -184,11 +189,16 @@ onMounted(loadSystemGraph);
         <span class="text-[10px] text-[var(--text-muted)]">{{ nodes.length }} nodes, {{ edges.length }} edges</span>
       </div>
       <div class="flex items-center gap-1.5">
-        <button v-for="type in ['device', 'variable', 'trigger', 'action', 'webhook', 'external']" :key="type"
+        <button v-for="type in ['device', 'variable', 'trigger', 'action', 'webhook', 'external']" :key="type" :aria-label="`Add ${type} node`"
           class="px-2 py-1 rounded text-[10px] font-medium border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors"
           :style="{ color: NODE_COLORS[type] }"
           @click="addNode(type as FlowNode['type'])"
         >+ {{ type }}</button>
+        <span class="w-px h-4 bg-[var(--border)]" />
+        <button class="px-1.5 py-1 rounded text-[10px] font-mono border border-[var(--border)] hover:bg-[var(--bg-raised)]" @click="zoomOut" title="Zoom out">-</button>
+        <span class="text-[10px] text-[var(--text-muted)] w-10 text-center">{{ Math.round(zoom * 100) }}%</span>
+        <button class="px-1.5 py-1 rounded text-[10px] font-mono border border-[var(--border)] hover:bg-[var(--bg-raised)]" @click="zoomIn" title="Zoom in">+</button>
+        <button class="px-1.5 py-1 rounded text-[10px] border border-[var(--border)] hover:bg-[var(--bg-raised)]" @click="zoomReset" title="Reset zoom">Reset</button>
         <button v-if="selectedNode" class="px-2 py-1 rounded text-[10px] font-medium text-red-400 border border-red-500/30 hover:bg-red-500/10" @click="deleteSelected">
           Delete
         </button>
