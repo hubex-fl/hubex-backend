@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -7,6 +8,7 @@ import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 
 const toast = useToastStore();
+const { t } = useI18n();
 
 type PluginItem = {
   id: number; key: string; name: string; version: string;
@@ -57,7 +59,7 @@ async function handleInstall() {
         author: formAuthor.value || null,
       }),
     });
-    toast.addToast("Plugin installed", "success");
+    toast.addToast(t('toast.created', { item: 'Plugin' }), "success");
     installOpen.value = false;
     formKey.value = ""; formName.value = ""; formDesc.value = ""; formAuthor.value = "";
     await loadPlugins();
@@ -106,9 +108,9 @@ onMounted(loadPlugins);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Plugins</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.plugins.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
-          Extend HUBEX with custom integrations, automation hooks, and data processing.
+          {{ t('pages.plugins.subtitle') }}.
           <router-link to="/admin" class="text-[var(--primary)] hover:underline ml-1">Admin Console</router-link>
         </p>
       </div>

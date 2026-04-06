@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+const { t } = useI18n();
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UButton from "../components/ui/UButton.vue";
@@ -329,7 +331,7 @@ watch(events, async () => {
       <!-- Recent Alerts -->
       <UCard data-testid="recent-alerts">
         <template #header>
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recent Alerts</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('dashboard.recentAlerts') }}</h3>
           <UButton size="sm" variant="ghost" @click="router.push('/alerts')">View All</UButton>
         </template>
 
@@ -347,7 +349,7 @@ watch(events, async () => {
         <!-- Empty -->
         <UEmpty
           v-else-if="alerts.length === 0"
-          title="No active alerts"
+          :title="t('dashboard.noActiveAlerts')"
           description="All systems are operating normally."
           icon="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           data-testid="alerts-empty"
@@ -468,7 +470,7 @@ watch(events, async () => {
             v-if="!streamPaused"
             class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse-slow"
           />
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Event Stream</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('dashboard.eventStream') }}</h3>
         </div>
         <UButton size="sm" variant="ghost" @click="togglePause">
           <!-- Resume icon -->

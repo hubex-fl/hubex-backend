@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -8,6 +9,7 @@ import UEmpty from "../components/ui/UEmpty.vue";
 import UCard from "../components/ui/UCard.vue";
 
 const toast = useToastStore();
+const { t } = useI18n();
 
 type Template = {
   id: number; name: string; description: string | null;
@@ -72,7 +74,7 @@ async function handleCreate() {
         email_recipients: emails.length ? emails : null,
       }),
     });
-    toast.addToast("Template created", "success");
+    toast.addToast(t('toast.created', { item: 'Template' }), "success");
     createOpen.value = false;
     formName.value = ""; formDesc.value = ""; formCron.value = ""; formEmails.value = "";
     await loadAll();
@@ -114,9 +116,9 @@ onMounted(loadAll);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Reports</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.reports.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
-          Generate and schedule reports from your HUBEX data.
+          {{ t('pages.reports.subtitle') }}.
           <router-link to="/email-templates" class="text-[var(--primary)] hover:underline ml-1">Email Templates</router-link> ·
           <router-link to="/automations" class="text-[var(--primary)] hover:underline">Automations</router-link>
         </p>

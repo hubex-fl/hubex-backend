@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UCard from "../components/ui/UCard.vue";
@@ -7,6 +8,7 @@ import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 
 const toast = useToastStore();
+const { t } = useI18n();
 
 const CAP_LABELS: Record<string, string> = {
   "devices.read": "View devices", "devices.write": "Manage devices",
@@ -107,8 +109,8 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-xl font-semibold text-[var(--text-primary)]">Admin Console</h1>
-      <p class="text-xs text-[var(--text-muted)] mt-0.5">Module lifecycle, system status, and platform configuration</p>
+      <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.admin.title') }}</h1>
+      <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.admin.subtitle') }}</p>
     </div>
 
     <!-- Status Cards -->
@@ -128,7 +130,7 @@ onMounted(() => {
       <UCard padding="md">
         <div class="text-center">
           <p class="text-2xl font-bold" :class="health?.status === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">
-            {{ healthLoading ? '...' : health?.status === 'ok' ? 'Healthy' : 'Degraded' }}
+            {{ healthLoading ? '...' : health?.status === 'ok' ? t('health.healthy') : t('health.degraded') }}
           </p>
           <p class="text-[10px] text-[var(--text-muted)] mt-1">System Status</p>
         </div>

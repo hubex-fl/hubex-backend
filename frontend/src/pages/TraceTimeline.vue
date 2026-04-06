@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
@@ -30,6 +31,7 @@ type AnomalyHint = {
   hint: string;
 };
 
+const { t } = useI18n();
 const traces = ref<TraceEntry[]>([]);
 const incidents = ref<IncidentSummary | null>(null);
 const anomalies = ref<AnomalyHint[]>([]);
@@ -77,8 +79,8 @@ onMounted(loadAll);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Trace Timeline</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Correlated view of events, audit logs, alerts, and automations</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.traceTimeline.title') }}</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.traceTimeline.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <select v-model.number="minutes" class="px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" @change="loadAll">

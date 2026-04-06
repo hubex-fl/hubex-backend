@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch, getToken, clearToken } from "../lib/api";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useRouter } from "vue-router";
@@ -19,6 +20,7 @@ import SessionManager from "../components/SessionManager.vue";
 import MfaSetup from "../components/MfaSetup.vue";
 
 const router = useRouter();
+const { t } = useI18n();
 const caps = useCapabilities();
 const currentLocale = ref(getCurrentLocale());
 function switchLocale(locale: 'en' | 'de') {
@@ -60,7 +62,7 @@ async function saveBranding() {
       });
     } catch { /* apply locally anyway */ }
   }
-  toast.addToast("Branding applied", "success");
+  toast.addToast(t('branding.applied'), "success");
 }
 
 function resetBrandingForm() {
@@ -223,8 +225,8 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Settings</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-1">Manage your account, organization, and integrations</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('settings.title') }}</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('settings.subtitle') }}</p>
       </div>
     </div>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -7,6 +8,7 @@ import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 
 const toast = useToastStore();
+const { t } = useI18n();
 
 type Endpoint = {
   id: number;
@@ -98,7 +100,7 @@ async function handleSave() {
           required_scope: formScope.value || null,
         }),
       });
-      toast.addToast("Endpoint created", "success");
+      toast.addToast(t('toast.created', { item: 'Endpoint' }), "success");
     } else {
       await apiFetch(`/api/v1/custom-endpoints/${editId.value}`, {
         method: "PATCH",
@@ -151,9 +153,9 @@ onMounted(load);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Custom API Builder</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.customApi.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
-          Build your own API endpoints to serve device data, variables, and metrics.
+          {{ t('pages.customApi.subtitle') }}.
           <router-link to="/developer" class="text-[var(--primary)] hover:underline ml-1">API Docs</router-link> ·
           <router-link to="/variables" class="text-[var(--primary)] hover:underline">Variables</router-link>
         </p>

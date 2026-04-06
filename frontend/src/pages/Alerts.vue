@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useAlerts } from "../composables/useAlerts";
 import UEmpty from "../components/ui/UEmpty.vue";
@@ -11,6 +12,7 @@ import { relativeTime } from "../composables/useRecentAlerts";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 const alertRoute = useRoute();
+const { t } = useI18n();
 const caps = useCapabilities();
 const toast = useToastStore();
 
@@ -71,7 +73,7 @@ async function handleAck(event: AlertEvent) {
   ackingIds.value.add(event.id);
   try {
     await ackEvent(event.id);
-    toast.addToast(`Alert acknowledged`, "success");
+    toast.addToast(t('alerts.acknowledged'), "success");
     justAckedId.value = event.id;
     justAckedRuleId.value = event.rule_id;
     // Auto-dismiss after 15s
@@ -93,7 +95,7 @@ async function handleResolve(event: AlertEvent) {
   resolvingIds.value.add(event.id);
   try {
     await resolveEvent(event.id);
-    toast.addToast(`Alert resolved`, "success");
+    toast.addToast(t('alerts.resolved'), "success");
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to resolve alert"), "error");
@@ -332,8 +334,8 @@ const statusClass: Record<string, string> = {
       <!-- Page header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-xl font-semibold text-[var(--text-primary)]">Alerts</h1>
-          <p class="text-sm text-[var(--text-muted)] mt-1">Monitor and manage alert rules and events</p>
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('alerts.title') }}</h1>
+          <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('alerts.subtitle') }}</p>
         </div>
         <div class="flex items-center gap-2">
         <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>

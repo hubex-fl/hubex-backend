@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   listAutomations,
   createAutomation,
@@ -17,6 +18,7 @@ import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
 const route = useRoute();
+const { t } = useI18n();
 const toast = useToastStore();
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -72,7 +74,7 @@ async function handleDelete(id: number) {
   try {
     await deleteAutomation(id);
     rules.value = rules.value.filter((r) => r.id !== id);
-    toast.addToast("Rule deleted", "success");
+    toast.addToast(t('toast.deleted', { item: 'Rule' }), "success");
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to delete rule"), "error");
@@ -587,8 +589,8 @@ function toggleRuleExpand(id: number) {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Automations</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-1">If-then rules for automated actions</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('automations.title') }}</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('automations.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <button

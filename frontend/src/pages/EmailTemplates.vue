@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
 
 const toast = useToastStore();
+const { t } = useI18n();
 
 type Template = {
   id: number;
@@ -111,7 +113,7 @@ async function handleSave() {
           variables: vars.length ? vars : null,
         }),
       });
-      toast.addToast("Template created", "success");
+      toast.addToast(t('toast.created', { item: 'Template' }), "success");
     } else {
       await apiFetch(`/api/v1/email-templates/${editId.value}`, {
         method: "PATCH",
@@ -164,9 +166,9 @@ onMounted(loadTemplates);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Email Templates</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.emailTemplates.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
-          Templates for automation emails, alerts, and reports. Use {variable_name} placeholders.
+          {{ t('pages.emailTemplates.subtitle') }}.
           <router-link to="/automations" class="text-[var(--primary)] hover:underline ml-1">Automations</router-link> ·
           <router-link to="/reports" class="text-[var(--primary)] hover:underline">Reports</router-link>
         </p>
