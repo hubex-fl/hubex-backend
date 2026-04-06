@@ -50,6 +50,20 @@ async def _demo_heartbeat_loop() -> None:
             logger.debug("demo_heartbeat: error updating demo devices")
 
 
+async def _computed_variables_loop() -> None:
+    """Recompute computed variables every 30 seconds."""
+    from app.core.computed_variables import compute_all
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with AsyncSessionLocal() as db:
+                count = await compute_all(db)
+                if count:
+                    logger.debug("computed_variables: updated %d values", count)
+        except Exception:
+            logger.debug("computed_variables: error in compute cycle")
+
+
 async def _api_poll_worker_loop() -> None:
     """Poll configured API endpoints for service-type devices and write values as telemetry."""
     import httpx
@@ -153,8 +167,9 @@ async def lifespan(app: FastAPI):
     automation_task = asyncio.create_task(automation_engine_loop())
     demo_heartbeat_task = asyncio.create_task(_demo_heartbeat_loop())
     api_poll_task = asyncio.create_task(_api_poll_worker_loop())
+    computed_task = asyncio.create_task(_computed_variables_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task, computed_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()

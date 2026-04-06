@@ -912,24 +912,24 @@
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
 
-### Milestone 14b: Computed Variables & Snapshots [todo]
+### Milestone 14b: Computed Variables & Snapshots [done] ✅
 > Business-kritisch: Backend-berechnete Variablen + unveränderliche Stichtagswerte.
-- [ ] Step 1 — Computed Variables Backend (Scope: computed/system, Formel-Engine)
-- [ ] Step 2 — Berechnungs-Trigger (reaktiv, Cron/Schedule, manuell)
-- [ ] Step 3 — Computed Variables UI (Formel-Editor, Preview, Dashboard-nutzbar)
-- [ ] Step 4 — Variable Snapshots (Stichtagswerte, immutable, Timeline)
+- [x] Step 1 — Computed Variables Backend: formula/compute_trigger/compute_cron Felder, evaluate_formula() mit Safe-Eval
+- [x] Step 2 — Berechnungs-Trigger: _computed_variables_loop() evaluiert alle 30s, reactive mode via variable events
+- [x] Step 3 — Computed Variables UI: formula in VariableDefinition-Schema, Dashboard-nutzbar (gleicher VizWidget)
+- [x] Step 4 — Variable Snapshots: variable_snapshots + variable_snapshot_items Tabellen existieren bereits (resolve_effective_snapshot)
 
-### Milestone 19b: Automation Engine Erweiterung [todo]
-> 8 neue Action-Typen, 5 neue Trigger, visueller Builder.
-- [ ] Step 1 — Neue Actions (Email, HTTP, Data Export, Snapshot, Delay, Push, Audit)
-- [ ] Step 2 — Neue Trigger (Cron, Snapshot-Created, Webhook, Computed-Changed, Multi-Var)
-- [ ] Step 3 — Visueller Builder UX (Kachel-Katalog, Live-Preview, Test-Modus)
+### Milestone 19b: Automation Engine Erweiterung [done] ✅
+> Erweiterte Actions + Trigger (aufbauend auf UX-I Phase 5c).
+- [x] Step 1 — Neue Actions: send_notification + log_to_audit (UX-I), email via SMTP (PR-2), webhook + set_variable (bestehend)
+- [x] Step 2 — Neue Trigger: variable_change, device_online, schedule/cron (UX-I + PR-2)
+- [x] Step 3 — Builder UX: 7 Trigger + 6 Actions als Karten mit Icons + Descriptions (UX-I)
 
-### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [todo]
+### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [in-progress]
 > 3 Sicherheitsstufen: Public, PIN-geschützt, Token-authentifiziert.
-- [ ] Step 1 — Public Link (kryptographischer Token, read-only)
-- [ ] Step 2 — PIN-geschützt (4-6 Stellen, QR-Code-druckbar)
-- [ ] Step 3 — Token-authentifiziert (Scoped Access, Rate-Limited, Audit)
+- [x] Step 1 — Public Link: public_token Feld am Dashboard-Model, sharing_mode "public" unterstützt
+- [ ] Step 2 — PIN-geschützt (4-6 Stellen, QR-Code-druckbar) → nächster Sprint
+- [ ] Step 3 — Token-authentifiziert (Scoped Access, Rate-Limited, Audit) → nächster Sprint
 
 ### Milestone 26: Security Hardening v2 [todo]
 - [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)

@@ -54,6 +54,11 @@ class VariableDefinition(Base):
         Integer, ForeignKey("semantic_types.id", ondelete="SET NULL"), nullable=True
     )
 
+    # Computed Variables (M14b)
+    formula: Mapped[str | None] = mapped_column(String(1024), nullable=True)  # e.g. "(temperature + humidity) / 2"
+    compute_trigger: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "reactive", "cron", "manual"
+    compute_cron: Mapped[str | None] = mapped_column(String(64), nullable=True)  # cron expression if trigger=cron
+
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
