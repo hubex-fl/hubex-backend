@@ -280,6 +280,9 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/hardware/shields"): ["devices.read"],
     ("GET", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.read"],
     ("PUT", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.write"],
+    # Components
+    ("GET", "/api/v1/components"): ["devices.read"],
+    ("GET", "/api/v1/components/{component_key}"): ["devices.read"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],

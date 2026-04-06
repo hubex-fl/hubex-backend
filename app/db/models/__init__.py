@@ -40,6 +40,7 @@ from .custom_endpoint import CustomEndpoint
 from .report import ReportTemplate, GeneratedReport
 from .plugin import Plugin
 from .hardware import BoardProfile, ShieldProfile, PinConfiguration
+from .component import HardwareComponent
 
 __all__ = [
     "User",
@@ -105,4 +106,5 @@ __all__ = [
     "BoardProfile",
     "ShieldProfile",
     "PinConfiguration",
+    "HardwareComponent",
 ]

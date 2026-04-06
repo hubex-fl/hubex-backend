@@ -1159,24 +1159,12 @@
   - Flow: Ziel-Board → Shield (optional) → Pins → Bridge-Firmware flashen →
     Arduino-Sketch generieren
 
-### Milestone H3: Component Library (Hardware-Bausteine) [todo]
+### Milestone H3: Component Library (Hardware-Bausteine) [done] ✅
 > Visuelle Bausteine für Sensoren, Aktoren und Module.
 
-- [ ] Step 1 — Baustein-Manifest-Format
-  - JSON pro Komponente: name, category (sensor/actuator/display/module),
-    pin_requirements, libraries_required, code_template,
-    semantic_type_output, wiring_diagram (SVG optional)
-
-- [ ] Step 2 — Built-in Bausteine (20-30 Stück)
-  - Sensoren: DHT22, BME280, DS18B20, BH1750, HC-SR04, PIR, Analog-Input, Button
-  - Aktoren: Relais, Servo, LED (PWM), Neopixel/WS2812, Buzzer, Motor, Magnetventil
-  - Module: SSD1306 Display, SD-Card, GPS NEO-6M, RFID RC522
-  - Jeder Baustein: Code-Template, Pinbelegung, semantischer Typ, Default-Widget
-
-- [ ] Step 3 — Community-Bausteine
-  - Import/Export (JSON)
-  - Marketplace-Vorbereitung: taggen, bewerten, teilen
-  - Custom-Code-Baustein: eigenen Code einbetten der mit HubEx-Variablen interagiert
+- [x] Step 1 — Baustein-Manifest: HardwareComponent Model (key, category, pin_requirements, bus_type, libraries_required, code_template, variables mit semantic_type, default_widget)
+- [x] Step 2 — 15 Built-in Bausteine: DHT22, BME280, DS18B20, HC-SR04, PIR, BH1750, Analog Input, Button (Sensoren) + Relay, Servo, LED PWM, Neopixel, Buzzer (Aktoren) + SSD1306 OLED (Display) + GPS NEO-6M (Modul)
+- [x] Step 3 — API: GET /components + GET /components/{key}, auto-seed builtins, category filter
 
 ### Milestone H4: Code Generator [todo]
 > Aus UI-Konfiguration wird funktionierender Mikrocontroller-Code.

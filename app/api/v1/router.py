@@ -43,6 +43,7 @@ from .observability import router as observability_router
 from .reports import router as reports_router
 from .plugins import router as plugins_router
 from .hardware import router as hardware_router
+from .components import router as components_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -88,3 +89,4 @@ router.include_router(observability_router, tags=["observability"])
 router.include_router(reports_router, tags=["reports"])
 router.include_router(plugins_router, tags=["plugins"])
 router.include_router(hardware_router, tags=["hardware"])
+router.include_router(components_router, tags=["components"])
