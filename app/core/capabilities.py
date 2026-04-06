@@ -266,6 +266,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PUT", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("DELETE", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("PUT", "/api/v1/dashboards/{dashboard_id}/layout"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/share"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/share/pin"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/unshare"): ["dashboards.write"],
+    ("GET", "/api/v1/dashboards/public/{token}"): [],  # public — no auth required
     # Notifications — no cap required, user-scoped
     ("GET", "/api/v1/notifications"): [],
     ("GET", "/api/v1/notifications/unread-count"): [],
@@ -295,6 +299,7 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("POST", "/api/v1/devices/pairing/confirm"),
     ("GET", "/api/v1/pairing/status"),
     ("GET", "/api/v1/devices/pairing/status"),
+    ("GET", "/api/v1/dashboards/public/{token}"),
 }
 
 def enforcement_enabled() -> bool:

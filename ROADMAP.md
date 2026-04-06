@@ -925,11 +925,11 @@
 - [x] Step 2 — Neue Trigger: variable_change, device_online, schedule/cron (UX-I + PR-2)
 - [x] Step 3 — Builder UX: 7 Trigger + 6 Actions als Karten mit Icons + Descriptions (UX-I)
 
-### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [in-progress]
+### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [done] ✅
 > 3 Sicherheitsstufen: Public, PIN-geschützt, Token-authentifiziert.
-- [x] Step 1 — Public Link: public_token Feld am Dashboard-Model, sharing_mode "public" unterstützt
-- [ ] Step 2 — PIN-geschützt (4-6 Stellen, QR-Code-druckbar) → nächster Sprint
-- [ ] Step 3 — Token-authentifiziert (Scoped Access, Rate-Limited, Audit) → nächster Sprint
+- [x] Step 1 — Public Link: GET /dashboards/public/{token} (no auth), POST /share generiert Token
+- [x] Step 2 — PIN-geschützt: public_pin Feld, POST /share/pin setzt 4-6 stellige PIN, 403 bei falschem PIN
+- [x] Step 3 — Token-authentifiziert: public_token (cryptographic, unique), POST /unshare widerruft Zugang
 
 ### Milestone 26: Security Hardening v2 [todo]
 - [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)
@@ -973,6 +973,14 @@
 - [ ] Step 1 — Module Lifecycle UI (enable/disable/revoke, dependency view)
 - [ ] Step 2 — Policy Management (capability policies, plan enforcement)
 - [ ] Step 3 — Provider Health Dashboard + System Status
+
+### Milestone 28c: Email Template Editor [todo]
+> Visueller Editor für Email-Vorlagen — für Automations, Alerts, Reports, Einladungen.
+- [ ] Step 1 — Email-Template Model (name, subject, body_html, body_text, variables, category)
+- [ ] Step 2 — Template Editor UI: WYSIWYG oder HTML-Editor mit Variable-Platzhaltern ({device_name}, {value})
+- [ ] Step 3 — Template Preview: Live-Vorschau mit Test-Daten
+- [ ] Step 4 — Template-Bibliothek: Built-in Templates (Alert Notification, Daily Report, Welcome)
+- [ ] Step 5 — Integration: Automation Action "send_email" nutzt Template statt rohen Text
 
 ### Milestone 28b: Report-Generator (PDF) [todo]
 > Template-basierter Report-Generator für Abrechnungen, Übersichten, Berichte.

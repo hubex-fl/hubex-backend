@@ -117,6 +117,72 @@ async def get_default_dashboard(
     return d
 
 
+@router.get("/public/{token}", response_model=DashboardOut)
+async def get_public_dashboard(
+    token: str,
+    pin: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Access a publicly shared dashboard by its token. No authentication required."""
+    res = await db.execute(
+        select(Dashboard)
+        .options(selectinload(Dashboard.widgets))
+        .where(Dashboard.public_token == token, Dashboard.sharing_mode != "private")
+    )
+    d = res.scalar_one_or_none()
+    if not d:
+        raise HTTPException(status_code=404, detail="Dashboard not found or not shared")
+    if d.public_pin and d.public_pin != (pin or ""):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    return d
+
+
+@router.post("/{dashboard_id}/share")
+async def share_dashboard(
+    dashboard_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a public sharing link for a dashboard."""
+    import secrets
+    d = await _get_dashboard_or_404(dashboard_id, current_user.id, db)
+    if not d.public_token:
+        d.public_token = secrets.token_urlsafe(32)
+    d.sharing_mode = "public"
+    await db.commit()
+    return {"public_token": d.public_token, "url": f"/dashboards/public/{d.public_token}"}
+
+
+@router.post("/{dashboard_id}/share/pin")
+async def set_dashboard_pin(
+    dashboard_id: int,
+    pin: str = Query(..., min_length=4, max_length=6),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Set a PIN for a shared dashboard."""
+    d = await _get_dashboard_or_404(dashboard_id, current_user.id, db)
+    d.public_pin = pin
+    d.sharing_mode = "pin"
+    await db.commit()
+    return {"ok": True, "sharing_mode": "pin"}
+
+
+@router.post("/{dashboard_id}/unshare")
+async def unshare_dashboard(
+    dashboard_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove public sharing from a dashboard."""
+    d = await _get_dashboard_or_404(dashboard_id, current_user.id, db)
+    d.sharing_mode = "private"
+    d.public_token = None
+    d.public_pin = None
+    await db.commit()
+    return {"ok": True, "sharing_mode": "private"}
+
+
 @router.get("/{dashboard_id}", response_model=DashboardOut)
 async def get_dashboard(
     dashboard_id: int,
