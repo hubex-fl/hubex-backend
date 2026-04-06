@@ -2,6 +2,78 @@
 from __future__ import annotations
 from typing import Any
 
+RESET = "\033[0m"; GREEN = "\033[92m"; RED = "\033[91m"; YELLOW = "\033[93m"; CYAN = "\033[96m"
+def _ok(m): print(f"  {GREEN}+ {m}{RESET}")
+def _warn(m): print(f"  {YELLOW}! {m}{RESET}")
+
+
+def robust_pair(requests_mod, server: str, uid: str, jwt: str, *,
+                name: str, device_type: str, category: str,
+                firmware: str = "sim-1.0",
+                capabilities: dict | None = None) -> str | None:
+    """Pair a device robustly. If already claimed, unclaim and re-pair.
+
+    Returns device_token or None on failure.
+    """
+    auth = {"Authorization": f"Bearer {jwt}"}
+
+    # Step 1: Try hello
+    r = requests_mod.post(f"{server}/api/v1/devices/pairing/hello",
+                          json={"device_uid": uid, "firmware_version": firmware,
+                                "capabilities": capabilities or {}}, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+
+    if data.get("claimed"):
+        # Already claimed — unclaim first
+        _warn(f"{uid}: already claimed, unclaiming...")
+        # Find device ID
+        try:
+            devices = requests_mod.get(f"{server}/api/v1/devices", headers=auth, timeout=10).json()
+            dev = next((d for d in devices if d.get("device_uid") == uid), None)
+            if dev:
+                requests_mod.post(f"{server}/api/v1/devices/{dev['id']}/unclaim",
+                                  headers=auth, timeout=10)
+                _ok("Unclaimed. Re-pairing...")
+                # Retry hello
+                r = requests_mod.post(f"{server}/api/v1/devices/pairing/hello",
+                                      json={"device_uid": uid, "firmware_version": firmware,
+                                            "capabilities": capabilities or {}}, timeout=15)
+                r.raise_for_status()
+                data = r.json()
+                if data.get("claimed"):
+                    _warn("Still claimed after unclaim — skipping")
+                    return None
+            else:
+                _warn("Could not find device to unclaim")
+                return None
+        except Exception as e:
+            _warn(f"Unclaim failed: {e}")
+            return None
+
+    code = data["pairing_code"]
+
+    # Step 2: Claim
+    r = requests_mod.post(f"{server}/api/v1/devices/pairing/claim",
+                          headers=auth, json={"pairing_code": code, "device_uid": uid}, timeout=15)
+    r.raise_for_status()
+
+    # Step 3: Confirm
+    r = requests_mod.post(f"{server}/api/v1/devices/pairing/confirm",
+                          json={"device_uid": uid, "pairing_code": code}, timeout=15)
+    r.raise_for_status()
+    resp = r.json()
+    token = resp["device_token"]
+
+    # Step 4: Set identity
+    requests_mod.patch(f"{server}/api/v1/devices/{resp['device_id']}",
+                       headers=auth,
+                       json={"name": name, "device_type": device_type, "category": category},
+                       timeout=10)
+
+    _ok(f"Paired: {name} (token: {token[:12]}...)")
+    return token
+
 
 def ensure_variable_definitions(requests_mod, server: str, jwt: str, var_defs: list[dict[str, Any]]) -> int:
     """Create VariableDefinitions via API if they don't exist.

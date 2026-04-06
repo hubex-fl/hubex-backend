@@ -132,7 +132,15 @@ def run(server, email, password, uid, interval, auto_pair, token):
 
     if auto_pair:
         _info(f"Pairing '{uid}'…")
-        try: token = _do_pair(requests, server, uid, jwt)
+        try:
+            import os
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from sim_helpers import robust_pair
+            token = robust_pair(requests, server, uid, jwt,
+                                name="System Agent (Sim)", device_type="agent", category="agent",
+                                firmware="sim-agent-1.0",
+                                capabilities={"monitoring": ["cpu", "memory", "disk"]})
+            if not token: _err("Pairing failed"); return
         except Exception as e: _err(f"Pairing failed: {e}"); return
     elif not token:
         _err("No token"); return

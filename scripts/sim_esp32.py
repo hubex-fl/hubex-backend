@@ -165,7 +165,15 @@ def run(server, email, password, uid, interval, auto_pair, token):
     if auto_pair:
         _info(f"Pairing '{uid}'…")
         try:
-            token, device_id = _do_pair(requests, server, uid, jwt)
+            import sys, os
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from sim_helpers import robust_pair
+            token = robust_pair(requests, server, uid, jwt,
+                                name="ESP32 Sensor (Sim)", device_type="esp32", category="hardware",
+                                firmware="sim-esp32-1.0",
+                                capabilities={"sensors": ["temperature", "humidity", "pressure"]})
+            if not token:
+                _err("Pairing failed"); return
         except Exception as e:
             _err(f"Pairing failed: {e}"); return
     elif not token:
