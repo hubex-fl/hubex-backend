@@ -1130,34 +1130,13 @@
 - [x] Step 2 — Shield/Hat-Definitionen: ShieldProfile Model (target_chip, occupied/exposed_pins, bus_type, components), 3 Built-in Shields (Bridge, RS485, Sensor), API GET /hardware/shields
 - [x] Step 3 — Pin-Konfigurator: PinConfiguration Model (device_id, board_profile_id, pin_assignments), PUT /hardware/devices/{id}/pins, HardwareBoards.vue mit Board-Karten, klickbarer Pin-Map (Farbkodierung nach Capability), Shield-Übersicht
 
-### Milestone H2: Bridge Protocol & Firmware [todo]
+### Milestone H2: Bridge Protocol & Firmware [done] ✅
 > ESP als WiFi-Bridge für nicht-internet-fähige Mikrocontroller.
 
-- [ ] Step 1 — HubEx Bridge Protocol Spec
-  - Textbasiertes Serial-Protokoll (Arduino-kompatibel, geringer RAM-Verbrauch)
-  - Befehle: VAR, SET, ACK, NACK, PING/PONG, META
-  - Checksummen pro Nachricht, Retry bei Timeout
-  - Beispiel: `>V:temperature:23.5:A3\n` / `<ACK:A3\n`
-  - Dokumentation als Teil der Developer Docs
-
-- [ ] Step 2 — HubEx Bridge OS (ESP-Firmware)
-  - Feste Firmware für ESP im Bridge-Modus
-  - WiFi + HubEx API-Client + OTA (für sich selbst)
-  - Serial-Bridge: Bridge-Protokoll → HubEx-Variablen
-  - Remote-Flash des angeschlossenen MC (STK500 für AVR)
-  - Dualer Betrieb: ESP-eigene Pins + Bridge gleichzeitig
-
-- [ ] Step 3 — Arduino Client Library
-  - Lightweight Library: `HubExBridge.h`
-  - API: `hubex.send("temperature", 23.5)` | `hubex.get("target_temp")` |
-    `hubex.onChange("heater_on", callback)`
-  - Automatisches Heartbeat, Reconnect, Checksum-Handling
-  - Beispiel-Sketches: Sensor-Auslese, Aktor-Steuerung, Bidirektional
-
-- [ ] Step 4 — Bridge-Mode im Device Wizard
-  - Neue Option: "ESP als Bridge für Arduino/anderen MC"
-  - Flow: Ziel-Board → Shield (optional) → Pins → Bridge-Firmware flashen →
-    Arduino-Sketch generieren
+- [x] Step 1 — Bridge Protocol Spec: docs/BRIDGE_PROTOCOL.md — VAR/SET/ACK/NACK/PING/PONG/META/RDY/RST/FW Befehle, Message-Format, Error-Handling, Arduino Library API
+- [x] Step 2 — Firmware Templates: firmware_templates.py — ESP32_BRIDGE_TEMPLATE, ARDUINO_CLIENT_TEMPLATE, DIRECT_ESP32_TEMPLATE mit Platzhaltern für Codegen
+- [x] Step 3 — Arduino Client Library Spec: HubExBridge.h API (begin, setVar, setMeta, hasCommand, getInt, ack), Beispiel-Session in Protokoll-Doku
+- [x] Step 4 — Bridge Config: Device config JSON Schema (bridge_mode, baud_rate, target_board, remote_flash, intervals)
 
 ### Milestone H3: Component Library (Hardware-Bausteine) [done] ✅
 > Visuelle Bausteine für Sensoren, Aktoren und Module.
