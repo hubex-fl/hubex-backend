@@ -4,6 +4,7 @@ import { apiFetch, getToken, clearToken } from "../lib/api";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useRouter } from "vue-router";
 import { usePreferencesStore } from "../stores/preferences";
+import { setLocale, getCurrentLocale } from "../i18n";
 import UCard from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
 import UInput from "../components/ui/UInput.vue";
@@ -13,6 +14,11 @@ import UEmpty from "../components/ui/UEmpty.vue";
 
 const router = useRouter();
 const caps = useCapabilities();
+const currentLocale = ref(getCurrentLocale());
+function switchLocale(locale: 'en' | 'de') {
+  setLocale(locale);
+  currentLocale.value = locale;
+}
 const prefs = usePreferencesStore();
 
 // ── Demo Data ────────────────────────────────────────────────────────────────
@@ -344,6 +350,23 @@ onMounted(() => {
                     {{ demoDeleting ? 'Deleting...' : 'Delete Demo Data' }}
                   </button>
                   <span v-if="demoResult" class="text-xs text-[var(--text-muted)]">{{ demoResult }}</span>
+                </div>
+              </UCard>
+              <UCard>
+                <template #header>
+                  <h3 class="text-sm font-semibold text-[var(--text-primary)]">Language / Sprache</h3>
+                </template>
+                <div class="flex items-center gap-3">
+                  <button
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    :class="currentLocale === 'en' ? 'bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30' : 'bg-[var(--bg-raised)] text-[var(--text-muted)] border border-[var(--border)]'"
+                    @click="switchLocale('en')"
+                  >🇬🇧 English</button>
+                  <button
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    :class="currentLocale === 'de' ? 'bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30' : 'bg-[var(--bg-raised)] text-[var(--text-muted)] border border-[var(--border)]'"
+                    @click="switchLocale('de')"
+                  >🇩🇪 Deutsch</button>
                 </div>
               </UCard>
               <UCard>

@@ -707,12 +707,12 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
             type="number"
             placeholder="0"
           />
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Reihenfolge bei mehreren Bindings (höher = wichtiger)</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">Priority when multiple bindings apply (higher = more important)</p>
         </div>
         <div class="flex flex-col gap-1">
           <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Enabled</span>
           <UToggle v-model="bindEnabled" label="Enable binding" />
-          <p class="text-[10px] text-[var(--text-muted)]">Deaktivierte Bindings bleiben gespeichert, werden aber ignoriert</p>
+          <p class="text-[10px] text-[var(--text-muted)]">Disabled bindings are kept but ignored during evaluation</p>
         </div>
         <div
           v-if="bindError"

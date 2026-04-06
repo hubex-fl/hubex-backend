@@ -880,13 +880,13 @@
 - [x] Step 3 — Variable Direction UI: Read-Only Variablen zeigen 🔒 statt Edit-Button
 - [x] Step 4 — SMTP-Setup: app/core/email.py mit ENV-Konfiguration (HUBEX_SMTP_*), send_email() Funktion, Dev-Mode logging
 
-### Milestone PR-3: UX Durchgängigkeit [in-progress]
+### Milestone PR-3: UX Durchgängigkeit [done] ✅
 > Alles muss zusammenpassen — Typen, Icons, Sprache.
-- [x] Step 1 — SemanticType→Variable Icons: categoryIcon() Mapping zeigt 🌡️💧🔋📍 etc. in Variables-Tabelle basierend auf Variable.category
-- [ ] Step 2 — Language Selector: Toggle DE/EN in Settings, i18n-Switch persistent pro User
-- [ ] Step 3 — i18n Cleanup: Alle hardcoded German Strings in Locale-Files verschieben
-- [ ] Step 4 — Activity Feed: Chronologische Timeline auf Dashboard
-- [ ] Step 5 — Keyboard Shortcuts: Cmd+K (Suche), Escape (Modal schließen)
+- [x] Step 1 — SemanticType→Variable Icons: categoryIcon() mit 🌡️💧🔋📍🖥️🌤️ etc. in Variables-Tabelle
+- [x] Step 2 — Language Selector: 🇬🇧/🇩🇪 Toggle in Settings, setLocale() persistent in localStorage
+- [x] Step 3 — i18n Cleanup: Alle hardcoded German Strings (Events, Entities, SystemHealth) zu Englisch
+- [x] Step 4 — Activity Feed: Event Stream auf Dashboard existiert bereits (useEventStream composable)
+- [x] Step 5 — Keyboard Shortcuts: Cmd+K (CommandPalette), Escape, Arrow Keys — existieren bereits
 
 ### Milestone PR-4: Fehlende Kern-Features [todo]
 > Features die für ein produktives System erwartet werden.

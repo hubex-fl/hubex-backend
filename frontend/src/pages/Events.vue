@@ -231,9 +231,9 @@ onUnmounted(() => { stopPolling(); });
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput" title="Cursor auf bestimmte Position setzen">Set cursor</UButton>
-            <UButton variant="secondary" size="sm" @click="jumpToNext" title="Zum nächsten ungelesenen Event springen">Jump to next</UButton>
-            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" title="Alle Events bis zur aktuellen Position als gelesen markieren">ACK</UButton>
+            <UButton variant="secondary" size="sm" @click="setCursorFromInput" title="Set cursor to a specific position">Set cursor</UButton>
+            <UButton variant="secondary" size="sm" @click="jumpToNext" title="Jump to next unread event">Jump to next</UButton>
+            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" title="Mark all events up to current position as read">ACK</UButton>
           </div>
         </div>
 
