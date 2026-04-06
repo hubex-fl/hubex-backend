@@ -1150,6 +1150,15 @@
 - [ ] **Update-Strategie** — `docker-compose pull && docker-compose up -d` Anleitung, DB-Migration automatisch bei Start
 - [ ] **Ressourcen-Empfehlung** — Minimum: 1 CPU, 1GB RAM, 10GB Disk. Empfohlen: 2 CPU, 4GB RAM für 50+ Devices
 
+### Milestone R5b: Community & Open Source [todo]
+> Grundlage für Community-Wachstum.
+- [ ] CONTRIBUTING.md (PR-Prozess, Code-Style, Review-Richtlinien)
+- [ ] CODE_OF_CONDUCT.md
+- [ ] GitHub Discussions aktivieren (Announcements, Support, Feature Requests)
+- [ ] Discord Server aufsetzen (Channels: general, support, showcase, dev)
+- [ ] AGPL License Header in alle Source-Files
+- [ ] .env aus Git entfernen, .env.example erstellen
+
 ### Milestone R6: Branding & Launch-Vorbereitung [todo]
 > Letzte Schritte vor dem öffentlichen Launch.
 - [ ] **Produktname final entscheiden** (HubEx bleibt? Neuer Name? Trademark-Check)
@@ -1188,12 +1197,15 @@
 - [ ] Audit-Log Retention: CE=90 Tage, EE=unbegrenzt
 
 ### Milestone C3: Security Hardening for Production [todo]
+- [ ] **CORS konfigurierbar** — `HUBEX_CORS_ORIGINS` env var statt hardcoded localhost (KRITISCH)
 - [ ] CSP (Content Security Policy) Strict Mode
 - [ ] HSTS Preload Header
-- [ ] Input Validation Review (alle Endpoints)
+- [ ] Input Validation Review (alle Endpoints, SQL Injection in Custom API prüfen)
 - [ ] Dependency Security Scan (pip-audit / npm audit)
 - [ ] Rate-Limiting per User + per API Key (nicht nur per IP)
-- [ ] CORS konfigurierbar machen (aktuell: *)
+- [ ] MFA Secrets verschlüsseln (AES-GCM at rest, aktuell Klartext in DB)
+- [ ] Payload Size + Nesting Depth Limits (DoS-Schutz)
+- [ ] .env aus Git entfernen (Secrets im Repo!)
 
 ### Milestone C4: Legal & Compliance [todo]
 - [ ] AGPL Lizenztext für Community Edition
