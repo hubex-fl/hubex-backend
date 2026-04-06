@@ -31,9 +31,21 @@ from app.db.models.automation import AutomationFireLog, AutomationRule
 from app.db.models.events import EventV1
 from app.core.system_events import emit_system_event
 
+from app.core.config import settings as _settings
+
 logger = logging.getLogger("uvicorn.error")
 
 ENGINE_INTERVAL = 5  # seconds between event-poll cycles
+
+# Semaphore limits concurrent action execution (webhook calls, DB writes)
+_action_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_action_semaphore() -> asyncio.Semaphore:
+    global _action_semaphore
+    if _action_semaphore is None:
+        _action_semaphore = asyncio.Semaphore(_settings.automation_concurrency)
+    return _action_semaphore
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +356,7 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
             EventV1.id > last_event_id,
         )
         .order_by(EventV1.id.asc())
-        .limit(200)
+        .limit(_settings.automation_batch_size)
     )
     result = await db.execute(stmt)
     events: list[EventV1] = list(result.scalars().all())
@@ -361,9 +373,11 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
 
         # Map event type → trigger types to evaluate
         if event_type.startswith("variable."):
-            trigger_types = ["variable_threshold", "variable_geofence"]
+            trigger_types = ["variable_threshold", "variable_geofence", "variable_change"]
         elif event_type == "device.offline":
             trigger_types = ["device_offline"]
+        elif event_type == "device.online":
+            trigger_types = ["device_online"]
         elif event_type.startswith("telemetry."):
             trigger_types = ["telemetry_received"]
         else:
@@ -419,11 +433,12 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     if (now - last).total_seconds() < rule.cooldown_seconds:
                         continue
 
-                # Execute action
+                # Execute action (with concurrency limit)
                 success = True
                 error_msg: str | None = None
                 try:
-                    await execute_action(db, rule, context={"event_type": event_type, **payload})
+                    async with _get_action_semaphore():
+                        await execute_action(db, rule, context={"event_type": event_type, **payload})
                 except Exception as exc:
                     success = False
                     error_msg = str(exc)

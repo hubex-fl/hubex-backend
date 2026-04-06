@@ -987,12 +987,12 @@
 - [x] Step 4 — Session Management UI: RefreshToken user_agent/ip_address Felder, Sessions CRUD API, SessionManager.vue in Settings
 - [x] Step 1 — 2FA/MFA (TOTP): UserTotpSecret Model, TOTP core (HMAC-SHA1), setup/confirm/verify/disable API, MFA login flow (mfa_token challenge), MfaSetup.vue, Login.vue two-step, recovery codes
 
-### Milestone 27: Skalierungs-Grundlagen [todo]
+### Milestone 27: Skalierungs-Grundlagen [done] ✅
 > Vorbereitung für Enterprise-Scale.
-- [ ] Step 1 — variable_history Partitioning (zeitbasiert)
-- [ ] Step 2 — Telemetrie-Ingestion Pipeline (Redis Streams/Celery)
-- [ ] Step 3 — Automation-Engine Worker Pool
-- [ ] Step 4 — Horizontal Scaling Documentation
+- [x] Step 1 — variable_history Partitioning: partition_manager.py (monatlich, auto-create/drop), VariableAudit Retention (90d), Config: HUBEX_HISTORY_RETENTION_DAYS, HUBEX_AUDIT_RETENTION_DAYS
+- [x] Step 2 — Telemetrie-Ingestion Pipeline: Redis Streams (opt-in), telemetry_worker.py (batch consumer, 50/iteration), HUBEX_TELEMETRY_QUEUE_ENABLED, Fallback auf synchronen Write
+- [x] Step 3 — Automation-Engine Worker Pool: asyncio.Semaphore für concurrent Actions, konfigurierbare Batch-Size, device_online/variable_change Trigger-Routing gefixt, HUBEX_AUTOMATION_CONCURRENCY/BATCH_SIZE
+- [x] Step 4 — Horizontal Scaling Documentation: docs/SCALING.md (Architektur, Deployment-Patterns, DB Tuning, Telemetry Pipeline, Monitoring)
 
 ### Milestone 27b: Custom API Builder [todo]
 > Visuell konfigurierbare API-Endpoints die HubEx-Daten in eigenem Format ausgeben.

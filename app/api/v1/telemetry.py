@@ -274,12 +274,27 @@ async def ingest_telemetry(
     await db.refresh(telemetry)
     await hub.broadcast(device.id, _serialize_telemetry(telemetry))
 
-    # Bridge telemetry → variables (fire-and-forget, non-blocking)
-    asyncio.create_task(
-        _bridge_telemetry_to_variables(
+    # Bridge telemetry → variables
+    # If Redis queue enabled, enqueue for async processing; else fire-and-forget
+    from app.core.config import settings as _settings
+    if _settings.telemetry_queue_enabled:
+        from app.core.telemetry_worker import enqueue_telemetry
+        queued = await enqueue_telemetry(
             device.id, device.device_uid, data.event_type, data.payload
         )
-    )
+        if not queued:
+            # Fallback to direct processing if Redis unavailable
+            asyncio.create_task(
+                _bridge_telemetry_to_variables(
+                    device.id, device.device_uid, data.event_type, data.payload
+                )
+            )
+    else:
+        asyncio.create_task(
+            _bridge_telemetry_to_variables(
+                device.id, device.device_uid, data.event_type, data.payload
+            )
+        )
 
     return TelemetryOut(telemetry_id=telemetry.id, received_at=telemetry.received_at)
 

@@ -26,6 +26,8 @@ from app.core.health_worker import health_worker_loop
 from app.core.ota_worker import ota_worker_loop
 from app.core.history_retention import history_retention_loop
 from app.core.automation_engine import automation_engine_loop
+from app.core.partition_manager import partition_maintenance_loop
+from app.core.telemetry_worker import telemetry_worker_loop
 from app.db.session import AsyncSessionLocal, engine
 
 logger = logging.getLogger("uvicorn.error")
@@ -168,6 +170,8 @@ async def lifespan(app: FastAPI):
     demo_heartbeat_task = asyncio.create_task(_demo_heartbeat_loop())
     api_poll_task = asyncio.create_task(_api_poll_worker_loop())
     computed_task = asyncio.create_task(_computed_variables_loop())
+    partition_task = asyncio.create_task(partition_maintenance_loop())
+    telemetry_task = asyncio.create_task(telemetry_worker_loop())
 
     background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task, computed_task)
 
