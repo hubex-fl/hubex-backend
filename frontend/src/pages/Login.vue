@@ -2,7 +2,9 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
+import { useI18n } from "vue-i18n";
 
+const { t } = useI18n();
 const email = ref("");
 const password = ref("");
 const mfaCode = ref("");
@@ -23,7 +25,7 @@ async function onSubmit() {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Login failed";
     if (msg.includes("429") || msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("too many")) {
-      error.value = "Too many login attempts. Please wait a moment and try again.";
+      error.value = t('pages.login.tooManyAttempts');
     } else {
       error.value = msg;
     }
@@ -50,8 +52,8 @@ async function onMfaSubmit() {
   <div class="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-8 shadow-2xl">
     <!-- MFA Step -->
     <template v-if="auth.mfaPending">
-      <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Two-Factor Authentication</h2>
-      <p class="text-xs text-[var(--text-muted)] mb-6">Enter the 6-digit code from your authenticator app.</p>
+      <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">{{ t('pages.login.twoFactor') }}</h2>
+      <p class="text-xs text-[var(--text-muted)] mb-6">{{ t('pages.login.enterCode') }}</p>
 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-1">
@@ -84,7 +86,7 @@ async function onMfaSubmit() {
 
     <!-- Login Step -->
     <template v-else>
-      <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-6">Sign in</h2>
+      <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-6">{{ t('auth.signIn') }}</h2>
 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-1">

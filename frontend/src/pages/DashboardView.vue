@@ -4,7 +4,7 @@
     <!-- Top bar -->
     <div class="db-topbar">
       <div class="db-topbar-left">
-        <button class="back-btn" @click="router.push('/dashboards')">← Dashboards</button>
+        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">← Dashboards</button>
         <h1 v-if="dashboard" class="db-name">{{ dashboard.name }}</h1>
         <USkeleton v-else class="h-5 w-40" />
       </div>
@@ -18,7 +18,7 @@
             @click="currentRange = r"
           >{{ r }}</button>
         </div>
-        <button class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
+        <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
           {{ editMode ? '✓ Done' : '✏ Edit' }}
         </button>
         <button class="refresh-btn" @click="loadDashboard" title="Refresh">↺</button>
@@ -229,6 +229,7 @@ function rangeToFrom(range: TimeRange): number {
 
 const route = useRoute();
 const router = useRouter();
+const isKiosk = computed(() => route.meta?.layout === "kiosk");
 
 const dashboard = ref<Dashboard | null>(null);
 const loading = ref(true);

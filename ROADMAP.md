@@ -1107,10 +1107,11 @@
 - [x] **Plugin-Cards**: Metadata collapsed, Filter-Buttons
 - [x] **Login Rate-Limit Feedback**: HTTP 429 → "Too many attempts" Meldung in Login.vue
 
-### Mittel (Qualität) — Offen
-- [ ] **i18n Lücken**: ~50% hardcoded EN (großer Aufwand, Phase 8 Vorbereitung)
-- [ ] **Accessibility**: aria-labels (teilweise gefixt, Rest in Phase 8)
-- [ ] **DeviceDetail.vue**: >2000 Zeilen (Refactoring in Phase 8)
+### Mittel (Qualität)
+- [x] **i18n Locale-Dateien**: ~100 neue Keys (EN+DE) für Toast, Status, Pages, Branding, MFA, Sessions, API Keys. Login.vue migriert.
+- [ ] **i18n Seiten-Migration**: Restliche Seiten auf t() umstellen (mechanisch, kein Risiko) → laufend
+- [ ] **Accessibility**: aria-labels (teilweise gefixt) → laufend
+- [ ] **DeviceDetail.vue**: >2790 Zeilen — Refactoring zu riskant ohne Test-Suite, als eigenen Task dokumentiert
 
 ---
 

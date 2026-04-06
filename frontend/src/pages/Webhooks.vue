@@ -9,6 +9,8 @@ import UBadge from "../components/ui/UBadge.vue";
 import UModal from "../components/ui/UModal.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import UToggle from "../components/ui/UToggle.vue";
+import { useToastStore } from "../stores/toast";
+const toast = useToastStore();
 
 type Webhook = {
   id: number;
@@ -75,7 +77,8 @@ async function deleteWebhook(id: number) {
   try {
     await apiFetch(`/api/v1/webhooks/${id}`, { method: "DELETE" });
     webhooks.value = webhooks.value.filter(w => w.id !== id);
-  } catch { /* ignore */ }
+    toast.addToast("Webhook deleted", "success");
+  } catch { toast.addToast("Failed to delete webhook", "error"); }
 }
 
 async function testWebhook(webhook: Webhook) {
@@ -86,9 +89,9 @@ async function testWebhook(webhook: Webhook) {
       body: JSON.stringify({ test: true, source: "hubex", timestamp: new Date().toISOString() }),
       signal: AbortSignal.timeout(5000),
     });
-    alert(`Test: ${r.ok ? "✓ Success" : "✗ Failed"} (${r.status})`);
-  } catch (e: any) {
-    alert(`Test failed: ${e.message}`);
+    toast.addToast(r.ok ? `Test successful (${r.status})` : `Test failed (${r.status})`, r.ok ? "success" : "error");
+  } catch (e: unknown) {
+    toast.addToast(`Test failed: ${e instanceof Error ? e.message : 'Connection error'}`, "error");
   }
 }
 
