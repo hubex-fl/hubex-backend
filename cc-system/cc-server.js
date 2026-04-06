@@ -55,8 +55,8 @@ function parseRoadmap() {
   }
 
   for (const line of md.split('\n')) {
-    // Phase headers: ## Phase N: Name [possibly status / ✅ / ← AKTUELL]
-    const phMatch = line.match(/^## Phase (\d+\w*): (.+)/);
+    // Phase headers: ## Phase N: Name  OR  ## QA: Name
+    const phMatch = line.match(/^## (?:Phase (\d+\w*)|QA): (.+)/);
     if (phMatch) {
       const status = deriveStatus(line);
       currentPhase = { name: cleanName(phMatch[2]), status, milestones: [] };
@@ -64,8 +64,8 @@ function parseRoadmap() {
       continue;
     }
 
-    // Milestone headers: ### Milestone N[.x]: Name [possibly status / ✅]
-    const msMatch = line.match(/^#{2,3} (Milestone [\d.a-zA-Z_-]+):\s*(.+)/);
+    // Milestone headers: ### Milestone N[.x]: Name  OR  ### Block X: Name
+    const msMatch = line.match(/^#{2,3} ((?:Milestone|Block) [\d.a-zA-Z_-]+):\s*(.+)/);
     if (msMatch) {
       const status = deriveStatus(line);
       current = { id: msMatch[1], name: cleanName(msMatch[2]), status, steps: [] };
@@ -75,19 +75,33 @@ function parseRoadmap() {
 
     if (!current) continue;
 
-    // Step lines: - [x] Step N — Desc  or  - [x] V1 — Desc  (with optional ~Xh, ← AKTUELL)
+    // Step lines — multiple formats:
+    // - [x] Step N — Desc
+    // - [x] V1 — Desc
+    // - [x] **Bold** — Desc
+    // - [x] A.1 — Desc
+    // - [ ] Description without step number
     const stepMatch = line.match(/^- \[([ x])\] ((?:Step|V)\s*\d+)\s*—\s*(.+)/);
     if (stepMatch) {
       const done = stepMatch[1] === 'x';
       const rawDesc = stepMatch[3];
       const isActive = /← ?AKTUELL/i.test(rawDesc);
       const hours = extractHours(rawDesc);
-      // Clean description: remove (~Xh), ← AKTUELL
-      const name = rawDesc
-        .replace(/\(~?\d+h\)/g, '')
-        .replace(/← ?AKTUELL/gi, '')
-        .trim();
+      const name = rawDesc.replace(/\(~?\d+h\)/g, '').replace(/← ?AKTUELL/gi, '').trim();
       current.steps.push({ id: stepMatch[2], name, hours, done, active: isActive });
+      continue;
+    }
+
+    // Generic checkbox lines: - [x] **Text** or - [x] Text — Desc or - [ ] Text
+    const genericMatch = line.match(/^- \[([ x])\] \*{0,2}(.+?)(?:\*{0,2})\s*(?:—\s*(.+))?$/);
+    if (genericMatch) {
+      const done = genericMatch[1] === 'x';
+      const rawName = (genericMatch[2] + (genericMatch[3] ? ' — ' + genericMatch[3] : '')).replace(/\*{1,2}/g, '');
+      const isActive = /← ?AKTUELL/i.test(rawName);
+      const hours = extractHours(rawName);
+      const name = rawName.replace(/\(~?\d+h\)/g, '').replace(/← ?AKTUELL/gi, '').trim().substring(0, 120);
+      const id = name.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
+      current.steps.push({ id, name, hours, done, active: isActive });
     }
   }
 
@@ -125,9 +139,10 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.url === '/product' || req.url === '/product.html') {
+    // Redirect English path to produkt.html (same file)
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    try { res.end(fs.readFileSync(path.join(__dirname, 'product.html'), 'utf8')); }
-    catch(e) { res.end('<h1>product.html nicht gefunden</h1>'); }
+    try { res.end(fs.readFileSync(path.join(__dirname, 'produkt.html'), 'utf8')); }
+    catch(e) { res.end('<h1>produkt.html nicht gefunden</h1>'); }
     return;
   }
 
