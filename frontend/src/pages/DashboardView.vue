@@ -37,7 +37,7 @@
       <div class="empty-icon">📊</div>
       <p class="empty-title">No widgets yet</p>
       <p class="empty-sub">Click "Edit" to add widgets to this dashboard</p>
-      <UButton @click="editMode = true; showAddWidget = true">Add Widget</UButton>
+      <UButton @click="editMode = true; openAddWidget()">Add Widget</UButton>
     </div>
 
     <!-- Dashboard grid -->
@@ -78,7 +78,7 @@
       </div>
 
       <!-- Add widget placeholder (edit mode) -->
-      <div v-if="editMode" class="add-widget-cell" @click="showAddWidget = true">
+      <div v-if="editMode" class="add-widget-cell" @click="openAddWidget()">
         <span class="add-icon">＋</span>
         <span>Add Widget</span>
       </div>
@@ -89,7 +89,7 @@
       <Transition name="modal">
         <div v-if="showAddWidget" class="modal-overlay" @click.self="showAddWidget = false">
           <div class="modal-box">
-            <h2 class="modal-title">Add Widget</h2>
+            <h2 class="modal-title">{{ editingWidgetId ? 'Edit Widget' : 'Add Widget' }}</h2>
             <div class="form-fields">
 
               <!-- Widget type -->
@@ -165,7 +165,7 @@
 
               <div class="modal-actions">
                 <UButton variant="ghost" @click="showAddWidget = false">Cancel</UButton>
-                <UButton :loading="adding" @click="submitAddWidget">Add Widget</UButton>
+                <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
               </div>
 
             </div>
@@ -203,6 +203,7 @@ import VizWidget from "../components/viz/VizWidget.vue";
 import {
   getDashboard,
   addWidget,
+  updateWidget,
   deleteWidget,
   type Dashboard,
   type DashboardWidget,
@@ -244,6 +245,7 @@ const showAddWidget = ref(false);
 const adding = ref(false);
 const addError = ref("");
 const newWidget = ref(defaultNewWidget());
+const editingWidgetId = ref<number | null>(null);  // null = add mode, number = edit mode
 
 // Delete widget
 const deletingWidget = ref<DashboardWidget | null>(null);
@@ -402,33 +404,55 @@ async function handleControlChange(widget: DashboardWidget, value: unknown) {
   }
 }
 
-// Add widget
+// Add or update widget
 async function submitAddWidget() {
   adding.value = true;
   addError.value = "";
   try {
-    const id = Number(route.params.id);
-    const nextPos = getNextGridPosition();
-    const w = await addWidget(id, {
-      widget_type: newWidget.value.widget_type,
-      variable_key: newWidget.value.variable_key || null,
-      device_uid: newWidget.value.device_uid || null,
-      label: newWidget.value.label || null,
-      unit: newWidget.value.unit || null,
-      min_value: newWidget.value.min_value,
-      max_value: newWidget.value.max_value,
-      grid_col: nextPos.col,
-      grid_row: nextPos.row,
-      grid_span_w: newWidget.value.grid_span_w,
-      grid_span_h: newWidget.value.grid_span_h,
-    });
-    dashboard.value!.widgets.push(w);
+    const dashId = Number(route.params.id);
+
+    if (editingWidgetId.value) {
+      // UPDATE existing widget
+      const w = await updateWidget(dashId, editingWidgetId.value, {
+        widget_type: newWidget.value.widget_type,
+        variable_key: newWidget.value.variable_key || null,
+        device_uid: newWidget.value.device_uid || null,
+        label: newWidget.value.label || null,
+        unit: newWidget.value.unit || null,
+        min_value: newWidget.value.min_value,
+        max_value: newWidget.value.max_value,
+        grid_span_w: newWidget.value.grid_span_w,
+        grid_span_h: newWidget.value.grid_span_h,
+      });
+      const idx = dashboard.value!.widgets.findIndex((x) => x.id === editingWidgetId.value);
+      if (idx >= 0) dashboard.value!.widgets[idx] = w;
+      if (w.variable_key) loadWidgetHistory(w);
+    } else {
+      // ADD new widget
+      const nextPos = getNextGridPosition();
+      const w = await addWidget(dashId, {
+        widget_type: newWidget.value.widget_type,
+        variable_key: newWidget.value.variable_key || null,
+        device_uid: newWidget.value.device_uid || null,
+        label: newWidget.value.label || null,
+        unit: newWidget.value.unit || null,
+        min_value: newWidget.value.min_value,
+        max_value: newWidget.value.max_value,
+        grid_col: nextPos.col,
+        grid_row: nextPos.row,
+        grid_span_w: newWidget.value.grid_span_w,
+        grid_span_h: newWidget.value.grid_span_h,
+      });
+      dashboard.value!.widgets.push(w);
+      if (w.variable_key) loadWidgetHistory(w);
+    }
+
     showAddWidget.value = false;
+    editingWidgetId.value = null;
     newWidget.value = defaultNewWidget();
-    if (w.variable_key) loadWidgetHistory(w);
   } catch (e: unknown) {
     const info = parseApiError(e);
-    addError.value = mapErrorToUserText(info, "Widget konnte nicht erstellt werden. Bitte prüfe die Eingaben.");
+    addError.value = mapErrorToUserText(info, "Widget could not be saved.");
   } finally {
     adding.value = false;
   }
@@ -452,13 +476,15 @@ async function submitDeleteWidget() {
     await deleteWidget(dashboard.value.id, deletingWidget.value.id);
     dashboard.value.widgets = dashboard.value.widgets.filter((w) => w.id !== deletingWidget.value!.id);
     deletingWidget.value = null;
+  } catch (e: unknown) {
+    addError.value = "Failed to remove widget";
   } finally {
     deleting.value = false;
   }
 }
 
 function openWidgetConfig(widget: DashboardWidget) {
-  // Populate edit form with existing values and reuse add modal
+  editingWidgetId.value = widget.id;
   newWidget.value = {
     widget_type: widget.widget_type,
     variable_key: widget.variable_key || "",
@@ -470,6 +496,12 @@ function openWidgetConfig(widget: DashboardWidget) {
     grid_span_w: widget.grid_span_w,
     grid_span_h: widget.grid_span_h,
   };
+  showAddWidget.value = true;
+}
+
+function openAddWidget() {
+  editingWidgetId.value = null;
+  newWidget.value = defaultNewWidget();
   showAddWidget.value = true;
 }
 </script>
@@ -550,6 +582,7 @@ function openWidgetConfig(widget: DashboardWidget) {
 .db-grid {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: 60px;

@@ -108,6 +108,7 @@ ESP32_VARIABLES = [
     {"key": "pressure", "scope": "device", "valueType": "float", "description": "Atmospheric pressure", "unit": "hPa", "displayHint": "sparkline", "category": "sensor.pressure"},
     {"key": "battery", "scope": "device", "valueType": "float", "description": "Battery level", "unit": "%", "displayHint": "gauge", "category": "power"},
     {"key": "rssi", "scope": "device", "valueType": "float", "description": "WiFi signal strength", "unit": "dBm", "displayHint": "sparkline", "category": "connectivity"},
+    {"key": "gps_location", "scope": "device", "valueType": "json", "description": "GPS position", "displayHint": "map", "category": "gps"},
 ]
 
 WEATHER_API_VARIABLES = [

@@ -99,6 +99,7 @@ const search      = ref("");
 const scopeFilter = ref<ScopeFilter>("all");
 const deviceUid   = ref("");
 const showSecrets = ref(true);
+const hideUnrelated = ref(false);
 
 // ── Create modal ────────────────────────────────────────────────────────────
 const createOpen      = ref(false);
@@ -457,6 +458,11 @@ const filteredRows = computed(() => {
   return definitions.value.filter((d) => {
     if (scopeFilter.value !== "all" && d.scope !== scopeFilter.value) return false;
     if (!showSecrets.value && d.is_secret) return false;
+    // Hide variables without values for this device when checkbox is active
+    if (hideUnrelated.value && deviceUid.value.trim() && d.scope === "device") {
+      const val = valuesByKey.value[d.key];
+      if (!val || (val.value === null && val.value !== 0 && val.value !== false)) return false;
+    }
     if (!term) return true;
     return d.key.toLowerCase().includes(term)
       || (d.category ?? "").toLowerCase().includes(term)
@@ -563,6 +569,10 @@ onMounted(async () => {
         <option value="device">Device</option>
       </USelect>
       <UEntitySelect v-model="deviceUid" entity-type="device" placeholder="Filter by device..." :optional="true" class="toolbar-device" />
+      <label v-if="deviceUid.trim()" class="toolbar-toggle" title="Variablen ohne Wert für dieses Device ausblenden">
+        <UToggle v-model="hideUnrelated" size="sm" />
+        <span>Only assigned</span>
+      </label>
       <label class="toolbar-toggle" title="Geheime Variablen in der Übersicht anzeigen/maskieren (z.B. API-Keys, Passwörter)">
         <UToggle v-model="showSecrets" size="sm" />
         <span>Secrets</span>

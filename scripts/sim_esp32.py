@@ -136,12 +136,18 @@ def _simulate_sensors(cycle: int) -> dict:
     # WiFi RSSI: -30 to -80 dBm with jitter
     rssi = -50 + random.gauss(0, 5)
 
+    # GPS: slight drift around a base position (simulates movement)
+    base_lat, base_lng = 48.137, 11.576  # Munich
+    gps_lat = base_lat + random.gauss(0, 0.001)
+    gps_lng = base_lng + random.gauss(0, 0.001)
+
     return {
         "temperature": round(temp, 1),
         "humidity": round(max(0, min(100, humidity)), 1),
         "pressure": round(pressure, 1),
         "battery": round(battery, 1),
         "rssi": round(rssi, 0),
+        "gps_location": {"lat": round(gps_lat, 6), "lng": round(gps_lng, 6)},
     }
 
 
