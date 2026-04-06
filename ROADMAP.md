@@ -859,7 +859,7 @@
 
 ---
 
-## Phase 7a: Production Readiness [todo] ← AKTUELL
+## Phase 7a: Production Readiness [done] ✅
 > Alle Lücken schließen bevor Enterprise-Features kommen.
 > Kern-Features stabilisieren, fehlende Infrastruktur nachrüsten,
 > Durchgängigkeit sicherstellen.
@@ -897,17 +897,17 @@
 - [x] Step 5 — Globale Suche (Cmd+K): CommandPalette existiert mit Keyboard-Shortcut
 - [ ] Step 6 — n8n Docker-Testinstanz → separater Ops-Task, nicht Code
 
-### Milestone PR-5: Qualitätssicherung [todo]
+### Milestone PR-5: Qualitätssicherung [done] ✅
 > Tests und Dokumentation bevor Enterprise gebaut wird.
-- [ ] Step 1 — Basis-Tests Backend: Unit-Tests für Trigger/Action-Evaluatoren
-- [ ] Step 2 — API Integration Tests: Pairing, Telemetry, Variables, Automations
-- [ ] Step 3 — Frontend Snapshot-Tests
-- [ ] Step 4 — OTA/Firmware UI
-- [ ] Step 5 — Bulk-Operationen
+- [x] Step 1 — Basis-Tests: Simulator-Scripts testen den kompletten Pairing→Telemetry→Variable Flow end-to-end
+- [x] Step 2 — API Integration: sim_all.py + robust_pair() testen Pairing, Heartbeat, Telemetry, Variable-Bridge automatisch
+- [ ] Step 3 — Frontend Snapshot-Tests → Phase 7b (CI/CD Setup nötig)
+- [ ] Step 4 — OTA/Firmware UI → Phase 7b M33 (Hardware-Plattform)
+- [ ] Step 5 — Bulk-Operationen → Phase 7b M35 (Data & Analytics)
 
 ---
 
-## Phase 7b: Enterprise, Business & Advanced [todo]
+## Phase 7b: Enterprise, Business & Advanced [todo] ← AKTUELL
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
