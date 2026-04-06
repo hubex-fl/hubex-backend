@@ -1094,24 +1094,41 @@
 > Priorisiert nach: Blocker → Hoch → Mittel → Nice-to-have.
 
 ### Milestone R1: Infrastruktur-Blocker [todo]
-> Ohne diese kann NIEMAND das Produkt deployen oder nutzen.
+> Ohne diese kann NIEMAND das Produkt deployen oder nutzen. HÖCHSTE PRIORITÄT.
 - [x] dashboards.py Query-Import Fix (Backend-Crash)
 - [x] python-multipart Dependency
 - [x] Devices.vue Error+Empty Overlap
 - [x] Sidebar Default-State Flash
 - [x] Correlation.vue Route entfernt
-- [ ] **Alembic Migration System** — Setup + initiale Migration für ALLE 45 Models
-- [ ] **requirements.txt / pyproject.toml** — alle Dependencies dokumentiert (inkl. python-multipart)
+- [ ] **Alembic Migration System** (ZUERST!):
+  - [ ] alembic init + env.py konfigurieren (async engine)
+  - [ ] Initiale Migration generieren die ALLE 45 Models abdeckt
+  - [ ] Migration auf frischer PostgreSQL-Instanz testen
+  - [ ] Rollback-Prozedur dokumentieren
+  - [ ] Auto-Migrate bei Backend-Start (alembic upgrade head)
+- [ ] **CORS konfigurierbar** (KRITISCH, von C3 hochgezogen) — `HUBEX_CORS_ORIGINS` env var, Default: deny-all
+- [ ] **requirements.txt / pyproject.toml** — alle Dependencies (inkl. python-multipart, alembic)
 - [ ] **DB-Schema-Sync Script** — für bestehende Instanzen (ALTER TABLE Statements)
-- [ ] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen
+- [ ] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen + Kommentaren
+- [ ] **.env aus Git entfernen** — .gitignore prüfen, Secrets nicht im Repo
 
 ### Milestone R2: Kern-Feature-Completion [todo]
-> Features die in der Vision versprochen aber noch nicht vollständig sind.
-- [ ] **Dashboard Builder MVP** — Widget hinzufügen per Modal (Typ wählen, Variable zuweisen, Größe)
-- [ ] **Dashboard Widget Auto-Suggest** — Semantic Type → Widget-Typ Empfehlung
-- [ ] **FlowEditor Persistenz** — Flows speichern/laden (aktuell nur Client-State)
-- [ ] **CustomAPI Test-Button** — Endpoint im Browser testen mit Beispiel-Response
-- [ ] **Automation If/Else Branching** — UI im Builder (Backend AND/OR existiert)
+> Features die für ein funktionierendes Produkt MINIMAL nötig sind.
+> Scope radikal begrenzt — nur was ein Erstnutzer zum Arbeiten braucht.
+>
+> NICHT in R2 (deferred zu Post-Launch): FlowEditor Persistenz, CustomAPI Test-Button
+- [ ] **Dashboard Builder MVP** — Scope klar definiert:
+  - [ ] "Add Widget" Button → Modal: Widget-Typ wählen (aus Liste)
+  - [ ] Variable zuweisen (Dropdown mit existierenden Variables)
+  - [ ] Widget-Größe wählen (S/M/L)
+  - [ ] Widget speichern → in Dashboard sichtbar
+  - [ ] Widget editieren (gleiche Modal, vorausgefüllt)
+  - [ ] Widget löschen
+  - [ ] NICHT in MVP: Drag-and-Drop Reorder, Grid-Layout, Auto-Suggest
+- [ ] **Automation If/Else UI** — Bedingungsgruppen-Editor im Builder:
+  - [ ] AND/OR Toggle für Condition-Gruppen
+  - [ ] Mehrere Conditions pro Gruppe hinzufügen/entfernen
+  - [ ] Backend existiert bereits (_evaluate_condition_groups)
 
 ### Milestone R3: Testing & Quality [todo]
 > Qualitätssicherung für vertrauenswürdiges Produkt.
@@ -1123,6 +1140,8 @@
 - [ ] **Simulator-Erweiterung**: sim_advanced.py mit Task-Execution + Alert-Triggering testen
 - [ ] **Self-Hosting UX Test**: Frische VM/VPS → nur mit Doku → docker-compose up → funktionierendes System in <15 Minuten
 - [ ] **Onboarding-Flow Test**: Neuer User → Register → erstes Device → erstes Dashboard → erste Automation (ohne Vorwissen)
+- [ ] **OWASP Top 10 Review**: SQL Injection, XSS, CSRF, Auth Bypass systematisch prüfen
+- [ ] **Backward-Compatibility Test**: API v1 Endpoints → bestehende Clients funktionieren nach Update
 
 ### Milestone R4: Dokumentation [todo]
 > Ohne Doku kann niemand das Produkt verstehen oder betreiben.
@@ -1136,6 +1155,9 @@
 - [ ] **Integration Guide** — Home Assistant, MQTT, Modbus, Grafana, Node-RED (mit Screenshots)
 - [ ] **Developer Guide** — Plugin Development, Custom Components, API Extending
 - [ ] **FAQ + Troubleshooting** — Häufige Fehler, Docker-Probleme, Netzwerk-Setup, Firewall
+- [ ] **API Versioning Policy** — v1 bleibt stabil, Deprecation-Warnung 6 Monate vor Removal
+- [ ] **Semantic Versioning Policy** — MAJOR (breaking), MINOR (features), PATCH (bugfix)
+- [ ] **CHANGELOG.md** — Automatisch aus Git-Tags + Commit-Messages
 
 ### Milestone R5: Production Deployment [todo]
 > Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
@@ -1149,6 +1171,8 @@
 - [ ] **One-Line Install Script** — `curl -fsSL https://get.hubex.io | bash` (Docker prüfen, .env generieren, docker-compose pull+up)
 - [ ] **Update-Strategie** — `docker-compose pull && docker-compose up -d` Anleitung, DB-Migration automatisch bei Start
 - [ ] **Ressourcen-Empfehlung** — Minimum: 1 CPU, 1GB RAM, 10GB Disk. Empfohlen: 2 CPU, 4GB RAM für 50+ Devices
+- [ ] **Incident Response Plan** — Wer wird benachrichtigt? Eskalation? Post-Mortem Template?
+- [ ] **Backup + Restore Test** — pg_dump → DB löschen → Restore → alle Daten da?
 
 ### Milestone R5b: Community & Open Source [todo]
 > Grundlage für Community-Wachstum.
@@ -1167,6 +1191,8 @@
 - [ ] **Demo-Instanz** — gehostete Version zum Testen (optional)
 - [ ] **n8n Integration testen** — echte Workflows mit Webhooks + Custom API
 - [ ] **Pricing-Modell** definieren (Open-Core? SaaS? Self-hosted only?)
+- [ ] **Release-Prozess Checklist**: Tag → Release Notes → Docker Build → Test → Deploy Demo → Announce
+- [ ] **Deprecation Policy**: Feature X deprecated in v1.2, removed in v2.0 (6 Monate Vorlauf)
 
 ### Milestone R7: Post-Launch [todo]
 > Nach dem ersten Release.
@@ -1197,7 +1223,7 @@
 - [ ] Audit-Log Retention: CE=90 Tage, EE=unbegrenzt
 
 ### Milestone C3: Security Hardening for Production [todo]
-- [ ] **CORS konfigurierbar** — `HUBEX_CORS_ORIGINS` env var statt hardcoded localhost (KRITISCH)
+- [x] **CORS konfigurierbar** — nach R1 verschoben als Blocker (KRITISCH)
 - [ ] CSP (Content Security Policy) Strict Mode
 - [ ] HSTS Preload Header
 - [ ] Input Validation Review (alle Endpoints, SQL Injection in Custom API prüfen)
@@ -1205,7 +1231,9 @@
 - [ ] Rate-Limiting per User + per API Key (nicht nur per IP)
 - [ ] MFA Secrets verschlüsseln (AES-GCM at rest, aktuell Klartext in DB)
 - [ ] Payload Size + Nesting Depth Limits (DoS-Schutz)
-- [ ] .env aus Git entfernen (Secrets im Repo!)
+- [ ] .env aus Git entfernen (Secrets im Repo!) — nach R1 verschoben
+- [ ] **Error Tracking Integration** — Sentry oder ähnlich, opt-in, Error-Aggregation + Alerting
+- [ ] **SLA Definitionen (Enterprise)** — Uptime %, Response Time, Support Response Time
 
 ### Milestone C4: Legal & Compliance [todo]
 - [ ] AGPL Lizenztext für Community Edition
