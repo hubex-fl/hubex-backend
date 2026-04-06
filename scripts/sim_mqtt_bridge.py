@@ -39,8 +39,11 @@ def _mqtt(m): print(f"  {MAGENTA}⬡ {m}{RESET}")
 
 _running = True
 def _stop(*_): global _running; _running = False; print(f"\n{YELLOW}Stopping…{RESET}")
-signal.signal(signal.SIGINT, _stop)
-signal.signal(signal.SIGTERM, _stop)
+try:
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+except ValueError:
+    pass
 
 def _get_requests():
     try: import requests; return requests

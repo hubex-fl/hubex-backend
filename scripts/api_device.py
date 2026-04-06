@@ -64,8 +64,11 @@ def _stop(*_: Any) -> None:
     _running = False
     print(f"\n{YELLOW}Stopping…{RESET}")
 
-signal.signal(signal.SIGINT, _stop)
-signal.signal(signal.SIGTERM, _stop)
+try:
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+except ValueError:
+    pass
 
 # ---------------------------------------------------------------------------
 # HTTP helpers
