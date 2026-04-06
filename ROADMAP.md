@@ -884,25 +884,25 @@
 > Alles muss zusammenpassen — Typen, Icons, Sprache.
 - [ ] Step 1 — SemanticType→Variable Durchgängigkeit: Variable mit category "sensor.temperature" zeigt automatisch 🌡️ Icon + °C Einheit aus SemanticType
 - [ ] Step 2 — Language Selector: Toggle DE/EN in Settings, i18n-Switch persistent pro User
-- [ ] Step 3 — i18n Cleanup: Alle hardcoded German Strings (Events-Tooltips, Entities-Labels, SystemHealth) in Locale-Files verschieben
-- [ ] Step 4 — Activity Feed: Chronologische Timeline "Was ist zuletzt passiert?" auf Dashboard (Events + Audit + Telemetry kombiniert)
-- [ ] Step 5 — Keyboard Shortcuts: Cmd+K (Suche), Escape (Modal), Cmd+N (Neues Device), Cmd+D (Dashboard)
+- [ ] Step 3 — i18n Cleanup: Alle hardcoded German Strings in Locale-Files verschieben
+- [ ] Step 4 — Activity Feed: Chronologische Timeline auf Dashboard
+- [ ] Step 5 — Keyboard Shortcuts: Cmd+K (Suche), Escape (Modal schließen)
 
 ### Milestone PR-4: Fehlende Kern-Features [todo]
 > Features die für ein produktives System erwartet werden.
-- [ ] Step 1 — Webhook Management UI: Seite unter SYSTEM zum Erstellen/Bearbeiten/Testen von Webhook-Subscriptions
-- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope testen + fixen, Entity-Health im Dashboard-Widget
-- [ ] Step 3 — Branding-Konfiguration: Produktname, Logo, Primary-Color in Settings einstellbar (lib/branding.ts als UI)
-- [ ] Step 4 — User Preferences: Theme (Dark/Light), Default-Dashboard, Notification-Settings — persistent pro User
-- [ ] Step 5 — Globale Suche (Cmd+K): Suche über Devices, Variables, Entities, Automations, Dashboards
+- [ ] Step 1 — Webhook Management UI: Seite unter SYSTEM
+- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope
+- [ ] Step 3 — Branding-Konfiguration: Name, Logo, Farben in Settings
+- [ ] Step 4 — User Preferences: Theme, Default-Dashboard, Notifications
+- [ ] Step 5 — Globale Suche (Cmd+K)
 
 ### Milestone PR-5: Qualitätssicherung [todo]
 > Tests und Dokumentation bevor Enterprise gebaut wird.
-- [ ] Step 1 — Basis-Tests Backend: Unit-Tests für alle 7 Trigger-Evaluatoren + 6 Action-Executoren
-- [ ] Step 2 — API Integration Tests: Pairing-Flow, Telemetry-Bridge, Variable-CRUD, Automation-Lifecycle
-- [ ] Step 3 — Frontend Snapshot-Tests: Devices-Liste, DeviceDetail, Variables, Dashboard-Builder
-- [ ] Step 4 — OTA/Firmware UI: Upload + Deploy auf DeviceDetail für Hardware-Devices
-- [ ] Step 5 — Bulk-Operationen: Mehrere Devices Tasks senden, Variables setzen, Firmware updaten
+- [ ] Step 1 — Basis-Tests Backend: Unit-Tests für Trigger/Action-Evaluatoren
+- [ ] Step 2 — API Integration Tests: Pairing, Telemetry, Variables, Automations
+- [ ] Step 3 — Frontend Snapshot-Tests
+- [ ] Step 4 — OTA/Firmware UI
+- [ ] Step 5 — Bulk-Operationen
 
 ---
 
