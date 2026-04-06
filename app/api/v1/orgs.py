@@ -11,7 +11,7 @@ from app.api.deps import get_db
 from app.api.deps_org import get_jwt_user_id
 from app.core.system_events import emit_system_event
 from app.db.models.device import Device
-from app.db.models.orgs import Organization, OrganizationUser, VALID_PLANS, VALID_ROLES
+from app.db.models.orgs import Organization, OrganizationUser, TenantNode, ActivityFeedEntry, VALID_PLANS, VALID_ROLES
 from app.db.models.user import User
 
 router = APIRouter(prefix="/orgs", tags=["orgs"])
@@ -471,4 +471,141 @@ async def remove_member(
         "removed_user_id": target_user_id,
         "removed_by": uid,
     })
+    await db.commit()
+
+
+# ── Activity Feed ─────────────────────────────────────────────────────────────
+
+class ActivityOut(BaseModel):
+    id: int
+    user_id: int | None
+    action: str
+    resource_type: str | None
+    resource_id: str | None
+    summary: str
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get("/{org_id}/activity", response_model=list[ActivityOut])
+async def list_activity(
+    org_id: int,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_jwt_user_id),
+):
+    _require_auth(user_id)
+    await _get_org_or_404(org_id, db)
+
+    result = await db.execute(
+        select(ActivityFeedEntry)
+        .where(ActivityFeedEntry.org_id == org_id)
+        .order_by(ActivityFeedEntry.created_at.desc())
+        .limit(limit)
+    )
+    entries = list(result.scalars().all())
+    return [
+        ActivityOut(
+            id=e.id, user_id=e.user_id, action=e.action,
+            resource_type=e.resource_type, resource_id=e.resource_id,
+            summary=e.summary, created_at=e.created_at.isoformat(),
+        )
+        for e in entries
+    ]
+
+
+# ── Tenant Hierarchy ─────────────────────────────────────────────────────────
+
+class TenantNodeOut(BaseModel):
+    id: int
+    parent_id: int | None
+    node_type: str
+    name: str
+    metadata_json: dict | None
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TenantNodeCreateIn(BaseModel):
+    parent_id: int | None = None
+    node_type: str
+    name: str
+    metadata_json: dict | None = None
+
+
+@router.get("/{org_id}/tenants", response_model=list[TenantNodeOut])
+async def list_tenant_nodes(
+    org_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_jwt_user_id),
+):
+    _require_auth(user_id)
+    await _get_org_or_404(org_id, db)
+
+    result = await db.execute(
+        select(TenantNode)
+        .where(TenantNode.org_id == org_id)
+        .order_by(TenantNode.node_type, TenantNode.name)
+    )
+    nodes = list(result.scalars().all())
+    return [
+        TenantNodeOut(
+            id=n.id, parent_id=n.parent_id, node_type=n.node_type,
+            name=n.name, metadata_json=n.metadata_json,
+            created_at=n.created_at.isoformat(),
+        )
+        for n in nodes
+    ]
+
+
+@router.post("/{org_id}/tenants", response_model=TenantNodeOut, status_code=201)
+async def create_tenant_node(
+    org_id: int,
+    data: TenantNodeCreateIn,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_jwt_user_id),
+):
+    uid = _require_auth(user_id)
+    await _get_org_or_404(org_id, db)
+    await _require_admin(org_id, uid, db)
+
+    if data.node_type not in ("customer", "building", "unit"):
+        raise HTTPException(status_code=422, detail="node_type must be customer, building, or unit")
+
+    node = TenantNode(
+        org_id=org_id,
+        parent_id=data.parent_id,
+        node_type=data.node_type,
+        name=data.name.strip(),
+        metadata_json=data.metadata_json,
+    )
+    db.add(node)
+    await db.commit()
+    await db.refresh(node)
+
+    return TenantNodeOut(
+        id=node.id, parent_id=node.parent_id, node_type=node.node_type,
+        name=node.name, metadata_json=node.metadata_json,
+        created_at=node.created_at.isoformat(),
+    )
+
+
+@router.delete("/{org_id}/tenants/{node_id}", status_code=204)
+async def delete_tenant_node(
+    org_id: int,
+    node_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_jwt_user_id),
+):
+    uid = _require_auth(user_id)
+    await _get_org_or_404(org_id, db)
+    await _require_admin(org_id, uid, db)
+
+    node = await db.get(TenantNode, node_id)
+    if not node or node.org_id != org_id:
+        raise HTTPException(status_code=404, detail="tenant node not found")
+
+    await db.delete(node)
     await db.commit()

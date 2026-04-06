@@ -242,6 +242,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/orgs/{org_id}/members"): ["org.members.write"],
     ("PUT", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
     ("DELETE", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
+    ("GET", "/api/v1/orgs/{org_id}/activity"): ["org.read"],
+    ("GET", "/api/v1/orgs/{org_id}/tenants"): ["org.read"],
+    ("POST", "/api/v1/orgs/{org_id}/tenants"): ["org.admin"],
+    ("DELETE", "/api/v1/orgs/{org_id}/tenants/{node_id}"): ["org.admin"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],

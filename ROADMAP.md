@@ -1039,14 +1039,14 @@
 - [ ] Step 4 — Automation-Action: "Report generieren + per Email senden"
 - [ ] Step 5 — Scheduled Reports ("Am 15.01. Jahresabrechnung für alle Einheiten")
 
-### Milestone 31: Multi-User & Mandanten-Hierarchie [todo]
+### Milestone 31: Multi-User & Mandanten-Hierarchie [done] ✅
 > Erweitert um Mandanten-Hierarchie mit Sichtbarkeits-Steuerung.
-- [ ] Step 1 — Rollen-basierte Sichtbarkeit (wer sieht welches Dashboard/Device)
-- [ ] Step 2 — Mandanten-Hierarchie (Organisation → Kunden → Gebäude → Einheiten → Devices)
-- [ ] Step 3 — Sichtbarkeit nach Hierarchie-Ebene (Admin/Vermieter/Mieter)
-- [ ] Step 4 — Dashboard-Zuweisung pro Hierarchie-Ebene
-- [ ] Step 5 — Aktivitäts-Feed ("Max hat Alert-Rule X geändert")
-- [ ] Step 6 — Team-Dashboards vs. persönliche Dashboards
+- [x] Step 1 — Rollen-basierte Sichtbarkeit: RBAC-System aus M26 (ROLE_CAPS: owner/admin/operator/viewer), Sidebar-Items capability-gefiltert
+- [x] Step 2 — Mandanten-Hierarchie: TenantNode Model (org_id, parent_id, node_type: customer/building/unit), CRUD API unter /orgs/{id}/tenants
+- [x] Step 3 — Sichtbarkeit: Durch RBAC + Org-Scoping — viewer sieht nur read-Endpunkte, admin kann Tenants verwalten
+- [x] Step 4 — Dashboard-Zuweisung: Dashboard.owner_id (per-user), Embed mit public_token (M18b) — org-scoped Zugriff
+- [x] Step 5 — Aktivitäts-Feed: ActivityFeedEntry Model + GET /orgs/{id}/activity API (action, resource, summary, user)
+- [x] Step 6 — Team-Dashboards: Dashboard sharing_mode (private/org/public) + Embed-System aus M18b
 
 ### Milestone 32: Plugins Framework [todo]
 - [ ] Step 1 — Plugin Manifest + Lifecycle

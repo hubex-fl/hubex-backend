@@ -27,7 +27,7 @@ from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker, Exec
 from .modules import ModuleRegistry
 from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
-from .orgs import Organization, OrganizationUser
+from .orgs import Organization, OrganizationUser, TenantNode, ActivityFeedEntry
 from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
 from .automation import AutomationRule, AutomationFireLog, AutomationStep
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
@@ -77,6 +77,8 @@ __all__ = [
     "AlertEvent",
     "Organization",
     "OrganizationUser",
+    "TenantNode",
+    "ActivityFeedEntry",
     "FirmwareVersion",
     "OtaRollout",
     "DeviceOtaStatus",
