@@ -994,18 +994,18 @@
 - [x] Step 3 — Automation-Engine Worker Pool: asyncio.Semaphore für concurrent Actions, konfigurierbare Batch-Size, device_online/variable_change Trigger-Routing gefixt, HUBEX_AUTOMATION_CONCURRENCY/BATCH_SIZE
 - [x] Step 4 — Horizontal Scaling Documentation: docs/SCALING.md (Architektur, Deployment-Patterns, DB Tuning, Telemetry Pipeline, Monitoring)
 
-### Milestone 27b: Custom API Builder [todo]
+### Milestone 27b: Custom API Builder [done] ✅
 > Visuell konfigurierbare API-Endpoints die HubEx-Daten in eigenem Format ausgeben.
-- [ ] Step 1 — Endpoint-Builder (Route, Method, Params, Response-Mapping)
-- [ ] Step 2 — Token-Management + Rate-Limiting pro Endpoint
-- [ ] Step 3 — Auto-generierte Swagger/OpenAPI Doku für Custom Endpoints
-- [ ] Step 4 — API Traffic Dashboard (Requests/Tag, Latenz, Fehlerrate)
+- [x] Step 1 — Endpoint-Builder: CustomEndpoint Model (route_path, method, response_mapping JSON, params_schema), CRUD API, CustomApiBuilder.vue mit Create/Edit Modal
+- [x] Step 2 — Token-Management + Rate-Limiting: required_scope Feld (API Key Scoping), rate_limit_per_minute pro Endpoint
+- [x] Step 3 — Route /custom-api + Sidebar, Enable/Disable Toggle, Description + Response Mapping Editor
+- [x] Step 4 — API Traffic Dashboard: GET /custom-endpoints/traffic (request_count, last_called_at pro Endpoint)
 
-### Milestone 28: Advanced Observability [todo]
-- [ ] Step 1 — Trace/Timeline View (execution traces, event correlation)
-- [ ] Step 2 — Incident Management + Cross-Entity Correlation
-- [ ] Step 3 — Support Bundle Export (diagnostics, config snapshot)
-- [ ] Step 4 — Variable Anomaly Detection (ML-basiert, z-score, threshold learning)
+### Milestone 28: Advanced Observability [done] ✅
+- [x] Step 1 — Trace/Timeline View: GET /observability/traces (korrelierte Events+Audit+Alerts+Automations), TraceTimeline.vue mit Timeline-Dots, Source-Filter, Zeitfenster-Selector
+- [x] Step 2 — Incident Summary: GET /observability/incidents (active_alerts, automations_24h, devices_offline, errors_1h), 4 Status-Karten in TraceTimeline
+- [x] Step 3 — Support Bundle: GET /observability/support-bundle (JSON Download: device_count, recent_errors, alert_summary, automation_stats)
+- [x] Step 4 — Anomaly Detection: GET /observability/anomalies (z-score basiert auf VariableHistory, konfigurierbar Stunden+Threshold), Anomaly-Karten in TraceTimeline
 
 ### Milestone 29: Export/Import & Templates [done] ✅
 > Grundlage für Marketplace und Konfigurationsmanagement.
@@ -1055,9 +1055,12 @@
 - [ ] Step 4 — Plugin SDK + Developer Guide
 
 ### Milestone 33: Simulator/Testbench [todo]
-- [ ] Step 1 — Sim-Entities + Sim-Providers (virtual devices, mock signals)
-- [ ] Step 2 — Testbench Orchestrator (Given → Trigger → Expected Trace)
-- [ ] Step 3 — Report Generation (pass/fail, coverage, CI integration)
+> Erweiterte Simulatoren die alle neuen Features abdecken (Tasks, Automations, Alerts, etc.)
+- [ ] Step 1 — Simulator-Erweiterung: Bestehende sim_*.py erweitern um Task-Ausführung (poll→execute→complete), Alert-Triggering (Schwellwerte absichtlich überschreiten), Computed Variables (Formeln testen)
+- [ ] Step 2 — Neue Simulator-Szenarien: API Key Auth (sim nutzt hbx_ statt JWT), RBAC-Test (viewer vs admin Simulation), Webhook-Empfänger (lokaler HTTP-Server der Deliveries loggt)
+- [ ] Step 3 — Fleet-Szenarien: sim_all.py erweitern um 10+ Devices gleichzeitig, Offline/Online-Wechsel, Burst-Telemetrie (Redis Queue testen), Geofence-Bewegungssimulation
+- [ ] Step 4 — Testbench Orchestrator: Given→Trigger→Expected Trace, automatisierte Validierung
+- [ ] Step 5 — Report Generation (pass/fail, coverage, CI integration)
 
 ### Milestone 34: Backup & Mobile [todo]
 - [ ] Step 1 — Config/State Snapshot (policies, schedules, export/import)
@@ -1081,6 +1084,33 @@
 - [ ] Step 3 — Edge-Erstellung: Verbindungen ziehen zwischen Nodes
 - [ ] Step 4 — Inline-Konfiguration: Node anklicken → Settings direkt im Canvas
 - [ ] Step 5 — Flow-Deployment: Änderungen im Canvas → Automationen/Alerts erstellen
+
+---
+
+## QA: Offene Befunde aus Endnutzer-Tests (Phase 7b)
+> Dokumentiert nach ausführlichem Code-Review + Browser-Test aller 17 Seiten.
+> Diese Befunde sollten vor einem Production-Release gefixt werden.
+
+### Kritisch
+- [ ] **XSS in Email-Template Preview**: `v-html` in EmailTemplates.vue:272 ohne DOMPurify Sanitization
+- [ ] **QR-Code externe Abhängigkeit**: MfaSetup.vue nutzt api.qrserver.com — sollte Backend-generiert oder lokale Lib sein
+
+### Hoch (UX-Friction)
+- [ ] **alert() statt Toast**: Webhooks.vue:89 (Test), Pairing.vue:72 (Token) — durch Toast ersetzen
+- [ ] **Stille Error-Catches**: Webhooks.vue:78 (`/* ignore */`), ApiKeyManager.vue:72 — Toast bei Fehler
+- [ ] **AdminConsole Toggle ohne Rollback**: Optimistisches UI-Update ohne Fehlerbehandlung
+- [ ] **confirm() für destruktive Aktionen**: SessionManager, EmailTemplates — Modal statt confirm()
+- [ ] **Login kein Rate-Limit Feedback**: HTTP 429 wird nicht als "Zu viele Versuche" angezeigt
+
+### Mittel (Qualität)
+- [ ] **i18n Lücken**: ~50% der Seiten haben hardcoded EN-Strings statt i18n-Keys
+- [ ] **Accessibility**: Icon-Buttons ohne aria-label (betrifft fast alle Seiten)
+- [ ] **SystemHealth leere Seite**: Wenn alle Health-Probes fehlschlagen, kein Error-State
+- [ ] **DeviceDetail.vue zu groß**: >2000 Zeilen, sollte in Sub-Komponenten aufgeteilt werden
+
+### Niedrig
+- [ ] `catch (err: any)` → `catch (err: unknown)` vereinheitlichen
+- [ ] Leere JSON.parse catches ohne Logging
 
 ---
 

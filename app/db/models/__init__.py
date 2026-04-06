@@ -36,6 +36,7 @@ from .dashboard import Dashboard, DashboardWidget
 from .api_key import ApiKey
 from .mfa import UserTotpSecret
 from .email_template import EmailTemplate
+from .custom_endpoint import CustomEndpoint
 
 __all__ = [
     "User",
@@ -94,4 +95,5 @@ __all__ = [
     "ApiKey",
     "UserTotpSecret",
     "EmailTemplate",
+    "CustomEndpoint",
 ]

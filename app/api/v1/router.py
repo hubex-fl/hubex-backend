@@ -38,6 +38,8 @@ from .sessions import router as sessions_router
 from .mfa import router as mfa_router
 from .export_import import router as export_router
 from .email_templates import router as email_templates_router
+from .custom_endpoints import router as custom_endpoints_router
+from .observability import router as observability_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -78,3 +80,5 @@ router.include_router(sessions_router, tags=["sessions"])
 router.include_router(mfa_router, tags=["mfa"])
 router.include_router(export_router, tags=["export"])
 router.include_router(email_templates_router, tags=["email-templates"])
+router.include_router(custom_endpoints_router, tags=["custom-api"])
+router.include_router(observability_router, tags=["observability"])

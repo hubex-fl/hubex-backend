@@ -233,6 +233,17 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PATCH", "/api/v1/email-templates/{template_id}"): ["config.write"],
     ("DELETE", "/api/v1/email-templates/{template_id}"): ["config.write"],
     ("POST", "/api/v1/email-templates/preview"): ["config.read"],
+    # Custom API Builder
+    ("GET", "/api/v1/custom-endpoints"): ["config.read"],
+    ("POST", "/api/v1/custom-endpoints"): ["config.write"],
+    ("GET", "/api/v1/custom-endpoints/traffic"): ["config.read"],
+    ("PATCH", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
+    ("DELETE", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
+    # Observability
+    ("GET", "/api/v1/observability/traces"): ["events.read"],
+    ("GET", "/api/v1/observability/incidents"): ["alerts.read"],
+    ("GET", "/api/v1/observability/support-bundle"): ["config.read"],
+    ("GET", "/api/v1/observability/anomalies"): ["vars.read"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],

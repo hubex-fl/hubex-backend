@@ -31,6 +31,8 @@ const router = createRouter({
     { path: "/webhooks",     component: () => import("./pages/Webhooks.vue"),        meta: { title: "Webhooks" } },
     { path: "/email-templates", component: () => import("./pages/EmailTemplates.vue"), meta: { title: "Email Templates" } },
     { path: "/admin",          component: () => import("./pages/AdminConsole.vue"),   meta: { title: "Admin Console" } },
+    { path: "/custom-api",    component: () => import("./pages/CustomApiBuilder.vue"), meta: { title: "Custom API" } },
+    { path: "/trace-timeline", component: () => import("./pages/TraceTimeline.vue"),  meta: { title: "Trace Timeline" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
   ],
