@@ -27,7 +27,7 @@ const ws = useWebSocket();
 const prefsStore = usePreferencesStore();
 
 // Collapsible sidebar groups
-const collapsedGroups = ref<Set<string>>(new Set());
+const collapsedGroups = ref<Set<string>>(new Set(["Tools", "System"]));
 const showNewMenu = ref(false);
 
 function toggleGroup(label: string) {

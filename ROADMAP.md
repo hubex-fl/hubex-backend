@@ -1087,6 +1087,38 @@
 
 ---
 
+---
+
+## Phase 9: Release-Readiness [todo]
+> Alles was vor einem Release noch getan werden muss.
+
+### Milestone R1: Kritische Fixes [todo]
+- [x] Devices.vue Error+Empty Overlap gefixt
+- [x] Sidebar Default-State: Initialisierung mit collapsed Tools+System statt leer
+- [x] Correlation.vue Route entfernt (unfertig, verwirrt User)
+- [ ] Dashboard Builder MVP: Widget-Add/Edit Modal funktional machen
+- [ ] Alembic Migration System aufsetzen + initiale Migration generieren
+
+### Milestone R2: Testing & Quality [todo]
+- [ ] E2E Tests mit Playwright (Login → Pair Device → Create Dashboard → Automation)
+- [ ] Backend Unit-Tests für kritische Pfade (Pairing, Automation Engine, RBAC)
+- [ ] Performance-Test mit 100+ simulierten Devices
+- [ ] Security Audit (HTTPS, CSP Headers, XSS Scan)
+
+### Milestone R3: Documentation [todo]
+- [ ] Getting-Started Guide (5 Minuten zum ersten Device)
+- [ ] Operator Runbook (Docker Compose Deploy, Backup, Update)
+- [ ] Dashboard Builder Tutorial
+- [ ] API Integration Guide (Custom API + Webhooks)
+
+### Milestone R4: Production Deployment [todo]
+- [ ] docker-compose.prod.yml (PostgreSQL + Redis + HubEx + Nginx)
+- [ ] .env.example mit allen erforderlichen Variablen
+- [ ] HTTPS/TLS Setup Anleitung
+- [ ] Backup-Strategie (DB Dump + Config Export)
+
+---
+
 ## QA: Befunde aus Endnutzer-Tests (Phase 7b)
 > 3 Runden ausführlicher Tests. Meiste Befunde in QA-Runden behoben.
 

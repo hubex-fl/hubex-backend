@@ -16,7 +16,7 @@ const router = createRouter({
     { path: "/trace-hub",    component: () => import("./pages/TraceHub.vue"),        meta: { title: "Trace Hub" } },
     { path: "/executions",   component: () => import("./pages/Executions.vue"),      meta: { title: "Executions" } },
     { path: "/audit",        component: () => import("./pages/Audit.vue"),           meta: { title: "Audit Log" } },
-    { path: "/correlation",  component: () => import("./pages/Correlation.vue"),     meta: { title: "Correlation" } },
+    // Correlation removed — merged into TraceTimeline
     { path: "/observability",component: () => import("./pages/Observability.vue"),   meta: { title: "Observability" } },
     { path: "/settings",     component: () => import("./pages/Settings.vue"),        meta: { title: "Settings" } },
     { path: "/settings/auth", redirect: "/settings" },
