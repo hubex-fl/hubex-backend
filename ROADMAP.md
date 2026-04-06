@@ -907,7 +907,7 @@
 
 ---
 
-## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [todo] ← AKTUELL
+## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [done] ✅
 > Alle UX-Probleme aus dem allumfänglichen Erstnutzer-Test beheben.
 > Muss VOR Enterprise abgeschlossen werden.
 
@@ -1302,17 +1302,17 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
                           │
                           └─► Phase 7a: Production Readiness ✅
                                 │
-                                └─► Phase 7c: UX Polish ← AKTUELL
+                                └─► Phase 7c: UX Polish ✅
                                       │
-                                      ├─► UXP-1 (Kritische Blocker) — ZUERST
-                                      ├─► UXP-2 (UX-Friction) — parallel
-                                      ├─► UXP-3 (Verbesserungen) — danach
-                                      └─► UXP-4 (Polish) — zuletzt
+                                      ├─► UXP-1 (Kritische Blocker) ✅
+                                      ├─► UXP-2 (UX-Friction) ✅
+                                      ├─► UXP-3 (Verbesserungen) ✅
+                                      └─► UXP-4 (Polish) ✅
                                             │
-                                            └─► Phase 7b: Enterprise & Business
-                                            ├─► M14b (Computed Variables)
-                                            ├─► M19b (Automation Erweiterung)
-                                            ├─► M18b (Dashboard Embed)
+                                            └─► Phase 7b: Enterprise & Business ← AKTUELL
+                                            ├─► M14b (Computed Variables) ✅
+                                            ├─► M19b (Automation Erweiterung) ✅
+                                            ├─► M18b (Dashboard Embed) ✅
                                             ├─► M26 (Security/RBAC)
                                             └─► M36 (Flow Editor)
                                       │
