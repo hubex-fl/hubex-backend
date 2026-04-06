@@ -285,6 +285,41 @@ async function removeFromGroup(entityId: string) {
   } catch { /* ignore */ }
 }
 
+// Quick-create entity + bind in one step
+const quickCreateMode = ref(false);
+const quickCreateId = ref("");
+const quickCreateName = ref("");
+const quickCreateType = ref("group");
+
+async function quickCreateAndBind() {
+  if (!quickCreateId.value.trim() || !deviceInfo.value) return;
+  addGroupSaving.value = true;
+  addGroupError.value = null;
+  try {
+    await apiFetch("/api/v1/entities", {
+      method: "POST",
+      body: JSON.stringify({
+        entity_id: quickCreateId.value.trim(),
+        type: quickCreateType.value,
+        name: quickCreateName.value.trim() || null,
+      }),
+    });
+    await apiFetch(`/api/v1/entities/${quickCreateId.value.trim()}/devices`, {
+      method: "POST",
+      body: JSON.stringify({ device_ids: [deviceInfo.value.id] }),
+    });
+    showAddGroup.value = false;
+    quickCreateMode.value = false;
+    quickCreateId.value = "";
+    quickCreateName.value = "";
+    await loadEntityMemberships();
+  } catch (e: any) {
+    addGroupError.value = e?.message || "Failed to create group";
+  } finally {
+    addGroupSaving.value = false;
+  }
+}
+
 // ── Device Config (SIM-2) ──────────────────────────────────────────────────
 const configEditing = ref(false);
 const configSaving = ref(false);
@@ -2075,16 +2110,47 @@ onUnmounted(() => {
         >×</button>
 
         <!-- Add to Group Modal -->
-        <UModal :open="showAddGroup" title="Add to Group" size="sm" @close="showAddGroup = false">
+        <UModal :open="showAddGroup" title="Add to Group" size="sm" @close="showAddGroup = false; quickCreateMode = false">
           <div class="space-y-3 p-2">
-            <UEntitySelect v-model="addGroupEntityId" entity-type="entity" label="Select Group" placeholder="Choose a group..." />
-            <UInput v-model="addGroupPriority" label="Priority" type="number" placeholder="0" />
-            <p class="text-[10px] text-[var(--text-muted)]">Higher priority = processed first when multiple groups apply</p>
+            <!-- Toggle: Existing vs Create New -->
+            <div class="flex gap-2 mb-2">
+              <button
+                class="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                :class="!quickCreateMode ? 'bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]'"
+                @click="quickCreateMode = false"
+              >Existing Group</button>
+              <button
+                class="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                :class="quickCreateMode ? 'bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]'"
+                @click="quickCreateMode = true"
+              >+ Create New</button>
+            </div>
+
+            <!-- Existing group selector -->
+            <template v-if="!quickCreateMode">
+              <UEntitySelect v-model="addGroupEntityId" entity-type="entity" label="Select Group" placeholder="Choose a group..." />
+              <UInput v-model="addGroupPriority" label="Priority" type="number" placeholder="0" />
+            </template>
+
+            <!-- Quick create form -->
+            <template v-else>
+              <UInput v-model="quickCreateId" label="Group ID" placeholder="e.g. lab-room-1" />
+              <UInput v-model="quickCreateName" label="Name (optional)" placeholder="e.g. Lab Room 1" />
+              <USelect v-model="quickCreateType" label="Type">
+                <option value="group">Group</option>
+                <option value="room">Room</option>
+                <option value="zone">Zone</option>
+                <option value="machine">Machine</option>
+                <option value="system">System</option>
+              </USelect>
+            </template>
+
             <div v-if="addGroupError" class="text-xs text-[var(--status-bad)]">{{ addGroupError }}</div>
           </div>
           <template #footer>
-            <UButton variant="ghost" @click="showAddGroup = false">Cancel</UButton>
-            <UButton :loading="addGroupSaving" @click="addToGroup">Add</UButton>
+            <UButton variant="ghost" @click="showAddGroup = false; quickCreateMode = false">Cancel</UButton>
+            <UButton v-if="!quickCreateMode" :loading="addGroupSaving" @click="addToGroup">Add</UButton>
+            <UButton v-else :loading="addGroupSaving" @click="quickCreateAndBind">Create & Add</UButton>
           </template>
         </UModal>
 
