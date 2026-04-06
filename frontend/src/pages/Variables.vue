@@ -39,6 +39,23 @@ import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
 const route = useRoute();
 const router = useRouter();
+
+// SemanticType icon mapping (category suffix → emoji)
+const CATEGORY_ICONS: Record<string, string> = {
+  temperature: "🌡️", humidity: "💧", pressure: "🔽", voltage: "⚡",
+  current: "⚡", power: "🔌", energy: "📊", percent: "📈",
+  battery: "🔋", speed: "🏎️", gps: "📍", boolean: "●",
+  count: "🔢", text: "📝", brightness: "☀️", color: "🎨",
+  air_quality: "🌬️", light: "💡", system: "🖥️", connectivity: "📶",
+  weather: "🌤️", mqtt: "⬡", actuator: "🔧", config: "⚙️",
+  status: "●",
+};
+function categoryIcon(cat: string | null): string {
+  if (!cat) return "";
+  // Try exact match, then suffix after last dot
+  const suffix = cat.includes(".") ? cat.split(".").pop()! : cat;
+  return CATEGORY_ICONS[suffix] || CATEGORY_ICONS[cat] || "";
+}
 const { open: openConnectPanel } = useConnectPanel();
 const varMenuOpenKey = ref<string | null>(null);
 const highlightKey = ref<string | null>(null);
@@ -65,12 +82,12 @@ function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
     {
       label: "Create Alert",
       icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
-      action: () => router.push({ path: "/alerts", query: { create: "true", variable_key: def.key } }),
+      action: () => router.push({ path: "/alerts", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     {
       label: "Create Automation",
       icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
-      action: () => router.push({ path: "/automations", query: { create: "true", variable_key: def.key } }),
+      action: () => router.push({ path: "/automations", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     { label: "", icon: "", action: () => {}, divider: true },
     {
@@ -664,9 +681,10 @@ onMounted(async () => {
                 </svg>
               </td>
 
-              <!-- Key + category + description -->
+              <!-- Key + category icon + description -->
               <td class="col-key">
                 <div class="key-wrap">
+                  <span v-if="categoryIcon(def.category)" class="key-icon">{{ categoryIcon(def.category) }}</span>
                   <span class="key-name">{{ def.key }}</span>
                   <span v-if="def.category" class="key-cat">{{ def.category }}</span>
                 </div>
@@ -1143,6 +1161,7 @@ onMounted(async () => {
 
 /* Key cell */
 .key-wrap   { display: flex; align-items: baseline; gap: 6px; }
+.key-icon   { font-size: 14px; margin-right: 4px; }
 .key-name   { font-family: monospace; color: #e6edf3; font-size: 13px; }
 .key-cat    { font-size: 10px; color: #58a6ff; background: #58a6ff11; padding: 1px 5px; border-radius: 10px; }
 .key-desc   { display: block; font-size: 11px; color: #8b949e; margin-top: 2px; }

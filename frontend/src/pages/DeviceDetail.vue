@@ -320,6 +320,33 @@ async function quickCreateAndBind() {
   }
 }
 
+// ── Linked Automations + Alerts (System Context) ────────────────────────────
+type LinkedRule = { id: number; name: string; trigger_type: string; enabled: boolean };
+type LinkedAlert = { id: number; name: string; condition_type: string };
+const linkedAutomations = ref<LinkedRule[]>([]);
+const linkedAlerts = ref<LinkedAlert[]>([]);
+
+async function loadLinkedRules() {
+  if (!deviceInfo.value) return;
+  const uid = deviceInfo.value.device_uid;
+  try {
+    // Load automations that reference this device
+    const rules = await apiFetch<LinkedRule[]>("/api/v1/automations");
+    linkedAutomations.value = rules.filter(r =>
+      r.trigger_type && (
+        (r as any).trigger_config?.device_uid === uid ||
+        (r as any).action_config?.device_uid === uid
+      )
+    );
+  } catch { linkedAutomations.value = []; }
+
+  try {
+    // Load alert rules
+    const alerts = await apiFetch<LinkedAlert[]>("/api/v1/alerts/rules");
+    linkedAlerts.value = alerts.filter(a => (a as any).entity_id === uid || (a as any).condition_config?.device_uid === uid);
+  } catch { linkedAlerts.value = []; }
+}
+
 // ── Send Task (PR-1) ────────────────────────────────────────────────────────
 const showSendTask = ref(false);
 const sendTaskType = ref("custom");
@@ -643,9 +670,10 @@ async function refreshAll(reason: string) {
     loadTaskHistory(),
     loadVariables(),
   ]);
-  // Non-blocking: load entity memberships + sparklines after device info is available
+  // Non-blocking: load entity memberships + sparklines + linked rules after device info is available
   loadEntityMemberships();
   loadSparklines();
+  loadLinkedRules();
   if (deviceOk === false || taskOk === false || historyOk === false || varsOk === false) {
     hadError = true;
   }
@@ -2097,9 +2125,40 @@ onUnmounted(() => {
               </router-link>
             </div>
 
-            <!-- Quick actions -->
+            <!-- Connected Automations + Alerts -->
             <div>
-              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Connect</p>
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Connected</p>
+
+              <!-- Linked automations -->
+              <div v-if="linkedAutomations.length" class="space-y-1 mb-2">
+                <router-link
+                  v-for="rule in linkedAutomations"
+                  :key="rule.id"
+                  to="/automations"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:border-[var(--primary)]/40 text-[10px] text-[var(--primary)] transition-colors"
+                >
+                  <span>⚡</span>
+                  <span class="truncate">{{ rule.name }}</span>
+                  <span class="text-[var(--text-muted)] ml-auto shrink-0">{{ rule.trigger_type }}</span>
+                </router-link>
+              </div>
+
+              <!-- Linked alerts -->
+              <div v-if="linkedAlerts.length" class="space-y-1 mb-2">
+                <router-link
+                  v-for="alert in linkedAlerts"
+                  :key="alert.id"
+                  to="/alerts"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-[var(--status-warn)]/20 bg-[var(--status-warn)]/5 hover:border-[var(--status-warn)]/40 text-[10px] text-[var(--status-warn)] transition-colors"
+                >
+                  <span>🔔</span>
+                  <span class="truncate">{{ alert.name }}</span>
+                </router-link>
+              </div>
+
+              <div v-if="!linkedAutomations.length && !linkedAlerts.length" class="text-[10px] text-[var(--text-muted)] italic mb-2">No automations or alerts linked</div>
+
+              <!-- Quick actions -->
               <div class="flex flex-wrap gap-1.5">
                 <button
                   class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
@@ -2109,10 +2168,6 @@ onUnmounted(() => {
                   class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
                   @click="$router.push({ path: '/automations', query: { create: 'true', device_uid: deviceInfo?.device_uid } })"
                 >+ Automation</button>
-                <button
-                  class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
-                  @click="openConnectPanel({ type: 'device', id: deviceInfo?.id, name: deviceInfo?.name || deviceInfo?.device_uid, deviceUid: deviceInfo?.device_uid, deviceId: deviceInfo?.id })"
-                >🔗 Connections</button>
               </div>
             </div>
           </div>

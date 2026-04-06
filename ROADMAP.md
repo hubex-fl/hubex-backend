@@ -880,9 +880,9 @@
 - [x] Step 3 — Variable Direction UI: Read-Only Variablen zeigen 🔒 statt Edit-Button
 - [x] Step 4 — SMTP-Setup: app/core/email.py mit ENV-Konfiguration (HUBEX_SMTP_*), send_email() Funktion, Dev-Mode logging
 
-### Milestone PR-3: UX Durchgängigkeit [todo]
+### Milestone PR-3: UX Durchgängigkeit [in-progress]
 > Alles muss zusammenpassen — Typen, Icons, Sprache.
-- [ ] Step 1 — SemanticType→Variable Durchgängigkeit: Variable mit category "sensor.temperature" zeigt automatisch 🌡️ Icon + °C Einheit aus SemanticType
+- [x] Step 1 — SemanticType→Variable Icons: categoryIcon() Mapping zeigt 🌡️💧🔋📍 etc. in Variables-Tabelle basierend auf Variable.category
 - [ ] Step 2 — Language Selector: Toggle DE/EN in Settings, i18n-Switch persistent pro User
 - [ ] Step 3 — i18n Cleanup: Alle hardcoded German Strings in Locale-Files verschieben
 - [ ] Step 4 — Activity Feed: Chronologische Timeline auf Dashboard
@@ -895,6 +895,7 @@
 - [ ] Step 3 — Branding-Konfiguration: Name, Logo, Farben in Settings
 - [ ] Step 4 — User Preferences: Theme, Default-Dashboard, Notifications
 - [ ] Step 5 — Globale Suche (Cmd+K)
+- [ ] Step 6 — n8n + Node-RED Docker-Testinstanz: docker-compose für lokales Testing, HUBEX-Node installieren
 
 ### Milestone PR-5: Qualitätssicherung [todo]
 > Tests und Dokumentation bevor Enterprise gebaut wird.
