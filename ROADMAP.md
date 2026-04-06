@@ -1243,6 +1243,81 @@
 
 ---
 
+---
+
+## Phase 11: Hardware Implementation [coming-soon]
+> Die funktionale Umsetzung der in Phase 8 konzipierten Hardware-Plattform.
+> Phase 8 hat Models, APIs und Spezifikationen definiert. Phase 11 macht sie real.
+> Dies ist das größte verbleibende Arbeitspaket — vergleichbar mit Phase 5-7 zusammen.
+> Status: COMING SOON — wird nach Software-Release (Phase 9) priorisiert.
+
+### Block A: Visueller Pin-Konfigurator [todo]
+> Vom statischen Board-Listing zum interaktiven Hardware-Builder.
+- [ ] A.1 — **SVG Board-Renderer**: Interaktive Board-Grafik pro Chip (ESP32 DevKit, S3, C3, Pico W), Pins als klickbare Elemente, Farbkodierung (frei/belegt/Bus/Power)
+- [ ] A.2 — **Pin-Funktions-Zuweisung**: Pin anklicken → Modal "Funktion wählen" (Sensor-Input, Aktor-Output, Bus-Pin, Nicht verwendet), Validierung gegen Pin-Capabilities
+- [ ] A.3 — **Shield-Integration**: Shield auswählen → belegte Pins automatisch ausgeblendet/markiert, verfügbare Pins hervorgehoben
+- [ ] A.4 — **Component Drag & Drop**: Component aus Library auf freien Pin ziehen → Auto-Konfiguration (Variable-Key, Semantic Type, Widget)
+- [ ] A.5 — **Projekt-Verwaltung**: Mehrere Hardware-Projekte pro User, Projekt = Board + Shield + Pin-Belegung + Components, Speichern/Laden/Duplizieren
+- [ ] A.6 — **Wiring Diagram Export**: Auto-generiertes Verdrahtungsdiagramm (SVG/PNG) aus Pin-Belegung, druckbar für Werkstatt
+
+### Block B: Code Generator (kompilierbar) [todo]
+> Generierter Code der tatsächlich auf dem ESP läuft — nicht nur Templates.
+- [ ] B.1 — **Component-spezifische Code-Templates**: Für jede der 15+ Components ein echtes Code-Snippet (DHT22 → `dht.readTemperature()`, BME280 → I2C-Init + Read, etc.)
+- [ ] B.2 — **WiFi + HubEx-Verbindung**: Auto-generierter Setup-Code (WiFi connect, Token-Auth, Heartbeat, Reconnect, Error-Handling)
+- [ ] B.3 — **Telemetrie-Code**: Sensor-Werte sammeln → JSON bauen → POST /telemetry, konfigurierbare Intervalle
+- [ ] B.4 — **Variable-Empfang**: GET /variables/value polling oder WebSocket, eingehende Befehle → Aktor-Steuerung
+- [ ] B.5 — **OTA-Update-Client**: Firmware-Update über WiFi, Rollback bei Fehler, Version-Reporting
+- [ ] B.6 — **PlatformIO-Projekt**: Vollständiges PlatformIO-Projekt (platformio.ini + src/ + lib/) als ZIP-Download
+- [ ] B.7 — **Code-Preview im Browser**: Syntax-Highlighted Code-Vorschau vor Download, Live-Update bei Pin-Änderung
+- [ ] B.8 — **Kompilier-Test**: CI-Pipeline die generierten Code gegen PlatformIO kompiliert (Compile-Check, kein Flash)
+- [ ] B.9 — **Cloud-Compile (Enterprise)**: PlatformIO auf dem Server → .bin Download oder direkt OTA-Flash
+
+### Block C: Bridge-Firmware (funktional) [todo]
+> ESP32 als WiFi-Bridge für Arduino/ATmega — echte Firmware, nicht nur Spec.
+- [ ] C.1 — **Arduino Library (HubExBridge.h/.cpp)**: Echte C++ Library mit Serial-Parsing, `bridge.setVar("temp", 23.5)`, `bridge.onSet("relay", callback)`, Auto-Heartbeat
+- [ ] C.2 — **ESP32 Bridge Firmware**: Kompilierbarer ESP32-Code: WiFi-Manager, HubEx-Pairing, Serial-Bridge, Telemetrie-Forwarding, OTA für sich selbst
+- [ ] C.3 — **Remote-Flash (STK500)**: ESP flasht den angeschlossenen Arduino über Serial (STK500-Protokoll), Upload via HubEx-UI
+- [ ] C.4 — **Dual-Mode**: ESP eigene Pins + Bridge gleichzeitig (z.B. ESP misst Temperatur UND bridget Arduino-Daten)
+- [ ] C.5 — **Bridge-Mode im Device Wizard**: Neue Option "ESP als Bridge für Arduino" → Ziel-Board wählen → Shield (optional) → Pins → Firmware generieren
+- [ ] C.6 — **Error Recovery**: Watchdog, Auto-Reconnect, Buffer bei Verbindungsverlust, Status-LED
+
+### Block D: Software SDK [todo]
+> HubEx-Integration für Software-Devices (Raspberry Pi, Linux, Windows, Mac).
+- [ ] D.1 — **Python SDK**: `pip install hubex-sdk`, `client = HubEx("http://server", token="...")`, `client.set_var("cpu_usage", 85.2)`, `client.on_command("reboot", handler)`
+- [ ] D.2 — **Node.js SDK**: `npm install hubex-sdk`, analoges API wie Python
+- [ ] D.3 — **Go SDK**: Für Performance-kritische Agents, `hubex.NewClient()`, goroutine-safe
+- [ ] D.4 — **Agent Auto-Installer**: Skript das auf Raspberry Pi / Linux den Agent installiert, als Systemd-Service registriert, Auto-Pairing durchführt
+- [ ] D.5 — **SDK Dokumentation**: Getting Started, API Reference, Beispiele (System Monitor, GPIO Controller, Daten-Sammler)
+- [ ] D.6 — **SDK Telemetrie**: Eingebautes Heartbeat, System-Info (CPU/RAM/Disk/Uptime), Reconnect-Logik
+
+### Block E: Industrial Protocols [todo]
+> Echte Kommunikation mit Industriegeräten — nicht nur Models.
+- [ ] E.1 — **Modbus RTU Client**: Serial-Kommunikation mit Modbus-Geräten (Energiezähler, Wechselrichter), Register lesen/schreiben, Auto-Discovery per Register-Scan
+- [ ] E.2 — **Modbus TCP Client**: Ethernet/WiFi Modbus-Kommunikation, gleiche Variable-Bridge wie RTU
+- [ ] E.3 — **CAN-Bus Bridge**: ESP32 mit CAN-Transceiver, DBC-File-Import für Message-Decoding
+- [ ] E.4 — **RS485 Gateway**: MAX485 Transceiver am ESP, transparente Serial-Bridge
+- [ ] E.5 — **Built-in Device Profiles (30+)**: Energiezähler (Eastron SDM, DDM18SD), Wechselrichter (Sungrow, Fronius), Smart-Plugs (Shelly, Tasmota), Sensoren (Modbus-Temperatur/Luftqualität)
+- [ ] E.6 — **Profile-Wizard**: "Bestehendes Gerät anbinden" → Hersteller wählen → Modell wählen → Verbindung konfigurieren → Test → Auto-Variablen
+
+### Block F: Edge Logic (lokal auf ESP) [todo]
+> Automationen die ohne Server laufen — Offline-fähig, Echtzeit.
+- [ ] F.1 — **Rule-to-C Compiler**: Automation-Regel (If→Then) → C-Code für ESP, nur lokale Pin-Actions (keine Webhooks/Emails)
+- [ ] F.2 — **Edge-fähig Flag**: Toggle im Automations-Builder "Lokal auf Device ausführen", Validierung (welche Actions sind lokal möglich?)
+- [ ] F.3 — **Circular Buffer**: Ausführungs-Log im ESP Flash speichern (letzte 100 Events), bei Reconnect batch-uploaden
+- [ ] F.4 — **Status-Sync**: Variable-Werte die lokal geändert wurden → bei Reconnect mit Server synchronisieren, Konflikte auflösen
+- [ ] F.5 — **Offline-Dashboard**: ESP32 mit kleinem OLED/TFT zeigt Status lokal an, auch ohne WiFi
+
+### Block G: Advanced Hardware [todo]
+> Zukunfts-Features für Hardware-Power-User.
+- [ ] G.1 — **ESP-Mesh Networking**: Multiple ESPs vernetzen, einer als Gateway, Rest als Nodes, automatisches Routing
+- [ ] G.2 — **LoRa Bridge**: ESP32 + LoRa-Modul als Long-Range Bridge, LoRaWAN Gateway Integration
+- [ ] G.3 — **BLE Mesh**: ESP32 BLE Mesh für Indoor-Sensornetze, Auto-Discovery
+- [ ] G.4 — **PCB Shield Designs**: KiCad-Designs für HubEx-Shields (RS485, Sensor-Shield, Relay-Board), Gerber-Files für Fertigung
+- [ ] G.5 — **Hardware Store/Kit**: Zusammenstellung empfohlener Hardware-Kits (Starter, Pro, Industrial), Partnerschaften mit Distributoren
+- [ ] G.6 — **Firmware-Versioning**: Multiple Firmware-Versionen pro Board-Typ, A/B-Testing, Canary Rollouts über OTA Manager
+
+---
+
 ## QA: Befunde aus Endnutzer-Tests (Phase 7b)
 > 3 Runden ausführlicher Tests. Meiste Befunde in QA-Runden behoben.
 
@@ -1271,8 +1346,9 @@
 
 ---
 
-## Phase 8: Hardware-Plattform & Produkt-Modus [done] ✅
-> HubEx wird vom Software-Tool zum vollständigen IoT-Ökosystem.
+## Phase 8: Hardware-Plattform & Produkt-Modus [concept-done]
+> Konzepte, Models und APIs definiert. Funktionale Implementation steht als Phase 11 aus.
+> Status: ~12% funktional implementiert. Models + APIs ✅, Firmware + UI ❌
 > ESP32 als universeller Hardware-Baustein, Integration bestehender Smart-Systeme,
 > und die Möglichkeit, eigene Produkte für Endkunden auf HubEx aufzubauen.
 >
