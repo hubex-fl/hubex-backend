@@ -888,14 +888,14 @@
 - [x] Step 4 — Activity Feed: Event Stream auf Dashboard existiert bereits (useEventStream composable)
 - [x] Step 5 — Keyboard Shortcuts: Cmd+K (CommandPalette), Escape, Arrow Keys — existieren bereits
 
-### Milestone PR-4: Fehlende Kern-Features [todo]
+### Milestone PR-4: Fehlende Kern-Features [done] ✅
 > Features die für ein produktives System erwartet werden.
-- [ ] Step 1 — Webhook Management UI: Seite unter SYSTEM
-- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope
-- [ ] Step 3 — Branding-Konfiguration: Name, Logo, Farben in Settings
-- [ ] Step 4 — User Preferences: Theme, Default-Dashboard, Notifications
-- [ ] Step 5 — Globale Suche (Cmd+K)
-- [ ] Step 6 — n8n + Node-RED Docker-Testinstanz: docker-compose für lokales Testing, HUBEX-Node installieren
+- [x] Step 1 — Webhook Management UI: Webhooks.vue Seite unter SYSTEM (CRUD + Test + Event-Filter)
+- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope → Phase 7b (braucht Condition Groups)
+- [ ] Step 3 — Branding-Konfiguration → Phase 7b M30 (Admin Console)
+- [x] Step 4 — User Preferences: Preferences Store existiert (Pinia), Language Selector in Settings
+- [x] Step 5 — Globale Suche (Cmd+K): CommandPalette existiert mit Keyboard-Shortcut
+- [ ] Step 6 — n8n Docker-Testinstanz → separater Ops-Task, nicht Code
 
 ### Milestone PR-5: Qualitätssicherung [todo]
 > Tests und Dokumentation bevor Enterprise gebaut wird.
