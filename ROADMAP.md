@@ -1157,6 +1157,55 @@
 
 ---
 
+## Phase 10: Commercialization & Product-Level [todo]
+> Vom Entwicklungsprojekt zum marktreifen Produkt.
+
+### Milestone C1: License System [todo]
+- [ ] License-File Format definieren (JSON + Ed25519 Signatur)
+- [ ] License-Validation im Backend (app/core/license.py)
+- [ ] Feature-Flags aus License in JWT Token einbetten
+- [ ] Frontend: Enterprise-Features per Feature-Flag ein/ausblenden
+- [ ] License-Info in Admin Console anzeigen (Plan, Ablauf, Features)
+- [ ] Key-Pair generieren (Private Key sicher aufbewahren, Public Key im Code)
+
+### Milestone C2: CE/EE Feature-Gating [todo]
+- [ ] Community Default: User-Limit (5), Org-Limit (1), API-Key-Limit (3)
+- [ ] Enterprise Feature-Flags: white_label, multi_tenant, custom_api, plugins, reports, codegen, flow_editor, admin_console
+- [ ] Sidebar-Items per Feature-Flag filtern (nicht nur per Cap)
+- [ ] "Upgrade to Enterprise" Hinweis bei gesperrten Features (nicht aufdringlich)
+- [ ] Audit-Log Retention: CE=90 Tage, EE=unbegrenzt
+
+### Milestone C3: Security Hardening for Production [todo]
+- [ ] CSP (Content Security Policy) Strict Mode
+- [ ] HSTS Preload Header
+- [ ] Input Validation Review (alle Endpoints)
+- [ ] Dependency Security Scan (pip-audit / npm audit)
+- [ ] Rate-Limiting per User + per API Key (nicht nur per IP)
+- [ ] CORS konfigurierbar machen (aktuell: *)
+
+### Milestone C4: Legal & Compliance [todo]
+- [ ] AGPL Lizenztext für Community Edition
+- [ ] Commercial License Agreement für Enterprise
+- [ ] Datenschutz-Template (Self-Hosted Hinweis: User ist Verantwortlicher)
+- [ ] AV-Vertrag Vorlage (für SaaS/Managed Hosting)
+- [ ] Terms of Service Draft
+- [ ] Cookie-Policy (nur relevant für SaaS/Demo, nicht self-hosted)
+
+### Milestone C5: Produkt-Level Booster [todo]
+> Features die keiner hat und HubEx einzigartig machen.
+- [ ] **Edge AI Inference** — ML-Modelle auf dem ESP (TensorFlow Lite Micro), Anomalie-Erkennung lokal, nur Ergebnisse zum Server
+- [ ] **One-Click Device Provisioning** — QR-Code auf dem Gerät → App scannen → Device automatisch gepairt + konfiguriert
+- [ ] **Marketplace** — Community-Templates (Dashboard + Automation + Variable-Defs als Bundle) teilen und installieren
+- [ ] **Mobile App** (React Native / Flutter) — Push-Notifications, Dashboard-Viewer, Device-Status
+- [ ] **n8n/Node-RED Docker Companion** — docker-compose mit HubEx + n8n vorkonfiguriert, Webhooks auto-verbunden
+- [ ] **Geo-Fencing Visualisierung** — Live-Map mit Device-Positionen, Zonen-Editor, GPS-Trail-History
+- [ ] **Digital Twin** — Virtuelles Abbild eines physischen Geräts mit simulierten Werten für Testing/Demo
+- [ ] **Firmware OTA Manager** — Rollout-Strategien (Canary, Staged), Rollback, A/B-Testing von Firmware-Versionen
+- [ ] **Audit-Trail Blockchain-Hash** — Jeder Audit-Eintrag wird gehasht und verkettet, manipulationssicher
+- [ ] **Multi-Instance Sync** — HubEx-Instanzen an verschiedenen Standorten synchronisieren Daten bidirektional
+
+---
+
 ## QA: Befunde aus Endnutzer-Tests (Phase 7b)
 > 3 Runden ausführlicher Tests. Meiste Befunde in QA-Runden behoben.
 
