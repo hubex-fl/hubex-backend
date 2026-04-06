@@ -134,7 +134,7 @@ export async function deleteWidget(dashboardId: number, widgetId: number): Promi
 export async function updateLayout(dashboardId: number, items: LayoutItem[]): Promise<Dashboard> {
   return apiFetch<Dashboard>(`${BASE}/${dashboardId}/layout`, {
     method: "PUT",
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ widgets: items }),
   });
 }
 

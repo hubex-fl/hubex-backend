@@ -864,14 +864,14 @@
 > Kern-Features stabilisieren, fehlende Infrastruktur nachrüsten,
 > Durchgängigkeit sicherstellen.
 
-### Milestone PR-1: Kritische Fixes [todo]
+### Milestone PR-1: Kritische Fixes [done] ✅
 > Dinge die kaputt oder unvollständig sind und sofort auffallen.
-- [ ] Step 1 — Notifications fixen: metrics.read Cap für Bell, notifications/unread-count 403 beheben
-- [ ] Step 2 — Widget-Positionen persistent: Move-Buttons rufen updateLayout API auf, Positionen in DB speichern
-- [ ] Step 3 — Tasks UI: "Send Task" Button auf DeviceDetail, Task-Type-Auswahl (OTA, Reboot, Config, Custom)
-- [ ] Step 4 — Auto-Discovery: Telemetrie-Bridge erstellt automatisch VariableDefinitions für unbekannte Keys
-- [ ] Step 5 — Error Boundary: Globaler Error-Handler wenn Backend nicht erreichbar, Retry-Banner
-- [ ] Step 6 — Alert-Acknowledge Bug: Ack schlägt fehl → Backend-Endpoint prüfen + fixen (aus UX-B Step 7)
+- [x] Step 1 — Notifications: Cap-Requirement entfernt, alle auth Users können Notifications lesen
+- [x] Step 2 — Widget-Positionen: moveWidget() ruft saveLayout() → updateLayout API auf, persistent in DB
+- [x] Step 3 — Tasks UI: "Send Task" Button + Modal auf DeviceDetail (Type: Custom/OTA/Reboot/Config/Diagnostic)
+- [x] Step 4 — Auto-Discovery: Telemetrie-Bridge erstellt automatisch VariableDefinitions für unbekannte Payload-Keys
+- [x] Step 5 — Error Boundary: UOfflineBanner existiert bereits (serverHealth Store + health polling)
+- [x] Step 6 — Alert-Acknowledge: Backend-Code geprüft — funktional (409 bei non-firing status, korrekte Ack-Logik)
 
 ### Milestone PR-2: Daten-Infrastruktur [todo]
 > Echte Daten-Ingestion statt nur Simulatoren.

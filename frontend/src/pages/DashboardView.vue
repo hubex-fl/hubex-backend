@@ -205,6 +205,7 @@ import {
   addWidget,
   updateWidget,
   deleteWidget,
+  updateLayout,
   type Dashboard,
   type DashboardWidget,
 } from "../lib/dashboards";
@@ -326,6 +327,23 @@ function moveWidget(widget: DashboardWidget, direction: number) {
   // Recalculate grid positions
   recalcGridPositions(sorted);
   dashboard.value.widgets = sorted;
+  // Persist to backend
+  saveLayout();
+}
+
+async function saveLayout() {
+  if (!dashboard.value) return;
+  try {
+    const items = dashboard.value.widgets.map(w => ({
+      widget_id: w.id,
+      sort_order: w.sort_order,
+      grid_col: w.grid_col,
+      grid_row: w.grid_row,
+      grid_span_w: w.grid_span_w,
+      grid_span_h: w.grid_span_h,
+    }));
+    await updateLayout(dashboard.value.id, items);
+  } catch { /* silent — layout will reload on next page visit */ }
 }
 
 async function loadAllHistory() {

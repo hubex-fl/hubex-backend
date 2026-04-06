@@ -266,12 +266,12 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PUT", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("DELETE", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("PUT", "/api/v1/dashboards/{dashboard_id}/layout"): ["dashboards.write"],
-    # Notifications
-    ("GET", "/api/v1/notifications"): ["notifications.read"],
-    ("GET", "/api/v1/notifications/unread-count"): ["notifications.read"],
-    ("PATCH", "/api/v1/notifications/{notification_id}/read"): ["notifications.write"],
-    ("PATCH", "/api/v1/notifications/read-all"): ["notifications.write"],
-    ("DELETE", "/api/v1/notifications/{notification_id}"): ["notifications.write"],
+    # Notifications — no cap required, user-scoped
+    ("GET", "/api/v1/notifications"): [],
+    ("GET", "/api/v1/notifications/unread-count"): [],
+    ("PATCH", "/api/v1/notifications/{notification_id}/read"): [],
+    ("PATCH", "/api/v1/notifications/read-all"): [],
+    ("DELETE", "/api/v1/notifications/{notification_id}"): [],
     # MCP
     ("POST", "/api/v1/mcp/tools/list"): ["mcp.read"],
     ("POST", "/api/v1/mcp/tools/call"): ["mcp.execute"],

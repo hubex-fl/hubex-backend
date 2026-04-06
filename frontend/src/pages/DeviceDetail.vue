@@ -320,6 +320,41 @@ async function quickCreateAndBind() {
   }
 }
 
+// ── Send Task (PR-1) ────────────────────────────────────────────────────────
+const showSendTask = ref(false);
+const sendTaskType = ref("custom");
+const sendTaskName = ref("");
+const sendTaskPayload = ref("{}");
+const sendTaskSaving = ref(false);
+const sendTaskError = ref<string | null>(null);
+
+async function submitSendTask() {
+  if (!deviceInfo.value) return;
+  sendTaskSaving.value = true;
+  sendTaskError.value = null;
+  try {
+    let payload = {};
+    try { payload = JSON.parse(sendTaskPayload.value || "{}"); } catch { payload = {}; }
+    await apiFetch(`/api/v1/devices/${deviceInfo.value.id}/tasks`, {
+      method: "POST",
+      body: JSON.stringify({
+        task_type: sendTaskType.value,
+        task_name: sendTaskName.value.trim() || sendTaskType.value,
+        payload,
+      }),
+    });
+    showSendTask.value = false;
+    sendTaskName.value = "";
+    sendTaskPayload.value = "{}";
+    // Reload task data
+    await Promise.all([loadCurrentTask(), loadTaskHistory()]);
+  } catch (e: any) {
+    sendTaskError.value = e?.message || "Failed to send task";
+  } finally {
+    sendTaskSaving.value = false;
+  }
+}
+
 // ── Device Config (SIM-2) ──────────────────────────────────────────────────
 const configEditing = ref(false);
 const configSaving = ref(false);
@@ -2509,13 +2544,18 @@ onUnmounted(() => {
     <!-- ── Task History ────────────────────────────────────────────────────── -->
     <UCard v-if="!restrictUnclaimed" padding="none">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recent Tasks</h3>
-        <span
-          v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally"
-          class="text-xs text-[var(--text-muted)]"
-        >
-          Active: {{ currentTask.task_name }} · {{ fmtRemaining(leaseSecondsRemaining) }} left
-        </span>
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Tasks</h3>
+          <span
+            v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally"
+            class="text-xs text-[var(--text-muted)]"
+          >
+            Active: {{ currentTask.task_name }} · {{ fmtRemaining(leaseSecondsRemaining) }} left
+          </span>
+        </div>
+        <UButton v-if="deviceInfo" size="sm" variant="secondary" @click="showSendTask = true">
+          Send Task
+        </UButton>
       </template>
 
       <div v-if="currentTaskError" class="px-4 py-3 text-xs text-[var(--status-bad)]">{{ currentTaskError }}</div>
@@ -2657,6 +2697,29 @@ onUnmounted(() => {
         <p v-if="unclaimStatus" class="text-xs text-[var(--text-muted)]">{{ unclaimStatus }}</p>
       </div>
     </UCard>
+
+    <!-- Send Task Modal -->
+    <UModal :open="showSendTask" title="Send Task to Device" size="sm" @close="showSendTask = false">
+      <div class="space-y-3 p-2">
+        <USelect v-model="sendTaskType" label="Task Type">
+          <option value="custom">Custom</option>
+          <option value="ota_update">OTA / Firmware Update</option>
+          <option value="reboot">Reboot</option>
+          <option value="config_push">Config Push</option>
+          <option value="diagnostic">Diagnostic</option>
+        </USelect>
+        <UInput v-model="sendTaskName" label="Task Name" placeholder="e.g. Update firmware to v2.1" />
+        <div>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Payload (JSON)</label>
+          <textarea v-model="sendTaskPayload" class="w-full mt-1 px-3 py-2 text-xs font-mono rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]" rows="3" placeholder='{ "version": "2.1" }' />
+        </div>
+        <div v-if="sendTaskError" class="text-xs text-[var(--status-bad)]">{{ sendTaskError }}</div>
+      </div>
+      <template #footer>
+        <UButton variant="ghost" @click="showSendTask = false">Cancel</UButton>
+        <UButton :loading="sendTaskSaving" @click="submitSendTask">Send Task</UButton>
+      </template>
+    </UModal>
 
   </div>
 </template>
