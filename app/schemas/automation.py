@@ -9,8 +9,11 @@ from pydantic import BaseModel, ConfigDict, Field
 VALID_TRIGGER_TYPES = {
     "variable_threshold",
     "variable_geofence",
+    "variable_change",
     "device_offline",
+    "device_online",
     "telemetry_received",
+    "schedule",
 }
 
 VALID_ACTION_TYPES = {
@@ -18,6 +21,8 @@ VALID_ACTION_TYPES = {
     "call_webhook",
     "create_alert_event",
     "emit_system_event",
+    "send_notification",
+    "log_to_audit",
 }
 
 

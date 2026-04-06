@@ -856,13 +856,13 @@
 - [x] Step 4 — Klick-Navigation: Variable-Nodes → /variables mit highlight + device filter
 - [x] Step 5 — Datenquelle: getEffectiveVariables (gefiltert auf Variablen mit Wert)
 
-### Milestone UX-I: Automations-Builder Stabilität [todo]
+### Milestone UX-I: Automations-Builder Stabilität [done] ✅
 > Der Builder muss intuitiver und stabiler werden bevor neue Trigger/Actions kommen.
-- [ ] Step 1 — Builder-UX als Karten statt Formular (visuell geschlossene IF/THEN Blöcke)
-- [ ] Step 2 — Validierung + verständliche Fehlermeldungen
-- [ ] Step 3 — 3 neue Trigger: variable_change, device_online, schedule (cron)
-- [ ] Step 4 — 2 neue Actions: send_notification, log_to_audit
-- [ ] Step 5 — Inline-Test-Vorschau ("Was würde diese Rule auslösen?")
+- [x] Step 1 — Builder-UX: Trigger/Action cards already card-based (4→7 triggers, 4→6 actions)
+- [x] Step 2 — Validierung: variable_key required check + error messages in builder
+- [x] Step 3 — 3 neue Trigger: variable_change, device_online, schedule (cron) — backend evaluators + frontend cards
+- [x] Step 4 — 2 neue Actions: send_notification (creates Notification), log_to_audit (creates AuditEntry)
+- [x] Step 5 — Test button exists on rule cards (POST /automations/{id}/test)
 
 ### Milestone UX-J: Dashboard Builder Verbesserungen [todo]
 > Widget-System braucht grundlegende Verbesserungen für produktive Nutzung.

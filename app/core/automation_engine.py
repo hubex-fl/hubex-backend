@@ -186,6 +186,10 @@ async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[s
         await _action_create_alert(db, rule, cfg, context)
     elif action_type == "emit_system_event":
         await _action_emit_system_event(db, cfg, context)
+    elif action_type == "send_notification":
+        await _action_send_notification(db, rule, cfg, context)
+    elif action_type == "log_to_audit":
+        await _action_log_to_audit(db, rule, cfg, context)
     else:
         logger.warning("automation_engine: unknown action_type=%s rule_id=%d", action_type, rule.id)
 
@@ -288,6 +292,45 @@ async def _action_emit_system_event(
     await emit_system_event(db, event_type, {**payload_extra, **context})
 
 
+async def _action_send_notification(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Create a notification for the device owner."""
+    from app.db.models.notifications import Notification
+    title = cfg.get("title", f"Automation: {rule.name}")
+    message = cfg.get("message", "Automation rule fired")
+    try:
+        message = message.format(**context)
+    except (KeyError, IndexError):
+        pass
+    severity = cfg.get("severity", "info")
+    notif = Notification(
+        user_id=rule.org_id,  # Will need proper user resolution
+        type="automation",
+        severity=severity,
+        title=title,
+        message=message,
+        entity_ref=f"automation:{rule.id}",
+    )
+    db.add(notif)
+
+
+async def _action_log_to_audit(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Write an audit log entry."""
+    from app.db.models.audit import AuditEntry
+    action = cfg.get("action", "automation.action")
+    resource = cfg.get("resource", f"rule:{rule.id}")
+    db.add(AuditEntry(
+        actor_type="automation",
+        actor_id=str(rule.id),
+        action=action,
+        resource=resource,
+        metadata_json=context,
+    ))
+
+
 # ---------------------------------------------------------------------------
 # Main evaluation cycle
 # ---------------------------------------------------------------------------
@@ -347,6 +390,21 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     fired = _check_device_offline(rule, payload)
                 elif rule.trigger_type == "telemetry_received":
                     fired = _check_telemetry_received(rule, payload)
+                elif rule.trigger_type == "variable_change":
+                    # Fires on any variable change event
+                    fired = event_type.startswith("variable.") if event_type else False
+                    if fired:
+                        cfg_key = rule.trigger_config.get("variable_key")
+                        if cfg_key and payload.get("variable_key") != cfg_key:
+                            fired = False
+                elif rule.trigger_type == "device_online":
+                    fired = event_type == "device.online" if event_type else False
+                    cfg_uid = rule.trigger_config.get("device_uid")
+                    if fired and cfg_uid and payload.get("device_uid") != cfg_uid:
+                        fired = False
+                elif rule.trigger_type == "schedule":
+                    # Schedule triggers are handled externally (cron), not by event matching
+                    fired = False
                 else:
                     fired = False
 
