@@ -937,3 +937,60 @@ async def run_effects(
         await db.rollback()
         raise
     return VariableEffectRunOut(**result)
+
+
+@router.get("/history/export")
+async def export_variable_history(
+    variable_key: str = Query(None),
+    device_uid: str = Query(None),
+    limit: int = Query(5000, le=50000),
+    format: str = Query("csv"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export variable history as CSV or JSON."""
+    import csv
+    import io
+    import json
+    from fastapi.responses import StreamingResponse
+
+    stmt = select(VariableHistory).order_by(VariableHistory.recorded_at.desc()).limit(limit)
+    if variable_key:
+        stmt = stmt.where(VariableHistory.variable_key == variable_key)
+    if device_uid:
+        from app.db.models.device import Device
+        dev_res = await db.execute(select(Device.id).where(Device.device_uid == device_uid))
+        dev_id = dev_res.scalar_one_or_none()
+        if dev_id:
+            stmt = stmt.where(VariableHistory.device_id == dev_id)
+
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+
+    if format == "json":
+        data = [
+            {"variable_key": r.variable_key, "device_id": r.device_id,
+             "value": r.value_json, "numeric": r.numeric_value,
+             "source": r.source, "recorded_at": r.recorded_at.isoformat() if r.recorded_at else None}
+            for r in rows
+        ]
+        return StreamingResponse(
+            io.BytesIO(json.dumps(data, indent=2, default=str).encode()),
+            media_type="application/json",
+            headers={"Content-Disposition": 'attachment; filename="variable-history.json"'},
+        )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["variable_key", "device_id", "value", "numeric_value", "source", "recorded_at"])
+    for r in rows:
+        writer.writerow([
+            r.variable_key, r.device_id,
+            json.dumps(r.value_json) if r.value_json else "",
+            r.numeric_value or "", r.source or "",
+            r.recorded_at.isoformat() if r.recorded_at else "",
+        ])
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="variable-history.csv"'},
+    )

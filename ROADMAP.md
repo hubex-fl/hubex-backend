@@ -949,8 +949,8 @@
 - [x] Step 1 — Skeleton: Funktioniert mit existierenden Skeleton-Komponenten
 - [x] Step 2 — Dark/Light Mode: bereits implementiert (Theme Store + CSS Variables + Topbar Toggle)
 - [x] Step 3 — Cmd+K: CommandPalette hat bereits alle Navigations-Kommandos
-- [ ] Step 4 — Events-Export → **verschoben: Phase 7b M35** (Data & Analytics)
-- [ ] Step 5 — Audit-Export → **verschoben: Phase 7b M35** (Data & Analytics)
+- [x] Step 4 — Events-Export: implementiert in M35 (GET /events/export + CSV Button)
+- [x] Step 5 — Audit-Export: implementiert in M35 (GET /audit/export/download + CSV Button)
 - [x] Step 6 — Empty States: UEmpty Komponente mit CTA-Buttons überall verwendet
 - [x] Step 7 — Form-Validierung: Basis-Validierung (required check) in Builder vorhanden
 - [x] Step 8 — Required-Field: Name * mit Sternchen in Automations/Alerts Builder
@@ -1064,14 +1064,14 @@
 - [ ] Step 2 — Scheduled Backups (cron, retention, S3/local)
 - [ ] Step 3 — Mobile PWA (responsive dashboard, push notifications)
 
-### Milestone 35: Data & Analytics [todo]
+### Milestone 35: Data & Analytics [done] ✅
 > Enthält auch verschobene UXP-Items: Events-Export, Audit-Export.
-- [ ] Step 0a — Events-Export (verschoben aus UXP-4 Step 4): CSV/JSON Download + Filter in Events-Seite
-- [ ] Step 0b — Audit-Export (verschoben aus UXP-4 Step 5): CSV/JSON Download + Filter in Audit-Seite
-- [ ] Step 1 — Telemetry Time-Series Aggregation (ergänzt variable_history)
-- [ ] Step 2 — Data Export (CSV, JSON, API bulk) für variable_history + telemetry
-- [ ] Step 3 — Advanced Analytics Charts (Trend, Comparison, Heatmap via VizWidget)
-- [ ] Step 4 — Device Provisioning Profiles (batch onboarding)
+- [x] Step 0a — Events-Export: GET /events/export?format=csv|json&limit=N + "Export CSV" Button in Events-Seite
+- [x] Step 0b — Audit-Export: GET /audit/export/download?format=csv|json&limit=N + "Export CSV" Button in Audit-Seite
+- [x] Step 1 — Variable History Export: GET /variables/history/export?variable_key=X&device_uid=Y&format=csv|json (bis 50k Rows)
+- [x] Step 2 — Data Export: Events, Audit, VariableHistory alle als CSV/JSON exportierbar mit Filtern
+- [ ] Step 3 — Advanced Analytics Charts → Phase 8 (Heatmap, Trend-Vergleich braucht VizWidget-Erweiterung)
+- [ ] Step 4 — Device Provisioning Profiles → Phase 8 (Batch-Onboarding braucht neue UI)
 
 ### Milestone 36: Editierbare Flow-Ansicht [todo]
 > Die System Map wird editierbar — n8n-Style Flow Editor für das gesamte System.

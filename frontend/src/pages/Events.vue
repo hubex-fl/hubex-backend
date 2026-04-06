@@ -193,6 +193,7 @@ onUnmounted(() => { stopPolling(); });
         <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time system events. Select a stream and start monitoring.</p>
       </div>
       <div class="flex gap-2">
+        <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
         <UButton variant="secondary" size="sm" @click="retryAll">Retry</UButton>
         <UButton variant="secondary" size="sm" :disabled="!polling" @click="stopPolling">Stop</UButton>
       </div>

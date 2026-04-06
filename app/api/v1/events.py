@@ -149,3 +149,52 @@ async def emit_event(
     await db.commit()
     await db.refresh(event)
     return EventEmitOut(ok=True, event_id=event.id)
+
+
+@router.get("/export")
+async def export_events(
+    stream: str = Query("system"),
+    limit: int = Query(1000, le=10000),
+    format: str = Query("csv"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export events as CSV or JSON."""
+    import csv
+    import io
+    import json
+    from fastapi.responses import StreamingResponse
+
+    result = await db.execute(
+        select(EventV1)
+        .where(EventV1.stream == stream)
+        .order_by(EventV1.id.desc())
+        .limit(limit)
+    )
+    events = list(result.scalars().all())
+
+    if format == "json":
+        data = [
+            {"id": e.id, "type": e.type, "payload": e.payload, "trace_id": e.trace_id,
+             "created_at": e.received_at.isoformat() if e.received_at else None}
+            for e in events
+        ]
+        return StreamingResponse(
+            io.BytesIO(json.dumps(data, indent=2).encode()),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="events-export.json"'},
+        )
+
+    # CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "type", "payload", "trace_id", "created_at"])
+    for e in events:
+        writer.writerow([
+            e.id, e.type, json.dumps(e.payload) if e.payload else "",
+            e.trace_id or "", e.received_at.isoformat() if e.received_at else "",
+        ])
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="events-export.csv"'},
+    )
