@@ -907,7 +907,56 @@
 
 ---
 
-## Phase 7b: Enterprise, Business & Advanced [todo] ← AKTUELL
+## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [todo] ← AKTUELL
+> Alle UX-Probleme aus dem allumfänglichen Erstnutzer-Test beheben.
+> Muss VOR Enterprise abgeschlossen werden.
+
+### Milestone UXP-1: Kritische Blocker [todo]
+> Dinge die den Erstnutzer komplett ausbremsen.
+- [ ] Step 1 — Onboarding: "Getting Started" Banner auf Dashboard wenn < 2 Devices (5 Schritte: Add Device → See Data → Set Alert → Dashboard → Automate)
+- [ ] Step 2 — Konzept-Erklärungen: Help-Texte auf Entities ("Logical groups of devices"), Events ("System event stream"), Semantic Types ("Variable type definitions with units and icons")
+- [ ] Step 3 — Modal-Scrolling: Alle Modals (Automations Builder, Dashboard Template, Alert Create) müssen scrollbar sein (max-height + overflow-y: auto)
+- [ ] Step 4 — Device Wizard Hilfe: Tooltip "What is a Pairing UID?" pro Device-Typ, Beispiele, Link zu Doku
+- [ ] Step 5 — Sidebar DATEN default offen: Variables, Entities, Alerts, Automations sichtbar ohne Klick
+
+### Milestone UXP-2: Hohe Priorität — UX-Friction [todo]
+> Deutlich störende Probleme die den Workflow unterbrechen.
+- [ ] Step 1 — Login: "Forgot Password" Link + Passwort-Anzeigen-Button (👁)
+- [ ] Step 2 — Variables Einheiten im DeviceDetail: Output-Panel zeigt "23.5 °C" statt nur "23.5"
+- [ ] Step 3 — Alert-Ack Fehlermeldung fixen: Grammatik + klare Fehlerbeschreibung
+- [ ] Step 4 — Webhook-Felder Erklärungen: Tooltips für Secret, Event-Filter mit Beispielen
+- [ ] Step 5 — Cmd+K navigiert zu spezifischem Device/Variable: Search-Ergebnisse linken direkt zum Objekt
+- [ ] Step 6 — Bestätigungsdialoge: Alle destruktiven Aktionen (Delete Device/Rule/Webhook) mit Modal-Bestätigung statt alert()
+- [ ] Step 7 — Dashboard-Templates: JSON-Fehler fixen oder kaputte Templates entfernen
+- [ ] Step 8 — Post-Wizard Navigation: Nach Device-Erstellung direkt zu DeviceDetail navigieren
+
+### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [todo]
+> Verbessernswerte Punkte für professionelles Feeling.
+- [ ] Step 1 — Wizard "Test Connection": Button im Service/Bridge-Flow der URL/Broker testet
+- [ ] Step 2 — Copy-Value Button: In Variables-Tabelle + DeviceDetail für schnelles Kopieren
+- [ ] Step 3 — Events-Timestamps: Zeitstempel für jedes Event sichtbar machen
+- [ ] Step 4 — Audit-Links: Action-Codes als klickbare Links zum betroffenen Objekt
+- [ ] Step 5 — Webhook-Delivery-History: Zustellungs-Log mit Status, Timestamp, Response
+- [ ] Step 6 — Duplicate Rule: Button in Automations + Alerts zum Klonen einer Regel
+- [ ] Step 7 — System Health Redis Tooltip: Konsistente Sprache (EN), Erklärung was jeder Service tut
+- [ ] Step 8 — Semantic Type Icons im Create-Modal: Value-Type Dropdown mit Icons statt nur Text
+- [ ] Step 9 — Cmd+K Shortcut sichtbar: "(⌘K)" Label neben Search-Icon in der Topbar
+- [ ] Step 10 — Device Wizard → DeviceDetail: Nach Erstellung direkt zum neuen Device navigieren
+
+### Milestone UXP-4: Niedrige Priorität — Polish [todo]
+> Nice-to-have Verbesserungen für ein ausgereiftes Produkt.
+- [ ] Step 1 — Skeleton-Anzahl: Dynamisch basierend auf erwarteter Item-Anzahl
+- [ ] Step 2 — Dark/Light Mode Toggle: In Settings mit Theme-Switch
+- [ ] Step 3 — Recently Viewed in Cmd+K: Letzte 5 besuchte Seiten oben in der Suche
+- [ ] Step 4 — Events-Export: CSV/JSON Download für Event-Daten
+- [ ] Step 5 — Audit-Export: CSV/JSON Download für Compliance
+- [ ] Step 6 — Empty States verbessern: Jeder Empty State hat konkreten CTA ("Add your first X →")
+- [ ] Step 7 — Form-Validierung: Inline-Validierung beim Tippen statt erst bei Submit
+- [ ] Step 8 — Required-Field Indicator: Sternchen (*) bei Pflichtfeldern in allen Formularen
+
+---
+
+## Phase 7b: Enterprise, Business & Advanced [todo]
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
@@ -1251,15 +1300,16 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
                     │
                     └─► Phase 5c: Stabilität & Simulation ✅
                           │
-                          └─► Phase 7a: Production Readiness ← AKTUELL
+                          └─► Phase 7a: Production Readiness ✅
                                 │
-                                ├─► PR-1 (Kritische Fixes) — ZUERST
-                                ├─► PR-2 (Daten-Infrastruktur) — braucht PR-1
-                                ├─► PR-3 (UX Durchgängigkeit) — parallel zu PR-2
-                                ├─► PR-4 (Fehlende Kern-Features) — braucht PR-1
-                                └─► PR-5 (Qualitätssicherung) — zuletzt
+                                └─► Phase 7c: UX Polish ← AKTUELL
                                       │
-                                      └─► Phase 7b: Enterprise & Business
+                                      ├─► UXP-1 (Kritische Blocker) — ZUERST
+                                      ├─► UXP-2 (UX-Friction) — parallel
+                                      ├─► UXP-3 (Verbesserungen) — danach
+                                      └─► UXP-4 (Polish) — zuletzt
+                                            │
+                                            └─► Phase 7b: Enterprise & Business
                                             ├─► M14b (Computed Variables)
                                             ├─► M19b (Automation Erweiterung)
                                             ├─► M18b (Dashboard Embed)
