@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
@@ -22,6 +22,17 @@ type Template = {
 const templates = ref<Template[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const categoryFilter = ref<string>("all");
+
+const filteredTemplates = computed(() => {
+  if (categoryFilter.value === "all") return templates.value;
+  return templates.value.filter(t => t.category === categoryFilter.value);
+});
+
+const categories = computed(() => {
+  const cats = new Set(templates.value.map(t => t.category));
+  return ["all", ...Array.from(cats)];
+});
 
 // Edit modal
 const editOpen = ref(false);
@@ -154,7 +165,11 @@ onMounted(loadTemplates);
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Email Templates</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Templates for automation emails, alerts, and reports. Use {variable_name} placeholders.</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">
+          Templates for automation emails, alerts, and reports. Use {variable_name} placeholders.
+          <router-link to="/automations" class="text-[var(--primary)] hover:underline ml-1">Automations</router-link> ·
+          <router-link to="/reports" class="text-[var(--primary)] hover:underline">Reports</router-link>
+        </p>
       </div>
       <button
         class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"
@@ -171,14 +186,32 @@ onMounted(loadTemplates);
       <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="loadTemplates">Retry</button>
     </div>
 
-    <div v-else-if="!templates.length" class="text-center py-8">
-      <p class="text-sm text-[var(--text-muted)]">No templates yet</p>
-      <button class="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">Create your first template</button>
-    </div>
+    <template v-else-if="!templates.length">
+      <div class="text-center py-8">
+        <p class="text-sm text-[var(--text-muted)]">No templates yet</p>
+        <button class="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">Create your first template</button>
+      </div>
+    </template>
 
-    <div v-else class="space-y-3">
+    <template v-else>
+      <!-- Category filter -->
+      <div class="flex gap-1.5">
+        <button
+          v-for="cat in categories"
+          :key="cat"
+          :class="[
+            'px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors',
+            categoryFilter === cat
+              ? 'bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30'
+              : 'text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--primary)]/40',
+          ]"
+          @click="categoryFilter = cat"
+        >{{ cat === 'all' ? 'All' : (CATEGORY_LABELS[cat] || cat) }}</button>
+      </div>
+
+    <div class="space-y-3">
       <div
-        v-for="tpl in templates"
+        v-for="tpl in filteredTemplates"
         :key="tpl.id"
         class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4"
       >
@@ -228,6 +261,7 @@ onMounted(loadTemplates);
         </div>
       </div>
     </div>
+    </template>
 
     <!-- Edit/Create Modal -->
     <UModal :open="editOpen" :title="editMode === 'create' ? 'New Template' : 'Edit Template'" size="lg" @close="editOpen = false">

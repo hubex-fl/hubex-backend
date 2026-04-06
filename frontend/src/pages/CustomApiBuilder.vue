@@ -152,7 +152,11 @@ onMounted(load);
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Custom API Builder</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Build your own API endpoints to serve device data, variables, and metrics in custom formats</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">
+          Build your own API endpoints to serve device data, variables, and metrics.
+          <router-link to="/developer" class="text-[var(--primary)] hover:underline ml-1">API Docs</router-link> ·
+          <router-link to="/variables" class="text-[var(--primary)] hover:underline">Variables</router-link>
+        </p>
       </div>
       <button
         class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"

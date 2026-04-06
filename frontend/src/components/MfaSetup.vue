@@ -15,6 +15,8 @@ const confirmCode = ref("");
 const confirming = ref(false);
 const recoveryCodes = ref<string[] | null>(null);
 
+const showCodeInput = ref(false);
+
 // Disable state
 const disableCode = ref("");
 const disabling = ref(false);
@@ -86,6 +88,7 @@ function closeSetup() {
   setupUri.value = null;
   recoveryCodes.value = null;
   confirmCode.value = "";
+  showCodeInput.value = false;
 }
 
 onMounted(loadStatus);
@@ -146,39 +149,67 @@ onMounted(loadStatus);
         </button>
       </template>
 
-      <!-- Step 2: Scan QR / Enter code -->
-      <template v-else-if="!recoveryCodes">
+      <!-- Step 2: Scan QR -->
+      <template v-else-if="!recoveryCodes && !showCodeInput">
+        <!-- Progress -->
+        <div class="flex items-center gap-2 mb-3">
+          <span class="h-6 w-6 rounded-full bg-[var(--primary)] text-black text-[10px] font-bold flex items-center justify-center">1</span>
+          <span class="text-[10px] text-[var(--text-primary)] font-medium">Scan QR Code</span>
+          <span class="flex-1 h-px bg-[var(--border)]" />
+          <span class="h-6 w-6 rounded-full bg-[var(--bg-overlay)] text-[var(--text-muted)] text-[10px] font-bold flex items-center justify-center">2</span>
+          <span class="text-[10px] text-[var(--text-muted)]">Verify</span>
+        </div>
         <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-3">
-          <p class="text-xs text-[var(--text-primary)] font-medium">1. Scan this QR code with your authenticator app</p>
+          <p class="text-xs text-[var(--text-primary)] font-medium">Open your authenticator app and scan this code</p>
           <p class="text-[10px] text-[var(--text-muted)]">Use Google Authenticator, Microsoft Authenticator, Authy, or any TOTP app</p>
           <div class="flex items-center justify-center py-3">
             <div class="bg-white p-3 rounded-lg">
-              <img v-if="setupUri" :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(setupUri)}`" alt="QR Code" class="w-[180px] h-[180px]" />
+              <img v-if="setupUri" :src="`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(setupUri)}`" alt="QR Code" class="w-[160px] h-[160px]" />
             </div>
           </div>
-          <div>
-            <p class="text-[10px] text-[var(--text-muted)] mb-1">Or enter this secret manually:</p>
-            <code class="text-xs font-mono text-[var(--text-primary)] break-all select-all">{{ setupSecret }}</code>
+          <details class="text-[10px] text-[var(--text-muted)]">
+            <summary class="cursor-pointer hover:text-[var(--text-primary)]">Can't scan? Enter manually</summary>
+            <code class="mt-1 block text-xs font-mono text-[var(--text-primary)] break-all select-all bg-[var(--bg-base)] p-2 rounded">{{ setupSecret }}</code>
+          </details>
+          <div class="flex justify-end gap-2">
+            <button class="text-xs text-[var(--text-muted)]" @click="closeSetup">Cancel</button>
+            <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="showCodeInput = true">I've scanned it</button>
           </div>
-          <div>
-            <p class="text-xs text-[var(--text-primary)] font-medium mb-1">2. Enter the 6-digit code to confirm</p>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="confirmCode"
-                class="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono w-32 text-center tracking-[0.3em]"
-                placeholder="000000"
-                maxlength="6"
-                @keyup.enter="confirmSetup"
-              />
-              <button
-                :disabled="confirming || confirmCode.length < 6"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black disabled:opacity-50"
-                @click="confirmSetup"
-              >
-                {{ confirming ? 'Verifying...' : 'Confirm' }}
-              </button>
-              <button class="text-xs text-[var(--text-muted)]" @click="closeSetup">Cancel</button>
-            </div>
+        </div>
+      </template>
+
+      <!-- Step 3: Enter code -->
+      <template v-else-if="!recoveryCodes">
+        <!-- Progress -->
+        <div class="flex items-center gap-2 mb-3">
+          <span class="h-6 w-6 rounded-full bg-[var(--status-ok)] text-white text-[10px] font-bold flex items-center justify-center">1</span>
+          <span class="text-[10px] text-[var(--text-muted)]">Scan QR Code</span>
+          <span class="flex-1 h-px bg-[var(--border)]" />
+          <span class="h-6 w-6 rounded-full bg-[var(--primary)] text-black text-[10px] font-bold flex items-center justify-center">2</span>
+          <span class="text-[10px] text-[var(--text-primary)] font-medium">Verify</span>
+        </div>
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-3">
+          <p class="text-xs text-[var(--text-primary)] font-medium">Enter the 6-digit code from your authenticator app</p>
+          <div class="flex items-center gap-2">
+            <input
+              v-model="confirmCode"
+              class="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm font-mono w-36 text-center tracking-[0.4em]"
+              placeholder="000000"
+              maxlength="6"
+              autofocus
+              @keyup.enter="confirmSetup"
+            />
+            <button
+              :disabled="confirming || confirmCode.length < 6"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black disabled:opacity-50"
+              @click="confirmSetup"
+            >
+              {{ confirming ? 'Verifying...' : 'Verify & Enable' }}
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button class="text-[10px] text-[var(--text-muted)] hover:underline" @click="showCodeInput = false">Back to QR</button>
+            <button class="text-[10px] text-[var(--text-muted)] hover:underline" @click="closeSetup">Cancel</button>
           </div>
         </div>
       </template>

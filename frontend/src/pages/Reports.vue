@@ -108,7 +108,11 @@ onMounted(loadAll);
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Reports</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Generate and schedule reports from your HUBEX data</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">
+          Generate and schedule reports from your HUBEX data.
+          <router-link to="/email-templates" class="text-[var(--primary)] hover:underline ml-1">Email Templates</router-link> ·
+          <router-link to="/automations" class="text-[var(--primary)] hover:underline">Automations</router-link>
+        </p>
       </div>
       <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]" @click="createOpen = true">
         + New Template

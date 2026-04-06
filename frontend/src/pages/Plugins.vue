@@ -100,7 +100,10 @@ onMounted(loadPlugins);
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Plugins</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Extend HUBEX with custom integrations, automation hooks, and data processing</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">
+          Extend HUBEX with custom integrations, automation hooks, and data processing.
+          <router-link to="/admin" class="text-[var(--primary)] hover:underline ml-1">Admin Console</router-link>
+        </p>
       </div>
       <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]" @click="installOpen = true">
         + Install Plugin

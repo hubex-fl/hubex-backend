@@ -187,6 +187,8 @@ onMounted(loadSystemGraph);
       <div class="flex items-center gap-2">
         <h1 class="text-sm font-semibold text-[var(--text-primary)]">Flow Editor</h1>
         <span class="text-[10px] text-[var(--text-muted)]">{{ nodes.length }} nodes, {{ edges.length }} edges</span>
+        <router-link to="/automations" class="text-[10px] text-[var(--primary)] hover:underline">Automations</router-link>
+        <router-link to="/devices" class="text-[10px] text-[var(--primary)] hover:underline">Devices</router-link>
       </div>
       <div class="flex items-center gap-1.5">
         <button v-for="type in ['device', 'variable', 'trigger', 'action', 'webhook', 'external']" :key="type" :aria-label="`Add ${type} node`"

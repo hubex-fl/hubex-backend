@@ -20,10 +20,26 @@ const keys = ref<ApiKeyOut[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
+// Capability scopes for checkboxes
+const capScopes = [
+  { value: "devices.read", label: "Read Devices" },
+  { value: "devices.write", label: "Write Devices" },
+  { value: "vars.read", label: "Read Variables" },
+  { value: "vars.write", label: "Write Variables" },
+  { value: "telemetry.read", label: "Read Telemetry" },
+  { value: "telemetry.emit", label: "Send Telemetry" },
+  { value: "alerts.read", label: "Read Alerts" },
+  { value: "alerts.write", label: "Write Alerts" },
+  { value: "automations.read", label: "Read Automations" },
+  { value: "dashboards.read", label: "Read Dashboards" },
+  { value: "events.read", label: "Read Events" },
+  { value: "webhooks.read", label: "Read Webhooks" },
+];
+
 // Create form
 const showCreate = ref(false);
 const newName = ref("");
-const newCaps = ref("");
+const selectedCaps = ref<string[]>([]);
 const newExpiry = ref<number | null>(null);
 const creating = ref(false);
 const createdKey = ref<string | null>(null);
@@ -45,15 +61,11 @@ async function handleCreate() {
   if (!newName.value.trim()) return;
   creating.value = true;
   try {
-    const capsArr = newCaps.value
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean);
     const result = await apiFetch<ApiKeyOut & { key: string }>("/api/v1/api-keys", {
       method: "POST",
       body: JSON.stringify({
         name: newName.value.trim(),
-        caps: capsArr,
+        caps: selectedCaps.value,
         expires_in_days: newExpiry.value || null,
       }),
     });
@@ -91,7 +103,7 @@ function closeCreate() {
   showCreate.value = false;
   createdKey.value = null;
   newName.value = "";
-  newCaps.value = "";
+  selectedCaps.value = [];
   newExpiry.value = null;
 }
 
@@ -218,13 +230,14 @@ onMounted(loadKeys);
               />
             </div>
             <div>
-              <label class="text-[10px] font-medium text-[var(--text-muted)]">Capabilities (comma-separated)</label>
-              <input
-                v-model="newCaps"
-                class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono"
-                placeholder="devices.read, vars.read, telemetry.read"
-              />
-              <p class="text-[10px] text-[var(--text-muted)] mt-1">Leave empty for no capabilities</p>
+              <label class="text-[10px] font-medium text-[var(--text-muted)]">Capabilities</label>
+              <div class="mt-1.5 grid grid-cols-2 gap-1.5">
+                <label v-for="scope in capScopes" :key="scope.value" class="flex items-center gap-1.5 px-2 py-1.5 rounded border border-[var(--border)] hover:border-[var(--primary)]/40 cursor-pointer text-[10px]">
+                  <input type="checkbox" :value="scope.value" v-model="selectedCaps" class="rounded" />
+                  <span class="text-[var(--text-primary)]">{{ scope.label }}</span>
+                </label>
+              </div>
+              <p class="text-[10px] text-[var(--text-muted)] mt-1">Select what this key can access</p>
             </div>
             <div>
               <label class="text-[10px] font-medium text-[var(--text-muted)]">Expiry (days, optional)</label>

@@ -36,6 +36,10 @@ async function loadModules() {
 }
 
 async function toggleModule(mod: Module) {
+  if (mod.enabled) {
+    const caps = (mod.capabilities || []).length;
+    if (!confirm(`Disable "${mod.label || mod.key}"? This module provides ${caps} capabilities that other features may depend on.`)) return;
+  }
   togglingModule.value = mod.key;
   try {
     const action = mod.enabled ? "disable" : "enable";
