@@ -1118,25 +1118,37 @@
 - [ ] **E2E Tests** mit Playwright: Login → Pair → Dashboard → Automation → Export
 - [ ] **Backend Unit-Tests** für: Pairing Flow, Automation Engine, RBAC Resolution, Telemetry Bridge
 - [ ] **Performance-Test** mit sim_all.py (10+ Devices gleichzeitig)
+- [ ] **Load-Test**: 100+ simulierte Devices, 1000+ Events/Min, Telemetry Queue Stress-Test, DB-Query-Performance messen
 - [ ] **Security Audit**: HTTPS Enforcement, CSP Headers, Input Validation Review
 - [ ] **Simulator-Erweiterung**: sim_advanced.py mit Task-Execution + Alert-Triggering testen
+- [ ] **Self-Hosting UX Test**: Frische VM/VPS → nur mit Doku → docker-compose up → funktionierendes System in <15 Minuten
+- [ ] **Onboarding-Flow Test**: Neuer User → Register → erstes Device → erstes Dashboard → erste Automation (ohne Vorwissen)
 
 ### Milestone R4: Dokumentation [todo]
 > Ohne Doku kann niemand das Produkt verstehen oder betreiben.
-- [ ] **Getting-Started Guide** — "5 Minuten zum ersten Device" (mit Screenshots)
-- [ ] **Operator Runbook** — Docker Deploy, Backup, Update, Monitoring
-- [ ] **Dashboard Builder Tutorial** — Widgets, Layouts, Embed
-- [ ] **API Integration Guide** — Webhooks, Custom API, n8n-Anbindung
-- [ ] **Hardware Guide** — Board Profiles, Shields, Code Generator, Bridge Protocol
+> Ziel: Jemand ohne Vorkenntnisse kann mit nur der Doku alles aufsetzen und nutzen.
+- [ ] **Quick-Start Guide** — "15 Minuten: Docker installieren → System läuft → erstes Device" (mit Screenshots, Copy-Paste-Commands)
+- [ ] **User Guide** — Alle Features erklärt: Devices, Variables, Dashboards, Automations, Alerts (mit Beispielen)
+- [ ] **Operator Runbook** — Deploy (Docker/VPS/K8s), Backup, Restore, Update, Monitoring, Troubleshooting
+- [ ] **Dashboard Builder Tutorial** — Widgets, Layouts, Embed, Auto-Suggest, Public Links
+- [ ] **API Integration Guide** — REST API, Webhooks, Custom API Builder, n8n-Workflows (mit Beispielen)
+- [ ] **Hardware Guide** — Board Profiles, Shields, Code Generator, Bridge Protocol, OTA
+- [ ] **Integration Guide** — Home Assistant, MQTT, Modbus, Grafana, Node-RED (mit Screenshots)
+- [ ] **Developer Guide** — Plugin Development, Custom Components, API Extending
+- [ ] **FAQ + Troubleshooting** — Häufige Fehler, Docker-Probleme, Netzwerk-Setup, Firewall
 
 ### Milestone R5: Production Deployment [todo]
-> Alles für einen sauberen Production-Start.
+> Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
 - [ ] **docker-compose.prod.yml** — PostgreSQL + Redis + HubEx Backend + Nginx Reverse Proxy
-- [ ] **HTTPS/TLS** — Anleitung für Let's Encrypt / Certbot
-- [ ] **Backup-Strategie** — pg_dump Cron + Config Export + Retention Policy
+- [ ] **docker-compose.full.yml** — Prod-Stack + n8n + Portainer (Companion Package)
+- [ ] **HTTPS/TLS** — Anleitung für Let's Encrypt / Certbot, auto-renew
+- [ ] **Backup-Strategie** — pg_dump Cron + Config Export + Retention Policy + Restore-Anleitung
 - [ ] **Health Monitoring** — /health + /ready Endpoints für Docker HEALTHCHECK
 - [ ] **Log Aggregation** — Structured JSON Logging → File/Stdout für Docker
 - [ ] **Docker Image** — Dockerfile für Backend (Python) + Frontend (nginx static)
+- [ ] **One-Line Install Script** — `curl -fsSL https://get.hubex.io | bash` (Docker prüfen, .env generieren, docker-compose pull+up)
+- [ ] **Update-Strategie** — `docker-compose pull && docker-compose up -d` Anleitung, DB-Migration automatisch bei Start
+- [ ] **Ressourcen-Empfehlung** — Minimum: 1 CPU, 1GB RAM, 10GB Disk. Empfohlen: 2 CPU, 4GB RAM für 50+ Devices
 
 ### Milestone R6: Branding & Launch-Vorbereitung [todo]
 > Letzte Schritte vor dem öffentlichen Launch.
@@ -1191,18 +1203,31 @@
 - [ ] Terms of Service Draft
 - [ ] Cookie-Policy (nur relevant für SaaS/Demo, nicht self-hosted)
 
-### Milestone C5: Produkt-Level Booster [todo]
+### Milestone C5: Plattform-Integrationen [todo]
+> Bestehende Systeme einbinden statt ersetzen — kein Nutzer soll sein Setup wegwerfen müssen.
+- [ ] **Home Assistant Integration** — HA REST API + MQTT Discovery, Devices bidirektional synchronisieren, HA-Entities als HubEx-Variables
+- [ ] **KNX Gateway** (Enterprise) — KNX/IP Tunnel, Gruppenadress-Mapping → Variablen, bidirektionale Steuerung (Licht, Jalousien, HVAC)
+- [ ] **Node-RED Palette** — Custom Node-RED Nodes für HubEx (Device-Read, Variable-Set, Trigger-Listen), installierbar via npm
+- [ ] **Zigbee/Z-Wave Bridge** — via Zigbee2MQTT/Z-Wave JS, automatische Device-Erkennung
+- [ ] **Grafana Data Source** — HubEx als Grafana Plugin, Variable-History als Time-Series abrufbar
+- [ ] **Prometheus Exporter** — /metrics Endpoint im Prometheus-Format für bestehende Monitoring-Stacks
+- [ ] **IFTTT/Zapier Connector** — Webhook-basiert, Templates für gängige Trigger/Actions
+- [ ] **Modbus Gateway Service** — Eigenständiger Worker der Modbus RTU/TCP Geräte pollt und als Bridge-Device einbindet
+- [ ] **OPC-UA Connector** (Enterprise) — Industriestandard für SPS/SCADA Anbindung
+
+### Milestone C6: Produkt-Level Booster [todo]
 > Features die keiner hat und HubEx einzigartig machen.
 - [ ] **Edge AI Inference** — ML-Modelle auf dem ESP (TensorFlow Lite Micro), Anomalie-Erkennung lokal, nur Ergebnisse zum Server
 - [ ] **One-Click Device Provisioning** — QR-Code auf dem Gerät → App scannen → Device automatisch gepairt + konfiguriert
-- [ ] **Marketplace** — Community-Templates (Dashboard + Automation + Variable-Defs als Bundle) teilen und installieren
-- [ ] **Mobile App** (React Native / Flutter) — Push-Notifications, Dashboard-Viewer, Device-Status
+- [ ] **Marketplace** — Community-Templates (Dashboard + Automation + Variable-Defs als Bundle), Plugin-Store, Bewertungen. Offen für Free + Paid Inhalte (WordPress-Modell)
+- [ ] **Mobile App** (React Native / Flutter) — Push-Notifications, Dashboard-Viewer, Device-Status, QR-Scan Pairing
 - [ ] **n8n/Node-RED Docker Companion** — docker-compose mit HubEx + n8n vorkonfiguriert, Webhooks auto-verbunden
 - [ ] **Geo-Fencing Visualisierung** — Live-Map mit Device-Positionen, Zonen-Editor, GPS-Trail-History
 - [ ] **Digital Twin** — Virtuelles Abbild eines physischen Geräts mit simulierten Werten für Testing/Demo
 - [ ] **Firmware OTA Manager** — Rollout-Strategien (Canary, Staged), Rollback, A/B-Testing von Firmware-Versionen
-- [ ] **Audit-Trail Blockchain-Hash** — Jeder Audit-Eintrag wird gehasht und verkettet, manipulationssicher
+- [ ] **Audit-Trail Blockchain-Hash** — Jeder Audit-Eintrag wird gehasht und verkettet, manipulationssicher (Hash-Chain, keine echte Blockchain)
 - [ ] **Multi-Instance Sync** — HubEx-Instanzen an verschiedenen Standorten synchronisieren Daten bidirektional
+- [ ] **Software SDK** (Python/Node/Go) — Bibliotheken für Raspberry Pi, Linux-Server, Windows-Dienste als Agent-Device
 
 ---
 
