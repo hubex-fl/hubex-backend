@@ -163,14 +163,13 @@ onMounted(loadStatus);
           <p class="text-xs text-[var(--text-primary)] font-medium">Open your authenticator app and scan this code</p>
           <p class="text-[10px] text-[var(--text-muted)]">Use Google Authenticator, Microsoft Authenticator, Authy, or any TOTP app</p>
           <div class="flex items-center justify-center py-3">
-            <div class="bg-white p-3 rounded-lg">
-              <img v-if="setupUri" :src="`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(setupUri)}`" alt="QR Code" class="w-[160px] h-[160px]" />
+            <div class="bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg p-4 text-center">
+              <p class="text-xs font-mono text-[var(--text-primary)] break-all select-all tracking-widest">{{ setupSecret }}</p>
+              <p class="text-[10px] text-[var(--text-muted)] mt-2">Enter this code in your authenticator app</p>
+              <p class="text-[10px] text-[var(--text-muted)] mt-1">Account: HUBEX</p>
             </div>
           </div>
-          <details class="text-[10px] text-[var(--text-muted)]">
-            <summary class="cursor-pointer hover:text-[var(--text-primary)]">Can't scan? Enter manually</summary>
-            <code class="mt-1 block text-xs font-mono text-[var(--text-primary)] break-all select-all bg-[var(--bg-base)] p-2 rounded">{{ setupSecret }}</code>
-          </details>
+          <p class="text-[10px] text-[var(--text-muted)]">Open your authenticator app, tap "Add account" or "+", then choose "Enter setup key"</p>
           <div class="flex justify-end gap-2">
             <button class="text-xs text-[var(--text-muted)]" @click="closeSetup">Cancel</button>
             <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="showCodeInput = true">I've scanned it</button>

@@ -202,6 +202,8 @@ async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[s
         await _action_send_notification(db, rule, cfg, context)
     elif action_type == "log_to_audit":
         await _action_log_to_audit(db, rule, cfg, context)
+    elif action_type == "send_email":
+        await _action_send_email(db, rule, cfg, context)
     else:
         logger.warning("automation_engine: unknown action_type=%s rule_id=%d", action_type, rule.id)
 
@@ -343,6 +345,87 @@ async def _action_log_to_audit(
     ))
 
 
+def _evaluate_condition_groups(groups: list[dict], payload: dict[str, Any]) -> bool:
+    """Evaluate AND/OR condition groups against event payload.
+
+    Format: [{"operator": "and"|"or", "conditions": [{"field": "...", "op": "gt"|"lt"|"eq"|"ne", "value": ...}]}]
+    Multiple groups are AND-connected (all must pass).
+    """
+    COMPARE_OPS = {
+        "gt": lambda a, b: float(a) > float(b),
+        "gte": lambda a, b: float(a) >= float(b),
+        "lt": lambda a, b: float(a) < float(b),
+        "lte": lambda a, b: float(a) <= float(b),
+        "eq": lambda a, b: str(a) == str(b),
+        "ne": lambda a, b: str(a) != str(b),
+    }
+
+    for group in groups:
+        operator = group.get("operator", "and")
+        conditions = group.get("conditions", [])
+        if not conditions:
+            continue
+
+        results = []
+        for cond in conditions:
+            field = cond.get("field", "")
+            op = cond.get("op", "eq")
+            expected = cond.get("value")
+            actual = payload.get(field)
+            if actual is None:
+                results.append(False)
+                continue
+            try:
+                results.append(COMPARE_OPS.get(op, lambda a, b: False)(actual, expected))
+            except (ValueError, TypeError):
+                results.append(False)
+
+        if operator == "or":
+            if not any(results):
+                return False
+        else:  # "and"
+            if not all(results):
+                return False
+
+    return True
+
+
+async def _action_send_email(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Send an email using an EmailTemplate. Config: {template_id, recipients, extra_data}."""
+    from app.db.models.email_template import EmailTemplate
+    from app.core.email import send_email
+
+    template_id = cfg.get("template_id")
+    recipients = cfg.get("recipients", [])
+    if not template_id or not recipients:
+        logger.warning("send_email: missing template_id or recipients, rule_id=%d", rule.id)
+        return
+
+    tpl = await db.get(EmailTemplate, int(template_id))
+    if not tpl:
+        logger.warning("send_email: template %s not found, rule_id=%d", template_id, rule.id)
+        return
+
+    # Build template variables from context + extra_data
+    template_vars = {**context, **(cfg.get("extra_data") or {})}
+    template_vars["rule_name"] = rule.name
+
+    # Render subject and body
+    subject = tpl.subject
+    body = tpl.body_html or tpl.body_text
+    for key, val in template_vars.items():
+        subject = subject.replace(f"{{{key}}}", str(val))
+        body = body.replace(f"{{{key}}}", str(val))
+
+    for recipient in recipients:
+        try:
+            await send_email(to=recipient, subject=subject, body=body)
+        except Exception as exc:
+            logger.error("send_email: failed to %s: %s", recipient, exc)
+
+
 # ---------------------------------------------------------------------------
 # Main evaluation cycle
 # ---------------------------------------------------------------------------
@@ -421,6 +504,14 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     fired = False
                 else:
                     fired = False
+
+                if not fired:
+                    continue
+
+                # AND/OR condition groups (optional)
+                condition_groups = rule.trigger_config.get("condition_groups")
+                if condition_groups and fired:
+                    fired = _evaluate_condition_groups(condition_groups, payload)
 
                 if not fired:
                     continue

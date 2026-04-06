@@ -21,7 +21,12 @@ async function onSubmit() {
     }
     // "mfa_required" — UI switches automatically via auth.mfaPending
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : "Login failed";
+    const msg = err instanceof Error ? err.message : "Login failed";
+    if (msg.includes("429") || msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("too many")) {
+      error.value = "Too many login attempts. Please wait a moment and try again.";
+    } else {
+      error.value = msg;
+    }
   } finally {
     loading.value = false;
   }

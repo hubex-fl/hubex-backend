@@ -306,8 +306,13 @@ onMounted(loadTemplates);
           <span class="text-[var(--text-muted)]">Subject: </span>
           <span class="font-medium text-[var(--text-primary)]">{{ previewSubject }}</span>
         </div>
-        <div class="border border-[var(--border)] rounded-lg bg-white p-4">
-          <div v-html="previewHtml" class="text-sm text-gray-900" />
+        <div class="border border-[var(--border)] rounded-lg bg-white overflow-hidden">
+          <iframe
+            :srcdoc="previewHtml"
+            sandbox=""
+            class="w-full min-h-[200px] border-0"
+            title="Email preview"
+          />
         </div>
       </div>
     </UModal>

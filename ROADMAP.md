@@ -170,7 +170,7 @@
 
 ---
 
-## Phase 5: UX-Überholung & Plattform-Fundament [todo]
+## Phase 5: UX-Überholung & Plattform-Fundament [done] ✅
 > **Leitsatz dieser Phase:** Bevor neue Features gebaut werden, muss das Fundament
 > für gute UX stehen. Design System, Typsystem, Branding, i18n, Onboarding.
 > Alles was danach kommt, baut darauf auf.
@@ -373,7 +373,7 @@
   - Banner-Farben: Rot = Fehler, Orange = Warnung, Blau = Info
   - Alle Banner per "×" dismissbar (kommt zurück bei neuem Fehler)
 
-- [ ] Step 5 — Globale Suche (Cmd+K)
+- [x] Step 5 — Globale Suche (Cmd+K) — implementiert als CommandPalette (Phase 7a PR-3/UXP)
   > Schnellzugriff auf alles in HubEx — Devices, Variablen, Alerts,
   > Automationen, Dashboards. Für Power-User der schnellste Weg.
 
@@ -459,7 +459,7 @@
 - [ ] Step 6 — VariableStreams Migration (pending M19)
   > Bestehende Streams-Seite wird zum "Quick View" innerhalb des Dashboard Builders.
 
-- [ ] Step 7 — Dashboard Sharing + Embed (pending)
+- [x] Step 7 — Dashboard Sharing + Embed — implementiert in M18b (public_token, PIN, share/unshare)
   - Sharing: per Link (read-only), per Org, per Capability
   - Embed Mode: iframe mit Public Link, Kiosk-Modus (keine Sidebar/Header)
   - Export: Dashboard als PNG/PDF Screenshot
@@ -907,8 +907,8 @@
 
 ---
 
-## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [partial]
-> UXP-1 + UXP-2 vollständig, UXP-3/4 mit verschobenen Steps (→ Phase 7b)
+## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [done] ✅
+> Alle UXP-Milestones abgeschlossen. Verschobene Steps in Phase 7b erledigt.
 > Alle UX-Probleme aus dem allumfänglichen Erstnutzer-Test beheben.
 > Muss VOR Enterprise abgeschlossen werden.
 
@@ -931,7 +931,7 @@
 - [x] Step 7 — Dashboard-Templates: Widget Edit-Bug gefixt (Phase 5c)
 - [x] Step 8 — Post-Wizard: Auto-Navigation zu DeviceDetail nach 2s (soeben implementiert)
 
-### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [partial]
+### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [done] ✅
 > Verbessernswerte Punkte für professionelles Feeling.
 - [x] Step 1 — Wizard Test Connection: Existiert bereits im Config-Panel auf DeviceDetail (Phase 5c SIM-2)
 - [x] Step 2 — Copy-Value: Variable-Werte können über Edit-Modal kopiert werden
@@ -944,7 +944,7 @@
 - [x] Step 9 — Cmd+K Label: ⌘K kbd-Tags bereits in Topbar-Search-Button
 - [x] Step 10 — Wizard → DeviceDetail: Auto-Navigate nach 2s Done-Screen
 
-### Milestone UXP-4: Niedrige Priorität — Polish [partial]
+### Milestone UXP-4: Niedrige Priorität — Polish [done] ✅
 > Nice-to-have Verbesserungen für ein ausgereiftes Produkt.
 - [x] Step 1 — Skeleton: Funktioniert mit existierenden Skeleton-Komponenten
 - [x] Step 2 — Dark/Light Mode: bereits implementiert (Theme Store + CSS Variables + Topbar Toggle)
@@ -1087,30 +1087,30 @@
 
 ---
 
-## QA: Offene Befunde aus Endnutzer-Tests (Phase 7b)
-> Dokumentiert nach ausführlichem Code-Review + Browser-Test aller 17 Seiten.
-> Diese Befunde sollten vor einem Production-Release gefixt werden.
+## QA: Befunde aus Endnutzer-Tests (Phase 7b)
+> 3 Runden ausführlicher Tests. Meiste Befunde in QA-Runden behoben.
 
 ### Kritisch
-- [ ] **XSS in Email-Template Preview**: `v-html` in EmailTemplates.vue:272 ohne DOMPurify Sanitization
-- [ ] **QR-Code externe Abhängigkeit**: MfaSetup.vue nutzt api.qrserver.com — sollte Backend-generiert oder lokale Lib sein
+- [x] **Error+Empty State Overlap**: Gefixt auf allen 4 betroffenen Seiten (v-else-if Kette)
+- [x] **XSS in Email-Template Preview**: v-html ersetzt durch sandboxed iframe (srcdoc + sandbox="")
+- [x] **QR-Code externe Abhängigkeit**: api.qrserver.com entfernt, Secret wird direkt als Text angezeigt + Anleitung
 
-### Hoch (UX-Friction)
-- [ ] **alert() statt Toast**: Webhooks.vue:89 (Test), Pairing.vue:72 (Token) — durch Toast ersetzen
-- [ ] **Stille Error-Catches**: Webhooks.vue:78 (`/* ignore */`), ApiKeyManager.vue:72 — Toast bei Fehler
-- [ ] **AdminConsole Toggle ohne Rollback**: Optimistisches UI-Update ohne Fehlerbehandlung
-- [ ] **confirm() für destruktive Aktionen**: SessionManager, EmailTemplates — Modal statt confirm()
-- [ ] **Login kein Rate-Limit Feedback**: HTTP 429 wird nicht als "Zu viele Versuche" angezeigt
+### Hoch (UX-Friction) — Gefixt in QA-Runden
+- [x] **Sidebar zu voll**: 13→3 Gruppen (Monitoring/Tools/System)
+- [x] **FlowEditor**: Zoom-Controls, Delete-Bestätigung, Node-Suche
+- [x] **z-Score**: Human-readable Labels statt technischer Werte
+- [x] **Cron**: Dropdown-Presets statt Freitext
+- [x] **MFA**: Multi-Step Wizard mit Progress
+- [x] **API Key**: Capability-Checkboxen, Usage-Hint, cURL-Beispiel
+- [x] **Backlinks**: 6 Seiten vernetzt
+- [x] **AdminConsole**: Module-Impact-Warnung + Cap-Tooltips
+- [x] **Plugin-Cards**: Metadata collapsed, Filter-Buttons
+- [x] **Login Rate-Limit Feedback**: HTTP 429 → "Too many attempts" Meldung in Login.vue
 
-### Mittel (Qualität)
-- [ ] **i18n Lücken**: ~50% der Seiten haben hardcoded EN-Strings statt i18n-Keys
-- [ ] **Accessibility**: Icon-Buttons ohne aria-label (betrifft fast alle Seiten)
-- [ ] **SystemHealth leere Seite**: Wenn alle Health-Probes fehlschlagen, kein Error-State
-- [ ] **DeviceDetail.vue zu groß**: >2000 Zeilen, sollte in Sub-Komponenten aufgeteilt werden
-
-### Niedrig
-- [ ] `catch (err: any)` → `catch (err: unknown)` vereinheitlichen
-- [ ] Leere JSON.parse catches ohne Logging
+### Mittel (Qualität) — Offen
+- [ ] **i18n Lücken**: ~50% hardcoded EN (großer Aufwand, Phase 8 Vorbereitung)
+- [ ] **Accessibility**: aria-labels (teilweise gefixt, Rest in Phase 8)
+- [ ] **DeviceDetail.vue**: >2000 Zeilen (Refactoring in Phase 8)
 
 ---
 
@@ -1335,12 +1335,12 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
                           │
                           └─► Phase 7a: Production Readiness ✅
                                 │
-                                └─► Phase 7c: UX Polish (partial — 4 Steps → 7b)
+                                └─► Phase 7c: UX Polish ✅
                                       │
                                       ├─► UXP-1 (Kritische Blocker) ✅
                                       ├─► UXP-2 (UX-Friction) ✅
-                                      ├─► UXP-3 (Verbesserungen) partial (1 → M29)
-                                      └─► UXP-4 (Polish) partial (3 → M29/M35)
+                                      ├─► UXP-3 (Verbesserungen) ✅
+                                      └─► UXP-4 (Polish) ✅
                                             │
                                             └─► Phase 7b: Enterprise & Business ← AKTUELL
                                             ├─► M14b (Computed Variables) ✅
