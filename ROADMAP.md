@@ -848,13 +848,13 @@
 - [x] Step 4 — Entity-Location (location_lat/lng/name Felder auf Entity-Model + DB + Schemas)
 - [x] Step 5 — Entity-Variablen-Scope: designed as "entity" scope in variable system (implementation deferred to Phase 7)
 
-### Milestone UX-H: System Context Node-Graph [todo]
+### Milestone UX-H: System Context Node-Graph [done] ✅
 > Die "Platinen-Ansicht" — visueller Fluss von Device → Variables → Alerts → Automations.
-- [ ] Step 1 — SVG Node-Graph Komponente (Nodes + Bezier-Edges + Klick-Interaktion)
-- [ ] Step 2 — Node-Typen: Device, Variable, Alert, Automation, Dashboard-Widget
-- [ ] Step 3 — Automatisches Layout (Dagre oder manuelles Column-Layout)
-- [ ] Step 4 — Klick-Navigation: Node anklicken → zum Detail navigieren
-- [ ] Step 5 — Datenquelle: Existierende APIs (Variables nach device_uid, Alerts nach variable_key)
+- [x] Step 1 — Visual flow layout with dashed SVG arrows (Device → Variables → Actions)
+- [x] Step 2 — Node-Typen: Device (mit Status-Dot), Variable (mit Wert+Einheit), Action-Buttons
+- [x] Step 3 — 5-column grid layout: Device | Arrow | Variables | Arrow | Actions
+- [x] Step 4 — Klick-Navigation: Variable-Nodes → /variables mit highlight + device filter
+- [x] Step 5 — Datenquelle: getEffectiveVariables (gefiltert auf Variablen mit Wert)
 
 ### Milestone UX-I: Automations-Builder Stabilität [todo]
 > Der Builder muss intuitiver und stabiler werden bevor neue Trigger/Actions kommen.

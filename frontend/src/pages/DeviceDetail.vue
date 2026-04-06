@@ -1981,9 +1981,9 @@ onUnmounted(() => {
         <span class="text-[10px] text-[var(--text-muted)]">Where this device fits in your infrastructure</span>
       </div>
 
-      <!-- Data Flow — Real Elements (klickbar) -->
+      <!-- Data Flow — Node Graph (Device → Variables → Actions) -->
       <div class="px-5 py-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-[180px_32px_1fr_32px_auto] gap-0 items-start">
 
           <!-- LEFT: Device Info -->
           <div class="flex flex-col items-center gap-3">
@@ -2015,6 +2015,14 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- CONNECTION ARROW: Device → Variables -->
+          <div class="hidden md:flex items-center justify-center px-2" style="min-height: 60px">
+            <svg width="32" height="20" viewBox="0 0 32 20" class="text-[var(--border)]">
+              <line x1="0" y1="10" x2="24" y2="10" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
+              <polygon points="24,5 32,10 24,15" fill="currentColor" />
+            </svg>
+          </div>
+
           <!-- CENTER: Variables (echte Elemente, klickbar) -->
           <div class="space-y-1.5">
             <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-2">Variables ({{ variablesSorted.length }})</p>
@@ -2029,6 +2037,14 @@ onUnmounted(() => {
               <span class="text-[10px] font-mono text-[var(--text-primary)] shrink-0">{{ formatValue(v.value) }}<span v-if="v.constraints?.unit" class="text-[var(--text-muted)] ml-0.5">{{ v.constraints.unit }}</span></span>
             </router-link>
             <p v-if="variablesSorted.length > 8" class="text-[10px] text-[var(--text-muted)] px-2.5">+{{ variablesSorted.length - 8 }} more</p>
+          </div>
+
+          <!-- CONNECTION ARROW: Variables → Actions -->
+          <div class="hidden md:flex items-center justify-center px-2" style="min-height: 60px">
+            <svg width="32" height="20" viewBox="0 0 32 20" class="text-[var(--border)]">
+              <line x1="0" y1="10" x2="24" y2="10" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" />
+              <polygon points="24,5 32,10 24,15" fill="currentColor" />
+            </svg>
           </div>
 
           <!-- RIGHT: Connected Alerts + Automations -->
