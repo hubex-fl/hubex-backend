@@ -251,6 +251,13 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/reports/generate/{template_id}"): ["config.write"],
     ("GET", "/api/v1/reports/history"): ["config.read"],
     ("GET", "/api/v1/reports/download/{report_id}"): ["config.read"],
+    # Plugins
+    ("GET", "/api/v1/plugins"): ["modules.read"],
+    ("POST", "/api/v1/plugins"): ["modules.write"],
+    ("GET", "/api/v1/plugins/{plugin_key}"): ["modules.read"],
+    ("PATCH", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
+    ("DELETE", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
+    ("POST", "/api/v1/plugins/{plugin_key}/execute"): ["modules.write"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],

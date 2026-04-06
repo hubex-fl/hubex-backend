@@ -38,6 +38,7 @@ from .mfa import UserTotpSecret
 from .email_template import EmailTemplate
 from .custom_endpoint import CustomEndpoint
 from .report import ReportTemplate, GeneratedReport
+from .plugin import Plugin
 
 __all__ = [
     "User",
@@ -99,4 +100,5 @@ __all__ = [
     "CustomEndpoint",
     "ReportTemplate",
     "GeneratedReport",
+    "Plugin",
 ]

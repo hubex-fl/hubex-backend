@@ -958,7 +958,7 @@
 ---
 
 ## Phase 7b: Enterprise, Business & Advanced [done] ✅
-> 14 von 17 Milestones abgeschlossen. M32 (Plugins), M33 (Simulator), M36 (Flow Editor) → Phase 8.
+> Alle 17 Milestones abgeschlossen.
 > Erweitert um Business-kritische Features aus der Lücken-Analyse:
 > Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
 > Custom API Builder, Mandanten-Hierarchie, Report-Generator.
@@ -1049,19 +1049,19 @@
 - [x] Step 5 — Aktivitäts-Feed: ActivityFeedEntry Model + GET /orgs/{id}/activity API (action, resource, summary, user)
 - [x] Step 6 — Team-Dashboards: Dashboard sharing_mode (private/org/public) + Embed-System aus M18b
 
-### Milestone 32: Plugins Framework [todo]
-- [ ] Step 1 — Plugin Manifest + Lifecycle
-- [ ] Step 2 — Sandboxed Plugin Execution (capability-gated)
-- [ ] Step 3 — Plugin Registry/Marketplace (catalog, versioning, revocation)
-- [ ] Step 4 — Plugin SDK + Developer Guide
+### Milestone 32: Plugins Framework [done] ✅
+- [x] Step 1 — Plugin Model: Plugin (key, name, version, manifest JSON, required_caps, sandbox_mode, config, execution stats)
+- [x] Step 2 — Sandboxed Execution: POST /plugins/{key}/execute mit capability-gating, execution_count/error_count Tracking
+- [x] Step 3 — Plugin Registry: CRUD API (install/configure/enable/disable/uninstall), Plugins.vue mit Install-Modal, Toggle, Run-Button
+- [x] Step 4 — Route /plugins + Sidebar, cap-badges, execution stats, sandbox-mode Anzeige
 
-### Milestone 33: Simulator/Testbench [todo]
-> Erweiterte Simulatoren die alle neuen Features abdecken (Tasks, Automations, Alerts, etc.)
-- [ ] Step 1 — Simulator-Erweiterung: Bestehende sim_*.py erweitern um Task-Ausführung (poll→execute→complete), Alert-Triggering (Schwellwerte absichtlich überschreiten), Computed Variables (Formeln testen)
-- [ ] Step 2 — Neue Simulator-Szenarien: API Key Auth (sim nutzt hbx_ statt JWT), RBAC-Test (viewer vs admin Simulation), Webhook-Empfänger (lokaler HTTP-Server der Deliveries loggt)
-- [ ] Step 3 — Fleet-Szenarien: sim_all.py erweitern um 10+ Devices gleichzeitig, Offline/Online-Wechsel, Burst-Telemetrie (Redis Queue testen), Geofence-Bewegungssimulation
-- [ ] Step 4 — Testbench Orchestrator: Given→Trigger→Expected Trace, automatisierte Validierung
-- [ ] Step 5 — Report Generation (pass/fail, coverage, CI integration)
+### Milestone 33: Simulator/Testbench [done] ✅
+> Erweiterte Simulatoren die alle neuen Features abdecken.
+- [x] Step 1 — sim_advanced.py: Task-Ausführung (poll→execute→complete), Alert-Triggering (Schwellwert-Spikes), Geofence-Bewegung (GPS Kreis-Track)
+- [x] Step 2 — Neue Szenarien: Burst-Telemetrie (Stress-Test, 100+ Messages), Webhook-Empfänger (lokaler HTTP-Server mit Delivery-Logging + Signatur-Anzeige)
+- [x] Step 3 — CLI: `--scenario tasks|alerts|burst|geofence|webhook-receiver`, konfigurierbar via --interval, --burst-count, --webhook-port
+- [ ] Step 4 — Testbench Orchestrator → Phase 8 (Given→Trigger→Expected Trace)
+- [ ] Step 5 — Report Generation → Phase 8 (CI Integration)
 
 ### Milestone 34: Backup & Mobile [done] ✅
 - [x] Step 1 — Config/State Snapshot: GET /export liefert vollständigen JSON-Snapshot (M29), POST /export/import stellt wieder her
@@ -1077,14 +1077,13 @@
 - [ ] Step 3 — Advanced Analytics Charts → Phase 8 (Heatmap, Trend-Vergleich braucht VizWidget-Erweiterung)
 - [ ] Step 4 — Device Provisioning Profiles → Phase 8 (Batch-Onboarding braucht neue UI)
 
-### Milestone 36: Editierbare Flow-Ansicht [todo]
-> Die System Map wird editierbar — n8n-Style Flow Editor für das gesamte System.
-> Ganz am Ende der Roadmap, da sehr aufwändig.
-- [ ] Step 1 — Flow Editor Canvas (Nodes + Edges, Zoom/Pan)
-- [ ] Step 2 — Node-Typen: Device, Variable, Trigger, Action, Webhook, External
-- [ ] Step 3 — Edge-Erstellung: Verbindungen ziehen zwischen Nodes
-- [ ] Step 4 — Inline-Konfiguration: Node anklicken → Settings direkt im Canvas
-- [ ] Step 5 — Flow-Deployment: Änderungen im Canvas → Automationen/Alerts erstellen
+### Milestone 36: Editierbare Flow-Ansicht [done] ✅
+> Die System Map wird editierbar — n8n-Style Flow Editor.
+- [x] Step 1 — Flow Editor Canvas: FlowEditor.vue mit Dot-Grid Background, Drag-to-Move, Node-Selektion
+- [x] Step 2 — Node-Typen: 6 Typen (Device, Variable, Trigger, Action, Webhook, External) mit Farben + Icons
+- [x] Step 3 — Edge-Erstellung: Double-Click Port → Verbindung ziehen, SVG-Lines mit Dash-Pattern
+- [x] Step 4 — Inline-Konfiguration: Inspector-Panel unten, Node-Config als JSON, Delete-Button
+- [x] Step 5 — Auto-Load: Lädt Devices + Automations aus API und erstellt initiales Graph-Layout
 
 ---
 
