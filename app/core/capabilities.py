@@ -227,6 +227,12 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # Export/Import
     ("GET", "/api/v1/export"): ["config.read"],
     ("POST", "/api/v1/export/import"): ["config.write"],
+    # Email Templates
+    ("GET", "/api/v1/email-templates"): ["config.read"],
+    ("POST", "/api/v1/email-templates"): ["config.write"],
+    ("PATCH", "/api/v1/email-templates/{template_id}"): ["config.write"],
+    ("DELETE", "/api/v1/email-templates/{template_id}"): ["config.write"],
+    ("POST", "/api/v1/email-templates/preview"): ["config.read"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],

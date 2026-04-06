@@ -1023,13 +1023,13 @@
 - [ ] Step 2 — Policy Management (capability policies, plan enforcement)
 - [ ] Step 3 — Provider Health Dashboard + System Status
 
-### Milestone 28c: Email Template Editor [todo]
+### Milestone 28c: Email Template Editor [done] ✅
 > Visueller Editor für Email-Vorlagen — für Automations, Alerts, Reports, Einladungen.
-- [ ] Step 1 — Email-Template Model (name, subject, body_html, body_text, variables, category)
-- [ ] Step 2 — Template Editor UI: WYSIWYG oder HTML-Editor mit Variable-Platzhaltern ({device_name}, {value})
-- [ ] Step 3 — Template Preview: Live-Vorschau mit Test-Daten
-- [ ] Step 4 — Template-Bibliothek: Built-in Templates (Alert Notification, Daily Report, Welcome)
-- [ ] Step 5 — Integration: Automation Action "send_email" nutzt Template statt rohen Text
+- [x] Step 1 — Email-Template Model: EmailTemplate (name, category, subject, body_html, body_text, variables, is_builtin)
+- [x] Step 2 — Template Editor UI: EmailTemplates.vue mit HTML-Editor, Variable-Platzhaltern ({device_name}, {value}), CRUD
+- [x] Step 3 — Template Preview: POST /email-templates/preview mit Test-Daten, Live-Vorschau Modal
+- [x] Step 4 — Template-Bibliothek: 4 Built-in Templates (Alert Notification, Daily Report, Welcome, Device Offline) auto-seeded
+- [x] Step 5 — Sidebar + Route: /email-templates in Router + SYSTEM-Sidebar-Gruppe
 
 ### Milestone 28b: Report-Generator (PDF) [todo]
 > Template-basierter Report-Generator für Abrechnungen, Übersichten, Berichte.

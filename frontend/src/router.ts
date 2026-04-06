@@ -29,6 +29,7 @@ const router = createRouter({
     { path: "/automations",  component: () => import("./pages/Automations.vue"),     meta: { title: "Automations" } },
     { path: "/developer",    component: () => import("./pages/ApiDocs.vue"),         meta: { title: "API Docs" } },
     { path: "/webhooks",     component: () => import("./pages/Webhooks.vue"),        meta: { title: "Webhooks" } },
+    { path: "/email-templates", component: () => import("./pages/EmailTemplates.vue"), meta: { title: "Email Templates" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
   ],
