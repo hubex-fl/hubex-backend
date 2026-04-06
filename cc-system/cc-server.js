@@ -117,6 +117,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.url === '/produkt' || req.url === '/produkt.html') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    try { res.end(fs.readFileSync(path.join(__dirname, 'produkt.html'), 'utf8')); }
+    catch(e) { res.end('<h1>produkt.html nicht gefunden</h1>'); }
+    return;
+  }
+
   if (req.url === '/product' || req.url === '/product.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     try { res.end(fs.readFileSync(path.join(__dirname, 'product.html'), 'utf8')); }

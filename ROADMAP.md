@@ -1090,32 +1090,70 @@
 ---
 
 ## Phase 9: Release-Readiness [todo]
-> Alles was vor einem Release noch getan werden muss.
+> Vollständiger Fahrplan vom aktuellen Stand bis zum ersten Release.
+> Priorisiert nach: Blocker → Hoch → Mittel → Nice-to-have.
 
-### Milestone R1: Kritische Fixes [todo]
-- [x] Devices.vue Error+Empty Overlap gefixt
-- [x] Sidebar Default-State: Initialisierung mit collapsed Tools+System statt leer
-- [x] Correlation.vue Route entfernt (unfertig, verwirrt User)
-- [ ] Dashboard Builder MVP: Widget-Add/Edit Modal funktional machen
-- [ ] Alembic Migration System aufsetzen + initiale Migration generieren
+### Milestone R1: Infrastruktur-Blocker [todo]
+> Ohne diese kann NIEMAND das Produkt deployen oder nutzen.
+- [x] dashboards.py Query-Import Fix (Backend-Crash)
+- [x] python-multipart Dependency
+- [x] Devices.vue Error+Empty Overlap
+- [x] Sidebar Default-State Flash
+- [x] Correlation.vue Route entfernt
+- [ ] **Alembic Migration System** — Setup + initiale Migration für ALLE 45 Models
+- [ ] **requirements.txt / pyproject.toml** — alle Dependencies dokumentiert (inkl. python-multipart)
+- [ ] **DB-Schema-Sync Script** — für bestehende Instanzen (ALTER TABLE Statements)
+- [ ] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen
 
-### Milestone R2: Testing & Quality [todo]
-- [ ] E2E Tests mit Playwright (Login → Pair Device → Create Dashboard → Automation)
-- [ ] Backend Unit-Tests für kritische Pfade (Pairing, Automation Engine, RBAC)
-- [ ] Performance-Test mit 100+ simulierten Devices
-- [ ] Security Audit (HTTPS, CSP Headers, XSS Scan)
+### Milestone R2: Kern-Feature-Completion [todo]
+> Features die in der Vision versprochen aber noch nicht vollständig sind.
+- [ ] **Dashboard Builder MVP** — Widget hinzufügen per Modal (Typ wählen, Variable zuweisen, Größe)
+- [ ] **Dashboard Widget Auto-Suggest** — Semantic Type → Widget-Typ Empfehlung
+- [ ] **FlowEditor Persistenz** — Flows speichern/laden (aktuell nur Client-State)
+- [ ] **CustomAPI Test-Button** — Endpoint im Browser testen mit Beispiel-Response
+- [ ] **Automation If/Else Branching** — UI im Builder (Backend AND/OR existiert)
 
-### Milestone R3: Documentation [todo]
-- [ ] Getting-Started Guide (5 Minuten zum ersten Device)
-- [ ] Operator Runbook (Docker Compose Deploy, Backup, Update)
-- [ ] Dashboard Builder Tutorial
-- [ ] API Integration Guide (Custom API + Webhooks)
+### Milestone R3: Testing & Quality [todo]
+> Qualitätssicherung für vertrauenswürdiges Produkt.
+- [ ] **E2E Tests** mit Playwright: Login → Pair → Dashboard → Automation → Export
+- [ ] **Backend Unit-Tests** für: Pairing Flow, Automation Engine, RBAC Resolution, Telemetry Bridge
+- [ ] **Performance-Test** mit sim_all.py (10+ Devices gleichzeitig)
+- [ ] **Security Audit**: HTTPS Enforcement, CSP Headers, Input Validation Review
+- [ ] **Simulator-Erweiterung**: sim_advanced.py mit Task-Execution + Alert-Triggering testen
 
-### Milestone R4: Production Deployment [todo]
-- [ ] docker-compose.prod.yml (PostgreSQL + Redis + HubEx + Nginx)
-- [ ] .env.example mit allen erforderlichen Variablen
-- [ ] HTTPS/TLS Setup Anleitung
-- [ ] Backup-Strategie (DB Dump + Config Export)
+### Milestone R4: Dokumentation [todo]
+> Ohne Doku kann niemand das Produkt verstehen oder betreiben.
+- [ ] **Getting-Started Guide** — "5 Minuten zum ersten Device" (mit Screenshots)
+- [ ] **Operator Runbook** — Docker Deploy, Backup, Update, Monitoring
+- [ ] **Dashboard Builder Tutorial** — Widgets, Layouts, Embed
+- [ ] **API Integration Guide** — Webhooks, Custom API, n8n-Anbindung
+- [ ] **Hardware Guide** — Board Profiles, Shields, Code Generator, Bridge Protocol
+
+### Milestone R5: Production Deployment [todo]
+> Alles für einen sauberen Production-Start.
+- [ ] **docker-compose.prod.yml** — PostgreSQL + Redis + HubEx Backend + Nginx Reverse Proxy
+- [ ] **HTTPS/TLS** — Anleitung für Let's Encrypt / Certbot
+- [ ] **Backup-Strategie** — pg_dump Cron + Config Export + Retention Policy
+- [ ] **Health Monitoring** — /health + /ready Endpoints für Docker HEALTHCHECK
+- [ ] **Log Aggregation** — Structured JSON Logging → File/Stdout für Docker
+- [ ] **Docker Image** — Dockerfile für Backend (Python) + Frontend (nginx static)
+
+### Milestone R6: Branding & Launch-Vorbereitung [todo]
+> Letzte Schritte vor dem öffentlichen Launch.
+- [ ] **Produktname final entscheiden** (HubEx bleibt? Neuer Name? Trademark-Check)
+- [ ] **Landing Page** (CC Dashboard /produkt Seite mit 6 Ebenen, Features, Screenshots)
+- [ ] **GitHub Repository Clean-Up** — single branch, clean history, README, LICENSE
+- [ ] **Demo-Instanz** — gehostete Version zum Testen (optional)
+- [ ] **n8n Integration testen** — echte Workflows mit Webhooks + Custom API
+- [ ] **Pricing-Modell** definieren (Open-Core? SaaS? Self-hosted only?)
+
+### Milestone R7: Post-Launch [todo]
+> Nach dem ersten Release.
+- [ ] Feedback-System (in-app oder GitHub Issues)
+- [ ] Telemetry/Analytics (anonymisiert, opt-in)
+- [ ] Plugin Marketplace aufbauen
+- [ ] Community Forum / Discord
+- [ ] Video-Tutorials (YouTube)
 
 ---
 
