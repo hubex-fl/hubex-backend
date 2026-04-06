@@ -907,7 +907,8 @@
 
 ---
 
-## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [done] ✅
+## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [partial]
+> UXP-1 + UXP-2 vollständig, UXP-3/4 mit verschobenen Steps (→ Phase 7b)
 > Alle UX-Probleme aus dem allumfänglichen Erstnutzer-Test beheben.
 > Muss VOR Enterprise abgeschlossen werden.
 
@@ -930,26 +931,26 @@
 - [x] Step 7 — Dashboard-Templates: Widget Edit-Bug gefixt (Phase 5c)
 - [x] Step 8 — Post-Wizard: Auto-Navigation zu DeviceDetail nach 2s (soeben implementiert)
 
-### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [done] ✅
+### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [partial]
 > Verbessernswerte Punkte für professionelles Feeling.
 - [x] Step 1 — Wizard Test Connection: Existiert bereits im Config-Panel auf DeviceDetail (Phase 5c SIM-2)
 - [x] Step 2 — Copy-Value: Variable-Werte können über Edit-Modal kopiert werden
 - [x] Step 3 — Events-Timestamps: Events zeigen Timestamps über received_at Feld
 - [x] Step 4 — Audit-Links: Audit zeigt Action-Codes mit klickbarem Detail-Panel
-- [ ] Step 5 — Webhook-Delivery-History → Phase 7b (braucht Backend WebhookDelivery Model)
-- [ ] Step 6 — Duplicate Rule → Phase 7b (UI-Feature)
+- [ ] Step 5 — Webhook-Delivery-History → **verschoben: Phase 7b M29** (braucht Backend WebhookDelivery Model)
+- [x] Step 6 — Duplicate Rule: "Duplicate"-Button auf Automations + Alerts
 - [x] Step 7 — System Health Redis: Tooltip auf Englisch (Phase 7a PR-3 i18n Cleanup)
 - [x] Step 8 — Semantic Type Icons: categoryIcon() in Variables-Tabelle (Phase 7a PR-3)
 - [x] Step 9 — Cmd+K Label: ⌘K kbd-Tags bereits in Topbar-Search-Button
 - [x] Step 10 — Wizard → DeviceDetail: Auto-Navigate nach 2s Done-Screen
 
-### Milestone UXP-4: Niedrige Priorität — Polish [done] ✅
+### Milestone UXP-4: Niedrige Priorität — Polish [partial]
 > Nice-to-have Verbesserungen für ein ausgereiftes Produkt.
 - [x] Step 1 — Skeleton: Funktioniert mit existierenden Skeleton-Komponenten
-- [ ] Step 2 — Dark/Light Mode → Phase 7b (Theme-System)
+- [ ] Step 2 — Dark/Light Mode → **verschoben: Phase 7b M29** (Theme-System)
 - [x] Step 3 — Cmd+K: CommandPalette hat bereits alle Navigations-Kommandos
-- [ ] Step 4 — Events-Export → Phase 7b M35 (Data & Analytics)
-- [ ] Step 5 — Audit-Export → Phase 7b M35 (Data & Analytics)
+- [ ] Step 4 — Events-Export → **verschoben: Phase 7b M35** (Data & Analytics)
+- [ ] Step 5 — Audit-Export → **verschoben: Phase 7b M35** (Data & Analytics)
 - [x] Step 6 — Empty States: UEmpty Komponente mit CTA-Buttons überall verwendet
 - [x] Step 7 — Form-Validierung: Basis-Validierung (required check) in Builder vorhanden
 - [x] Step 8 — Required-Field: Name * mit Sternchen in Automations/Alerts Builder
@@ -1008,6 +1009,9 @@
 
 ### Milestone 29: Export/Import & Templates [todo]
 > Grundlage für Marketplace und Konfigurationsmanagement.
+> Enthält auch verschobene UXP-Items: Webhook-Delivery-History, Dark/Light Mode.
+- [ ] Step 0a — Webhook-Delivery-History (verschoben aus UXP-3 Step 5): WebhookDelivery Model + Log-Ansicht pro Webhook
+- [ ] Step 0b — Dark/Light Mode (verschoben aus UXP-4 Step 2): Theme-System mit CSS-Variablen-Toggle + localStorage
 - [ ] Step 1 — Export/Import Format definieren (JSON-basiert)
   > Exportierbar: Dashboards, Automationen, Variable-Definitionen,
   > semantische Typen, Device-Konfigurationen
@@ -1065,6 +1069,9 @@
 - [ ] Step 3 — Mobile PWA (responsive dashboard, push notifications)
 
 ### Milestone 35: Data & Analytics [todo]
+> Enthält auch verschobene UXP-Items: Events-Export, Audit-Export.
+- [ ] Step 0a — Events-Export (verschoben aus UXP-4 Step 4): CSV/JSON Download + Filter in Events-Seite
+- [ ] Step 0b — Audit-Export (verschoben aus UXP-4 Step 5): CSV/JSON Download + Filter in Audit-Seite
 - [ ] Step 1 — Telemetry Time-Series Aggregation (ergänzt variable_history)
 - [ ] Step 2 — Data Export (CSV, JSON, API bulk) für variable_history + telemetry
 - [ ] Step 3 — Advanced Analytics Charts (Trend, Comparison, Heatmap via VizWidget)
@@ -1302,12 +1309,12 @@ Phase 1-4 (Core + UI + Data + Integration) ✅
                           │
                           └─► Phase 7a: Production Readiness ✅
                                 │
-                                └─► Phase 7c: UX Polish ✅
+                                └─► Phase 7c: UX Polish (partial — 4 Steps → 7b)
                                       │
                                       ├─► UXP-1 (Kritische Blocker) ✅
                                       ├─► UXP-2 (UX-Friction) ✅
-                                      ├─► UXP-3 (Verbesserungen) ✅
-                                      └─► UXP-4 (Polish) ✅
+                                      ├─► UXP-3 (Verbesserungen) partial (1 → M29)
+                                      └─► UXP-4 (Polish) partial (3 → M29/M35)
                                             │
                                             └─► Phase 7b: Enterprise & Business ← AKTUELL
                                             ├─► M14b (Computed Variables) ✅

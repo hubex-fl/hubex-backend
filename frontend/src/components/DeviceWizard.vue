@@ -47,6 +47,7 @@ const pairingQrSvg = ref<string | null>(null);
 const pairingStatus = ref<"idle" | "waiting" | "claimed" | "confirmed" | "expired" | "error">("idle");
 const pairingError = ref<string | null>(null);
 let pairingPollTimer: number | null = null;
+let autoNavTimer: number | null = null;
 
 // Service
 const serviceUrl = ref("");
@@ -150,7 +151,7 @@ function startPairingPoll(code: string) {
         pairingStatus.value = "confirmed";
         createdDeviceId.value = status.device_id;
         // Auto-advance to name step after short celebration
-        setTimeout(() => { step.value = "name"; }, 1500);
+        autoNavTimer = window.setTimeout(() => { step.value = "name"; }, 1500);
       }
     } catch {
       // Polling error — keep trying
@@ -165,7 +166,10 @@ function stopPairingPoll() {
   }
 }
 
-onUnmounted(stopPairingPoll);
+onUnmounted(() => {
+  stopPairingPoll();
+  if (autoNavTimer !== null) { clearTimeout(autoNavTimer); autoNavTimer = null; }
+});
 
 // ── Create Device (for non-hardware flows) ───────────────────────────────────
 async function createDevice() {
@@ -244,7 +248,7 @@ async function createDevice() {
     step.value = "done";
     toast.addToast(t("devices.wizard.success"), "success");
     // Auto-navigate to device detail after 2 seconds
-    setTimeout(() => { if (step.value === "done") goToDevice(); }, 2000);
+    autoNavTimer = window.setTimeout(() => { if (step.value === "done") goToDevice(); }, 2000);
   } catch (e: unknown) {
     const info = parseApiError(e);
     error.value = mapErrorToUserText(info, t("devices.wizard.error"));
@@ -271,6 +275,7 @@ function goToDashboard() {
 }
 function closeWizard() {
   stopPairingPoll();
+  if (autoNavTimer !== null) { clearTimeout(autoNavTimer); autoNavTimer = null; }
   step.value = "category";
   category.value = props.initialCategory ?? "hardware";
   error.value = null;
