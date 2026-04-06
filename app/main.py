@@ -50,6 +50,79 @@ async def _demo_heartbeat_loop() -> None:
             logger.debug("demo_heartbeat: error updating demo devices")
 
 
+async def _api_poll_worker_loop() -> None:
+    """Poll configured API endpoints for service-type devices and write values as telemetry."""
+    import httpx
+    from sqlalchemy import select
+    from app.db.models.device import Device
+    from datetime import datetime, timezone
+
+    while True:
+        await asyncio.sleep(30)  # Check every 30s
+        try:
+            async with AsyncSessionLocal() as db:
+                # Find service devices with endpoint_url configured
+                res = await db.execute(
+                    select(Device).where(
+                        Device.category == "service",
+                        Device.config.isnot(None),
+                        Device.is_claimed == True,
+                    )
+                )
+                devices = res.scalars().all()
+
+                for device in devices:
+                    cfg = device.config or {}
+                    url = cfg.get("endpoint_url")
+                    if not url:
+                        continue
+
+                    interval = cfg.get("poll_interval_seconds", 60)
+                    # Check if enough time passed since last_seen
+                    if device.last_seen_at:
+                        age = (datetime.now(timezone.utc) - device.last_seen_at.replace(tzinfo=timezone.utc)).total_seconds()
+                        if age < interval * 0.8:  # 80% of interval = not yet due
+                            continue
+
+                    try:
+                        method = cfg.get("method", "GET").upper()
+                        headers = cfg.get("headers") or {}
+                        auth_type = cfg.get("auth_type", "none")
+                        if auth_type == "bearer" and cfg.get("auth_credentials"):
+                            headers["Authorization"] = f"Bearer {cfg['auth_credentials']}"
+                        elif auth_type == "api_key" and cfg.get("auth_credentials"):
+                            headers["X-API-Key"] = cfg["auth_credentials"]
+
+                        async with httpx.AsyncClient(timeout=15) as client:
+                            resp = await client.request(method, url, headers=headers)
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                # Extract numeric fields
+                                payload = {}
+                                def _extract(obj, prefix=""):
+                                    if isinstance(obj, dict):
+                                        for k, v in obj.items():
+                                            full = f"{prefix}{k}" if not prefix else f"{prefix}.{k}"
+                                            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                                                payload[k] = float(v)
+                                            elif isinstance(v, dict):
+                                                _extract(v, full)
+                                _extract(data)
+
+                                if payload:
+                                    # Write as telemetry via internal bridge
+                                    from app.api.v1.telemetry import _bridge_telemetry_to_variables
+                                    device.last_seen_at = datetime.now(timezone.utc)
+                                    await _bridge_telemetry_to_variables(device.id, device.device_uid, "api_poll", payload)
+                                    logger.debug("api_poll: %s → %d fields", device.device_uid, len(payload))
+                    except Exception as e:
+                        logger.debug("api_poll: %s failed: %s", device.device_uid, e)
+
+                await db.commit()
+        except Exception:
+            logger.debug("api_poll_worker: error in poll cycle")
+
+
 async def _token_cleanup_loop() -> None:
     """Periodic cleanup of expired revoked-token entries (every 6h)."""
     while True:
@@ -79,8 +152,9 @@ async def lifespan(app: FastAPI):
     retention_task = asyncio.create_task(history_retention_loop())
     automation_task = asyncio.create_task(automation_engine_loop())
     demo_heartbeat_task = asyncio.create_task(_demo_heartbeat_loop())
+    api_poll_task = asyncio.create_task(_api_poll_worker_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()

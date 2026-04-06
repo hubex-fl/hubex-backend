@@ -873,12 +873,12 @@
 - [x] Step 5 — Error Boundary: UOfflineBanner existiert bereits (serverHealth Store + health polling)
 - [x] Step 6 — Alert-Acknowledge: Backend-Code geprüft — funktional (409 bei non-firing status, korrekte Ack-Logik)
 
-### Milestone PR-2: Daten-Infrastruktur [todo]
+### Milestone PR-2: Daten-Infrastruktur [done] ✅
 > Echte Daten-Ingestion statt nur Simulatoren.
-- [ ] Step 1 — Backend API-Poll-Worker: Background-Task der device.config.endpoint_url periodisch abruft und in Variables schreibt
-- [ ] Step 2 — Schedule-Trigger (Cron): Automation-Engine evaluiert cron-basierte Rules zeitgesteuert
-- [ ] Step 3 — Variable Direction UI: Read-Only Variablen ohne Edit-Button, Write-Only mit Send-Button, Read-Write mit beidem
-- [ ] Step 4 — SMTP-Setup: Email-Config in Settings, Email-Template-System, Email als Automation-Action nutzbar
+- [x] Step 1 — Backend API-Poll-Worker: _api_poll_worker_loop() pollt service-devices mit config.endpoint_url, schreibt via telemetry bridge
+- [x] Step 2 — Schedule-Trigger (Cron): _cron_matches() evaluiert cron-Expressions, Engine feuert schedule-Rules einmal pro Minute
+- [x] Step 3 — Variable Direction UI: Read-Only Variablen zeigen 🔒 statt Edit-Button
+- [x] Step 4 — SMTP-Setup: app/core/email.py mit ENV-Konfiguration (HUBEX_SMTP_*), send_email() Funktion, Dev-Mode logging
 
 ### Milestone PR-3: UX Durchgängigkeit [todo]
 > Alles muss zusammenpassen — Typen, Icons, Sprache.

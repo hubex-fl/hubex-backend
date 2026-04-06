@@ -454,6 +454,32 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
 # Background loop
 # ---------------------------------------------------------------------------
 
+def _cron_matches(expr: str, now) -> bool:
+    """Simple cron matching: 'minute hour day_of_month month day_of_week' or '* * * * *'."""
+    parts = expr.strip().split()
+    if len(parts) != 5:
+        return False
+    fields = [now.minute, now.hour, now.day, now.month, now.weekday()]  # weekday: 0=Mon
+    for val, pattern in zip(fields, parts):
+        if pattern == "*":
+            continue
+        if "/" in pattern:
+            _, step = pattern.split("/", 1)
+            if val % int(step) != 0:
+                return False
+        elif "," in pattern:
+            if str(val) not in pattern.split(","):
+                return False
+        elif "-" in pattern:
+            lo, hi = pattern.split("-", 1)
+            if not (int(lo) <= val <= int(hi)):
+                return False
+        else:
+            if val != int(pattern):
+                return False
+    return True
+
+
 async def automation_engine_loop() -> None:
     """Background loop: process system events for automation rules every ENGINE_INTERVAL seconds."""
     last_event_id = 0
@@ -471,10 +497,45 @@ async def automation_engine_loop() -> None:
     except Exception:
         pass
 
+    _last_cron_minute = -1
+
     while True:
         try:
             async with AsyncSessionLocal() as db:
                 last_event_id = await _process_new_events(db, last_event_id)
+
+                # Schedule trigger: check once per minute
+                from datetime import datetime, timezone, timedelta
+                now = datetime.now(timezone.utc)
+                current_minute = now.hour * 60 + now.minute
+                if current_minute != _last_cron_minute:
+                    _last_cron_minute = current_minute
+                    # Find all enabled schedule rules
+                    cron_rules = await db.execute(
+                        select(AutomationRule).where(
+                            AutomationRule.enabled == True,
+                            AutomationRule.trigger_type == "schedule",
+                        )
+                    )
+                    for rule in cron_rules.scalars().all():
+                        cron_expr = rule.trigger_config.get("cron", "")
+                        if _cron_matches(cron_expr, now):
+                            # Cooldown check
+                            if rule.last_fired_at:
+                                last = rule.last_fired_at
+                                if last.tzinfo is None:
+                                    last = last.replace(tzinfo=timezone.utc)
+                                if (now - last).total_seconds() < rule.cooldown_seconds:
+                                    continue
+                            # Fire
+                            try:
+                                await execute_action(db, rule, context={"event_type": "schedule", "cron": cron_expr})
+                                rule.fire_count = (rule.fire_count or 0) + 1
+                                rule.last_fired_at = now
+                                db.add(AutomationFireLog(rule_id=rule.id, success=True, context_json={"cron": cron_expr}))
+                            except Exception as exc:
+                                db.add(AutomationFireLog(rule_id=rule.id, success=False, error_message=str(exc)[:512]))
+                    await db.commit()
         except Exception:
             logger.exception("automation_engine: unhandled error in evaluation cycle")
         await asyncio.sleep(ENGINE_INTERVAL)
