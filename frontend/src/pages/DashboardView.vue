@@ -303,6 +303,8 @@ async function loadDashboard() {
     const id = Number(route.params.id);
     dashboard.value = await getDashboard(id);
     await loadAllHistory();
+  } catch {
+    dashboard.value = null;
   } finally {
     loading.value = false;
   }

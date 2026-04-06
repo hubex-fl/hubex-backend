@@ -155,6 +155,8 @@ async function load() {
   loading.value = true;
   try {
     dashboards.value = await listDashboards();
+  } catch {
+    dashboards.value = [];
   } finally {
     loading.value = false;
   }
