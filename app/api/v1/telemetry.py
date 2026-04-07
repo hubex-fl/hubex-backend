@@ -220,7 +220,7 @@ async def _bridge_telemetry_to_variables(
                 )
                 existing = existing_res.scalar_one_or_none()
                 if existing:
-                    existing.value = coerced
+                    existing.value_json = coerced
                     existing.version = (existing.version or 0) + 1
                     existing.updated_at = datetime.now(timezone.utc)
                 else:
@@ -228,7 +228,7 @@ async def _bridge_telemetry_to_variables(
                         variable_key=defn.key,
                         scope=scope,
                         device_id=did,
-                        value=coerced,
+                        value_json=coerced,
                         version=1,
                     ))
 

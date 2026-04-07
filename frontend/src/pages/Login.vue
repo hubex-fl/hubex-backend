@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
+import { apiFetch } from "../lib/api";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -29,6 +30,25 @@ async function onSubmit() {
     } else {
       error.value = msg;
     }
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleRegister() {
+  if (!email.value || !password.value) { error.value = "Enter email and password first"; return; }
+  error.value = "";
+  loading.value = true;
+  try {
+    await apiFetch("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email: email.value, password: password.value }),
+    });
+    // Auto-login after register
+    const result = await auth.login(email.value, password.value);
+    if (result === "ok") router.push("/");
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : "Registration failed";
   } finally {
     loading.value = false;
   }
@@ -128,6 +148,10 @@ async function onMfaSubmit() {
         </svg>
         {{ loading ? "Signing in…" : "Sign in" }}
       </button>
+      <p class="mt-4 text-center text-xs text-[var(--text-muted)]">
+        No account yet?
+        <button class="text-[var(--primary)] hover:underline" @click="handleRegister">Create one</button>
+      </p>
     </template>
   </div>
 </template>

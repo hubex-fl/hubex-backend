@@ -56,9 +56,14 @@ def run_mqtt_bridge(server, email, password):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Launch all HUBEX simulators")
     parser.add_argument("--server", default="http://localhost:8002")
-    parser.add_argument("--email", default="codex+20251219002029@example.com")
-    parser.add_argument("--password", default="Test1234!")
+    parser.add_argument("--email", default=None, help="Login email (required)")
+    parser.add_argument("--password", default=None, help="Login password (required)")
     args = parser.parse_args()
+
+    if not args.email or not args.password:
+        print(f"\n{YELLOW}  No credentials provided. Use --email and --password{RESET}")
+        args.email = args.email or input("  Email: ")
+        args.password = args.password or input("  Password: ")
 
     print(f"\n{BOLD}{CYAN}╔═══════════════════════════════════════╗")
     print(f"║   HUBEX Simulator Fleet               ║")
