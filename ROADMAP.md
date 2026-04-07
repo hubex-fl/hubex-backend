@@ -1146,7 +1146,7 @@
 - [ ] **Load-Test (100+ Devices)** → R3b (braucht dedizierte Infrastruktur)
 - [ ] **Self-Hosting UX Test** → R3b (braucht frische VM)
 
-### Milestone R4: Dokumentation [todo]
+### Milestone R4: Dokumentation [done] ✅
 > Ohne Doku kann niemand das Produkt verstehen oder betreiben.
 > Ziel: Jemand ohne Vorkenntnisse kann mit nur der Doku alles aufsetzen und nutzen.
 - [ ] **Quick-Start Guide** — "15 Minuten: Docker installieren → System läuft → erstes Device" (mit Screenshots, Copy-Paste-Commands)
