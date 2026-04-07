@@ -36,7 +36,7 @@ async function onSubmit() {
 }
 
 async function handleRegister() {
-  if (!email.value || !password.value) { error.value = "Enter email and password first"; return; }
+  if (!email.value || !password.value) { error.value = t('auth.enterEmailPassword'); return; }
   error.value = "";
   loading.value = true;
   try {
@@ -48,7 +48,7 @@ async function handleRegister() {
     const result = await auth.login(email.value, password.value);
     if (result === "ok") router.push("/");
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : "Registration failed";
+    error.value = err instanceof Error ? err.message : t('auth.registerFailed');
   } finally {
     loading.value = false;
   }
@@ -61,7 +61,7 @@ async function onMfaSubmit() {
     await auth.verifyMfa(mfaCode.value);
     router.push("/devices");
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : "Invalid code";
+    error.value = err instanceof Error ? err.message : t('auth.invalidCode');
   } finally {
     loading.value = false;
   }
@@ -87,7 +87,7 @@ async function onMfaSubmit() {
             autocomplete="one-time-code"
             @keyup.enter="onMfaSubmit"
           />
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Or enter a recovery code</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('auth.orRecoveryCode') }}</p>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ async function onMfaSubmit() {
         :disabled="loading || mfaCode.length < 6"
         @click="onMfaSubmit"
       >
-        {{ loading ? "Verifying…" : "Verify" }}
+        {{ loading ? t('auth.verifying') : t('mfa.verify') }}
       </button>
     </template>
 
@@ -110,18 +110,18 @@ async function onMfaSubmit() {
 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Email</label>
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('auth.email') }}</label>
           <input
             v-model="email"
             class="input w-full"
-            placeholder="you@example.com"
+            :placeholder="t('auth.emailPlaceholder')"
             type="email"
             autocomplete="email"
             @keyup.enter="onSubmit"
           />
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Password</label>
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('auth.password') }}</label>
           <input
             v-model="password"
             class="input w-full"
@@ -146,11 +146,11 @@ async function onMfaSubmit() {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
         </svg>
-        {{ loading ? "Signing in…" : "Sign in" }}
+        {{ loading ? t('auth.signingIn') : t('auth.signIn') }}
       </button>
       <p class="mt-4 text-center text-xs text-[var(--text-muted)]">
-        No account yet?
-        <button class="text-[var(--primary)] hover:underline" @click="handleRegister">Create one</button>
+        {{ t('auth.noAccountYet') }}
+        <button class="text-[var(--primary)] hover:underline" @click="handleRegister">{{ t('auth.createOne') }}</button>
       </p>
     </template>
   </div>
