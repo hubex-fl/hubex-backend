@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -226,7 +227,11 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
 
     user = User(email=data.email, password_hash=hash_password(data.password))
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="email already registered")
 
     now = datetime.now(timezone.utc)
     slug = _default_slug(data.email, user.id)
@@ -241,7 +246,11 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
         updated_at=now,
     )
     db.add(org)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="organization slug conflict, try again")
 
     membership = OrganizationUser(
         org_id=org.id,
@@ -258,7 +267,11 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
     })
 
     refresh_raw = await _create_refresh_token(db, user.id)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="registration failed, please retry")
 
     return TokenOut(
         access_token=create_access_token(str(user.id), org_id=org.id),
