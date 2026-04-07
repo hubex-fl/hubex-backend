@@ -281,6 +281,10 @@ class VariableHistoryPointOut(BaseModel):
     value: Any | None
     numeric_value: float | None = None
     source: str
+    # Frontend-compatible aliases for VizDataPoint
+    t: float = 0.0       # Unix timestamp (seconds)
+    v: float | None = None  # Numeric value
+    raw: Any | None = None  # Raw value for display
 
 
 class VariableHistoryOut(BaseModel):

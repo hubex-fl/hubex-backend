@@ -27,12 +27,21 @@ from .executions import ExecutionDefinition, ExecutionRun, ExecutionWorker, Exec
 from .modules import ModuleRegistry
 from .webhooks import WebhookSubscription, WebhookDelivery
 from .alerts import AlertRule, AlertEvent
-from .orgs import Organization, OrganizationUser
+from .orgs import Organization, OrganizationUser, TenantNode, ActivityFeedEntry
 from .ota import FirmwareVersion, OtaRollout, DeviceOtaStatus
 from .automation import AutomationRule, AutomationFireLog, AutomationStep
 from .semantic_type import SemanticType, TriggerTemplate, UnitConversion
 from .notifications import Notification
 from .dashboard import Dashboard, DashboardWidget
+from .api_key import ApiKey
+from .mfa import UserTotpSecret
+from .email_template import EmailTemplate
+from .custom_endpoint import CustomEndpoint
+from .report import ReportTemplate, GeneratedReport
+from .plugin import Plugin
+from .hardware import BoardProfile, ShieldProfile, PinConfiguration
+from .component import HardwareComponent
+from .device_profile import DeviceProfile
 
 __all__ = [
     "User",
@@ -74,6 +83,8 @@ __all__ = [
     "AlertEvent",
     "Organization",
     "OrganizationUser",
+    "TenantNode",
+    "ActivityFeedEntry",
     "FirmwareVersion",
     "OtaRollout",
     "DeviceOtaStatus",
@@ -86,4 +97,16 @@ __all__ = [
     "Notification",
     "Dashboard",
     "DashboardWidget",
+    "ApiKey",
+    "UserTotpSecret",
+    "EmailTemplate",
+    "CustomEndpoint",
+    "ReportTemplate",
+    "GeneratedReport",
+    "Plugin",
+    "BoardProfile",
+    "ShieldProfile",
+    "PinConfiguration",
+    "HardwareComponent",
+    "DeviceProfile",
 ]

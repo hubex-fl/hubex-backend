@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_org import get_current_org_id
-from app.db.models.webhooks import WebhookSubscription
+from app.db.models.webhooks import WebhookSubscription, WebhookDelivery
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -75,3 +75,36 @@ async def delete_webhook(webhook_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="webhook not found")
     await db.delete(sub)
     await db.commit()
+
+
+class DeliveryOut(BaseModel):
+    id: int
+    webhook_id: int
+    event_id: int
+    status_code: int | None
+    response_time_ms: float | None
+    attempt: int
+    success: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get("/{webhook_id}/deliveries", response_model=list[DeliveryOut])
+async def list_deliveries(
+    webhook_id: int,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    """List recent delivery attempts for a webhook."""
+    sub = await db.get(WebhookSubscription, webhook_id)
+    if sub is None:
+        raise HTTPException(status_code=404, detail="webhook not found")
+
+    result = await db.execute(
+        select(WebhookDelivery)
+        .where(WebhookDelivery.webhook_id == webhook_id)
+        .order_by(WebhookDelivery.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())

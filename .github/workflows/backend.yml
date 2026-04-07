@@ -1,0 +1,81 @@
+name: backend
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "app/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - "alembic/**"
+      - "pytest.ini"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - "alembic/**"
+      - "pytest.ini"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dev deps
+        run: pip install ruff
+      - name: ruff check
+        run: ruff check app/ tests/
+      - name: ruff format (check only)
+        run: ruff format --check app/ tests/
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: mypy
+        run: mypy app/ --ignore-missing-imports --no-strict-optional
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    env:
+      # Tests use SQLite in-memory — no Postgres/Redis required
+      SECRET_KEY: "ci-test-secret-key-not-for-production"
+      ALGORITHM: "HS256"
+      DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+      REDIS_URL: "redis://localhost:6379/15"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install deps
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run tests
+        run: pytest tests/ --cov=app --cov-report=xml --cov-report=term-missing -q
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

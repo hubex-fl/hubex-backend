@@ -29,6 +29,9 @@ class EntityOut(BaseModel):
     health_last_seen_at: datetime | None
     health_status: str | None
     created_at: datetime
+    location_name: str | None = None
+    location_lat: float | None = None
+    location_lng: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +49,9 @@ class EntityCreateIn(BaseModel):
     type: str = Field(min_length=1, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     tags: list | dict | None = None
+    location_name: str | None = Field(default=None, max_length=256)
+    location_lat: float | None = None
+    location_lng: float | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -54,6 +60,9 @@ class EntityUpdateIn(BaseModel):
     type: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     tags: list | dict | None = None
+    location_name: str | None = Field(default=None, max_length=256)
+    location_lat: float | None = None
+    location_lng: float | None = None
 
     model_config = ConfigDict(extra="ignore")
 

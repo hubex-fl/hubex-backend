@@ -16,10 +16,15 @@ import UEmpty from "../components/ui/UEmpty.vue";
 import UModal from "../components/ui/UModal.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import ContextMenu from "../components/ContextMenu.vue";
+import DeviceWizard from "../components/DeviceWizard.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
 const { open: openConnectPanel } = useConnectPanel();
+
+// ── Device Wizard ──────────────────────────────────────────────────────────────
+const showDeviceWizard = ref(false);
+const wizardCategory = ref<"hardware" | "service" | "bridge" | "agent" | undefined>(undefined);
 
 // ── Context menu per device card ──────────────────────────────────────────────
 const openMenuId = ref<number | null>(null);
@@ -630,6 +635,14 @@ onMounted(() => {
     pairingDeviceUid.value = uid;
     pairingOpen.value = true;
   }
+  // Open Device Wizard if ?wizard=open
+  if (route.query.wizard === "open") {
+    showDeviceWizard.value = true;
+    const cat = route.query.category as string;
+    if (cat && ["hardware", "service", "bridge", "agent"].includes(cat)) {
+      wizardCategory.value = cat as typeof wizardCategory.value;
+    }
+  }
   // On mobile, always expand pairing section by default
   if (window.innerWidth < 768) pairingOpen.value = true;
 });
@@ -659,12 +672,20 @@ onUnmounted(() => {
           </span>
         </p>
       </div>
-      <UButton size="sm" variant="secondary" :loading="isRefreshing" @click="handleRefresh">
-        <svg v-if="!isRefreshing" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-        </svg>
-        Refresh
-      </UButton>
+      <div class="flex items-center gap-2">
+        <UButton size="sm" @click="showDeviceWizard = true">
+          <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          + Device
+        </UButton>
+        <UButton size="sm" variant="secondary" :loading="isRefreshing" @click="handleRefresh">
+          <svg v-if="!isRefreshing" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Refresh
+        </UButton>
+      </div>
     </div>
 
     <!-- ── 2. Error Banner ─────────────────────────────────────────────────── -->
@@ -685,8 +706,8 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- ── 3. Pairing Card ─────────────────────────────────────────────────── -->
-    <div ref="pairingSectionEl">
+    <!-- ── 3. Pairing Card (hidden — Wizard is primary flow now) ──────────── -->
+    <div ref="pairingSectionEl" v-show="false">
       <UCard padding="none">
         <template #header>
           <div class="flex items-center gap-2">
@@ -748,8 +769,7 @@ onUnmounted(() => {
               <div v-if="pairingQrSvg || pairingQrLoading" class="flex items-start gap-3">
                 <div class="rounded-lg border border-[var(--border)] bg-white p-1 shrink-0 w-[88px] h-[88px] flex items-center justify-center">
                   <div v-if="pairingQrLoading" class="text-[var(--text-muted)] text-[10px]">…</div>
-                  <!-- eslint-disable-next-line vue/no-v-html -->
-                  <div v-else-if="pairingQrSvg" v-html="pairingQrSvg" class="w-full h-full" />
+                  <iframe v-else-if="pairingQrSvg" :srcdoc="pairingQrSvg" sandbox="" class="w-full h-full border-0" title="QR Code" />
                 </div>
                 <p class="text-[11px] text-[var(--text-muted)] leading-relaxed pt-1">
                   Scan with a QR reader to auto-fill on devices that support it
@@ -809,7 +829,7 @@ onUnmounted(() => {
           <UInput
             v-model="searchQuery"
             variant="search"
-            placeholder="Search by UID…"
+            placeholder="Search devices…"
           />
         </div>
         <USelect v-model="sortBy" :options="sortOptions" />
@@ -824,12 +844,6 @@ onUnmounted(() => {
             :value="opt.value"
           >{{ opt.label }}</option>
         </select>
-        <details v-if="caps.status === 'ready' && hasCap('cap.admin')" class="text-xs text-[var(--text-muted)]">
-          <summary class="cursor-pointer hover:text-[var(--text-primary)] select-none">Advanced</summary>
-          <div class="mt-1">
-            <UToggle v-model="showUnclaimedAdmin" label="Show all (incl. unclaimed)" size="sm" />
-          </div>
-        </details>
         <!-- View toggle -->
         <div class="flex rounded-lg border border-[var(--border)] overflow-hidden shrink-0">
           <button
@@ -853,25 +867,23 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Bulk mode toolbar -->
+      <!-- Bulk mode toolbar (admin only) — compact inline bar -->
       <div
-        v-if="canShowPurge || (caps.status === 'ready' && hasCap('devices.unclaim'))"
-        class="bulk-toolbar px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center gap-4"
+        v-if="caps.status === 'ready' && hasCap('cap.admin') && (canShowPurge || hasCap('devices.unclaim'))"
+        class="px-4 py-1.5 border-b border-[var(--border)] flex items-center gap-3 text-xs text-[var(--text-muted)]"
       >
-        <div class="w-36">
-          <USelect v-model="selectMode" :options="selectModeOptions" />
-        </div>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
+        <USelect v-model="selectMode" :options="selectModeOptions" class="w-28 text-xs" />
+        <label class="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded accent-[var(--primary)]"
+            class="h-3.5 w-3.5 rounded accent-[var(--primary)]"
             :checked="allSelected"
             :disabled="!selectableIds.length"
             @change="toggleSelectAll"
           />
-          <span class="text-xs text-[var(--text-secondary)]">Select all</span>
+          <span>Select all</span>
         </label>
-        <span v-if="selectedIds.length" class="text-xs text-[var(--text-muted)]">
+        <span v-if="selectedIds.length" class="text-[var(--text-secondary)]">
           {{ selectedIds.length }} selected
         </span>
       </div>
@@ -883,7 +895,7 @@ onUnmounted(() => {
             <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
               <th class="w-10 px-4 py-3" />
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
-                UID
+                Device
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-32">
                 Type
@@ -949,12 +961,12 @@ onUnmounted(() => {
                   <UButton size="sm" variant="secondary" @click="clearFilters">Clear filters</UButton>
                 </UEmpty>
                 <UEmpty
-                  v-else
-                  title="No devices yet"
-                  description="Pair your first device to get started. Devices will appear here once they connect."
+                  v-else-if="!fetchError"
+                  title="No devices connected yet"
+                  description="Hardware, APIs, bridges, agents — everything connects here."
                   icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
                 >
-                  <UButton size="sm" @click="pairingOpen = true">Pair Device</UButton>
+                  <UButton size="sm" @click="showDeviceWizard = true">Connect your first device</UButton>
                 </UEmpty>
               </td>
             </tr>
@@ -990,11 +1002,14 @@ onUnmounted(() => {
                     />
                     <router-link
                       :to="`/devices/${d.id}`"
-                      class="font-mono text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate max-w-[200px]"
+                      class="text-xs text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate max-w-[220px]"
+                      :class="d.name ? 'font-medium' : 'font-mono'"
+                      :title="d.device_uid"
                       @click.stop
                     >
-                      {{ d.device_uid }}
+                      {{ d.name || d.device_uid }}
                     </router-link>
+                    <span v-if="d.name" class="text-[10px] font-mono text-[var(--text-muted)] truncate max-w-[140px]">{{ d.device_uid }}</span>
                   </div>
                 </td>
 
@@ -1048,12 +1063,14 @@ onUnmounted(() => {
                       {{ rowActionLabel(d) }}
                     </UButton>
                     <UButton
-                      v-if="canShowPurge"
+                      v-if="canShowPurge && hasCap('cap.admin')"
                       size="sm"
-                      variant="danger"
+                      variant="ghost"
+                      class="text-[var(--text-muted)] hover:text-[var(--status-bad)]"
+                      title="Delete device permanently"
                       @click.stop="openSinglePurgeModal(d)"
                     >
-                      Delete
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                     </UButton>
                     <span
                       v-if="bulkUnclaimStatus[d.id]"
@@ -1064,7 +1081,7 @@ onUnmounted(() => {
                     <span
                       v-if="bulkPurgeStatus[d.id]"
                       class="text-xs"
-                      :class="bulkPurgeStatus[d.id] === 'Purged' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
+                      :class="bulkPurgeStatus[d.id] === 'Deleted' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
                     >
                       {{ bulkPurgeStatus[d.id] }}
                     </span>
@@ -1105,7 +1122,7 @@ onUnmounted(() => {
         </UEmpty>
         <!-- Enhanced empty state: first-time guidance + direct action -->
         <div
-          v-else-if="!visibleDevices.length"
+          v-else-if="!visibleDevices.length && !fetchError"
           class="flex flex-col items-center text-center py-16 px-6 gap-6"
         >
           <div class="h-16 w-16 rounded-2xl bg-[var(--bg-raised)] flex items-center justify-center">
@@ -1119,19 +1136,13 @@ onUnmounted(() => {
               Hardware, APIs, bridges, agents — everything connects here.
             </p>
           </div>
-          <!-- Primary CTA + secondary action -->
+          <!-- Primary CTA → opens wizard -->
           <div class="flex flex-col sm:flex-row items-center gap-3">
-            <UButton @click="pairingOpen = true">
+            <UButton @click="showDeviceWizard = true">
               <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Pair Hardware Device
-            </UButton>
-            <UButton variant="secondary">
-              <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-              </svg>
-              Add API Device
+              Connect your first device
             </UButton>
           </div>
           <!-- Helpful hint -->
@@ -1231,7 +1242,7 @@ onUnmounted(() => {
                 variant="danger"
                 @click.stop="openSinglePurgeModal(d)"
               >
-                Purge
+                Delete
               </UButton>
             </div>
 
@@ -1242,7 +1253,7 @@ onUnmounted(() => {
             <span
               v-if="bulkPurgeStatus[d.id]"
               class="text-xs"
-              :class="bulkPurgeStatus[d.id] === 'Purged' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
+              :class="bulkPurgeStatus[d.id] === 'Deleted' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'"
             >
               {{ bulkPurgeStatus[d.id] }}
             </span>
@@ -1303,7 +1314,7 @@ onUnmounted(() => {
             :disabled="!canBulkPurge"
             @click="openBulkPurgeModal"
           >
-            Bulk purge
+            Bulk delete
           </UButton>
         </template>
 
@@ -1336,7 +1347,7 @@ onUnmounted(() => {
           <UInput
             v-model="bulkPurgeConfirmText"
             placeholder="Type DELETE to confirm"
-            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'PURGE' ? 'Type DELETE in uppercase' : undefined"
+            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'DELETE' ? 'Type DELETE in uppercase' : undefined"
           />
         </div>
       </div>
@@ -1348,7 +1359,7 @@ onUnmounted(() => {
           <UButton
             variant="danger"
             :loading="bulkPurgeBusy"
-            :disabled="bulkPurgeConfirmText !== 'PURGE' || bulkPurgeBusy"
+            :disabled="bulkPurgeConfirmText !== 'DELETE' || bulkPurgeBusy"
             @click="bulkPurge"
           >
             Confirm delete
@@ -1373,7 +1384,7 @@ onUnmounted(() => {
         <UInput
           v-model="singlePurgeConfirmText"
           placeholder="Type DELETE to confirm"
-          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'PURGE' ? 'Type DELETE in uppercase' : undefined"
+          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'DELETE' ? 'Type DELETE in uppercase' : undefined"
         />
       </div>
       <template #footer>
@@ -1381,7 +1392,7 @@ onUnmounted(() => {
           <UButton variant="ghost" @click="showSinglePurgeModal = false">Cancel</UButton>
           <UButton
             variant="danger"
-            :disabled="singlePurgeConfirmText !== 'PURGE'"
+            :disabled="singlePurgeConfirmText !== 'DELETE'"
             @click="confirmSinglePurge"
           >
             Delete device
@@ -1389,6 +1400,14 @@ onUnmounted(() => {
         </div>
       </template>
     </UModal>
+
+    <!-- Device Wizard -->
+    <DeviceWizard
+      :open="showDeviceWizard"
+      :initial-category="wizardCategory"
+      @close="showDeviceWizard = false"
+      @created="(id) => { showDeviceWizard = false; loadDevices(); }"
+    />
 
   </div>
 </template>

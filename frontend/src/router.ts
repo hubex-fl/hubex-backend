@@ -16,7 +16,7 @@ const router = createRouter({
     { path: "/trace-hub",    component: () => import("./pages/TraceHub.vue"),        meta: { title: "Trace Hub" } },
     { path: "/executions",   component: () => import("./pages/Executions.vue"),      meta: { title: "Executions" } },
     { path: "/audit",        component: () => import("./pages/Audit.vue"),           meta: { title: "Audit Log" } },
-    { path: "/correlation",  component: () => import("./pages/Correlation.vue"),     meta: { title: "Correlation" } },
+    // Correlation removed — merged into TraceTimeline
     { path: "/observability",component: () => import("./pages/Observability.vue"),   meta: { title: "Observability" } },
     { path: "/settings",     component: () => import("./pages/Settings.vue"),        meta: { title: "Settings" } },
     { path: "/settings/auth", redirect: "/settings" },
@@ -28,8 +28,19 @@ const router = createRouter({
     { path: "/system-health", component: () => import("./pages/SystemHealth.vue"),   meta: { title: "System Health" } },
     { path: "/automations",  component: () => import("./pages/Automations.vue"),     meta: { title: "Automations" } },
     { path: "/developer",    component: () => import("./pages/ApiDocs.vue"),         meta: { title: "API Docs" } },
+    { path: "/webhooks",     component: () => import("./pages/Webhooks.vue"),        meta: { title: "Webhooks" } },
+    { path: "/email-templates", component: () => import("./pages/EmailTemplates.vue"), meta: { title: "Email Templates" } },
+    { path: "/admin",          component: () => import("./pages/AdminConsole.vue"),   meta: { title: "Admin Console" } },
+    { path: "/custom-api",    component: () => import("./pages/CustomApiBuilder.vue"), meta: { title: "Custom API" } },
+    { path: "/trace-timeline", component: () => import("./pages/TraceTimeline.vue"),  meta: { title: "Trace Timeline" } },
+    { path: "/reports",       component: () => import("./pages/Reports.vue"),        meta: { title: "Reports" } },
+    { path: "/plugins",       component: () => import("./pages/Plugins.vue"),        meta: { title: "Plugins" } },
+    { path: "/hardware",      component: () => import("./pages/HardwareBoards.vue"), meta: { title: "Hardware Boards" } },
+    { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
+    { path: "/kiosk/:id",     component: () => import("./pages/DashboardView.vue"),meta: { title: "Kiosk", layout: "kiosk" } },
+    { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public" } },
   ],
 });
 

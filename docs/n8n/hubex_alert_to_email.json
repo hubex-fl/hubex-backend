@@ -1,0 +1,91 @@
+{
+  "name": "HUBEX — Alert to Email",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "hubex-alert-webhook",
+      "parameters": {
+        "path": "hubex-alert",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Only Alert Fired",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.event_type }}",
+              "rightValue": "alert.fired",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [680, 220],
+      "parameters": {
+        "fromEmail": "={{ $vars.HUBEX_EMAIL_FROM }}",
+        "toEmail": "={{ $vars.HUBEX_EMAIL_TO }}",
+        "subject": "[HUBEX Alert] {{ $json.rule_name }}",
+        "emailType": "html",
+        "html": "<!DOCTYPE html><html><body style=\"font-family:sans-serif;\">\n<h2 style=\"color:#dc2626;\">⚠ HUBEX Alert Fired</h2>\n<table style=\"border-collapse:collapse;width:100%;\">\n  <tr><td style=\"padding:8px;font-weight:bold;\">Rule</td><td style=\"padding:8px;\">{{ $json.rule_name }}</td></tr>\n  <tr style=\"background:#f5f5f5;\"><td style=\"padding:8px;font-weight:bold;\">Device</td><td style=\"padding:8px;\">{{ $json.device_uid }}</td></tr>\n  <tr><td style=\"padding:8px;font-weight:bold;\">Message</td><td style=\"padding:8px;\">{{ $json.message }}</td></tr>\n  <tr style=\"background:#f5f5f5;\"><td style=\"padding:8px;font-weight:bold;\">Severity</td><td style=\"padding:8px;\">{{ $json.severity }}</td></tr>\n  <tr><td style=\"padding:8px;font-weight:bold;\">Time</td><td style=\"padding:8px;\">{{ $json.timestamp }}</td></tr>\n</table>\n<p style=\"color:#6b7280;font-size:12px;\">Sent by HUBEX Alerting</p>\n</body></html>",
+        "options": {}
+      },
+      "credentials": {
+        "smtp": {"id": "smtp-credential-id", "name": "SMTP Account"}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 220],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"ok\"}",
+        "options": {"responseCode": 200}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Only Alert Fired", "type": "main", "index": 0}]]
+    },
+    "Only Alert Fired": {
+      "main": [
+        [{"node": "Send Alert Email", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Send Alert Email": {
+      "main": [[{"node": "Respond OK", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "tags": [{"name": "hubex"}],
+  "meta": {
+    "templateId": "hubex-alert-to-email",
+    "instanceId": ""
+  }
+}

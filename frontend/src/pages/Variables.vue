@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import {
   type VariableDefinition,
@@ -36,9 +37,28 @@ import { useConnectPanel } from "../composables/useConnectPanel";
 import { useRouter } from "vue-router";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
+const route = useRoute();
 const router = useRouter();
+
+// SemanticType icon mapping (category suffix → emoji)
+const CATEGORY_ICONS: Record<string, string> = {
+  temperature: "🌡️", humidity: "💧", pressure: "🔽", voltage: "⚡",
+  current: "⚡", power: "🔌", energy: "📊", percent: "📈",
+  battery: "🔋", speed: "🏎️", gps: "📍", boolean: "●",
+  count: "🔢", text: "📝", brightness: "☀️", color: "🎨",
+  air_quality: "🌬️", light: "💡", system: "🖥️", connectivity: "📶",
+  weather: "🌤️", mqtt: "⬡", actuator: "🔧", config: "⚙️",
+  status: "●",
+};
+function categoryIcon(cat: string | null): string {
+  if (!cat) return "";
+  // Try exact match, then suffix after last dot
+  const suffix = cat.includes(".") ? cat.split(".").pop()! : cat;
+  return CATEGORY_ICONS[suffix] || CATEGORY_ICONS[cat] || "";
+}
 const { open: openConnectPanel } = useConnectPanel();
 const varMenuOpenKey = ref<string | null>(null);
+const highlightKey = ref<string | null>(null);
 
 function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
   return [
@@ -62,12 +82,12 @@ function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
     {
       label: "Create Alert",
       icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
-      action: () => router.push("/alerts"),
+      action: () => router.push({ path: "/alerts", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     {
       label: "Create Automation",
       icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
-      action: () => router.push("/automations"),
+      action: () => router.push({ path: "/automations", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     { label: "", icon: "", action: () => {}, divider: true },
     {
@@ -96,6 +116,7 @@ const search      = ref("");
 const scopeFilter = ref<ScopeFilter>("all");
 const deviceUid   = ref("");
 const showSecrets = ref(true);
+const hideUnrelated = ref(false);
 
 // ── Create modal ────────────────────────────────────────────────────────────
 const createOpen      = ref(false);
@@ -381,6 +402,29 @@ async function handleSetValue() {
   }
 }
 
+// ── Inline control change (toggle, slider) ──────────────────────────────────
+async function handleControlChange(def: VariableDefinition, val: unknown) {
+  try {
+    const duid = deviceUid.value.trim() || undefined;
+    const result = await putValue({
+      key: def.key,
+      scope: def.scope,
+      deviceUid: duid,
+      value: val,
+      expectedVersion: valuesByKey.value[def.key]?.version ?? null,
+    });
+    // Update local state without full page reload (prevents scroll jump)
+    if (valuesByKey.value[def.key]) {
+      valuesByKey.value = {
+        ...valuesByKey.value,
+        [def.key]: { ...valuesByKey.value[def.key], value: val, version: (valuesByKey.value[def.key].version ?? 0) + 1 },
+      };
+    }
+  } catch (e) {
+    rowErrors.value = { ...rowErrors.value, [def.key]: fmtApiError(e, "Failed to update") };
+  }
+}
+
 // ── Delete definition ─────────────────────────────────────────────────────────
 async function handleDeleteDef(def: VariableDefinition) {
   if (!confirm(`Delete definition "${def.key}" and all its history? This cannot be undone.`)) return;
@@ -431,6 +475,11 @@ const filteredRows = computed(() => {
   return definitions.value.filter((d) => {
     if (scopeFilter.value !== "all" && d.scope !== scopeFilter.value) return false;
     if (!showSecrets.value && d.is_secret) return false;
+    // Hide variables without values for this device when checkbox is active
+    if (hideUnrelated.value && deviceUid.value.trim() && d.scope === "device") {
+      const val = valuesByKey.value[d.key];
+      if (!val || (val.value === null && val.value !== 0 && val.value !== false)) return false;
+    }
     if (!term) return true;
     return d.key.toLowerCase().includes(term)
       || (d.category ?? "").toLowerCase().includes(term)
@@ -440,8 +489,78 @@ const filteredRows = computed(() => {
 
 const isNumeric = (vt: string) => vt === "int" || vt === "float";
 
+// Group variables by device for better overview
+type VarGroup = { deviceUid: string | null; label: string; defs: VariableDefinition[] };
+const groupedRows = computed<VarGroup[]>(() => {
+  const globals: VariableDefinition[] = [];
+  const byDevice = new Map<string, VariableDefinition[]>();
+  for (const def of filteredRows.value) {
+    if (def.scope === "global") {
+      globals.push(def);
+    } else {
+      const uid = (def as unknown as { device_uid?: string }).device_uid || "device-scoped";
+      if (!byDevice.has(uid)) byDevice.set(uid, []);
+      byDevice.get(uid)!.push(def);
+    }
+  }
+  const groups: VarGroup[] = [];
+  if (globals.length) groups.push({ deviceUid: null, label: "Global Variables", defs: globals });
+  for (const [uid, defs] of byDevice) {
+    const label = uid === "device-scoped" ? "Device Variables" : uid;
+    groups.push({ deviceUid: uid === "device-scoped" ? null : uid, label, defs });
+  }
+  return groups;
+});
+const hasMultipleGroups = computed(() => groupedRows.value.length > 1 || (groupedRows.value.length === 1 && groupedRows.value[0].deviceUid !== null));
+
+// GPS edit helpers
+const gpsLat = computed(() => {
+  try {
+    const v = JSON.parse(setValueStr.value);
+    return v?.lat ?? '';
+  } catch { return ''; }
+});
+const gpsLng = computed(() => {
+  try {
+    const v = JSON.parse(setValueStr.value);
+    return v?.lng ?? '';
+  } catch { return ''; }
+});
+function onGpsInput(field: 'lat' | 'lng', val: string) {
+  try {
+    const cur = JSON.parse(setValueStr.value || '{}');
+    cur[field] = val ? parseFloat(val) : 0;
+    setValueStr.value = JSON.stringify(cur);
+  } catch {
+    const obj: Record<string, number> = {};
+    obj[field] = val ? parseFloat(val) : 0;
+    setValueStr.value = JSON.stringify(obj);
+  }
+}
+
+// Delete confirmation
+const deleteConfirmDef = ref<VariableDefinition | null>(null);
+function openDeleteDef(def: VariableDefinition) {
+  deleteConfirmDef.value = def;
+}
+
 watch([scopeFilter, deviceUid], loadDefinitionsAndValues);
-onMounted(loadDefinitionsAndValues);
+onMounted(async () => {
+  // Apply query params from navigation (e.g. from DeviceDetail)
+  if (route.query.device && typeof route.query.device === "string") {
+    deviceUid.value = route.query.device;
+  }
+  await loadDefinitionsAndValues();
+  // Highlight and scroll to the target variable
+  if (route.query.highlight && typeof route.query.highlight === "string") {
+    highlightKey.value = route.query.highlight;
+    await nextTick();
+    const el = document.querySelector(`[data-var-key="${CSS.escape(highlightKey.value)}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Clear highlight after 4 seconds
+    setTimeout(() => { highlightKey.value = null; }, 4000);
+  }
+});
 </script>
 
 <template>
@@ -467,7 +586,11 @@ onMounted(loadDefinitionsAndValues);
         <option value="device">Device</option>
       </USelect>
       <UEntitySelect v-model="deviceUid" entity-type="device" placeholder="Filter by device..." :optional="true" class="toolbar-device" />
-      <label class="toolbar-toggle">
+      <label v-if="deviceUid.trim()" class="toolbar-toggle" title="Variablen ohne Wert für dieses Device ausblenden">
+        <UToggle v-model="hideUnrelated" size="sm" />
+        <span>Only assigned</span>
+      </label>
+      <label class="toolbar-toggle" title="Geheime Variablen in der Übersicht anzeigen/maskieren (z.B. API-Keys, Passwörter)">
         <UToggle v-model="showSecrets" size="sm" />
         <span>Secrets</span>
       </label>
@@ -521,11 +644,33 @@ onMounted(loadDefinitionsAndValues);
           </tr>
         </thead>
         <tbody>
-          <template v-for="def in filteredRows" :key="def.key">
+          <template v-for="group in groupedRows" :key="group.label">
+            <!-- Device group header -->
+            <tr v-if="hasMultipleGroups" class="group-header-row">
+              <td colspan="9" class="group-header-cell">
+                <div class="flex items-center gap-2">
+                  <svg v-if="group.deviceUid" class="h-3.5 w-3.5 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                  </svg>
+                  <svg v-else class="h-3.5 w-3.5 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                  </svg>
+                  <template v-if="group.deviceUid">
+                    <router-link :to="`/devices/${group.deviceUid}`" class="text-xs font-semibold text-[var(--primary)] hover:underline">
+                      {{ group.label }}
+                    </router-link>
+                  </template>
+                  <span v-else class="text-xs font-semibold text-[var(--text-muted)]">{{ group.label }}</span>
+                  <span class="text-[10px] text-[var(--text-muted)]">({{ group.defs.length }})</span>
+                </div>
+              </td>
+            </tr>
+          <template v-for="def in group.defs" :key="def.key">
             <!-- Main row -->
             <tr
               class="vars-row"
-              :class="{ 'row-expanded': expandedKey === def.key }"
+              :class="{ 'row-expanded': expandedKey === def.key, 'row-highlight': highlightKey === def.key, 'row-no-value': deviceUid && def.scope === 'device' && !valuesByKey[def.key]?.value && valuesByKey[def.key]?.value !== 0 && valuesByKey[def.key]?.value !== false }"
+              :data-var-key="def.key"
               @click="toggleExpand(def)"
             >
               <!-- Expand chevron -->
@@ -536,9 +681,10 @@ onMounted(loadDefinitionsAndValues);
                 </svg>
               </td>
 
-              <!-- Key + category + description -->
+              <!-- Key + category icon + description -->
               <td class="col-key">
                 <div class="key-wrap">
+                  <span v-if="categoryIcon(def.category)" class="key-icon">{{ categoryIcon(def.category) }}</span>
                   <span class="key-name">{{ def.key }}</span>
                   <span v-if="def.category" class="key-cat">{{ def.category }}</span>
                 </div>
@@ -595,9 +741,10 @@ onMounted(loadDefinitionsAndValues);
               <!-- Actions -->
               <td class="col-actions" @click.stop>
                 <div class="row-actions">
-                  <UButton size="sm" variant="ghost" @click.stop="openSetValue(def)" title="Set value">
+                  <UButton v-if="!def.is_readonly" size="sm" variant="ghost" @click.stop="openSetValue(def)" title="Set value">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </UButton>
+                  <span v-else class="text-[9px] text-[var(--text-muted)] px-1" title="Read-only variable">🔒</span>
                   <!-- Context menu "..." -->
                   <div class="relative">
                     <UButton
@@ -667,10 +814,13 @@ onMounted(loadDefinitionsAndValues);
                     :compact="false"
                     :showHeader="true"
                     :timeRange="'24h'"
+                    :writable="!def.is_readonly"
+                    @control-change="(val: unknown) => handleControlChange(def, val)"
                   />
                 </div>
               </td>
             </tr>
+          </template>
           </template>
         </tbody>
       </table>
@@ -811,7 +961,44 @@ onMounted(loadDefinitionsAndValues);
         </div>
         <div class="form-field">
           <label>Value</label>
+          <!-- GPS/Map: friendly lat/lng inputs -->
+          <div v-if="setValueDef.display_hint === 'map' && setValueDef.value_type === 'json'" class="gps-edit">
+            <div class="gps-fields">
+              <div class="gps-field">
+                <label class="gps-label">Latitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  :value="gpsLat"
+                  class="gps-input"
+                  placeholder="e.g. 48.137"
+                  @input="onGpsInput('lat', ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+              <div class="gps-field">
+                <label class="gps-label">Longitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  :value="gpsLng"
+                  class="gps-input"
+                  placeholder="e.g. 11.576"
+                  @input="onGpsInput('lng', ($event.target as HTMLInputElement).value)"
+                />
+              </div>
+            </div>
+            <p class="gps-hint">Enter decimal coordinates (WGS84)</p>
+          </div>
+          <!-- Bool: toggle switch -->
+          <div v-else-if="setValueDef.value_type === 'bool'" class="bool-edit">
+            <label class="bool-toggle">
+              <input type="checkbox" :checked="setValueStr === 'true'" @change="setValueStr = ($event.target as HTMLInputElement).checked ? 'true' : 'false'" />
+              <span class="bool-label">{{ setValueStr === 'true' ? 'ON (true)' : 'OFF (false)' }}</span>
+            </label>
+          </div>
+          <!-- Default: textarea -->
           <textarea
+            v-else
             v-model="setValueStr"
             class="value-textarea"
             rows="4"
@@ -837,6 +1024,14 @@ onMounted(loadDefinitionsAndValues);
 </template>
 
 <style scoped>
+/* ── Device group header ───────────────────────────────── */
+.group-header-row { background: transparent; }
+.group-header-cell {
+  padding: 12px 12px 4px !important;
+  border-bottom: none !important;
+}
+.group-header-row + .vars-row { border-top: none; }
+
 /* ── Page shell ─────────────────────────────────────────── */
 .vars-page {
   display: flex; flex-direction: column; gap: 16px;
@@ -953,6 +1148,9 @@ onMounted(loadDefinitionsAndValues);
 .vars-row { cursor: pointer; transition: background 0.1s; }
 .vars-row:hover { background: #161b22; }
 .vars-row.row-expanded { background: #161b22; }
+.vars-row.row-highlight { background: rgba(245, 166, 35, 0.12); outline: 1px solid rgba(245, 166, 35, 0.4); animation: highlight-fade 4s ease-out forwards; }
+.vars-row.row-no-value { opacity: 0.35; }
+@keyframes highlight-fade { 0%, 60% { background: rgba(245, 166, 35, 0.12); outline-color: rgba(245, 166, 35, 0.4); } 100% { background: transparent; outline-color: transparent; } }
 
 /* Col widths */
 .col-expand { width: 28px; }
@@ -963,6 +1161,7 @@ onMounted(loadDefinitionsAndValues);
 
 /* Key cell */
 .key-wrap   { display: flex; align-items: baseline; gap: 6px; }
+.key-icon   { font-size: 14px; margin-right: 4px; }
 .key-name   { font-family: monospace; color: #e6edf3; font-size: 13px; }
 .key-cat    { font-size: 10px; color: #58a6ff; background: #58a6ff11; padding: 1px 5px; border-radius: 10px; }
 .key-desc   { display: block; font-size: 11px; color: #8b949e; margin-top: 2px; }
@@ -1033,6 +1232,25 @@ onMounted(loadDefinitionsAndValues);
   box-sizing: border-box;
 }
 .value-textarea:focus { outline: none; border-color: #58a6ff; }
+
+/* GPS edit */
+.gps-edit { display: flex; flex-direction: column; gap: 8px; }
+.gps-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gps-field { display: flex; flex-direction: column; gap: 4px; }
+.gps-label { font-size: 11px; color: #8b949e; font-weight: 500; }
+.gps-input {
+  width: 100%; font-family: monospace; font-size: 14px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+  color: #e6edf3; padding: 8px 10px; box-sizing: border-box;
+}
+.gps-input:focus { outline: none; border-color: #58a6ff; }
+.gps-hint { font-size: 11px; color: #6e7681; }
+
+/* Bool edit */
+.bool-edit { padding: 8px 0; }
+.bool-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.bool-toggle input { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.bool-label { font-size: 14px; color: #e6edf3; font-weight: 500; }
 
 .conflict-banner {
   background: #332a00; border: 1px solid #6e4f00;

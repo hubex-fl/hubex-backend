@@ -154,7 +154,27 @@ async def _bridge_telemetry_to_variables(
                     VariableDefinition.device_writable == True,  # noqa: E712
                 )
             )
-            defs = res.scalars().all()
+            defs = list(res.scalars().all())
+
+            # Auto-Discovery: create VariableDefinitions for unknown keys
+            known_keys = {d.key for d in defs}
+            for flat_key in flat.keys():
+                if flat_key not in known_keys and flat_key not in ("mqtt_topic",):
+                    val = flat[flat_key]
+                    vtype = "float" if isinstance(val, (int, float)) and not isinstance(val, bool) else \
+                            "bool" if isinstance(val, bool) else \
+                            "json" if isinstance(val, (dict, list)) else "string"
+                    new_def = VariableDefinition(
+                        key=flat_key,
+                        scope="device",
+                        value_type=vtype,
+                        description=f"Auto-discovered from telemetry",
+                        device_writable=True,
+                    )
+                    db.add(new_def)
+                    defs.append(new_def)
+                    known_keys.add(flat_key)
+
             if not defs:
                 return
 
@@ -200,7 +220,7 @@ async def _bridge_telemetry_to_variables(
                 )
                 existing = existing_res.scalar_one_or_none()
                 if existing:
-                    existing.value = coerced
+                    existing.value_json = coerced
                     existing.version = (existing.version or 0) + 1
                     existing.updated_at = datetime.now(timezone.utc)
                 else:
@@ -208,7 +228,7 @@ async def _bridge_telemetry_to_variables(
                         variable_key=defn.key,
                         scope=scope,
                         device_id=did,
-                        value=coerced,
+                        value_json=coerced,
                         version=1,
                     ))
 
@@ -254,12 +274,27 @@ async def ingest_telemetry(
     await db.refresh(telemetry)
     await hub.broadcast(device.id, _serialize_telemetry(telemetry))
 
-    # Bridge telemetry → variables (fire-and-forget, non-blocking)
-    asyncio.create_task(
-        _bridge_telemetry_to_variables(
+    # Bridge telemetry → variables
+    # If Redis queue enabled, enqueue for async processing; else fire-and-forget
+    from app.core.config import settings as _settings
+    if _settings.telemetry_queue_enabled:
+        from app.core.telemetry_worker import enqueue_telemetry
+        queued = await enqueue_telemetry(
             device.id, device.device_uid, data.event_type, data.payload
         )
-    )
+        if not queued:
+            # Fallback to direct processing if Redis unavailable
+            asyncio.create_task(
+                _bridge_telemetry_to_variables(
+                    device.id, device.device_uid, data.event_type, data.payload
+                )
+            )
+    else:
+        asyncio.create_task(
+            _bridge_telemetry_to_variables(
+                device.id, device.device_uid, data.event_type, data.payload
+            )
+        )
 
     return TelemetryOut(telemetry_id=telemetry.id, received_at=telemetry.received_at)
 

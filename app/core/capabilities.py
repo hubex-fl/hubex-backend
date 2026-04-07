@@ -76,6 +76,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "notifications.write",
     "mcp.read",
     "mcp.execute",
+    "apikeys.read",
+    "apikeys.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -142,6 +144,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/variables/audit"): ["vars.read"],
     ("GET", "/api/v1/variables/effects"): ["vars.read"],
     ("GET", "/api/v1/variables/effects/{effect_id}"): ["vars.read"],
+    ("GET", "/api/v1/variables/history/export"): ["vars.read"],
     ("POST", "/api/v1/variables/effects/run-once"): ["vars.write"],
     ("GET", "/api/v1/entities"): ["entities.read"],
     ("GET", "/api/v1/entities/{entity_id}"): ["entities.read"],
@@ -150,8 +153,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/events/{event_id}"): ["events.read"],
     ("POST", "/api/v1/events/ack"): ["events.ack"],
     ("POST", "/api/v1/events/emit"): ["events.emit"],
+    ("GET", "/api/v1/events/export"): ["events.read"],
     ("GET", "/api/v1/audit"): ["audit.read"],
     ("GET", "/api/v1/audit/{entry_id}"): ["audit.read"],
+    ("GET", "/api/v1/audit/export/download"): ["audit.read"],
     ("GET", "/api/v1/secrets"): ["secrets.read"],
     ("GET", "/api/v1/secrets/{secret_id}"): ["secrets.read"],
     ("GET", "/api/v1/config"): ["config.read"],
@@ -179,6 +184,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/webhooks"): ["webhooks.read"],
     ("GET", "/api/v1/webhooks/{webhook_id}"): ["webhooks.read"],
     ("DELETE", "/api/v1/webhooks/{webhook_id}"): ["webhooks.write"],
+    ("GET", "/api/v1/webhooks/{webhook_id}/deliveries"): ["webhooks.read"],
     ("POST", "/api/v1/entities"): ["entities.write"],
     ("PUT", "/api/v1/entities/{entity_id}"): ["entities.write"],
     ("DELETE", "/api/v1/entities/{entity_id}"): ["entities.write"],
@@ -200,8 +206,58 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/alerts/{event_id}"): ["alerts.read"],
     ("POST", "/api/v1/alerts/{event_id}/ack"): ["alerts.write"],
     ("POST", "/api/v1/alerts/{event_id}/resolve"): ["alerts.write"],
-    ("GET", "/api/v1/metrics"): ["metrics.read"],
+    ("GET", "/api/v1/metrics"): [],  # no cap required — device counts are user-scoped
     ("POST", "/api/v1/auth/switch-org"): ["core.auth.login"],
+    ("POST", "/api/v1/auth/refresh"): ["core.auth.login"],
+    ("GET", "/api/v1/auth/roles"): [],  # public info
+    # API Keys
+    ("POST", "/api/v1/api-keys"): ["apikeys.write"],
+    ("GET", "/api/v1/api-keys"): ["apikeys.read"],
+    ("DELETE", "/api/v1/api-keys/{key_id}"): ["apikeys.write"],
+    # Sessions (self-service — no cap required)
+    ("GET", "/api/v1/auth/sessions"): [],
+    ("DELETE", "/api/v1/auth/sessions/{session_id}"): [],
+    ("DELETE", "/api/v1/auth/sessions"): [],
+    # MFA (self-service — no cap required)
+    ("POST", "/api/v1/auth/mfa/totp/setup"): [],
+    ("POST", "/api/v1/auth/mfa/totp/confirm"): [],
+    ("DELETE", "/api/v1/auth/mfa/totp"): [],
+    ("GET", "/api/v1/auth/mfa/status"): [],
+    ("POST", "/api/v1/auth/mfa/verify"): [],
+    # Export/Import
+    ("GET", "/api/v1/export"): ["config.read"],
+    ("POST", "/api/v1/export/import"): ["config.write"],
+    # Email Templates
+    ("GET", "/api/v1/email-templates"): ["config.read"],
+    ("POST", "/api/v1/email-templates"): ["config.write"],
+    ("PATCH", "/api/v1/email-templates/{template_id}"): ["config.write"],
+    ("DELETE", "/api/v1/email-templates/{template_id}"): ["config.write"],
+    ("POST", "/api/v1/email-templates/preview"): ["config.read"],
+    # Custom API Builder
+    ("GET", "/api/v1/custom-endpoints"): ["config.read"],
+    ("POST", "/api/v1/custom-endpoints"): ["config.write"],
+    ("GET", "/api/v1/custom-endpoints/traffic"): ["config.read"],
+    ("PATCH", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
+    ("DELETE", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
+    # Observability
+    ("GET", "/api/v1/observability/traces"): ["events.read"],
+    ("GET", "/api/v1/observability/incidents"): ["alerts.read"],
+    ("GET", "/api/v1/observability/support-bundle"): ["config.read"],
+    ("GET", "/api/v1/observability/anomalies"): ["vars.read"],
+    # Reports
+    ("GET", "/api/v1/reports/templates"): ["config.read"],
+    ("POST", "/api/v1/reports/templates"): ["config.write"],
+    ("DELETE", "/api/v1/reports/templates/{template_id}"): ["config.write"],
+    ("POST", "/api/v1/reports/generate/{template_id}"): ["config.write"],
+    ("GET", "/api/v1/reports/history"): ["config.read"],
+    ("GET", "/api/v1/reports/download/{report_id}"): ["config.read"],
+    # Plugins
+    ("GET", "/api/v1/plugins"): ["modules.read"],
+    ("POST", "/api/v1/plugins"): ["modules.write"],
+    ("GET", "/api/v1/plugins/{plugin_key}"): ["modules.read"],
+    ("PATCH", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
+    ("DELETE", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
+    ("POST", "/api/v1/plugins/{plugin_key}/execute"): ["modules.write"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
@@ -211,6 +267,25 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/orgs/{org_id}/members"): ["org.members.write"],
     ("PUT", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
     ("DELETE", "/api/v1/orgs/{org_id}/members/{target_user_id}"): ["org.members.write"],
+    ("GET", "/api/v1/orgs/{org_id}/activity"): ["org.read"],
+    ("GET", "/api/v1/orgs/{org_id}/tenants"): ["org.read"],
+    ("POST", "/api/v1/orgs/{org_id}/tenants"): ["org.admin"],
+    ("DELETE", "/api/v1/orgs/{org_id}/tenants/{node_id}"): ["org.admin"],
+    # Branding
+    ("GET", "/api/v1/orgs/{org_id}/branding"): ["org.read"],
+    ("PUT", "/api/v1/orgs/{org_id}/branding"): ["org.write"],
+    # Hardware
+    ("GET", "/api/v1/hardware/boards"): ["devices.read"],
+    ("GET", "/api/v1/hardware/boards/{board_id}"): ["devices.read"],
+    ("GET", "/api/v1/hardware/shields"): ["devices.read"],
+    ("GET", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.read"],
+    ("PUT", "/api/v1/hardware/devices/{device_id}/pins"): ["devices.write"],
+    # Components
+    ("GET", "/api/v1/components"): ["devices.read"],
+    ("GET", "/api/v1/components/{component_key}"): ["devices.read"],
+    # Code Generator
+    ("POST", "/api/v1/codegen/generate"): ["devices.write"],
+    ("GET", "/api/v1/codegen/preview/{device_id}"): ["devices.read"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],
@@ -266,12 +341,16 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PUT", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("DELETE", "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}"): ["dashboards.write"],
     ("PUT", "/api/v1/dashboards/{dashboard_id}/layout"): ["dashboards.write"],
-    # Notifications
-    ("GET", "/api/v1/notifications"): ["notifications.read"],
-    ("GET", "/api/v1/notifications/unread-count"): ["notifications.read"],
-    ("PATCH", "/api/v1/notifications/{notification_id}/read"): ["notifications.write"],
-    ("PATCH", "/api/v1/notifications/read-all"): ["notifications.write"],
-    ("DELETE", "/api/v1/notifications/{notification_id}"): ["notifications.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/share"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/share/pin"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/unshare"): ["dashboards.write"],
+    ("GET", "/api/v1/dashboards/public/{token}"): [],  # public — no auth required
+    # Notifications — no cap required, user-scoped
+    ("GET", "/api/v1/notifications"): [],
+    ("GET", "/api/v1/notifications/unread-count"): [],
+    ("PATCH", "/api/v1/notifications/{notification_id}/read"): [],
+    ("PATCH", "/api/v1/notifications/read-all"): [],
+    ("DELETE", "/api/v1/notifications/{notification_id}"): [],
     # MCP
     ("POST", "/api/v1/mcp/tools/list"): ["mcp.read"],
     ("POST", "/api/v1/mcp/tools/call"): ["mcp.execute"],
@@ -295,7 +374,91 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("POST", "/api/v1/devices/pairing/confirm"),
     ("GET", "/api/v1/pairing/status"),
     ("GET", "/api/v1/devices/pairing/status"),
+    ("GET", "/api/v1/dashboards/public/{token}"),
+    ("POST", "/api/v1/auth/refresh"),
+    ("GET", "/api/v1/auth/roles"),
+    ("POST", "/api/v1/auth/mfa/verify"),
 }
+
+# ── RBAC: Role → Capability Mapping ──────────────────────────────────────────
+
+# Read-only capabilities (viewer role)
+_VIEWER_CAPS: list[str] = [
+    "devices.read", "telemetry.read", "vars.read", "entities.read",
+    "events.read", "alerts.read", "automations.read", "dashboards.read",
+    "metrics.read", "types.read", "webhooks.read", "tasks.read",
+    "groups.read", "effects.read", "signals.read", "executions.read",
+    "providers.read", "org.read", "org.members.read", "users.read",
+    "audit.read", "ota.read", "mcp.read", "notifications.read",
+    "pairing.status", "config.read", "secrets.read",
+]
+
+# Read + write capabilities (operator role)
+_OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
+    "devices.write", "devices.token.reissue", "devices.unclaim",
+    "vars.write", "vars.ack", "telemetry.emit",
+    "entities.write", "events.emit", "events.ack",
+    "alerts.write", "automations.write", "dashboards.write",
+    "types.write", "webhooks.write", "tasks.write",
+    "groups.write", "executions.write",
+    "pairing.start", "pairing.claim", "pairing.confirm",
+    "ota.write", "mcp.execute", "notifications.write",
+    "modules.read", "modules.write",
+    "apikeys.read", "apikeys.write",
+    "core.auth.login", "core.auth.register",
+]
+
+# Admin capabilities (all except cap.admin superuser flag)
+_ADMIN_CAPS: list[str] = _OPERATOR_CAPS + [
+    "config.write", "secrets.write", "audit.write",
+    "devices.purge", "devices.hello",
+    "org.write", "org.members.write",
+    "ota.admin", "providers.write", "signals.ingest",
+    "mic.admin",
+]
+
+# Owner has everything
+_OWNER_CAPS: list[str] = _ADMIN_CAPS + ["cap.admin", "org.admin"]
+
+# Kiosk: dashboard-only, no navigation
+_KIOSK_CAPS: list[str] = ["dashboards.read", "metrics.read"]
+
+ROLE_CAPS: dict[str, list[str]] = {
+    "owner": _OWNER_CAPS,
+    "admin": _ADMIN_CAPS,
+    "operator": _OPERATOR_CAPS,
+    "member": _OPERATOR_CAPS,  # backward compat alias
+    "viewer": _VIEWER_CAPS,
+    "kiosk": _KIOSK_CAPS,
+}
+
+VALID_ROLES: set[str] = set(ROLE_CAPS.keys())
+
+
+def resolve_caps_for_role(
+    role: str,
+    user_caps: list[str] | None = None,
+    custom_role_caps: list[str] | None = None,
+) -> list[str]:
+    """Resolve effective capabilities from role + optional overrides.
+
+    Priority: custom_role_caps > ROLE_CAPS[role], then union with user_caps.
+    """
+    if custom_role_caps is not None:
+        base = list(custom_role_caps)
+    else:
+        base = list(ROLE_CAPS.get(role, []))
+
+    # Union with per-user caps (legacy field)
+    if user_caps:
+        cap_set = set(base)
+        for cap in user_caps:
+            if cap not in cap_set and cap in CAPABILITY_REGISTRY:
+                base.append(cap)
+
+    # Filter out unknown caps
+    return [cap for cap in base if cap in CAPABILITY_REGISTRY]
+
 
 def enforcement_enabled() -> bool:
     # Env override takes precedence (for tests), otherwise use settings.

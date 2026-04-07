@@ -1,0 +1,34 @@
+# Traefik static configuration
+# Used as an alternative to CLI flags in docker-compose.prod.yml
+# Mount this file at /etc/traefik/traefik.yml inside the traefik container.
+
+api:
+  insecure: false
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: hubex_proxy
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      httpChallenge:
+        entryPoint: web
+      storage: /acme/acme.json
+
+log:
+  level: INFO
+
+accessLog: {}

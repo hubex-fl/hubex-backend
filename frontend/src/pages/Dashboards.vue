@@ -122,6 +122,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
@@ -154,6 +155,8 @@ async function load() {
   loading.value = true;
   try {
     dashboards.value = await listDashboards();
+  } catch {
+    dashboards.value = [];
   } finally {
     loading.value = false;
   }
@@ -190,7 +193,8 @@ async function submitCreate() {
 
     router.push(`/dashboards/${db.id}`);
   } catch (e: unknown) {
-    createError.value = e instanceof Error ? e.message : "Failed to create dashboard";
+    const info = parseApiError(e);
+    createError.value = mapErrorToUserText(info, "Dashboard konnte nicht erstellt werden. Bitte prüfe Name und Template.");
   } finally {
     creating.value = false;
   }

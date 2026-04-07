@@ -42,6 +42,18 @@ class Settings(BaseSettings):
     # Phase 7 — JWT Refresh Tokens
     refresh_token_exp_days: int = 30
 
+    # CORS — kommasepariert, leer = localhost defaults
+    cors_origins: str = ""
+
+    # M27 — Scaling
+    history_retention_days: int = 30
+    audit_retention_days: int = 90
+    telemetry_queue_enabled: bool = False  # opt-in Redis Streams
+    automation_concurrency: int = 10  # max concurrent rule evaluations
+    automation_batch_size: int = 200  # max events per engine cycle
+    db_pool_size: int = 5  # SQLAlchemy pool_size
+    db_max_overflow: int = 20  # SQLAlchemy max_overflow
+
 
 settings = Settings()
 

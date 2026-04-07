@@ -1,0 +1,60 @@
+name: docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - ".github/workflows/docker.yml"
+
+jobs:
+  build:
+    name: Build & Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t hubex-backend:ci .
+
+      - name: Smoke test — /health responds
+        run: |
+          docker run -d \
+            --name hubex_ci \
+            -p 8000:8000 \
+            -e SECRET_KEY=ci-smoke-test-key \
+            -e DATABASE_URL=sqlite+aiosqlite:///./ci_test.db \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            hubex-backend:ci
+          # Wait up to 15s for the server to be ready
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health; then
+              echo "Server is up"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:8000/health || (docker logs hubex_ci && exit 1)
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f hubex_ci 2>/dev/null || true
+
+      - name: Login to GHCR
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/hubex-backend
+          docker tag hubex-backend:ci $IMAGE:latest
+          docker tag hubex-backend:ci $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}

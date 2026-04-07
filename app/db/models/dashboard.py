@@ -19,6 +19,8 @@ class Dashboard(Base):
     sharing_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default="private", server_default="private"
     )
+    public_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    public_pin: Mapped[str | None] = mapped_column(String(8), nullable=True)  # 4-6 digit PIN
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

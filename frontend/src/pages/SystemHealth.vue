@@ -249,14 +249,14 @@ function deviceHealthPercent(): number {
           <p :class="['text-sm font-semibold', redisStatus === 'disabled' ? 'text-[var(--text-muted)]' : statusColor(redisStatus)]">
             {{ redisStatus }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">Cache / Pub-Sub</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1" title="In-memory cache for fast data queries and real-time communication">Cache / Pub-Sub</p>
         </div>
       </div>
 
       <!-- Metrics Grid -->
       <div v-if="metrics" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <!-- Devices Online -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
+        <!-- Devices Online (clickable) -->
+        <router-link to="/devices?filter=online" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-[var(--primary)]/40 transition-colors">
           <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Devices Online</p>
           <p class="text-2xl font-bold text-[var(--text-primary)]">{{ metrics.devices.online }}</p>
           <p class="text-xs text-[var(--text-muted)] mt-1">of {{ metrics.devices.total }} total</p>
@@ -267,27 +267,27 @@ function deviceHealthPercent(): number {
             />
           </div>
           <p class="text-xs text-[var(--text-muted)] mt-1">{{ deviceHealthPercent() }}% healthy</p>
-        </div>
+        </router-link>
 
-        <!-- Stale / Offline -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
+        <!-- Stale / Offline (clickable) -->
+        <router-link to="/devices?filter=offline" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-red-400/40 transition-colors">
           <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Stale / Offline</p>
           <p class="text-2xl font-bold" :class="metrics.devices.offline > 0 ? 'text-red-400' : 'text-[var(--text-primary)]'">
             {{ metrics.devices.offline }}
           </p>
           <p class="text-xs text-[var(--text-muted)] mt-1">offline</p>
           <p class="text-xs text-yellow-400 mt-1">{{ metrics.devices.stale }} stale</p>
-        </div>
+        </router-link>
 
-        <!-- Active Alerts -->
-        <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
+        <!-- Active Alerts (clickable) -->
+        <router-link to="/alerts" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-red-400/40 transition-colors">
           <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Active Alerts</p>
           <p class="text-2xl font-bold" :class="metrics.alerts.firing > 0 ? 'text-red-400 animate-pulse' : 'text-[var(--text-primary)]'">
             {{ metrics.alerts.firing }}
           </p>
           <p class="text-xs text-[var(--text-muted)] mt-1">firing</p>
           <p class="text-xs text-yellow-400 mt-1">{{ metrics.alerts.acknowledged }} acknowledged</p>
-        </div>
+        </router-link>
 
         <!-- Events 24h -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">

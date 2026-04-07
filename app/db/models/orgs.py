@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -13,7 +14,7 @@ PLAN_DEFAULTS: dict[str, dict] = {
 }
 
 VALID_PLANS = set(PLAN_DEFAULTS)
-VALID_ROLES = {"owner", "admin", "member", "viewer"}
+VALID_ROLES = {"owner", "admin", "operator", "member", "viewer", "kiosk"}
 
 
 class Organization(Base):
@@ -31,6 +32,12 @@ class Organization(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # White-Label Branding
+    product_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    primary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)  # hex e.g. #F5A623
+    accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    favicon_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
 
 class OrganizationUser(Base):
@@ -51,3 +58,42 @@ class OrganizationUser(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TenantNode(Base):
+    """Hierarchical tenant structure: Organization → Customer → Building → Unit → Device scope."""
+    __tablename__ = "tenant_nodes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tenant_nodes.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    node_type: Mapped[str] = mapped_column(String(32), nullable=False)  # customer, building, unit
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ActivityFeedEntry(Base):
+    """Team activity feed — tracks who changed what."""
+    __tablename__ = "activity_feed"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)  # e.g. "alert_rule.created"
+    resource_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    summary: Mapped[str] = mapped_column(String(256), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

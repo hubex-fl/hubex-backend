@@ -257,7 +257,7 @@ async def list_devices(
     include_unclaimed: bool = Query(False),
 ):
     now = datetime.now(timezone.utc)
-    online_window = timedelta(seconds=60)
+    online_window = timedelta(seconds=300)  # must match health "ok" threshold
     if include_unclaimed:
         if not _is_admin(user):
             raise_api_error(403, "DEVICE_LIST_FORBIDDEN", "include_unclaimed requires admin")
@@ -283,9 +283,9 @@ async def list_devices(
         if last_seen:
             last_seen = _ensure_utc(last_seen)
             age_seconds = max(0, int((now - last_seen).total_seconds()))
-            if age_seconds <= 60:
+            if age_seconds <= 300:
                 health = "ok"
-            elif age_seconds <= 300:
+            elif age_seconds <= 900:
                 health = "stale"
         online = bool(last_seen and (now - last_seen) <= online_window)
         pairing_active = device.device_uid in active_pairing_uids
@@ -304,6 +304,11 @@ async def list_devices(
                 state=state,
                 pairing_active=pairing_active,
                 busy=busy,
+                name=device.name,
+                category=device.category or "hardware",
+                icon=device.icon,
+                location_name=device.location_name,
+                auto_discovery=device.auto_discovery if device.auto_discovery is not None else True,
             )
         )
     return out
@@ -328,9 +333,9 @@ async def get_device(
     if last_seen:
         last_seen = _ensure_utc(last_seen)
         age_seconds = max(0, int((now - last_seen).total_seconds()))
-        if age_seconds <= 60:
+        if age_seconds <= 300:
             health = "ok"
-        elif age_seconds <= 300:
+        elif age_seconds <= 900:
             health = "stale"
     active_pairing_uids = await fetch_pairing_active_uids(
         db, [device.device_uid], now
@@ -355,6 +360,8 @@ async def get_device(
         state=state,
         pairing_active=pairing_active,
         busy=busy,
+        category=device.category or "hardware",
+        config=device.config,
     )
 
 

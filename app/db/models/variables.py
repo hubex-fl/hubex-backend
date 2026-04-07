@@ -43,7 +43,7 @@ class VariableDefinition(Base):
     is_secret: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_readonly: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     user_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    device_writable: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     allow_device_override: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     # Visualization & organization
     display_hint: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -53,6 +53,11 @@ class VariableDefinition(Base):
     semantic_type_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("semantic_types.id", ondelete="SET NULL"), nullable=True
     )
+
+    # Computed Variables (M14b)
+    formula: Mapped[str | None] = mapped_column(String(1024), nullable=True)  # e.g. "(temperature + humidity) / 2"
+    compute_trigger: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "reactive", "cron", "manual"
+    compute_cron: Mapped[str | None] = mapped_column(String(64), nullable=True)  # cron expression if trigger=cron
 
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

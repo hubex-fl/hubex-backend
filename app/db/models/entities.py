@@ -15,6 +15,10 @@ class Entity(Base):
     health_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # UX-G Step 4: Entity location
+    location_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(nullable=True)
+    location_lng: Mapped[float | None] = mapped_column(nullable=True)
 
 
 class EntityDeviceBinding(Base):

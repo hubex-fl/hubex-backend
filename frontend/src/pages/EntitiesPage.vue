@@ -311,7 +311,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">Entities &amp; Groups</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-0.5">Manage entities and device bindings</p>
+        <p class="text-sm text-[var(--text-muted)] mt-0.5">Logical groups of devices — rooms, machines, systems. Group devices to monitor health and automate together.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <UBadge status="neutral" :label="`${entities.length} entities`" />
@@ -700,15 +700,19 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           label="Device"
           placeholder="Select device..."
         />
-        <UInput
-          v-model="bindPriority"
-          label="Priority"
-          type="number"
-          placeholder="0"
-        />
+        <div>
+          <UInput
+            v-model="bindPriority"
+            label="Priority"
+            type="number"
+            placeholder="0"
+          />
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">Priority when multiple bindings apply (higher = more important)</p>
+        </div>
         <div class="flex flex-col gap-1">
           <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Enabled</span>
           <UToggle v-model="bindEnabled" label="Enable binding" />
+          <p class="text-[10px] text-[var(--text-muted)]">Disabled bindings are kept but ignored during evaluation</p>
         </div>
         <div
           v-if="bindError"

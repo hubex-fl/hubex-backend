@@ -2,8 +2,8 @@
   <!-- HA-style SVG radial gauge -->
   <svg
     :width="size"
-    :height="size * 0.65"
-    :viewBox="`0 0 200 130`"
+    :height="size * 0.85"
+    :viewBox="`0 0 200 170`"
     xmlns="http://www.w3.org/2000/svg"
     class="viz-gauge"
   >
@@ -27,10 +27,10 @@
     </text>
 
     <!-- Min / Max labels -->
-    <text :x="minLabelX" y="130" text-anchor="middle" :fill="VIZ_COLORS.label" font-size="10">
+    <text :x="minLabelX" y="155" text-anchor="middle" :fill="VIZ_COLORS.label" font-size="10">
       {{ formatTick(resolvedMin) }}
     </text>
-    <text :x="maxLabelX" y="130" text-anchor="middle" :fill="VIZ_COLORS.label" font-size="10">
+    <text :x="maxLabelX" y="155" text-anchor="middle" :fill="VIZ_COLORS.label" font-size="10">
       {{ formatTick(resolvedMax) }}
     </text>
   </svg>

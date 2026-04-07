@@ -42,9 +42,10 @@ export function createPoller(
   };
 
   const schedule = () => {
-    if (!state.running || state.paused) {
-      return;
-    }
+    if (!state.running) return;
+    // Pause subsequent polls when tab is hidden
+    state.paused = pauseWhenHidden && document.visibilityState === "hidden";
+    if (state.paused) return;
     stopTimer();
     state.timer = window.setTimeout(runOnce, intervalMs);
   };
@@ -67,11 +68,10 @@ export function createPoller(
       return;
     }
     state.running = true;
-    state.paused = pauseWhenHidden && document.visibilityState === "hidden";
     document.addEventListener("visibilitychange", onVisibility);
-    if (!state.paused) {
-      runOnce();
-    }
+    // Always run the first fetch immediately, even if tab is hidden.
+    // Only subsequent polls respect visibility pause.
+    runOnce();
   };
 
   const stop = () => {

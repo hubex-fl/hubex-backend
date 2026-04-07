@@ -30,13 +30,42 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function login(email: string, password: string): Promise<void> {
-    const res = await apiFetch<{ access_token: string }>("/api/v1/auth/login", {
+  const mfaPending = ref(false);
+  const mfaToken = ref<string | null>(null);
+  const mfaMethods = ref<string[]>([]);
+
+  async function login(email: string, password: string): Promise<"ok" | "mfa_required"> {
+    const res = await apiFetch<{ access_token?: string; mfa_required?: boolean; mfa_token?: string; methods?: string[] }>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
+
+    if (res.mfa_required && res.mfa_token) {
+      mfaPending.value = true;
+      mfaToken.value = res.mfa_token;
+      mfaMethods.value = res.methods || ["totp"];
+      return "mfa_required";
+    }
+
+    if (res.access_token) {
+      setToken(res.access_token);
+      _syncFromToken(res.access_token);
+      await refreshCapabilities();
+    }
+    return "ok";
+  }
+
+  async function verifyMfa(code: string): Promise<void> {
+    if (!mfaToken.value) throw new Error("No MFA challenge pending");
+    const res = await apiFetch<{ access_token: string }>("/api/v1/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ mfa_token: mfaToken.value, code }),
+    });
     setToken(res.access_token);
     _syncFromToken(res.access_token);
+    mfaPending.value = false;
+    mfaToken.value = null;
+    mfaMethods.value = [];
     await refreshCapabilities();
   }
 
@@ -58,5 +87,5 @@ export const useAuthStore = defineStore("auth", () => {
   // Initialise from localStorage on store creation
   _syncFromToken(getToken());
 
-  return { token, orgId, isAuthenticated, login, logout, switchOrg };
+  return { token, orgId, isAuthenticated, mfaPending, mfaToken, mfaMethods, login, verifyMfa, logout, switchOrg };
 });

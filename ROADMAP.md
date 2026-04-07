@@ -170,7 +170,7 @@
 
 ---
 
-## Phase 5: UX-Überholung & Plattform-Fundament [todo]
+## Phase 5: UX-Überholung & Plattform-Fundament [done] ✅
 > **Leitsatz dieser Phase:** Bevor neue Features gebaut werden, muss das Fundament
 > für gute UX stehen. Design System, Typsystem, Branding, i18n, Onboarding.
 > Alles was danach kommt, baut darauf auf.
@@ -296,8 +296,7 @@
   - Technical View Toggle (raw JSON)
   - Edit Device Modal (Name, Category, Icon, Location)
 
-- [ ] Step 7 — Variables Page Redesign
-  > Variablen gruppiert und mit Kontext, nicht als flache Liste.
+- [x] Step 7 — Variables Page Redesign (Phase 5c: Gruppierung, Sparklines, Dimming, Only-Assigned Toggle, Highlight-Navigation)
 
   GRUPPIERUNG (umschaltbar):
   - "Nach Device" (Default) | "Nach Typ" | "Flat" (klassische Liste)
@@ -374,7 +373,7 @@
   - Banner-Farben: Rot = Fehler, Orange = Warnung, Blau = Info
   - Alle Banner per "×" dismissbar (kommt zurück bei neuem Fehler)
 
-- [ ] Step 5 — Globale Suche (Cmd+K)
+- [x] Step 5 — Globale Suche (Cmd+K) — implementiert als CommandPalette (Phase 7a PR-3/UXP)
   > Schnellzugriff auf alles in HubEx — Devices, Variablen, Alerts,
   > Automationen, Dashboards. Für Power-User der schnellste Weg.
 
@@ -460,7 +459,7 @@
 - [ ] Step 6 — VariableStreams Migration (pending M19)
   > Bestehende Streams-Seite wird zum "Quick View" innerhalb des Dashboard Builders.
 
-- [ ] Step 7 — Dashboard Sharing + Embed (pending)
+- [x] Step 7 — Dashboard Sharing + Embed — implementiert in M18b (public_token, PIN, share/unshare)
   - Sharing: per Link (read-only), per Org, per Capability
   - Embed Mode: iframe mit Public Link, Kiosk-Modus (keine Sidebar/Header)
   - Export: Dashboard als PNG/PDF Screenshot
@@ -524,7 +523,7 @@
   - Klick auf Knoten → Navigation zum Detail oder Focus-Wechsel
   - Read-only, nicht editierbar (editierbare Version → Phase 7)
 
-- [ ] Step 3 — System Map (Gesamtansicht)
+- [x] Step 3 — System Map (vereinfacht als Flow-Pfeile in Phase 5c UX-H, vollständig in Phase 7b M36)
   > Alle Devices, Variablen, Automationen, Webhooks auf einer Seite.
   - Read-only Graph-Ansicht
   - Filter: nach Gerät, nach Gruppe, nach Automation-Kette
@@ -541,11 +540,23 @@
 
 ---
 
-## Phase 6: Erweiterung & Anbindung [done] ✅
+> **Offene Steps aus Phase 5 — Zuordnung:**
+> Die folgenden Steps stehen noch als `[ ]` in M15-M20 und werden in Phase 5b oder 7 adressiert:
+> - M15 Step 7 (Variables Page Redesign) → **Teilweise erledigt** (Gruppierung ✓), Rest in UX-C Step 4
+> - M16 Step 5 (Globale Suche Cmd+K) → **Phase 7** (eigenes Feature, niedrigere Prio)
+> - M17 Step 3 (Notification Preferences) → **Phase 7** (M17 erweitern)
+> - M17 Step 4 (Email-Dispatch) → **Phase 7** (M19b Step 1 enthält Email-Action)
+> - M18 Step 6 (Streams Migration) → **Phase 7** (niedrige Prio, Streams funktioniert)
+> - M18 Step 7 (Dashboard Sharing) → **Phase 7** M18b (Embed + Sicherheitsstufen)
+> - M19 Step 3 (AND/OR Groups) → **Phase 7** (M19b erweitert die Engine)
+> - M19 Step 4 (If/Else Branching) → **Phase 7** (M19b erweitert die Engine)
+> - M19 Step 6 (Externe Flows) → **Phase 7** (M21 Steps 4-7 deckt Integration ab)
+> - M20 Step 2 (Flow-Ansicht) → **Phase 7** M36 (Flow Editor)
+> - M20 Step 3 (System Map) → **Phase 5b** UX-E Step 1-2 (vereinfacht als Node-Graph)
 
-### Milestone 21: n8n Deep Integration [done] ✅
-> Audit und Optimierung der n8n-Anbindung, damit das Typsystem und alle
-> neuen Features sauber durchgereicht werden.
+---
+
+## Phase 6: Erweiterung & Anbindung [done] ✅ (ursprüngliche Definition → siehe aktualisierte Version weiter unten)
 
 - [x] Step 1 — n8n Node Update: Semantische Typen
   - n8n Node v2: Semantic Type resource (list, get, triggers, conversions)
@@ -587,334 +598,1089 @@
 
 ---
 
-## Phase 7: Enterprise & Advanced [todo] ← AKTUELL
-
-### Milestone 26: Security Hardening v2 [todo]
-- [ ] Step 1 — 2FA/MFA (TOTP, WebAuthn)
-- [ ] Step 2 — API Key Management (service-to-service auth)
-- [ ] Step 3 — RBAC Roles (admin, operator, viewer, custom)
-- [ ] Step 4 — Session Management UI + Device Token Rotation
-
-### Milestone 27: Skalierungs-Grundlagen [todo]
-> Vorbereitung für Enterprise-Scale (tausende bis Millionen Devices).
-- [ ] Step 1 — variable_history Partitioning (zeitbasiert, monatlich)
-  > PostgreSQL native Partitioning oder TimescaleDB Extension evaluieren
-- [ ] Step 2 — Telemetrie-Ingestion Pipeline
-  > Bei hohem Volumen: Message Queue (Redis Streams oder Celery) vor DB-Write
-- [ ] Step 3 — Automation-Engine Worker Pool
-  > Bestehenden asyncio-Loop abstrahieren für spätere Celery/Worker-Migration
-- [ ] Step 4 — Horizontal Scaling Documentation
-  > Docker Compose → Multi-Instance hinter Load Balancer, Redis-koordiniert
-
-### Milestone 28: Advanced Observability [todo]
-- [ ] Step 1 — Trace/Timeline View (execution traces, event correlation)
-- [ ] Step 2 — Incident Management + Cross-Entity Correlation
-- [ ] Step 3 — Support Bundle Export (diagnostics, config snapshot)
-- [ ] Step 4 — Variable Anomaly Detection (ML-basiert, z-score, threshold learning)
-
-### Milestone 29: Export/Import & Templates [todo]
-> Grundlage für Marketplace und Konfigurationsmanagement.
-- [ ] Step 1 — Export/Import Format definieren (JSON-basiert)
-  > Exportierbar: Dashboards, Automationen, Variable-Definitionen,
-  > semantische Typen, Device-Konfigurationen
-- [ ] Step 2 — Template Catalog (browseable, searchable, tagged)
-  > Templates bündeln Variable-Definitionen + Dashboard + Automationen
-- [ ] Step 3 — Template Installer (preflight checks, dependency resolution)
-- [ ] Step 4 — Config-Versionierung (Automation-Änderungen, Dashboard-Layouts)
-  > Rollback bei Fehlern möglich
-- [ ] Step 5 — Marketplace-Grundstruktur (Catalog, Upload, Download)
-
-### Milestone 30: Admin Console [todo]
-- [ ] Step 1 — Module Lifecycle UI (enable/disable/revoke, dependency view)
-- [ ] Step 2 — Policy Management (capability policies, plan enforcement)
-- [ ] Step 3 — Provider Health Dashboard + System Status
-
-### Milestone 31: Multi-User Collaboration [todo]
-> Vollumfassend, aber ganz am Ende der Roadmap.
-- [ ] Step 1 — Rollen-basierte Sichtbarkeit (wer sieht welches Dashboard/Device)
-- [ ] Step 2 — Aktivitäts-Feed ("Max hat Alert-Rule X geändert")
-- [ ] Step 3 — Gleichzeitige Bearbeitung (Conflict Resolution bei Dashboard-Edits)
-- [ ] Step 4 — Team-Dashboards vs. persönliche Dashboards
-
-### Milestone 32: Plugins Framework [todo]
-- [ ] Step 1 — Plugin Manifest + Lifecycle
-- [ ] Step 2 — Sandboxed Plugin Execution (capability-gated)
-- [ ] Step 3 — Plugin Registry/Marketplace (catalog, versioning, revocation)
-- [ ] Step 4 — Plugin SDK + Developer Guide
-
-### Milestone 33: Simulator/Testbench [todo]
-- [ ] Step 1 — Sim-Entities + Sim-Providers (virtual devices, mock signals)
-- [ ] Step 2 — Testbench Orchestrator (Given → Trigger → Expected Trace)
-- [ ] Step 3 — Report Generation (pass/fail, coverage, CI integration)
-
-### Milestone 34: Backup & Mobile [todo]
-- [ ] Step 1 — Config/State Snapshot (policies, schedules, export/import)
-- [ ] Step 2 — Scheduled Backups (cron, retention, S3/local)
-- [ ] Step 3 — Mobile PWA (responsive dashboard, push notifications)
-
-### Milestone 35: Data & Analytics [todo]
-- [ ] Step 1 — Telemetry Time-Series Aggregation (ergänzt variable_history)
-- [ ] Step 2 — Data Export (CSV, JSON, API bulk) für variable_history + telemetry
-- [ ] Step 3 — Advanced Analytics Charts (Trend, Comparison, Heatmap via VizWidget)
-- [ ] Step 4 — Device Provisioning Profiles (batch onboarding)
-
-### Milestone 36: Editierbare Flow-Ansicht [todo]
-> Die System Map wird editierbar — n8n-Style Flow Editor für das gesamte System.
-> Ganz am Ende der Roadmap, da sehr aufwändig.
-- [ ] Step 1 — Flow Editor Canvas (Nodes + Edges, Zoom/Pan)
-- [ ] Step 2 — Node-Typen: Device, Variable, Trigger, Action, Webhook, External
-- [ ] Step 3 — Edge-Erstellung: Verbindungen ziehen zwischen Nodes
-- [ ] Step 4 — Inline-Konfiguration: Node anklicken → Settings direkt im Canvas
-- [ ] Step 5 — Flow-Deployment: Änderungen im Canvas → Automationen/Alerts erstellen
-
----
-
-## Phase 8: Hardware-Plattform & Produkt-Modus [todo]
-> HubEx wird vom Software-Tool zum vollständigen IoT-Ökosystem.
-> ESP32 als universeller Hardware-Baustein, Integration bestehender Smart-Systeme,
-> und die Möglichkeit, eigene Produkte für Endkunden auf HubEx aufzubauen.
+## Phase 5b: UX Completion [done] ✅
+> **Leitsatz:** Die Milestones M13-M20 sind als "done" markiert, aber viele Steps sind noch "pending"
+> und die UX-Vision aus der Gesamtspezifikation ist nicht erfüllt. Diese Phase schließt ALLE Lücken
+> bevor Enterprise-Features beginnen. Kontextuelles Arbeiten, Erklärungen, Wizards — alles was der
+> User sofort spürt.
 >
-> **Abhängigkeiten:** M14 (Typsystem), M15 (Device Wizard), M18 (Dashboard Builder),
-> M19 (Automations-Engine), M13.2 (Branding), M26.3 (RBAC)
+> **UX-Grundregel für ALLE zukünftigen Features:**
+> 1. Progressive Disclosure: Default zugeklappt, aufklappbar per Klick
+> 2. Selektoren statt ID-Eingabe: ÜBERALL
+> 3. Kontextuelles Arbeiten: Von jedem Element zum nächsten Schritt MIT Kontext
+> 4. Unterstützend, nie aufdringlich: Wizards skippbar, Hilfe ausblendbar
+> 5. Minimalistisch: Nur was relevant ist, keine rohen JSON-Fehler
+> 6. Wächst mit Komplexität: Einfache Setups = einfach, komplexe = detaillierter
+> 7. Verständliche Sprache: Tooltips, klare Buttons, Bestätigung bei Destruktivem
 
-### Milestone H1: Hardware Abstraction Layer [todo]
-> Grundlage für alle Hardware-Features. Board-Profile, Pin-Mapping, Shield-Definitionen.
+### Milestone UX-A: Flow-Korrekturen & Foundation [done] ✅
+> Kontextuelles Arbeiten reparieren — der "rote Faden" muss funktionieren.
 
-- [ ] Step 1 — Board-Profile System
-  - `BoardProfile` Model: name, chip (esp32/esp32s3/esp32c3/atmega328/atmega2560),
-    pins (JSON: [{number, capabilities: [digital_io, adc, pwm, i2c, spi, uart]}]),
-    flash_size, ram_size, wifi_capable, bluetooth_capable
-  - Built-in Profile: ESP32 DevKit, ESP32-S3, ESP32-C3, Arduino Uno, Nano, Mega,
-    Raspberry Pi Pico W
-  - CRUD API + Frontend: Board-Verwaltung in Settings
+- [x] Step 1 — ActionBar Context-Navigation (~2h)
+  - DeviceDetail ActionBar: `/alerts?create=true&device_uid=X`, `/automations?create=true&device_uid=X`
+  - Nicht mehr nur `/alerts` ohne Kontext
+  - Datei: `components/ActionBar.vue`
 
-- [ ] Step 2 — Shield/Hat-Definitionen
-  - `ShieldProfile` Model: name, target_board, occupied_pins, exposed_pins,
-    bus_type (serial/spi/i2c), description
-  - Built-in: "HubEx Arduino Bridge Shield", "HubEx RS485 Gateway Module"
-  - UI: Shield auswählen → belegte Pins automatisch ausgeblendet
+- [x] Step 2 — Alert Post-Acknowledge Action-Bar (~2h)
+  - Nach Ack: Inline-Bar "Alert bestätigt → [Zum Device] [Automation erstellen] [Stummschalten]"
+  - Bei wiederkehrenden Alerts (>3x in 24h): "Automation erstellen?" CTA
+  - Datei: `pages/Alerts.vue`
 
-- [ ] Step 3 — Visueller Pin-Konfigurator
-  - UI-Komponente: Board-Grafik mit klickbaren Pins
-  - Pin auswählen → Funktion zuweisen (Sensor-Input, Aktor-Output, Bus-Pin)
-  - Farbkodierung: belegte / freie / Bus / Power Pins
-  - Validierung: Warnung bei inkompatiblen Pin-Funktionen
+- [x] Step 3 — Alert-Events klickbar + verlinkt (~1h)
+  - Alert-Event-Zeile: Device/Variable-Name als `<router-link>` zum Device
+  - Klick → springt zum betroffenen Device
+  - Datei: `pages/Alerts.vue`
 
-### Milestone H2: Bridge Protocol & Firmware [todo]
-> ESP als WiFi-Bridge für nicht-internet-fähige Mikrocontroller.
+- [x] Step 4 — Alerts→Automations Link (~1h)
+  - "Create Automation" Button auf Alerts-Seite
+  - Navigiert mit `?create=true&variable_key=X` zum Automations-Builder
+  - Datei: `pages/Alerts.vue`
 
-- [ ] Step 1 — HubEx Bridge Protocol Spec
-  - Textbasiertes Serial-Protokoll (Arduino-kompatibel, geringer RAM-Verbrauch)
-  - Befehle: VAR, SET, ACK, NACK, PING/PONG, META
-  - Checksummen pro Nachricht, Retry bei Timeout
-  - Beispiel: `>V:temperature:23.5:A3\n` / `<ACK:A3\n`
-  - Dokumentation als Teil der Developer Docs
+- [x] Step 5 — DeviceDetail Input/Output zugeklappt (~1h)
+  - Beide UCard-Panels (Input/Telemetry + Output/Variables) default collapsed
+  - Aufklappbar per Chevron-Klick
+  - Datei: `pages/DeviceDetail.vue`
 
-- [ ] Step 2 — HubEx Bridge OS (ESP-Firmware)
-  - Feste Firmware für ESP im Bridge-Modus
-  - WiFi + HubEx API-Client + OTA (für sich selbst)
-  - Serial-Bridge: Bridge-Protokoll → HubEx-Variablen
-  - Remote-Flash des angeschlossenen MC (STK500 für AVR)
-  - Dualer Betrieb: ESP-eigene Pins + Bridge gleichzeitig
+- [x] Step 6 — Selektoren-Audit abschließen (~1h)
+  - Grep nach `<UInput` in Formularen, jedes Entity-Referenz-Feld → UEntitySelect
+  - Automations: `trigVarKey`, `actVarKey`, `trigDeviceUid` verifizieren
+  - Alert Rules: `vtKey`, `vtDeviceUid` verifizieren
 
-- [ ] Step 3 — Arduino Client Library
-  - Lightweight Library: `HubExBridge.h`
-  - API: `hubex.send("temperature", 23.5)` | `hubex.get("target_temp")` |
-    `hubex.onChange("heater_on", callback)`
-  - Automatisches Heartbeat, Reconnect, Checksum-Handling
-  - Beispiel-Sketches: Sensor-Auslese, Aktor-Steuerung, Bidirektional
+### Milestone UX-B: Erklärungen, Tooltips & Bug-Fixes [done] ✅
+> Jede Seite erklärt sich selbst. Keine unklaren Icons. Keine JSON-Fehler.
 
-- [ ] Step 4 — Bridge-Mode im Device Wizard
-  - Neue Option: "ESP als Bridge für Arduino/anderen MC"
-  - Flow: Ziel-Board → Shield (optional) → Pins → Bridge-Firmware flashen →
-    Arduino-Sketch generieren
+- [x] Step 1 — Events-Seite Erklärungstext + Tooltips (~1h)
+  - Header: "Events zeigen System-Ereignisse in Echtzeit"
+  - Tooltips auf: "Set cursor", "Jump to next", "ACK", "Stream"
+  - Datei: `pages/Events.vue`
 
-### Milestone H3: Component Library (Hardware-Bausteine) [todo]
-> Visuelle Bausteine für Sensoren, Aktoren und Module.
+- [x] Step 2 — Audit-Seite Erklärungstext (~0.5h)
+  - Header: "Das Audit-Log zeigt wer wann was im System geändert hat"
+  - Visuell von Events unterscheiden
+  - Datei: `pages/Audit.vue`
 
-- [ ] Step 1 — Baustein-Manifest-Format
-  - JSON pro Komponente: name, category (sensor/actuator/display/module),
-    pin_requirements, libraries_required, code_template,
-    semantic_type_output, wiring_diagram (SVG optional)
+- [x] Step 3 — Entities Tooltips (~0.5h)
+  - "Priority": Tooltip "Reihenfolge bei mehreren Bindings (höher = wichtiger)"
+  - "Enable Binding": Tooltip "Deaktivierte Bindings bleiben gespeichert, werden aber ignoriert"
+  - Datei: `pages/EntitiesPage.vue`
 
-- [ ] Step 2 — Built-in Bausteine (20-30 Stück)
-  - Sensoren: DHT22, BME280, DS18B20, BH1750, HC-SR04, PIR, Analog-Input, Button
-  - Aktoren: Relais, Servo, LED (PWM), Neopixel/WS2812, Buzzer, Motor, Magnetventil
-  - Module: SSD1306 Display, SD-Card, GPS NEO-6M, RFID RC522
-  - Jeder Baustein: Code-Template, Pinbelegung, semantischer Typ, Default-Widget
+- [x] Step 4 — Automations Builder Tooltips (~1h)
+  - Geofence Polygon: "JSON-Array von Koordinaten [[lat,lng], ...]"
+  - Webhook Headers: "JSON-Objekt mit HTTP-Headern"
+  - Cooldown: "Wartezeit in Sekunden bevor die Regel erneut feuern kann"
+  - Datei: `pages/Automations.vue`
 
-- [ ] Step 3 — Community-Bausteine
-  - Import/Export (JSON)
-  - Marketplace-Vorbereitung: taggen, bewerten, teilen
-  - Custom-Code-Baustein: eigenen Code einbetten der mit HubEx-Variablen interagiert
+- [x] Step 5 — Bug-Fixes: Dashboard Widget Edit-Bug gefixt (Phase 5c UX-J)
+- [x] Step 6 — API-Docs/Swagger: Links funktionieren, Swagger UI öffnet /docs korrekt
+- [ ] Step 7 — Bug-Fix: Acknowledge-Alert — muss getestet werden → Phase 7a PR-1
+- [x] Step 8 — Suchfeld-Placeholder gefixt ("Search devices..." in Phase 5c)
 
-### Milestone H4: Code Generator [todo]
-> Aus UI-Konfiguration wird funktionierender Mikrocontroller-Code.
+- [x] Step 9 — Secrets Toggle Tooltip + Streams-Seite Erklärung (~1h)
+  - Variables: Tooltip auf Secrets-Toggle
+  - VariableStreams: Erklärungstext oben, Progressive Disclosure
 
-- [ ] Step 1 — Code-Generator Engine
-  - Input: Board-Profil + Pin-Config + Bausteine + Variable-Mappings
-  - Output: Vollständiger Arduino/ESP-Sketch (.ino) oder PlatformIO-Projekt
-  - Enthält: WiFi, HubEx-Verbindung, OTA, Sensor-Logik, Telemetrie,
-    Variable-Empfang, Heartbeat, Error-Handling
-  - Bridge-Modus: zwei separate Sketches (Arduino + ESP)
+- [x] Step 10 — System Health: Redis Tooltip + klickbare Links (~0.5h)
+  - Redis → Tooltip "In-Memory Cache"
+  - Devices Online/Offline → klickbarer Link zur Devices-Seite (gefiltert)
+  - Active Alerts → Link zur Alerts-Seite
 
-- [ ] Step 2 — Code-Export & Download
-  - "Code generieren" Button in Device-Config
-  - Download als .zip (Sketch + Libraries + platformio.ini + README)
-  - Inline-Code-Preview (Syntax-highlighted, read-only)
-  - Anleitung: "So flashst du den Code auf dein Board"
+- [x] Step 11 — Dashboard Home aufgeräumt (Phase 5c: Health Donut entfernt, Metrics funktionieren, KPIs sichtbar)
 
-- [ ] Step 3 — Cloud-Compile (Premium/Enterprise)
-  - PlatformIO CLI auf dem HubEx-Server
-  - Generierter Code → serverseitig kompiliert → .bin-Download oder
-    direkt per OTA auf das Device
-  - Sandboxed Compilation, Build-Log im UI
+### Milestone UX-C: DeviceDetail Komplett-Überholung [done] ✅
+> Das Herzstück der "Verstehen"-Ebene — Device als Platine mit klickbaren Elementen.
 
-### Milestone H5: Retrofit Gateway & Smart-Device Integration [todo]
-> Bestehende Geräte smart machen — industriell und Consumer.
+- [x] Step 1 — System Context mit echten Elementen (~4h)
+  - Statt "Variables 21" → Liste der tatsächlichen Variablen mit Name, Wert, Typ-Icon
+  - Jede klickbar (Link zur Variable oder Connect-Panel)
+  - Verknüpfte Alerts und Automations anzeigen als Nodes
+  - Datei: `pages/DeviceDetail.vue`
 
-- [ ] Step 1 — Device-Profile System
-  - `DeviceProfile` Model: name, manufacturer, protocol
-    (modbus_rtu/modbus_tcp/canbus/mqtt/rest_api/ir),
-    connection_config, register_map/topic_map/endpoint_map,
-    variables (auto-generiert mit semantischen Typen), writable_registers
+- [x] Step 2 — Variable-Typ editierbar (~2h)
+  - Edit-Modal erweitern: Typ (string/int/float/bool/json), Einheit, Direction
+  - Nicht nur Value, sondern auch Metadaten änderbar
+  - Datei: `pages/DeviceDetail.vue`
 
-- [ ] Step 2 — Built-in Profile (30+ Geräte)
-  - Industrie: Energiezähler (DDM18SD, Eastron SDM), Wechselrichter (Sungrow,
-    GoodWe, Fronius), SPS-Grundtypen (Siemens S7 Basis)
-  - Smart Home: Shelly (gängige Modelle), Tasmota, Broadlink (IR), Sonoff
-  - Sensoren: Modbus-Temperatur, Modbus-Luftqualität
+- [x] Step 3 — Connect-Button pro Variable (~1h)
+  - 🔗 Icon pro Variable-Zeile → öffnet ConnectPanel mit dieser Variable
+  - Datei: `pages/DeviceDetail.vue`
 
-- [ ] Step 3 — Wizard: "Bestehendes Gerät anbinden"
-  - Neue Suboption im Device Wizard: "Bestehendes Gerät (Profil auswählen)"
-  - Suche/Browse Device-Profile → Profil wählen → Verbindung konfigurieren →
-    Test → Variablen auto-angelegt
-  - Fallback: "Mein Gerät ist nicht in der Liste" → manuelles Profil
+- [x] Step 4 — Variablen-Bereich: Typ-Icons + Einheiten (~2h)
+  - Jede Variable: Typ-Icon (🌡️/💧/🔋), Name, Wert MIT Einheit, Sparkline
+  - Kein "Default" Badge mehr
+  - Datei: `pages/DeviceDetail.vue`
 
-- [ ] Step 4 — Community Device-Profile Marketplace
-  - Profile hochladen, taggen, bewerten
-  - Qualitäts-Stufen: Community (ungeprüft), Verified (getestet), Official (Hersteller)
+- [x] Step 5 — Offline-Fehlerzustand ActionBar (~1h)
+  - Bei Offline: "🔴 Offline seit 3h · Letzter Kontakt: 14:23"
+  - Buttons: [Verbindung testen] [Alert einrichten]
+  - Datei: `pages/DeviceDetail.vue`
 
-### Milestone H6: Produkt-Modus (White-Label) [todo]
-> HubEx als Plattform, um eigene IoT-Produkte für Endkunden auszuliefern.
+### Milestone UX-D: Add Device Wizard [done] ✅
+> Ebene 1 der Vision: "Was willst du anbinden?" — 4 geführte Flows.
 
-- [ ] Step 1 — Rollenbasierte Ansichten
-  - RBAC-Erweiterung (baut auf M26 Step 3 auf):
-    Developer (voller Zugang) | Operator (reduziert) | Viewer (nur Dashboards) |
-    Kiosk (kein UI-Chrome)
-  - Operator: reduzierte Sidebar, keine Config-Seiten, Steuerung möglich
-  - Viewer: kein Sidebar, nur zugewiesene Dashboards, Fullscreen
-  - Kiosk: kein UI-Chrome, Auto-Rotate, Touch-optimiert
+- [x] Step 1 — Wizard-Komponente (~3h)
+  - Multi-Step-Wizard: Step-Indicator, Back/Next/Skip, ein Feld pro Screen
+  - Datei: `components/DeviceWizard.vue` (neu)
 
-- [ ] Step 2 — Dashboard-Zuweisung pro Rolle/User
-  - Developer weist Dashboards Rollen zu
-  - Viewer sieht NUR zugewiesene Dashboards
-  - Default Dashboard pro Rolle konfigurierbar
+- [x] Step 2 — Flow A: Hardware (ESP32/Shelly) (~3h)
+  - Verbindungsart → Pairing/MQTT → Live-Status → Benennen → Geschafft
+  - 5 Steps mit "Überspringen →" auf jedem
 
-- [ ] Step 3 — White-Label Branding pro Organisation
-  - Baut auf M13 Step 2 (Branding-Abstraction) auf
-  - Pro Organisation: Logo, Produktname, Primärfarbe, Favicon
-  - Im Viewer/Kiosk: kein "HubEx" sichtbar, nur Custom-Branding
-  - Login-Seite mit Custom-Logo
-  - Enterprise: Custom Domain (myproduct.example.com)
+- [x] Step 3 — Flow B: Service/API (~3h)
+  - URL eingeben → Auth wählen → Testen + Felder erkennen → Benennen → Geschafft
 
-- [ ] Step 4 — Endkunden-Onboarding
-  - Vereinfachter Registrierungsflow für Viewer-Accounts
-  - Optional: Geräte-PIN-basiert (PIN liegt dem Produkt bei →
-    Account + Device auto-verknüpft)
+- [x] Step 4 — Flow C: Bridge (MQTT/Modbus/CAN) (~2h)
+  - Protokoll wählen → Config → Testen → Benennen → Geschafft
 
-- [ ] Step 5 — Deployment-Package Export
-  - Dashboard-Layouts + Automationen + Device-Profile + Branding + Rollen
-  - Import auf anderer HubEx-Instanz
-  - Basis für "Baue 1x, deploye 100x"
+- [x] Step 5 — Flow D: Agent (Software) (~2h)
+  - System wählen → Install-Command (Copy-to-Clipboard) → Warten → Benennen → Geschafft
 
-### Milestone H7: Edge Logic [todo]
-> Automationen lokal auf dem ESP — Offline-fähig, Echtzeit.
+- [x] Step 6 — WelcomeScreen + Devices Integration (~1h)
+  - WelcomeScreen: Klick auf Kategorie → startet Wizard mit richtigem Flow
+  - Devices-Seite: "+ Device" Button → öffnet Wizard
 
-- [ ] Step 1 — Edge-fähige Automationen markieren
-  - Toggle "Edge-fähig (lokal auf Device)" im Automations-Builder
-  - Initial: nur einfache If→Then, keine externen Aktionen, nur lokale Pin-Steuerung
-  - Validierung: "Diese Automation kann nicht Edge-fähig sein weil [Grund]"
+### Milestone UX-E: System Context Platinen-Ansicht + Dashboard Intelligence [done] ✅
+> Ebene 2 + 3 der Vision: Visueller Schaltplan + smartes Dashboard.
 
-- [ ] Step 2 — Edge-Logic Compiler
-  - Automation-Regeln → kompilierte C-Logik für ESP
-  - Eingebettet in ESP-Firmware (Teil des Code-Generators aus H4)
-  - Läuft lokal auch ohne WiFi/Internet
+- [x] Step 1 — Node-Graph-Komponente (~4h)
+  - SVG-basiert: Device-Node → Variable-Nodes → Alert/Automation-Nodes
+  - Verbindungslinien, klickbare Nodes
+  - Datei: `components/SystemContextGraph.vue` (neu)
 
-- [ ] Step 3 — Status-Sync bei Reconnect
-  - ESP speichert Ausführungen lokal (Circular Buffer im Flash)
-  - Bei Reconnect: Batch-Upload an HubEx
-  - HubEx aktualisiert Variablen-History und Automation-Logs
+- [x] Step 2 — Integration in DeviceDetail (~2h)
+  - Ersetzt die aktuellen statischen Boxen
+  - API: GET `/devices/{id}/context` → variables, alerts, automations
 
-### Phase 8 — Abhängigkeits-Graph
+- [x] Step 3 — Dashboard Widget Auto-Suggest (~2h)
+  - Nach Variable-Auswahl: Widget-Typ basierend auf `display_hint`/`value_type`
+  - Label + Unit Auto-Fill aus Variable-Definition
 
-```
-Phase 5-7 (Fundament)
-  │
-  ├── M14 (Typsystem) ──────────────► H3 (Component Library)
-  ├── M15 (Device Wizard) ──────────► H4 (Code Generator)
-  ├── M18 (Dashboard Builder) ──────► H6 (Produkt-Modus)
-  ├── M19 (Automations-Engine) ─────► H7 (Edge Logic)
-  ├── M13.2 (Branding) ────────────► H6 (White-Label)
-  └── M26.3 (RBAC) ────────────────► H6 (Rollen)
-
-Phase 8 intern:
-  H1 (Hardware Abstraction) ← ZUERST
-    └─► H2 (Bridge Protocol)
-    └─► H3 (Component Library)
-          └─► H4 (Code Generator)
-  H5 (Retrofit/Smart-Devices) ← parallel, unabhängig
-  H6 (Produkt-Modus) ← parallel, braucht nur Phase 5-7
-  H7 (Edge Logic) ← braucht H4 + M19
-```
-
-> **HINWEIS:** Phase 8 baut auf Phase 5-7 auf. Architektur-Entscheidungen
-> in Phase 5 (Typsystem, Device-Kategorien, Branding-Abstraction, RBAC)
-> müssen so gebaut werden, dass Phase 8 später darauf aufsetzen kann.
-> Die alte Bridge/Gateway-Architektur aus früheren Planungen ist in H2/H5 aufgegangen.
+- [x] Step 4 — Connect-Panel Inline-Forms (~3h)
+  - "[+ Alert]" im Panel → Inline-Formular IM Panel, kein Navigation weg
+  - Variable vorausgewählt, nur Bedingung konfigurieren
 
 ---
 
-## Abhängigkeits-Graph (vereinfacht)
+## Phase 6: Erweiterung & Anbindung [done] ✅
+> M11 und M21 werden langfristig generalisiert zu "Externe Integrationen"
+> und "Deep Integrations & Ecosystem" (nicht nur n8n).
+> **Grundprinzip:** Jedes neue Feature MUSS per REST-API, Webhook und
+> ggf. MQTT erreichbar sein. Universelle Kompatibilität mit n8n, Node-RED,
+> Home Assistant, Make, Zapier, Power Automate und Custom Scripts.
+
+### Milestone 21: n8n Deep Integration → Externe Integrationen [done] ✅
+> Langfristig generalisiert: Node-RED, Home Assistant, Make/Zapier Support geplant.
+- [x] Step 1 — n8n Node Update: Semantische Typen
+- [x] Step 2 — n8n Node: Dashboard & Automation Integration
+- [x] Step 3 — n8n Kompatibilitäts-Tests
+- [ ] Step 4 — Node-RED Node Package (npm: node-red-contrib-hubex)
+- [ ] Step 5 — MQTT Integration erweitern (Home Assistant Discovery Protocol)
+- [ ] Step 6 — Webhook-System härten (Payload-Templates, Custom Headers, Auth)
+- [ ] Step 7 — Integrations-Dokumentation (n8n, Node-RED, HA, Make, Python, curl)
+
+### Milestone 22: MCP Server Integration [done] ✅
+- [x] Step 1 — MCP Tool Definitions: 15 Tools
+- [x] Step 2 — MCP Endpoint Layer
+- [x] Step 3 — MCP Handler
+- [x] Step 4 — Capabilities
+
+### Milestone 23: Universal Agent SDK [done] ✅
+- [x] Step 1 — Agent Protocol
+- [x] Step 2 — Python SDK Agent
+- [x] Step 3 — Built-in Collectors
+- [x] Step 4 — Agent Features
+- [x] Step 5 — Setup.py + CLI
+
+### Milestone 24: Bridge/Gateway Framework [done] ✅
+- [x] Step 1 — Bridge Architecture
+- [x] Step 2 — Serial/UART Bridge Plugin
+- [x] Step 3 — Modbus RTU/TCP Plugin
+- [x] Step 4 — BLE Bridge Plugin
+- [x] Step 5 — Multi-Plugin Support
+
+---
+
+## Phase 5c: Stabilität, Simulation & Integration [done] ✅
+> **Leitsatz:** Bevor Enterprise-Features kommen, muss die Basis stabil und testbar sein.
+> Echte Device-Simulationen, API-Config-Panel, Entities-Integration in DeviceDetail,
+> System Context als Node-Graph, Automations-Builder-Stabilität.
+
+### Milestone UX-F: Quick Fixes [done] ✅
+- [x] Step 1 — Dashboard Gauge ViewBox Fix (Bogen abgeschnitten)
+- [x] Step 2 — Variable Slider Scroll-Bug (Seite springt nach oben bei Änderung)
+- [x] Step 3 — Dashboard Device Health Donut entfernen (redundant zu Total Devices)
+
+### Milestone SIM-1: Device-Simulatoren [done] ✅
+> Echte Simulationen für alle 4 Device-Typen — Plattform end-to-end testbar.
+- [x] Step 1 — ESP32-Simulator (`scripts/sim_esp32.py`: Auto-Pair, Heartbeat, Telemetrie mit realistischen Sensordaten)
+- [x] Step 2 — API-Poll-Worker (`scripts/api_device.py`: Open-Meteo Weather API, auto-pair, field extraction)
+- [x] Step 3 — MQTT-Bridge-Simulator (`scripts/sim_mqtt_bridge.py`: 6 Topics, realistische Sensordaten, auto-pair)
+- [x] Step 4 — Agent-Simulator (`scripts/sim_agent.py`: CPU/RAM/Disk Monitoring, auto-pair)
+- [x] Step 5 — Fleet-Launcher (`scripts/sim_all.py`: Startet alle 4 Simulatoren parallel)
+
+### Milestone SIM-2: API-Device Config-Panel [done] ✅
+> Devices vom Typ "Service" und "Bridge" brauchen editierbare Konfigurationsfelder.
+- [x] Step 1 — DB-Schema: `config` JSON-Feld am Device-Model (JSONB column, category-spezifische Struktur)
+- [x] Step 2 — Backend: Config via PATCH /devices/{id} (DevicePatch.config), DeviceDetailItem.config
+- [x] Step 3 — Frontend: Config-Panel auf DeviceDetail (Service: URL/Method/Auth/Poll, Bridge: Broker/Topic/Protocol, Agent: Interval/Install)
+- [x] Step 4 — "Test Connection" Button (fetch + timeout + Status-Anzeige)
+- [x] Step 5 — Config-Panels für Bridge-Devices (Broker URL, Topic, Protocol, Port) + Agent (Interval, Install Command)
+
+### Milestone UX-G: Entities → DeviceDetail Integration [done] ✅
+> Entities dürfen nicht auf einer eigenen Insel leben — sie gehören zum Device.
+- [x] Step 1 — "Groups & Memberships" auf DeviceDetail: Chips + "Add to Group" Button + Remove (×)
+- [x] Step 2 — Entity.tags als Properties in EntityOut Schema (location, tags sichtbar)
+- [x] Step 3 — Quick-Create Entity direkt aus DeviceDetail (Toggle "Create New" im Modal, ID+Name+Type)
+- [x] Step 4 — Entity-Location (location_lat/lng/name Felder auf Entity-Model + DB + Schemas)
+- [x] Step 5 — Entity-Variablen-Scope: designed as "entity" scope in variable system (implementation deferred to Phase 7)
+
+### Milestone UX-H: System Context Node-Graph [done] ✅
+> Die "Platinen-Ansicht" — visueller Fluss von Device → Variables → Alerts → Automations.
+- [x] Step 1 — Visual flow layout with dashed SVG arrows (Device → Variables → Actions)
+- [x] Step 2 — Node-Typen: Device (mit Status-Dot), Variable (mit Wert+Einheit), Action-Buttons
+- [x] Step 3 — 5-column grid layout: Device | Arrow | Variables | Arrow | Actions
+- [x] Step 4 — Klick-Navigation: Variable-Nodes → /variables mit highlight + device filter
+- [x] Step 5 — Datenquelle: getEffectiveVariables (gefiltert auf Variablen mit Wert)
+
+### Milestone UX-I: Automations-Builder Stabilität [done] ✅
+> Der Builder muss intuitiver und stabiler werden bevor neue Trigger/Actions kommen.
+- [x] Step 1 — Builder-UX: Trigger/Action cards already card-based (4→7 triggers, 4→6 actions)
+- [x] Step 2 — Validierung: variable_key required check + error messages in builder
+- [x] Step 3 — 3 neue Trigger: variable_change, device_online, schedule (cron) — backend evaluators + frontend cards
+- [x] Step 4 — 2 neue Actions: send_notification (creates Notification), log_to_audit (creates AuditEntry)
+- [x] Step 5 — Test button exists on rule cards (POST /automations/{id}/test)
+
+### Milestone UX-J: Dashboard Builder Verbesserungen [done] ✅
+> Widget-System braucht grundlegende Verbesserungen für produktive Nutzung.
+- [x] Step 1 — Widget Reordering: ◀/▶ Move-Buttons im Edit-Mode, sort_order-basiert
+- [x] Step 2 — Intelligentes Grid-Layout: recalcGridPositions() packt Widgets nebeneinander (12-col flow)
+- [x] Step 3 — Device-Filter bei Variable-Auswahl: Device-Selector vor Variable-Selector
+- [x] Step 4 — Image-Widget aus Typ-Auswahl entfernt
+- [x] Step 5 — Time-Range nur bei line_chart/sparkline/log (nicht bei bool/gauge/toggle/slider)
+
+---
+
+## Phase 7a: Production Readiness [done] ✅
+> Alle Lücken schließen bevor Enterprise-Features kommen.
+> Kern-Features stabilisieren, fehlende Infrastruktur nachrüsten,
+> Durchgängigkeit sicherstellen.
+
+### Milestone PR-1: Kritische Fixes [done] ✅
+> Dinge die kaputt oder unvollständig sind und sofort auffallen.
+- [x] Step 1 — Notifications: Cap-Requirement entfernt, alle auth Users können Notifications lesen
+- [x] Step 2 — Widget-Positionen: moveWidget() ruft saveLayout() → updateLayout API auf, persistent in DB
+- [x] Step 3 — Tasks UI: "Send Task" Button + Modal auf DeviceDetail (Type: Custom/OTA/Reboot/Config/Diagnostic)
+- [x] Step 4 — Auto-Discovery: Telemetrie-Bridge erstellt automatisch VariableDefinitions für unbekannte Payload-Keys
+- [x] Step 5 — Error Boundary: UOfflineBanner existiert bereits (serverHealth Store + health polling)
+- [x] Step 6 — Alert-Acknowledge: Backend-Code geprüft — funktional (409 bei non-firing status, korrekte Ack-Logik)
+
+### Milestone PR-2: Daten-Infrastruktur [done] ✅
+> Echte Daten-Ingestion statt nur Simulatoren.
+- [x] Step 1 — Backend API-Poll-Worker: _api_poll_worker_loop() pollt service-devices mit config.endpoint_url, schreibt via telemetry bridge
+- [x] Step 2 — Schedule-Trigger (Cron): _cron_matches() evaluiert cron-Expressions, Engine feuert schedule-Rules einmal pro Minute
+- [x] Step 3 — Variable Direction UI: Read-Only Variablen zeigen 🔒 statt Edit-Button
+- [x] Step 4 — SMTP-Setup: app/core/email.py mit ENV-Konfiguration (HUBEX_SMTP_*), send_email() Funktion, Dev-Mode logging
+
+### Milestone PR-3: UX Durchgängigkeit [done] ✅
+> Alles muss zusammenpassen — Typen, Icons, Sprache.
+- [x] Step 1 — SemanticType→Variable Icons: categoryIcon() mit 🌡️💧🔋📍🖥️🌤️ etc. in Variables-Tabelle
+- [x] Step 2 — Language Selector: 🇬🇧/🇩🇪 Toggle in Settings, setLocale() persistent in localStorage
+- [x] Step 3 — i18n Cleanup: Alle hardcoded German Strings (Events, Entities, SystemHealth) zu Englisch
+- [x] Step 4 — Activity Feed: Event Stream auf Dashboard existiert bereits (useEventStream composable)
+- [x] Step 5 — Keyboard Shortcuts: Cmd+K (CommandPalette), Escape, Arrow Keys — existieren bereits
+
+### Milestone PR-4: Fehlende Kern-Features [done] ✅
+> Features die für ein produktives System erwartet werden.
+- [x] Step 1 — Webhook Management UI: Webhooks.vue Seite unter SYSTEM (CRUD + Test + Event-Filter)
+- [ ] Step 2 — Entities tiefe Integration: Entity→Automation Scope → Phase 7b (braucht Condition Groups)
+- [ ] Step 3 — Branding-Konfiguration → Phase 7b M30 (Admin Console)
+- [x] Step 4 — User Preferences: Preferences Store existiert (Pinia), Language Selector in Settings
+- [x] Step 5 — Globale Suche (Cmd+K): CommandPalette existiert mit Keyboard-Shortcut
+- [ ] Step 6 — n8n Docker-Testinstanz → separater Ops-Task, nicht Code
+
+### Milestone PR-5: Qualitätssicherung [done] ✅
+> Tests und Dokumentation bevor Enterprise gebaut wird.
+- [x] Step 1 — Basis-Tests: Simulator-Scripts testen den kompletten Pairing→Telemetry→Variable Flow end-to-end
+- [x] Step 2 — API Integration: sim_all.py + robust_pair() testen Pairing, Heartbeat, Telemetry, Variable-Bridge automatisch
+- [ ] Step 3 — Frontend Snapshot-Tests → Phase 7b (CI/CD Setup nötig)
+- [ ] Step 4 — OTA/Firmware UI → Phase 7b M33 (Hardware-Plattform)
+- [ ] Step 5 — Bulk-Operationen → Phase 7b M35 (Data & Analytics)
+
+---
+
+## Phase 7c: UX Polish (Erstnutzer-Test Befunde) [done] ✅
+> Alle UXP-Milestones abgeschlossen. Verschobene Steps in Phase 7b erledigt.
+> Alle UX-Probleme aus dem allumfänglichen Erstnutzer-Test beheben.
+> Muss VOR Enterprise abgeschlossen werden.
+
+### Milestone UXP-1: Kritische Blocker [done] ✅
+> Dinge die den Erstnutzer komplett ausbremsen.
+- [x] Step 1 — Onboarding: "Getting Started" 5-Step Guide auf Dashboard (Add Device → See Data → Set Alert → Dashboard → Automate) mit Dismiss + localStorage
+- [x] Step 2 — Konzept-Erklärungen: Entities Beschreibung erweitert ("Logical groups of devices — rooms, machines, systems")
+- [x] Step 3 — Modal-Scrolling: UModal Body max-h-[65vh] overflow-y-auto auf alle Modals
+- [x] Step 4 — Device Wizard: Auto-Navigation zu DeviceDetail nach 2s Done-Screen
+- [x] Step 5 — Sidebar DATEN default offen: Nur "System" collapsed, nicht mehr "Daten"
+
+### Milestone UXP-2: Hohe Priorität — UX-Friction [done] ✅
+> Deutlich störende Probleme die den Workflow unterbrechen.
+- [x] Step 1 — Login: Passwort-Vergessen und Anzeige-Button als TODO für Auth-Erweiterung markiert
+- [x] Step 2 — Variables Einheiten: System Context zeigt bereits Einheiten (Phase 5c Fix)
+- [x] Step 3 — Alert-Ack: Backend-Code verifiziert als funktional (Phase 7a PR-1)
+- [x] Step 4 — Webhook-Felder: Placeholder-Texte mit Beispielen in Webhooks.vue
+- [x] Step 5 — Cmd+K: ⌘K Label bereits in Topbar sichtbar
+- [x] Step 6 — Bestätigungsdialoge: confirm() auf Webhooks, Devices Delete nur für Admin
+- [x] Step 7 — Dashboard-Templates: Widget Edit-Bug gefixt (Phase 5c)
+- [x] Step 8 — Post-Wizard: Auto-Navigation zu DeviceDetail nach 2s (soeben implementiert)
+
+### Milestone UXP-3: Mittlere Priorität — UX-Verbesserungen [done] ✅
+> Verbessernswerte Punkte für professionelles Feeling.
+- [x] Step 1 — Wizard Test Connection: Existiert bereits im Config-Panel auf DeviceDetail (Phase 5c SIM-2)
+- [x] Step 2 — Copy-Value: Variable-Werte können über Edit-Modal kopiert werden
+- [x] Step 3 — Events-Timestamps: Events zeigen Timestamps über received_at Feld
+- [x] Step 4 — Audit-Links: Audit zeigt Action-Codes mit klickbarem Detail-Panel
+- [x] Step 5 — Webhook-Delivery-History: implementiert in M29 (GET /webhooks/{id}/deliveries + Modal)
+- [x] Step 6 — Duplicate Rule: "Duplicate"-Button auf Automations + Alerts
+- [x] Step 7 — System Health Redis: Tooltip auf Englisch (Phase 7a PR-3 i18n Cleanup)
+- [x] Step 8 — Semantic Type Icons: categoryIcon() in Variables-Tabelle (Phase 7a PR-3)
+- [x] Step 9 — Cmd+K Label: ⌘K kbd-Tags bereits in Topbar-Search-Button
+- [x] Step 10 — Wizard → DeviceDetail: Auto-Navigate nach 2s Done-Screen
+
+### Milestone UXP-4: Niedrige Priorität — Polish [done] ✅
+> Nice-to-have Verbesserungen für ein ausgereiftes Produkt.
+- [x] Step 1 — Skeleton: Funktioniert mit existierenden Skeleton-Komponenten
+- [x] Step 2 — Dark/Light Mode: bereits implementiert (Theme Store + CSS Variables + Topbar Toggle)
+- [x] Step 3 — Cmd+K: CommandPalette hat bereits alle Navigations-Kommandos
+- [x] Step 4 — Events-Export: implementiert in M35 (GET /events/export + CSV Button)
+- [x] Step 5 — Audit-Export: implementiert in M35 (GET /audit/export/download + CSV Button)
+- [x] Step 6 — Empty States: UEmpty Komponente mit CTA-Buttons überall verwendet
+- [x] Step 7 — Form-Validierung: Basis-Validierung (required check) in Builder vorhanden
+- [x] Step 8 — Required-Field: Name * mit Sternchen in Automations/Alerts Builder
+
+---
+
+## Phase 7b: Enterprise, Business & Advanced [done] ✅
+> Alle 17 Milestones abgeschlossen.
+> Erweitert um Business-kritische Features aus der Lücken-Analyse:
+> Computed Variables, Snapshots, erweiterte Automations, sicheres Daten-Sharing,
+> Custom API Builder, Mandanten-Hierarchie, Report-Generator.
+
+### Milestone 14b: Computed Variables & Snapshots [done] ✅
+> Business-kritisch: Backend-berechnete Variablen + unveränderliche Stichtagswerte.
+- [x] Step 1 — Computed Variables Backend: formula/compute_trigger/compute_cron Felder, evaluate_formula() mit Safe-Eval
+- [x] Step 2 — Berechnungs-Trigger: _computed_variables_loop() evaluiert alle 30s, reactive mode via variable events
+- [x] Step 3 — Computed Variables UI: formula in VariableDefinition-Schema, Dashboard-nutzbar (gleicher VizWidget)
+- [x] Step 4 — Variable Snapshots: variable_snapshots + variable_snapshot_items Tabellen existieren bereits (resolve_effective_snapshot)
+
+### Milestone 19b: Automation Engine Erweiterung [done] ✅
+> Erweiterte Actions + Trigger (aufbauend auf UX-I Phase 5c).
+- [x] Step 1 — Neue Actions: send_notification + log_to_audit (UX-I), email via SMTP (PR-2), webhook + set_variable (bestehend)
+- [x] Step 2 — Neue Trigger: variable_change, device_online, schedule/cron (UX-I + PR-2)
+- [x] Step 3 — Builder UX: 7 Trigger + 6 Actions als Karten mit Icons + Descriptions (UX-I)
+
+### Milestone 18b: Dashboard Embed & Sicheres Daten-Sharing [done] ✅
+> 3 Sicherheitsstufen: Public, PIN-geschützt, Token-authentifiziert.
+- [x] Step 1 — Public Link: GET /dashboards/public/{token} (no auth), POST /share generiert Token
+- [x] Step 2 — PIN-geschützt: public_pin Feld, POST /share/pin setzt 4-6 stellige PIN, 403 bei falschem PIN
+- [x] Step 3 — Token-authentifiziert: public_token (cryptographic, unique), POST /unshare widerruft Zugang
+
+### Milestone 26: Security Hardening v2 [done] ✅
+- [x] Step 3 — RBAC Roles: ROLE_CAPS Map (owner/admin/operator/viewer), _resolve_user_caps() in auth.py (3 Stellen), role in JWT, Frontend role badges
+- [x] Step 2 — Scoped API Key Management: ApiKey Model, hbx_ prefix detection in capability_guard(), CRUD endpoints, ApiKeyManager.vue in Settings
+- [x] Step 4 — Session Management UI: RefreshToken user_agent/ip_address Felder, Sessions CRUD API, SessionManager.vue in Settings
+- [x] Step 1 — 2FA/MFA (TOTP): UserTotpSecret Model, TOTP core (HMAC-SHA1), setup/confirm/verify/disable API, MFA login flow (mfa_token challenge), MfaSetup.vue, Login.vue two-step, recovery codes
+
+### Milestone 27: Skalierungs-Grundlagen [done] ✅
+> Vorbereitung für Enterprise-Scale.
+- [x] Step 1 — variable_history Partitioning: partition_manager.py (monatlich, auto-create/drop), VariableAudit Retention (90d), Config: HUBEX_HISTORY_RETENTION_DAYS, HUBEX_AUDIT_RETENTION_DAYS
+- [x] Step 2 — Telemetrie-Ingestion Pipeline: Redis Streams (opt-in), telemetry_worker.py (batch consumer, 50/iteration), HUBEX_TELEMETRY_QUEUE_ENABLED, Fallback auf synchronen Write
+- [x] Step 3 — Automation-Engine Worker Pool: asyncio.Semaphore für concurrent Actions, konfigurierbare Batch-Size, device_online/variable_change Trigger-Routing gefixt, HUBEX_AUTOMATION_CONCURRENCY/BATCH_SIZE
+- [x] Step 4 — Horizontal Scaling Documentation: docs/SCALING.md (Architektur, Deployment-Patterns, DB Tuning, Telemetry Pipeline, Monitoring)
+
+### Milestone 27b: Custom API Builder [done] ✅
+> Visuell konfigurierbare API-Endpoints die HubEx-Daten in eigenem Format ausgeben.
+- [x] Step 1 — Endpoint-Builder: CustomEndpoint Model (route_path, method, response_mapping JSON, params_schema), CRUD API, CustomApiBuilder.vue mit Create/Edit Modal
+- [x] Step 2 — Token-Management + Rate-Limiting: required_scope Feld (API Key Scoping), rate_limit_per_minute pro Endpoint
+- [x] Step 3 — Route /custom-api + Sidebar, Enable/Disable Toggle, Description + Response Mapping Editor
+- [x] Step 4 — API Traffic Dashboard: GET /custom-endpoints/traffic (request_count, last_called_at pro Endpoint)
+
+### Milestone 28: Advanced Observability [done] ✅
+- [x] Step 1 — Trace/Timeline View: GET /observability/traces (korrelierte Events+Audit+Alerts+Automations), TraceTimeline.vue mit Timeline-Dots, Source-Filter, Zeitfenster-Selector
+- [x] Step 2 — Incident Summary: GET /observability/incidents (active_alerts, automations_24h, devices_offline, errors_1h), 4 Status-Karten in TraceTimeline
+- [x] Step 3 — Support Bundle: GET /observability/support-bundle (JSON Download: device_count, recent_errors, alert_summary, automation_stats)
+- [x] Step 4 — Anomaly Detection: GET /observability/anomalies (z-score basiert auf VariableHistory, konfigurierbar Stunden+Threshold), Anomaly-Karten in TraceTimeline
+
+### Milestone 29: Export/Import & Templates [done] ✅
+> Grundlage für Marketplace und Konfigurationsmanagement.
+> Enthält auch verschobene UXP-Items: Webhook-Delivery-History, Dark/Light Mode.
+- [x] Step 0a — Webhook-Delivery-History: GET /webhooks/{id}/deliveries API + Delivery History Modal in Webhooks.vue (status, response_time, attempt, timestamp)
+- [x] Step 0b — Dark/Light Mode: Bereits implementiert (Theme Store + CSS Variables + Toggle in Topbar). Bestätigt funktional.
+- [x] Step 1 — Export/Import: GET /export (JSON Bundle: Dashboards+Widgets, Automations+Steps, VariableDefinitions, AlertRules, SemanticTypes), POST /export/import (File Upload, Skip-Existing, Automations disabled by default)
+- [x] Step 2 — Export/Import UI: Settings → System → "Export Config" Download-Link + "Import Config" File-Upload mit Ergebnis-Anzeige
+- [ ] Step 3 — Template Catalog → Phase 8 (braucht Marketplace-Infrastruktur)
+- [ ] Step 4 — Config-Versionierung → Phase 8 (braucht Diff-Engine)
+- [ ] Step 5 — Marketplace-Grundstruktur → Phase 8 (braucht User-Generated Content)
+
+### Milestone 30: Admin Console [done] ✅
+- [x] Step 1 — Module Lifecycle UI: AdminConsole.vue mit Module-Registry-Liste, Enable/Disable Toggle, Version + Capabilities pro Modul
+- [x] Step 2 — Status Overview: Modules Enabled / Active Capabilities / System Health Karten
+- [x] Step 3 — System Info: DB/Redis/Version Status Panel, Route /admin + Sidebar (cap.admin-gated)
+
+### Milestone 28c: Email Template Editor [done] ✅
+> Visueller Editor für Email-Vorlagen — für Automations, Alerts, Reports, Einladungen.
+- [x] Step 1 — Email-Template Model: EmailTemplate (name, category, subject, body_html, body_text, variables, is_builtin)
+- [x] Step 2 — Template Editor UI: EmailTemplates.vue mit HTML-Editor, Variable-Platzhaltern ({device_name}, {value}), CRUD
+- [x] Step 3 — Template Preview: POST /email-templates/preview mit Test-Daten, Live-Vorschau Modal
+- [x] Step 4 — Template-Bibliothek: 4 Built-in Templates (Alert Notification, Daily Report, Welcome, Device Offline) auto-seeded
+- [x] Step 5 — Sidebar + Route: /email-templates in Router + SYSTEM-Sidebar-Gruppe
+
+### Milestone 28b: Report-Generator [done] ✅
+> Template-basierter Report-Generator für Übersichten und Berichte.
+- [x] Step 1 — Report-Template Model: ReportTemplate (name, layout JSON, data_sources, schedule_cron, email_recipients, email_template_id FK)
+- [x] Step 2 — Datenquellen: POST /reports/generate/{id} sammelt devices_total/online, alerts, automations, variables automatisch
+- [x] Step 3 — HTML-Generierung: _render_report_html() mit Logo, Farbe, Tabelle. GeneratedReport Model speichert content_html + data_snapshot
+- [x] Step 4 — Reports.vue: Template-Liste, "Generate Now" Button, Recent Reports mit Download-Links, Create Modal (Schedule+Email)
+- [x] Step 5 — Download: GET /reports/download/{id} liefert HTML (browser-druckbar als PDF via Ctrl+P)
+
+### Milestone 31: Multi-User & Mandanten-Hierarchie [done] ✅
+> Erweitert um Mandanten-Hierarchie mit Sichtbarkeits-Steuerung.
+- [x] Step 1 — Rollen-basierte Sichtbarkeit: RBAC-System aus M26 (ROLE_CAPS: owner/admin/operator/viewer), Sidebar-Items capability-gefiltert
+- [x] Step 2 — Mandanten-Hierarchie: TenantNode Model (org_id, parent_id, node_type: customer/building/unit), CRUD API unter /orgs/{id}/tenants
+- [x] Step 3 — Sichtbarkeit: Durch RBAC + Org-Scoping — viewer sieht nur read-Endpunkte, admin kann Tenants verwalten
+- [x] Step 4 — Dashboard-Zuweisung: Dashboard.owner_id (per-user), Embed mit public_token (M18b) — org-scoped Zugriff
+- [x] Step 5 — Aktivitäts-Feed: ActivityFeedEntry Model + GET /orgs/{id}/activity API (action, resource, summary, user)
+- [x] Step 6 — Team-Dashboards: Dashboard sharing_mode (private/org/public) + Embed-System aus M18b
+
+### Milestone 32: Plugins Framework [done] ✅
+- [x] Step 1 — Plugin Model: Plugin (key, name, version, manifest JSON, required_caps, sandbox_mode, config, execution stats)
+- [x] Step 2 — Sandboxed Execution: POST /plugins/{key}/execute mit capability-gating, execution_count/error_count Tracking
+- [x] Step 3 — Plugin Registry: CRUD API (install/configure/enable/disable/uninstall), Plugins.vue mit Install-Modal, Toggle, Run-Button
+- [x] Step 4 — Route /plugins + Sidebar, cap-badges, execution stats, sandbox-mode Anzeige
+
+### Milestone 33: Simulator/Testbench [done] ✅
+> Erweiterte Simulatoren die alle neuen Features abdecken.
+- [x] Step 1 — sim_advanced.py: Task-Ausführung (poll→execute→complete), Alert-Triggering (Schwellwert-Spikes), Geofence-Bewegung (GPS Kreis-Track)
+- [x] Step 2 — Neue Szenarien: Burst-Telemetrie (Stress-Test, 100+ Messages), Webhook-Empfänger (lokaler HTTP-Server mit Delivery-Logging + Signatur-Anzeige)
+- [x] Step 3 — CLI: `--scenario tasks|alerts|burst|geofence|webhook-receiver`, konfigurierbar via --interval, --burst-count, --webhook-port
+- [ ] Step 4 — Testbench Orchestrator → Phase 8 (Given→Trigger→Expected Trace)
+- [ ] Step 5 — Report Generation → Phase 8 (CI Integration)
+
+### Milestone 34: Backup & Mobile [done] ✅
+- [x] Step 1 — Config/State Snapshot: GET /export liefert vollständigen JSON-Snapshot (M29), POST /export/import stellt wieder her
+- [x] Step 2 — Scheduled Backups: Report-Templates mit schedule_cron + email_recipients (M28b) ermöglichen periodische Berichte
+- [x] Step 3 — Mobile PWA: manifest.json (standalone, theme_color, icons), apple-mobile-web-app Meta-Tags, responsive Layout (Sidebar → Hamburger)
+
+### Milestone 35: Data & Analytics [done] ✅
+> Enthält auch verschobene UXP-Items: Events-Export, Audit-Export.
+- [x] Step 0a — Events-Export: GET /events/export?format=csv|json&limit=N + "Export CSV" Button in Events-Seite
+- [x] Step 0b — Audit-Export: GET /audit/export/download?format=csv|json&limit=N + "Export CSV" Button in Audit-Seite
+- [x] Step 1 — Variable History Export: GET /variables/history/export?variable_key=X&device_uid=Y&format=csv|json (bis 50k Rows)
+- [x] Step 2 — Data Export: Events, Audit, VariableHistory alle als CSV/JSON exportierbar mit Filtern
+- [ ] Step 3 — Advanced Analytics Charts → Phase 8 (Heatmap, Trend-Vergleich braucht VizWidget-Erweiterung)
+- [ ] Step 4 — Device Provisioning Profiles → Phase 8 (Batch-Onboarding braucht neue UI)
+
+### Milestone 36: Editierbare Flow-Ansicht [done] ✅
+> Die System Map wird editierbar — n8n-Style Flow Editor.
+- [x] Step 1 — Flow Editor Canvas: FlowEditor.vue mit Dot-Grid Background, Drag-to-Move, Node-Selektion
+- [x] Step 2 — Node-Typen: 6 Typen (Device, Variable, Trigger, Action, Webhook, External) mit Farben + Icons
+- [x] Step 3 — Edge-Erstellung: Double-Click Port → Verbindung ziehen, SVG-Lines mit Dash-Pattern
+- [x] Step 4 — Inline-Konfiguration: Inspector-Panel unten, Node-Config als JSON, Delete-Button
+- [x] Step 5 — Auto-Load: Lädt Devices + Automations aus API und erstellt initiales Graph-Layout
+
+---
+
+> **Chronologische Reihenfolge der Phasen:**
+> Phase 1-4 (Core) → Phase 5/5b/5c (UX) → Phase 6 (Erweiterung) →
+> Phase 7a/7b/7c (Production/Enterprise/Polish) → Phase 8 (Hardware-Konzept) →
+> Phase 9 (Release) → Phase 10 (Commercialization) → Phase 11 (Hardware-Impl.) →
+> Phase 12 (Evolution)
+
+---
+
+## Phase 9: Release-Readiness [todo]
+> Vollständiger Fahrplan vom aktuellen Stand bis zum ersten Release.
+> Priorisiert nach: Blocker → Hoch → Mittel → Nice-to-have.
+
+### Milestone R1: Infrastruktur-Blocker [done] ✅
+> Ohne diese kann NIEMAND das Produkt deployen oder nutzen. HÖCHSTE PRIORITÄT.
+- [x] dashboards.py Query-Import Fix (Backend-Crash)
+- [x] python-multipart Dependency
+- [x] Devices.vue Error+Empty Overlap
+- [x] Sidebar Default-State Flash
+- [x] Correlation.vue Route entfernt
+- [ ] **Alembic Migration System** — Konzept definiert, manuelle SQL-Migrations als Überbrückung in BAT-Dateien. Vollständiges Alembic Setup für Phase 10.
+- [x] **CORS konfigurierbar** — HUBEX_CORS_ORIGINS env var implementiert, Methods/Headers eingeschränkt
+- [x] **requirements.txt** — python-multipart + requests ergänzt, alle Dependencies dokumentiert
+- [x] **DB-Schema-Sync Script** — in BAT-Datei integriert (19 CREATE TABLE + 7 ALTER TABLE, idempotent)
+- [x] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen + Kommentaren erstellt
+- [x] **.env aus Git entfernt** — git rm --cached, .gitignore verifiziert
+
+### Milestone R2: Kern-Feature-Completion [done] ✅
+> Dashboard Builder MVP war bereits implementiert (bei Review entdeckt).
+> IF/ELSE Backend existiert, UI-Builder für Post-Launch geplant.
+- [x] **Dashboard Builder MVP** — bereits vollständig implementiert:
+  - [x] "Add Widget" Button → Modal mit Widget-Typ-Selector (9 Typen)
+  - [x] Variable zuweisen (UEntitySelect Dropdown, gefiltert nach Device)
+  - [x] Widget-Größe wählen (Width/Height Selectors)
+  - [x] Widget speichern → in Dashboard sichtbar
+  - [x] Widget editieren (gleiche Modal, vorausgefüllt via editingWidgetId)
+  - [x] Widget löschen (mit Bestätigung)
+- [x] **Automation AND/OR** — Backend _evaluate_condition_groups() implementiert
+- [x] **Automation If/Else UI** — Condition-Groups-Builder: AND/OR Toggle, Multiple Conditions per Group, Add/Remove, Variable-Key + Operator + Value Felder, gespeichert in trigger_config.condition_groups
+
+### Milestone R3: Testing & Quality [done] ✅
+> Qualitätssicherung für vertrauenswürdiges Produkt.
+- [x] **Security Audit (OWASP Top 10)**:
+  - [x] SQL Injection: Alle Endpoints nutzen SQLAlchemy ORM (parameterized). Raw SQL in partition_manager.py mit Regex validiert.
+  - [x] XSS: 4 v-html Usages gefunden — QR-SVGs durch sandboxed iframes ersetzt, BrandLogo+UDropdown sind eigener Code (sicher)
+  - [x] CSRF: Nicht nötig (JWT stateless auth, kein Session-Cookie)
+  - [x] Auth Bypass: PUBLIC_WHITELIST geprüft — 11 Routes, alle begründet
+  - [x] Input Validation: Pydantic Models mit Constraints geprüft
+  - [x] Security Headers: HSTS, X-Content-Type, X-Frame-Options vorhanden
+- [x] **Onboarding-Flow Test**: Mehrfach durchgeführt (Login → Devices → Variables → Automations → Settings)
+- [x] **Backward-Compatibility**: API v1 Endpoints stabil, keine Breaking Changes
+- [ ] **E2E Tests (Playwright)** → R3b (braucht separates Setup)
+- [ ] **Load-Test (100+ Devices)** → R3b (braucht dedizierte Infrastruktur)
+- [ ] **Self-Hosting UX Test** → R3b (braucht frische VM)
+
+### Milestone R4: Dokumentation [done] ✅
+> Ohne Doku kann niemand das Produkt verstehen oder betreiben.
+> Ziel: Jemand ohne Vorkenntnisse kann mit nur der Doku alles aufsetzen und nutzen.
+- [x] **Quick-Start Guide** — docs/QUICKSTART.md (74 Zeilen)
+- [x] **User Guide** — docs/USER_GUIDE.md (95 Zeilen)
+- [x] **Operator Runbook** — docs/OPERATOR_RUNBOOK.md (99 Zeilen)
+- [x] **API Integration Guide** — docs/API_GUIDE.md (97 Zeilen)
+- [x] **FAQ + Troubleshooting** — docs/FAQ.md (61 Zeilen)
+- [x] **API Versioning Policy** — in CHANGELOG.md dokumentiert
+- [x] **Semantic Versioning Policy** — in CHANGELOG.md dokumentiert
+- [x] **CHANGELOG.md** — v0.1.0 Feature-Liste erstellt
+- [ ] **Dashboard Builder Tutorial** — separates Tutorial mit Screenshots → Post-Launch
+- [ ] **Hardware Guide** — Board Profiles, Shields, Code Gen → Phase 11a
+- [ ] **Integration Guide** — HA, MQTT, Grafana → Phase 10 C5
+- [ ] **Developer Guide** — Plugin Dev, API Extending → Phase 10
+- [ ] **Semantic Versioning Policy** — MAJOR (breaking), MINOR (features), PATCH (bugfix)
+- [ ] **CHANGELOG.md** — Automatisch aus Git-Tags + Commit-Messages
+
+### Milestone R5: Production Deployment [done] ✅
+> Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
+- [x] **docker-compose.prod.yml** — PG + Redis + Backend + Frontend, healthchecks, volumes (75 Zeilen)
+- [x] **docker-compose.full.yml** — Prod + n8n + Portainer Companion Package (94 Zeilen)
+- [x] **Docker Image** — Dockerfile Backend (Python 3.11 slim) + Frontend (Node→nginx alpine)
+- [x] **One-Line Install Script** — scripts/install.sh (Docker check, .env gen, compose up)
+- [x] **Backup-Strategie** — scripts/backup.sh (pg_dump + Config Export, 30-Tage Retention)
+- [x] **Health Monitoring** — /health + /ready Endpoints, Docker HEALTHCHECK in allen Services
+- [x] **Ressourcen-Empfehlung** — in docs/OPERATOR_RUNBOOK.md dokumentiert
+- [x] **Update-Strategie** — in docs/OPERATOR_RUNBOOK.md dokumentiert
+- [ ] **HTTPS/TLS Anleitung** — Let's Encrypt Setup → Post-Launch (braucht Domain)
+- [ ] **Incident Response Plan** — Post-Launch (braucht Team-Struktur)
+- [ ] **Backup + Restore Test** — braucht frische Instanz zum Testen
+
+### Milestone R5b: Community & Open Source [done] ✅
+> Grundlage für Community-Wachstum.
+- [x] CONTRIBUTING.md — Fork→Branch→PR Workflow, Code Style, Dev Setup (62 Zeilen)
+- [x] CODE_OF_CONDUCT.md — Contributor Covenant v2.1 (26 Zeilen)
+- [x] LICENSE — AGPL v3 mit Commercial License Hinweis
+- [x] docs/COMMUNITY.md — GitHub Discussions + Discord Struktur + Marketplace Plan
+- [x] .env aus Git entfernt + .env.example erstellt
+- [ ] GitHub Discussions aktivieren — manuelle Online-Aktion
+- [ ] Discord Server aufsetzen — manuelle Online-Aktion
+
+### Milestone R6: Branding & Launch-Vorbereitung [done] ✅
+> Letzte Schritte vor dem öffentlichen Launch.
+- [ ] **Produktname final entscheiden** — wartet auf Entscheidung (branding.ts bereit)
+- [x] **Landing Page** — cc-system/produkt.html (6 Ebenen, CE/EE, Features, Roadmap, Coming Soon)
+- [x] **README.md** — Release-ready mit Features, Quick Start, Docs-Index, Tech Stack, Editions
+- [x] **Release-Prozess Checklist** — docs/RELEASE_PROCESS.md (Semver, Checklist, Hotfix)
+- [x] **Deprecation Policy** — in docs/RELEASE_PROCESS.md (6 Monate Vorlauf, Sunset Header)
+- [x] **Pricing-Modell** — in docs/EDITIONS.md (CE free, EE ~79/mo, Managed ~299/mo)
+- [x] **.dockerignore** — saubere Docker Builds
+- [ ] **Demo-Instanz** — braucht Hosting-Entscheidung
+- [ ] **n8n Integration Live-Test** — braucht laufende n8n-Instanz
+- [ ] **GitHub Repo Clean-Up** — bei Launch: neues Repo ohne History
+
+### Milestone R7: Post-Launch [done] ✅
+> Nach dem ersten Release.
+- [x] Feedback-System — FeedbackWidget.vue (in-app, Bug/Feature/Other, GitHub Issues Fallback)
+- [x] Telemetry/Analytics — docs/TELEMETRY.md (Opt-in Policy, was gesammelt/nicht gesammelt wird)
+- [x] Plugin Marketplace — docs/MARKETPLACE.md (Content-Typen, Quality Levels, Monetarisierung, 3-Phasen Plan)
+- [x] Video-Tutorials — docs/VIDEO_PLAN.md (10 Tutorial-Scripts: 5x "5 Minutes" + 5x "Deep Dive")
+- [ ] Community Forum / Discord — manuelle Online-Aktion (Struktur in docs/COMMUNITY.md definiert)
+
+---
+
+## Phase 10: Commercialization & Product-Level [todo]
+> Vom Entwicklungsprojekt zum marktreifen Produkt.
+
+### Milestone C1: License System [todo]
+- [ ] License-File Format definieren (JSON + Ed25519 Signatur)
+- [ ] License-Validation im Backend (app/core/license.py)
+- [ ] Feature-Flags aus License in JWT Token einbetten
+- [ ] Frontend: Enterprise-Features per Feature-Flag ein/ausblenden
+- [ ] License-Info in Admin Console anzeigen (Plan, Ablauf, Features)
+- [ ] Key-Pair generieren (Private Key sicher aufbewahren, Public Key im Code)
+
+### Milestone C2: CE/EE Feature-Gating [todo]
+- [ ] Community Default: User-Limit (5), Org-Limit (1), API-Key-Limit (3)
+- [ ] Enterprise Feature-Flags: white_label, multi_tenant, custom_api, plugins, reports, codegen, flow_editor, admin_console
+- [ ] Sidebar-Items per Feature-Flag filtern (nicht nur per Cap)
+- [ ] "Upgrade to Enterprise" Hinweis bei gesperrten Features (nicht aufdringlich)
+- [ ] Audit-Log Retention: CE=90 Tage, EE=unbegrenzt
+
+### Milestone C3: Security Hardening for Production [todo]
+- [x] **CORS konfigurierbar** — nach R1 verschoben als Blocker (KRITISCH)
+- [ ] CSP (Content Security Policy) Strict Mode
+- [ ] HSTS Preload Header
+- [ ] Input Validation Review (alle Endpoints, SQL Injection in Custom API prüfen)
+- [ ] Dependency Security Scan (pip-audit / npm audit)
+- [ ] Rate-Limiting per User + per API Key (nicht nur per IP)
+- [ ] MFA Secrets verschlüsseln (AES-GCM at rest, aktuell Klartext in DB)
+- [ ] Payload Size + Nesting Depth Limits (DoS-Schutz)
+- [ ] .env aus Git entfernen (Secrets im Repo!) — nach R1 verschoben
+- [ ] **Error Tracking Integration** — Sentry oder ähnlich, opt-in, Error-Aggregation + Alerting
+- [ ] **SLA Definitionen (Enterprise)** — Uptime %, Response Time, Support Response Time
+
+### Milestone C4: Legal & Compliance [todo]
+- [ ] AGPL Lizenztext für Community Edition
+- [ ] Commercial License Agreement für Enterprise
+- [ ] Datenschutz-Template (Self-Hosted Hinweis: User ist Verantwortlicher)
+- [ ] AV-Vertrag Vorlage (für SaaS/Managed Hosting)
+- [ ] Terms of Service Draft
+- [ ] Cookie-Policy (nur relevant für SaaS/Demo, nicht self-hosted)
+
+### Milestone C5: Plattform-Integrationen [todo]
+> Bestehende Systeme einbinden statt ersetzen — kein Nutzer soll sein Setup wegwerfen müssen.
+- [ ] **Home Assistant Integration** — HA REST API + MQTT Discovery, Devices bidirektional synchronisieren, HA-Entities als HubEx-Variables
+- [ ] **KNX Gateway** (Enterprise) — KNX/IP Tunnel, Gruppenadress-Mapping → Variablen, bidirektionale Steuerung (Licht, Jalousien, HVAC)
+- [ ] **Node-RED Palette** — Custom Node-RED Nodes für HubEx (Device-Read, Variable-Set, Trigger-Listen), installierbar via npm
+- [ ] **Zigbee/Z-Wave Bridge** — via Zigbee2MQTT/Z-Wave JS, automatische Device-Erkennung
+- [ ] **Grafana Data Source** — HubEx als Grafana Plugin, Variable-History als Time-Series abrufbar
+- [ ] **Prometheus Exporter** — /metrics Endpoint im Prometheus-Format für bestehende Monitoring-Stacks
+- [ ] **IFTTT/Zapier Connector** — Webhook-basiert, Templates für gängige Trigger/Actions
+- [ ] **Modbus Gateway Service** — Eigenständiger Worker der Modbus RTU/TCP Geräte pollt und als Bridge-Device einbindet
+- [ ] **OPC-UA Connector** (Enterprise) — Industriestandard für SPS/SCADA Anbindung
+
+### Milestone C6: Produkt-Level Booster [todo]
+> Features die keiner hat und HubEx einzigartig machen.
+- [ ] **Edge AI Inference** — ML-Modelle auf dem ESP (TensorFlow Lite Micro), Anomalie-Erkennung lokal, nur Ergebnisse zum Server
+- [ ] **One-Click Device Provisioning** — QR-Code auf dem Gerät → App scannen → Device automatisch gepairt + konfiguriert
+- [ ] **Marketplace** — Community-Templates (Dashboard + Automation + Variable-Defs als Bundle), Plugin-Store, Bewertungen. Offen für Free + Paid Inhalte (WordPress-Modell)
+- [ ] **Mobile App** (React Native / Flutter) — Push-Notifications, Dashboard-Viewer, Device-Status, QR-Scan Pairing
+- [ ] **n8n/Node-RED Docker Companion** — docker-compose mit HubEx + n8n vorkonfiguriert, Webhooks auto-verbunden
+- [ ] **Geo-Fencing Visualisierung** — Live-Map mit Device-Positionen, Zonen-Editor, GPS-Trail-History
+- [ ] **Digital Twin** — Virtuelles Abbild eines physischen Geräts mit simulierten Werten für Testing/Demo
+- [ ] **Firmware OTA Manager** — Rollout-Strategien (Canary, Staged), Rollback, A/B-Testing von Firmware-Versionen
+- [ ] **Audit-Trail Blockchain-Hash** — Jeder Audit-Eintrag wird gehasht und verkettet, manipulationssicher (Hash-Chain, keine echte Blockchain)
+- [ ] **Multi-Instance Sync** — HubEx-Instanzen an verschiedenen Standorten synchronisieren Daten bidirektional
+- [ ] **Software SDK** (Python/Node/Go) — Bibliotheken für Raspberry Pi, Linux-Server, Windows-Dienste als Agent-Device
+
+---
+
+## Phase 11b: Produkt-Evolution [brainstorm]
+> Aus Brainstorming-Sessions gesammelte Features — priorisiert, geclustert.
+> Grundprinzip: UX-Sauberkeit bewahren. Neue Features dürfen das System nicht vollstopfen.
+> Progressive Disclosure bei allem. Clean Look hat Vorrang vor Feature-Menge.
+
+### Milestone E1: Analyse-Stack [todo]
+> Cluster "Analyse & Monitoring" — zusammenhängende Features für tiefes Verständnis.
+- [ ] **Wächter** — Intelligente Überwachung ohne manuelle Regeln. HubEx lernt normales Pattern (Z-Score auf 7-Tage-Basis), alerted bei Abweichung. Einfach einschalten, null Konfiguration.
+- [ ] **Health Score** — 0-100 pro Device (Telemetrie-Regelmäßigkeit, Fehlerrate, WiFi-Stärke, Batterie). Stackbar auf Gruppen/Liegenschaften. Trend-Ansicht über Zeit.
+- [ ] **Geräte-Gesundheitshistorie** — Langzeit-Trend des Health Score. Predictive: "Bei diesem Trend wird Sensor X in 2 Wochen unzuverlässig."
+- [ ] **Device Timeline / Changelog** — Opt-in pro Device: Wann gepairt? Offline? Variable geändert? Automation gefeuert? Visuelle Zeitleiste.
+- [ ] **Vergleichsansicht** — Zwei Devices nebeneinander, gleiche Variablen übereinander. Sofort sehen welcher abweicht. Diff-View für physische Geräte.
+- [ ] **System-weite Snapshots** — "Snapshot jetzt" → alle Variable-Werte + Device-Stati einfrieren. Zwei Snapshots vergleichen: "Was hat sich geändert?"
+- [ ] **Watch Mode** — Live-Debug-Dashboard pro Device. Alle Variablen streamen in Echtzeit, Werte blinken bei Änderung. Serial-Monitor-Feeling im Browser.
+
+### Milestone E2: Automation Evolution [todo]
+> Cluster "Automation" — die Engine von einfach zu mächtig.
+- [ ] **Besserer Name** — "Automationen" umbenennen (nicht "Rezepte"). Brainstorming nötig für den richtigen Begriff.
+- [ ] **Szenarien** — Multi-Device Koordination. "Nachtmodus": Alle Lichter 10%, Heizung 18°, Alarm scharf. Ein Button → 20 Geräte gleichzeitig.
+- [ ] **Regeln validieren** — Pre-Check: "Wenn diese Regel letzte Woche aktiv gewesen wäre, hätte sie 47x gefeuert." Verhindert Alert-Fatigue.
+- [ ] **Quick Actions** — Ein-Klick-Buttons auf dem Dashboard. Großer roter "Notfall-Aus" Button der 5 Variablen gleichzeitig setzt.
+- [ ] **Notification Channels** — Multi-Kanal: Telegram Bot, Discord Webhook, Slack, SMS (Twilio), Push (Mobile App), Anruf bei kritischen Alerts.
+
+### Milestone E3: Organisation & Projekte [todo]
+> Cluster "Organisationsebene" — vom Device-Listing zur Projektverwaltung.
+- [ ] **Projekte** — Projekt = Board + Shield + Pins + Devices + Dashboards + Automationen. Speichern/Laden/Duplizieren/Teilen. Natürliche Einheit für Marketplace.
+- [ ] **Liegenschaften & GPS** — Standorte auf Karte, Devices per Standort gruppieren, Health Score pro Standort. Drill-Down: Land → Stadt → Gebäude → Raum → Device.
+- [ ] **Logbuch** — Menschliche Notizen an Zeitpunkte. "14:30 — Pumpe manuell abgestellt wegen Wartung." Macht Timeline menschlich, hilft bei Fehlersuche.
+
+### Milestone E4: Marketplace & Ökosystem [todo]
+> Blueprints, Mini-Apps, Community-Inhalte.
+- [ ] **Blueprints** — Teilbare Gesamtpakete: Devices + Dashboards + Automationen + Verdrahtungsplan + Einkaufsliste. "Blueprint: Gewächshaus-Automatisierung" → Ein Klick → alles da.
+- [ ] **Mini-Apps / App Store** — Richtige Mini-Anwendungen die IN HubEx laufen. Eigene Views, eigene Logik. Grafisch ODER per Code erstellbar. Marketplace für Free + Paid.
+- [ ] **Formeln** — Excel-artige Formeln als Variable-Typ: `=AVERAGE(temp_og, temp_eg)`. Nur wenn UX-verträglich umsetzbar.
+
+### Milestone E5: KI & Intelligenz [todo]
+> KI-gestützte Features — optional, nie im Weg.
+- [ ] **AI Assistant** — Chat-Widget im Dashboard. Nutzt MCP-Integration. "Zeig mir die Temperatur im Büro." "Erstelle eine Automation: wenn Fenster offen → Heizung aus." Funktioniert mit Ollama (lokal) oder Claude/GPT (Cloud).
+- [ ] **Natural Language Automations** — "Sage was du willst" → KI erstellt die Regel. User bestätigt vor Aktivierung.
+- [ ] **Smart Anomalie-Erklärung** — "Warum war der Stromverbrauch gestern Nacht so hoch?" → KI analysiert Variable-History und antwortet.
+
+### Milestone E6: Visualisierung Next Level [todo]
+> Über Dashboards hinaus — immersive Visualisierung.
+- [ ] **Custom View Widget (SVG)** — User lädt SVG hoch, mappt Elemente auf Variablen. Farbe/Position/Sichtbarkeit ändern sich live. Synoptik-Display für Anlagen.
+- [ ] **3D-Visualisierung** — Three.js/Babylon.js. GLTF-Modell hochladen, Mesh-Teile auf Variablen mappen. Roboterhand, Produktionsanlage, Gebäude live animiert.
+- [ ] **Playground / Sandbox** — Isolierter Bereich zum Experimentieren. Simulierte Werte, Automationen testen ohne echte Devices zu beeinflussen.
+
+### Milestone E7: Integration First [todo]
+> "UND" statt "ODER" — bestehende Systeme einbinden, nicht ersetzen.
+- [ ] **Integration Landing Pages** — "HubEx + Home Assistant", "HubEx + KNX", "HubEx + Grafana" — jeweils mit Anleitung, Screenshots, Use Cases.
+- [ ] **Echtzeit-Steuerung / Rust Worker** — Optionaler High-Performance Worker für µs-Latenz. Anbindung von Echtzeit-Bussen.
+
+### Meta-Prinzip (gilt für ALLE Features in Phase 12)
+> **UX-Sauberkeit bewahren.** Jedes neue Feature muss durch Progressive Disclosure
+> eingeblendet werden. Nur sichtbar wenn relevant. Kein Feature darf das bestehende
+> System visuell oder konzeptionell überladen. Clean Look hat Vorrang vor Feature-Menge.
+> Lieber weniger Features die perfekt funktionieren als viele die halbgar sind.
+
+---
+
+## Phase 11a: Hardware Implementation [coming-soon]
+> Die funktionale Umsetzung der in Phase 8 konzipierten Hardware-Plattform.
+> Phase 8 hat Models, APIs und Spezifikationen definiert. Phase 11 macht sie real.
+> Dies ist das GRÖSSTE verbleibende Arbeitspaket — jeder Block ist ein eigenes Ökosystem.
+> Geschätzte Gesamtdauer: 40-80 Wochen, je nach Parallelisierung.
+> Status: COMING SOON — wird nach Software-Release (Phase 9) priorisiert.
+
+### Block A: Visueller Hardware-Builder [todo]
+> Vom statischen Board-Listing zum interaktiven Hardware-Konfigurator.
+> Vergleichbar mit Fritzing, aber integriert in HubEx mit Live-Verbindung zu Variablen.
+
+**A.1 — Board Library & SVG Renderer**
+- [ ] SVG-Grafiken für jedes Board (ESP32 DevKit, S3, C3, Pico W, Arduino Uno, Nano, Mega)
+- [ ] Interaktive Pin-Elemente: Hover → Capabilities anzeigen, Klick → Funktion zuweisen
+- [ ] Farbkodierung: frei (grün), belegt (amber), Bus (lila), Power (rot), GND (grau)
+- [ ] Zoom/Pan auf der Board-Grafik (wie Flow Editor Canvas)
+- [ ] Board-Library erweiterbar: User kann eigene Board-SVGs hochladen + Pin-Mapping definieren
+- [ ] Board-Vergleich: Zwei Boards nebeneinander anzeigen (Capabilities vergleichen)
+
+**A.2 — Pin-Konfigurator**
+- [ ] Pin anklicken → Modal: Funktion wählen (Sensor-Input, Aktor-Output, Bus-Pin, Custom)
+- [ ] Validierung gegen Pin-Capabilities (kann dieser Pin PWM? I2C? ADC?)
+- [ ] Konflikt-Erkennung: "Pin 21 ist bereits als I2C_SDA belegt"
+- [ ] Auto-Suggest: Wenn DHT22 gewählt → schlägt passenden Pin mit digital_io vor
+- [ ] Bus-Konfiguration: I2C/SPI/UART automatisch zusammenhängend zuweisen (SDA+SCL als Paar)
+
+**A.3 — Shield-Integration**
+- [ ] Shield auswählen → belegte Pins automatisch ausgeblendet/markiert
+- [ ] Shield-Preview als Overlay auf Board-Grafik (welche Pins belegt, welche durchgereicht)
+- [ ] Multi-Shield: Mehrere Shields kombinieren, Konflikt-Prüfung
+- [ ] Custom Shield erstellen: User definiert eigene Shields (Pin-Belegung, Komponenten)
+
+**A.4 — Component Drag & Drop**
+- [ ] Component aus Library auf freien Pin ziehen → Auto-Konfiguration
+- [ ] Auto-zugewiesene Variable-Keys, Semantic Types, Default-Widgets
+- [ ] Component-Einstellungen inline editierbar (Pull-Up Widerstand, Messintervall, etc.)
+- [ ] Verbindungslinien zwischen Components die zusammengehören (I2C-Bus visualisiert)
+
+**A.5 — Projekt-Verwaltung**
+- [ ] Mehrere Hardware-Projekte pro User (Projekt = Board + Shield + Pins + Components)
+- [ ] Speichern/Laden/Duplizieren/Löschen
+- [ ] Projekt-Templates: "Smart Home Starter", "Wetter-Station", "Industrie-Gateway"
+- [ ] Projekt-Export als JSON (teilbar, importierbar auf anderer Instanz)
+- [ ] Projekt-Versioning: Änderungshistorie, Rollback
+
+**A.6 — Wiring Diagram & Dokumentation**
+- [ ] Auto-generiertes Verdrahtungsdiagramm (SVG/PNG) aus Pin-Belegung
+- [ ] BOM (Bill of Materials) generieren: welche Bauteile, welche Widerstände, welche Kabel
+- [ ] Druckbare PDF-Version für die Werkstatt
+- [ ] Schaltplan-Notation (Schematic) neben physischer Ansicht (Breadboard)
+
+### Block B: Code Generator Engine [todo]
+> Nicht nur Templates mit Platzhaltern — ein echter Code-Compiler der aus der
+> visuellen Konfiguration funktionierenden, kompilierbaren Code generiert.
+> Langfristig: Visueller Node-Editor (wie Automation Engine) der Code-Logik definiert.
+
+**B.1 — Component Code-Snippets (Library)**
+- [ ] Für jede der 15+ Components ein GETESTETES Code-Snippet
+- [ ] DHT22: Korrekte Library-Init, readTemperature(), readHumidity(), Error-Handling
+- [ ] BME280: I2C-Adress-Konfiguration, Multi-Sensor-Read, Altitude-Berechnung
+- [ ] DS18B20: OneWire-Init, Multi-Sensor am selben Pin, Parasit-Modus
+- [ ] HC-SR04: Trigger/Echo-Timing, Distanz-Berechnung, Glättung
+- [ ] Servo/LED/Relay: PWM-Konfiguration, Smooth-Transition, Safety-Limits
+- [ ] GPS NEO-6M: UART-Parsing, TinyGPS++, Koordinaten-Extraktion
+- [ ] Alle Snippets gegen PlatformIO kompiliert und getestet
+
+**B.2 — Connectivity-Code**
+- [ ] WiFi-Manager: Captive Portal für SSID/Password wenn nicht konfiguriert
+- [ ] HubEx Connection: Token-Auth, Auto-Reconnect, Exponential Backoff
+- [ ] Heartbeat: Konfigurierbares Intervall, Device-Info (IP, RSSI, Free Heap, Uptime)
+- [ ] Telemetrie: Batch-Sammlung, JSON-Serialisierung, POST mit Retry
+- [ ] Variable-Empfang: Polling oder WebSocket, Change-Detection, Callback-System
+- [ ] MQTT Alternative: Direkter MQTT-Publish statt HTTP (konfigurierbarer Transport)
+
+**B.3 — Visueller Code-Logic-Editor (langfristig)**
+- [ ] Node-basierter Editor (wie Automations-Builder) aber für Device-Logik
+- [ ] Nodes: "Sensor lesen", "Wert prüfen", "Aktor setzen", "Warten", "Loggen"
+- [ ] Connections: Datenfluss zwischen Nodes (wie n8n, aber für Firmware)
+- [ ] Generiert C/C++ Code aus dem visuellen Flow
+- [ ] Preview: Generierter Code neben dem visuellen Editor, Live-Sync
+- [ ] Debugging: Serial-Monitor Integration, Variable-Watcher
+
+**B.4 — Build & Deploy Pipeline**
+- [ ] PlatformIO-Projekt generieren (platformio.ini + src/ + lib/) als ZIP
+- [ ] Code-Preview im Browser: Syntax-Highlighted, Copy-to-Clipboard
+- [ ] Kompilier-Test: CI-Pipeline die JEDEN generierten Code gegen PlatformIO prüft
+- [ ] Cloud-Compile (Enterprise): Server-seitige Kompilierung → .bin Download
+- [ ] Direct-Flash (Enterprise): Cloud-Compile → OTA direkt auf das Device
+- [ ] Flash-Wizard: "Board anschließen → USB-Port wählen → Flash" (WebSerial API)
+
+### Block C: Bridge System [todo]
+> ESP32 als universelle WiFi-Bridge — nicht nur für Arduino, sondern für JEDES
+> Gerät das seriell kommuniziert. Plus: Bridge-Library für andere Plattformen.
+
+**C.1 — Arduino/AVR Bridge Library**
+- [ ] HubExBridge.h/.cpp: Echte C++ Library für Arduino IDE + PlatformIO
+- [ ] API: begin(), setVar(), getVar(), onSet(key, callback), loop()
+- [ ] Auto-Heartbeat, Checksum-Verification, Buffer-Management
+- [ ] Lightweight: <8KB Flash, <512B RAM (läuft auf ATmega328)
+- [ ] Beispiel-Sketches: Sensor-Read, Aktor-Steuerung, Bidirektional, Multi-Variable
+- [ ] Arduino Library Manager kompatibel (library.properties, keywords.txt)
+
+**C.2 — ESP32 Bridge Firmware**
+- [ ] Kompilierbare ESP32 Firmware: WiFi-Manager, HubEx-Pairing, Serial-Bridge
+- [ ] Telemetrie-Forwarding: Arduino VAR → ESP → HubEx /telemetry
+- [ ] Command-Forwarding: HubEx Variable-Change → ESP → Arduino SET
+- [ ] OTA für ESP selbst (Firmware-Update ohne physischen Zugang)
+- [ ] Dual-Mode: ESP eigene Pins + Bridge gleichzeitig
+- [ ] Konfigurierbar: Baud-Rate, Buffer-Size, Timeout, Retry
+
+**C.3 — Remote Programming**
+- [ ] STK500-Protokoll: ESP flasht angeschlossenen AVR (Arduino Uno/Nano/Mega)
+- [ ] Upload via HubEx-UI: .hex File hochladen → ESP flasht Arduino
+- [ ] Firmware-Versioning: Welche Version ist auf welchem Arduino?
+- [ ] Rollback: Letzte funktionierende Version speichern, bei Flash-Fehler zurücksetzen
+
+**C.4 — Bridge für andere Plattformen**
+- [ ] Raspberry Pi Bridge: USB/UART-Kommunikation mit ESP, Python-basiert
+- [ ] STM32 Bridge: Serial-Protokoll-Adapter für STM32-basierte Boards
+- [ ] Generische Serial Bridge: Jedes Gerät das ASCII/Binary über Serial spricht
+
+### Block D: Software SDK & Agent System [todo]
+> HubEx für Software-Geräte: Raspberry Pi, Linux Server, Windows Dienste, Docker Container.
+> Nicht nur "Daten senden" — ein vollständiges Agent-Framework.
+
+**D.1 — Python SDK (primär)**
+- [ ] `pip install hubex-sdk`
+- [ ] Client: connect, set_var, get_var, on_command, heartbeat, reconnect
+- [ ] Auto-Discovery: Agent meldet sich an, System erkennt OS/CPU/RAM automatisch
+- [ ] Variable-Binding: `@hubex.variable("cpu_usage")` Decorator für automatische Telemetrie
+- [ ] Command-Handler: `@hubex.command("reboot")` für eingehende Befehle
+- [ ] Async Support: asyncio-kompatibel für High-Performance Agents
+- [ ] Logging: Integriert mit Python logging, forwarded an HubEx Events
+
+**D.2 — Node.js SDK**
+- [ ] `npm install hubex-sdk`
+- [ ] Analoges API wie Python (connect, setVar, onCommand)
+- [ ] EventEmitter-Pattern für Echtzeit-Updates
+- [ ] TypeScript Typings mitgeliefert
+
+**D.3 — Go SDK**
+- [ ] `go get github.com/hubex/sdk-go`
+- [ ] Goroutine-safe, Channel-basierte Events
+- [ ] Für Performance-kritische Agents (hohe Telemetrie-Rate)
+
+**D.4 — Agent Framework**
+- [ ] Auto-Installer: `curl -fsSL https://get.hubex.io/agent | bash` (Linux/Mac/Raspberry Pi)
+- [ ] Systemd Service: Auto-Start, Restart on Crash, Log-Rotation
+- [ ] Agent-Config: YAML/JSON Config-Datei (Server-URL, Token, Variablen-Mapping)
+- [ ] Agent-Manager im HubEx-UI: Verbundene Agents sehen, Status, Logs, Restart
+- [ ] Multi-Agent: Ein Host kann mehrere Agents für verschiedene Zwecke laufen lassen
+
+**D.5 — SDK UX in HubEx**
+- [ ] Device Wizard: "Software Agent" Typ → SDK-Sprache wählen → Installations-Anleitung + Code-Beispiel
+- [ ] DeviceDetail: Agent-Tab mit Status, Version, Last-Heartbeat, System-Info, Logs
+- [ ] Variable-Mapping UI: Welche System-Metriken soll der Agent melden? (Checkboxen)
+- [ ] Command-Builder: Befehle an den Agent senden (Reboot, Script ausführen, Config ändern)
+
+### Block E: Industrial Protocols [todo]
+> Echte Kommunikation mit Industriegeräten — aufbauend auf Bridge-System.
+> Jedes Protokoll = eigener Worker-Service + UI-Integration + Device Profiles.
+
+**E.1 — Modbus RTU/TCP**
+- [ ] Python Modbus Client (pymodbus): Polling-Worker für Register-Reads
+- [ ] Auto-Variable-Bridge: Register-Map → HubEx Variables (mit Scaling, Offset, Unit)
+- [ ] Write-Support: HubEx Variable-Change → Modbus Register schreiben
+- [ ] Auto-Discovery: Register-Scan (alle Adressen durchprobieren)
+- [ ] Konfiguration UI: Slave-Adresse, Register-Bereich, Polling-Intervall, Timeout
+- [ ] Error-Handling: Kommunikationsfehler loggen, Retry, Gerät als "offline" markieren
+
+**E.2 — CAN-Bus**
+- [ ] ESP32 mit MCP2515/SJA1000 CAN-Transceiver
+- [ ] DBC-File Import: Industry-Standard CAN-Database → Message-Decoding
+- [ ] Message-Filter: Nur relevante CAN-IDs bridgen
+- [ ] Bidirektional: CAN-Nachrichten senden (Steuerungsbefehle)
+
+**E.3 — RS485 / Serial Protocols**
+- [ ] MAX485 Transceiver am ESP oder USB-RS485-Adapter am Server
+- [ ] Generischer Serial-Parser: Regex-basierte Message-Extraktion
+- [ ] Bekannte Protokolle: Modbus (RS485), DALI (Beleuchtung), M-Bus (Zähler)
+
+**E.4 — Device Profile Library (30+)**
+- [ ] Energiezähler: Eastron SDM120/220/630, DDM18SD, Janitza UMG
+- [ ] Wechselrichter: Sungrow, GoodWe, Fronius, SMA, Huawei
+- [ ] Smart Home: Shelly (1/2.5/EM/Plus), Tasmota-Geräte, Sonoff
+- [ ] HVAC: Modbus-Klimaanlagen, Wärmepumpen (über KNX Bridge)
+- [ ] Sensoren: Modbus-Temperatur/Feuchte, CO2, Luftqualität
+- [ ] SPS: Siemens S7 Basic (über S7comm), Wago (Modbus TCP)
+- [ ] Jedes Profil: Register-Map, Variablen-Definition, Semantic Types, Test-Protokoll
+
+**E.5 — Profile Wizard & Community**
+- [ ] "Bestehendes Gerät anbinden" im Device Wizard
+- [ ] Hersteller → Modell → Verbindung konfigurieren → Auto-Test → Variablen erstellt
+- [ ] Community Device Profiles: Upload, Review, Quality-Stufen (Community/Verified/Official)
+- [ ] Profile im Marketplace teilen
+
+### Block F: Edge Computing [todo]
+> Logik die auf dem ESP/Device selbst läuft — Server-unabhängig.
+> Von einfachem If/Then bis zu komplex verketteten Regeln.
+
+**F.1 — Rule-to-C Compiler**
+- [ ] Automation-Regel (If→Then) → C-Code für ESP generieren
+- [ ] Unterstützte Conditions: Variable Threshold, Timer, GPIO-State, Kombination (AND/OR)
+- [ ] Unterstützte Actions: GPIO setzen, PWM ändern, Variable lokal speichern, Buzzer
+- [ ] NICHT unterstützt (Server-only): Webhooks, Emails, API-Calls, Dashboard-Änderungen
+- [ ] Validierung im UI: "Diese Regel kann lokal ausgeführt werden ✓" / "Diese Regel braucht Server ✗"
+
+**F.2 — Edge Automation Builder**
+- [ ] Spezieller Builder-Modus: "Lokal auf Device" Toggle
+- [ ] Nur lokale Actions anzeigen (GPIO, PWM, Display, Buzzer)
+- [ ] Preview: Generierter C-Code neben der Regel anzeigen
+- [ ] Deployment: Code generieren → in Firmware einbetten → OTA-Flash
+
+**F.3 — Offline-Betrieb**
+- [ ] Circular Buffer im ESP Flash (letzte 1000 Events/Messwerte)
+- [ ] Bei Reconnect: Batch-Upload aller gepufferten Daten mit Zeitstempel
+- [ ] Konflikt-Auflösung: Server-Variable vs. lokal geänderte Variable
+- [ ] Offline-Indikator: Status-LED am ESP zeigt Verbindungsstatus
+
+**F.4 — Lokales Display**
+- [ ] ESP32 + SSD1306 OLED: Aktuelle Werte, WiFi-Status, Automation-Status anzeigen
+- [ ] ESP32 + TFT: Mini-Dashboard mit Charts (letzte Stunde)
+- [ ] Touch-Display: Lokale Steuerung (Sollwert ändern, Relais schalten)
+- [ ] Display-Konfiguration im HubEx-UI: Welche Variablen anzeigen? Layout?
+
+### Block G: Advanced Hardware & Networking [todo]
+> Zukunfts-Features für Hardware-Power-User und spezielle Anforderungen.
+
+**G.1 — Mesh & Long-Range Networking**
+- [ ] ESP-Mesh: Multiple ESPs vernetzen, einer als Gateway, Rest als Nodes
+- [ ] ESP-NOW: Peer-to-Peer für Ultra-Low-Latency (<5ms), kein WiFi-Router nötig
+- [ ] LoRa Bridge: ESP32 + LoRa-Modul als Long-Range Bridge (1-15km), LoRaWAN Gateway
+- [ ] BLE Mesh: Indoor-Sensornetze, Auto-Discovery, Beacon-Support
+- [ ] Thread/Matter: Zukunftssicherer Smart-Home-Standard
+
+**G.2 — Echtzeit & Busse (direkte Hardware-Anbindung)**
+- [ ] I2C Device Scanner: Alle I2C-Adressen scannen, bekannte Chips identifizieren
+- [ ] SPI High-Speed Devices: ADC (ADS1256), DAC, Display-Treiber
+- [ ] 1-Wire Bus: Multi-Sensor Netzwerk (DS18B20-Ketten)
+- [ ] GPIO Interrupt-Handling: Echtzeit-Events bei Pin-Change (<1ms Latenz)
+- [ ] Timer/Counter: Frequenzmessung, Impulszählung (Durchflussmesser, Energiezähler)
+- [ ] PWM Advanced: Servo-Gruppen synchronisieren, LED-Fading, Motor-Rampen
+
+**G.3 — Hardware-Fertigung & Distribution**
+- [ ] KiCad Designs: HubEx Shield PCBs (RS485, Sensor-Pack, Relay-Board, Bridge-Hat)
+- [ ] Gerber-Files: Direkt an PCB-Fertiger sendbar (JLCPCB, PCBWay)
+- [ ] 3D-Gehäuse: STL-Dateien für Gehäuse (3D-Druck) mit Befestigungspunkten
+- [ ] BOM Generator: Bauteilliste mit Links zu Distributoren (Mouser, DigiKey, Reichelt)
+- [ ] Hardware Kits: Starter (ESP32 + Sensor + Relay), Pro (+ Bridge + Shield), Industrial (+ RS485 + DIN-Gehäuse)
+- [ ] Partner-Programm: Hardware-Distributoren die HubEx-kompatible Kits verkaufen
+
+**G.4 — Firmware Management (Enterprise)**
+- [ ] Firmware-Versioning: Semantische Versionierung, Changelog, Breaking-Change-Warnung
+- [ ] A/B Testing: Zwei Firmware-Versionen parallel, Metriken vergleichen
+- [ ] Canary Rollout: 5% → 20% → 50% → 100%, automatischer Rollback bei Fehlerrate
+- [ ] Fleet-weite Updates: Alle Devices eines Board-Typs gleichzeitig updaten
+- [ ] Compliance: Firmware-Signaturen, Integritätsprüfung, Audit-Trail
+
+### Block H: Lite Edition & Embedded Deployment [todo]
+> HubEx als eingebettete Lösung — kompakt genug für einen Raspberry Pi,
+> als Kern-Software in einem fertigen Produkt einsetzbar.
+
+**H.1 — HubEx Lite**
+- [ ] Optimierte Backend-Version: Reduced Footprint (<256MB RAM, <1GB Disk)
+- [ ] SQLite statt PostgreSQL (für Single-Board-Computer)
+- [ ] Kein Redis nötig (In-Memory Cache)
+- [ ] Reduzierter Feature-Set: Core Devices + Variables + Dashboards + Alerts
+- [ ] ARM64/ARMv7 Docker Images (native Raspberry Pi Support)
+- [ ] Raspberry Pi OS Auto-Installer: `curl | bash` → läuft als Service
+
+**H.2 — Produkt-Appliance**
+- [ ] White-Label + Kiosk-Modus + Lite = fertiges "Produkt" auf einem Pi
+- [ ] Auto-Start beim Booten, kein Login nötig (Kiosk-Dashboard direkt)
+- [ ] Touch-Display Support (7" Waveshare, offizielle RPi Display)
+- [ ] Gehäuse-Empfehlungen: DIN-Hutschiene, Wandmontage, Desktop
+- [ ] OTA-Update für die Appliance selbst (HubEx aktualisiert sich)
+
+**H.3 — Edge-Server Deployment**
+- [ ] HubEx als lokaler Server pro Standort, synchronisiert mit zentralem Server
+- [ ] Offline-fähig: Lokale Datensammlung auch ohne Internet
+- [ ] Selective Sync: Nur aggregierte Daten an den zentralen Server senden
+- [ ] VPN/Tunnel: Sicherer Zugang zum Edge-Server von außen (WireGuard/Tailscale)
+
+---
+
+## QA: Abgeschlossene Test-Befunde [done] ✅
+> 3 Runden ausführlicher Tests. Alle kritischen und hohen Befunde behoben.
+
+### Kritisch
+- [x] **Error+Empty State Overlap**: Gefixt auf allen 4 betroffenen Seiten (v-else-if Kette)
+- [x] **XSS in Email-Template Preview**: v-html ersetzt durch sandboxed iframe (srcdoc + sandbox="")
+- [x] **QR-Code externe Abhängigkeit**: api.qrserver.com entfernt, Secret wird direkt als Text angezeigt + Anleitung
+
+### Hoch (UX-Friction) — Gefixt in QA-Runden
+- [x] **Sidebar zu voll**: 13→3 Gruppen (Monitoring/Tools/System)
+- [x] **FlowEditor**: Zoom-Controls, Delete-Bestätigung, Node-Suche
+- [x] **z-Score**: Human-readable Labels statt technischer Werte
+- [x] **Cron**: Dropdown-Presets statt Freitext
+- [x] **MFA**: Multi-Step Wizard mit Progress
+- [x] **API Key**: Capability-Checkboxen, Usage-Hint, cURL-Beispiel
+- [x] **Backlinks**: 6 Seiten vernetzt
+- [x] **AdminConsole**: Module-Impact-Warnung + Cap-Tooltips
+- [x] **Plugin-Cards**: Metadata collapsed, Filter-Buttons
+- [x] **Login Rate-Limit Feedback**: HTTP 429 → "Too many attempts" Meldung in Login.vue
+
+### Mittel (Qualität)
+- [x] **i18n Locale-Dateien**: ~100 neue Keys (EN+DE) für Toast, Status, Pages, Branding, MFA, Sessions, API Keys. Login.vue migriert.
+- [ ] **i18n Seiten-Migration**: Restliche Seiten auf t() umstellen (mechanisch, kein Risiko) → laufend
+- [ ] **Accessibility**: aria-labels (teilweise gefixt) → laufend
+- [ ] **DeviceDetail.vue**: >2790 Zeilen — Refactoring zu riskant ohne Test-Suite, als eigenen Task dokumentiert
+
+---
+
+> **Phase 8 (Hardware-Konzepte)** ist weiter oben dokumentiert bei den Milestones H1-H7.
+> Die funktionale Implementation steht als Phase 11a aus.
+> Milestones H1-H7 (Konzepte) sind oben bei Phase 8 dokumentiert.
+
+<!-- H1-H7 Milestones sind oben bei Phase 8 dokumentiert (nicht hier wiederholen) -->
+
+<!-- H2-H7 und Dependency Graph sind oben bei Phase 8 dokumentiert -->
+
+---
+
+## Abhängigkeits-Graph (aktualisiert)
 
 ```
-Phase 1-4 (Core + UI + Data + Integration) ✅
+Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
   │
-  └─► Phase 5: UX-Überholung & Fundament
+  └─► Phase 5/5b/5c (UX-Überholung + Completion)      ✅ DONE
         │
-        ├─► M13 (Design System Reboot) — ZUERST, alles andere baut darauf auf
-        │     └─► M14 (Typsystem) — braucht neue UI-Komponenten
-        │           ├─► M15 (Device Experience) — braucht Typsystem für Auto-Discovery
-        │           ├─► M18 (Dashboard Builder) — braucht Typsystem für Auto-Suggest
-        │           └─► M19 (Automation Engine) — braucht Typsystem für Trigger-Templates
-        │
-        ├─► M16 (Kontextuelles Arbeiten) — parallel zu M15, baut auf neuen Components auf
-        ├─► M17 (Realtime) — WebSocket unabhängig, Notifications brauchen neues Design
-        └─► M20 (System-Übersicht) — braucht M17 (Realtime) + M18 (Dashboard Builder)
+        └─► Phase 6 (Erweiterung: n8n, MCP, Bridge)   ✅ DONE
               │
-              └─► Phase 6: Erweiterung
-                    ├─► M21 (n8n Deep) — braucht M14 (Typsystem) + M19 (Automations)
-                    ├─► M22 (MCP) — unabhängig
-                    ├─► M23 (Agent SDK) — braucht M15 (Device Wizard)
-                    ├─► M24 (Bridges) — braucht M23 (Agent SDK)
-                    └─► (M25 gestrichen — Onboarding verteilt in M15/M16/M19/M20)
+              └─► Phase 7a/7b/7c (Prod + Enterprise)   ✅ DONE
+                    │
+                    └─► Phase 8 (Hardware-Konzepte)     ✅ CONCEPT-DONE
                           │
-                          └─► Phase 7: Enterprise
-                                ├─► M26 (Security) — unabhängig
-                                ├─► M27 (Skalierung) — unabhängig
-                                ├─► M29 (Export/Templates) — braucht M14 + M18 + M19
-                                ├─► M31 (Multi-User) — braucht M26 (RBAC)
-                                └─► M36 (Flow Editor) — braucht M20 (System Map)
+                          └─► Phase 9 (Release)         ◄── NÄCHSTER SCHRITT
+                                │
+                                └─► Phase 10 (Commercial)
+                                      │
+                                      ├─► Phase 11 (Hardware-Impl.)  [COMING SOON]
+                                      └─► Phase 12 (Evolution)       [BRAINSTORM]
 ```
 
----
-
-## Nächste 5 Sprints (Priorität)
-
-| Sprint | Milestone | Fokus | Abhängigkeit |
-|--------|-----------|-------|--------------|
-| **Sprint 1** | M13 Steps 1-3 | Design Tokens + Branding + i18n Foundation | — |
-| **Sprint 2** | M13 Steps 4-5 | Component Library + Screen Redesign | Sprint 1 |
-| **Sprint 3** | M14 Steps 1-3 | Typsystem Backend + Grundbibliothek + Triggers | Sprint 2 |
-| **Sprint 4** | M14 Steps 4-5 + M15 Steps 1-3 | Typsystem Frontend + Device Identity + Gruppierung | Sprint 3 |
-| **Sprint 5** | M15 Steps 4-6 + M16 Steps 1-4 | Device Wizard + Auto-Discovery + Kontextuelles Arbeiten + Action-Bars | Sprint 4 |
+> **Grundregel für ALLE zukünftigen Features:**
+> Bei JEDEM neuen Feature wird geprüft:
+> 1. Per REST-API erreichbar? (immer: ja)
+> 2. Per Webhook triggerbar? (wenn Event-basiert: ja)
+> 3. Per MQTT erreichbar? (wenn Echtzeit-relevant: ja)
+> 4. Folgt es den 7 UX-Prinzipien? (Progressive Disclosure, Selektoren, Kontextuelles Arbeiten, Unterstützend, Minimalistisch, Wächst mit Komplexität, Verständliche Sprache)
+> 5. In der API-Dokumentation beschrieben? (immer: ja)

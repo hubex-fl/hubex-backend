@@ -138,13 +138,19 @@ function navTo(href: string) {
 }
 
 function createAlert() {
+  const query: Record<string, string> = { create: "true" };
+  if (context.value?.variableKey) query.variable_key = context.value.variableKey;
+  if (context.value?.deviceUid) query.device_uid = String(context.value.deviceUid);
   close();
-  router.push("/alerts");
+  router.push({ path: "/alerts", query });
 }
 
 function createAutomation() {
+  const query: Record<string, string> = { create: "true" };
+  if (context.value?.variableKey) query.variable_key = context.value.variableKey;
+  if (context.value?.deviceUid) query.device_uid = String(context.value.deviceUid);
   close();
-  router.push("/automations");
+  router.push({ path: "/automations", query });
 }
 
 function viewVariables() {

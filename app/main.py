@@ -26,6 +26,8 @@ from app.core.health_worker import health_worker_loop
 from app.core.ota_worker import ota_worker_loop
 from app.core.history_retention import history_retention_loop
 from app.core.automation_engine import automation_engine_loop
+from app.core.partition_manager import partition_maintenance_loop
+from app.core.telemetry_worker import telemetry_worker_loop
 from app.db.session import AsyncSessionLocal, engine
 
 logger = logging.getLogger("uvicorn.error")
@@ -33,6 +35,108 @@ logger = logging.getLogger("uvicorn.error")
 # Apply structured logging unless we're running tests
 if not is_test_env():
     configure_logging(log_level=settings.log_level, log_format=settings.log_format)
+
+
+async def _demo_heartbeat_loop() -> None:
+    """Keep demo devices online by refreshing last_seen_at every 60s."""
+    from sqlalchemy import text
+    while True:
+        await asyncio.sleep(60)
+        try:
+            async with AsyncSessionLocal() as db:
+                await db.execute(text(
+                    "UPDATE devices SET last_seen_at = NOW() WHERE device_uid LIKE 'demo-%'"
+                ))
+                await db.commit()
+        except Exception:
+            logger.debug("demo_heartbeat: error updating demo devices")
+
+
+async def _computed_variables_loop() -> None:
+    """Recompute computed variables every 30 seconds."""
+    from app.core.computed_variables import compute_all
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with AsyncSessionLocal() as db:
+                count = await compute_all(db)
+                if count:
+                    logger.debug("computed_variables: updated %d values", count)
+        except Exception:
+            logger.debug("computed_variables: error in compute cycle")
+
+
+async def _api_poll_worker_loop() -> None:
+    """Poll configured API endpoints for service-type devices and write values as telemetry."""
+    import httpx
+    from sqlalchemy import select
+    from app.db.models.device import Device
+    from datetime import datetime, timezone
+
+    while True:
+        await asyncio.sleep(30)  # Check every 30s
+        try:
+            async with AsyncSessionLocal() as db:
+                # Find service devices with endpoint_url configured
+                res = await db.execute(
+                    select(Device).where(
+                        Device.category == "service",
+                        Device.config.isnot(None),
+                        Device.is_claimed == True,
+                    )
+                )
+                devices = res.scalars().all()
+
+                for device in devices:
+                    cfg = device.config or {}
+                    url = cfg.get("endpoint_url")
+                    if not url:
+                        continue
+
+                    interval = cfg.get("poll_interval_seconds", 60)
+                    # Check if enough time passed since last_seen
+                    if device.last_seen_at:
+                        age = (datetime.now(timezone.utc) - device.last_seen_at.replace(tzinfo=timezone.utc)).total_seconds()
+                        if age < interval * 0.8:  # 80% of interval = not yet due
+                            continue
+
+                    try:
+                        method = cfg.get("method", "GET").upper()
+                        headers = cfg.get("headers") or {}
+                        auth_type = cfg.get("auth_type", "none")
+                        if auth_type == "bearer" and cfg.get("auth_credentials"):
+                            headers["Authorization"] = f"Bearer {cfg['auth_credentials']}"
+                        elif auth_type == "api_key" and cfg.get("auth_credentials"):
+                            headers["X-API-Key"] = cfg["auth_credentials"]
+
+                        async with httpx.AsyncClient(timeout=15) as client:
+                            resp = await client.request(method, url, headers=headers)
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                # Extract numeric fields
+                                payload = {}
+                                def _extract(obj, prefix=""):
+                                    if isinstance(obj, dict):
+                                        for k, v in obj.items():
+                                            full = f"{prefix}{k}" if not prefix else f"{prefix}.{k}"
+                                            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                                                payload[k] = float(v)
+                                            elif isinstance(v, dict):
+                                                _extract(v, full)
+                                _extract(data)
+
+                                if payload:
+                                    # Write as telemetry via internal bridge
+                                    from app.api.v1.telemetry import _bridge_telemetry_to_variables
+                                    device.last_seen_at = datetime.now(timezone.utc)
+                                    await _bridge_telemetry_to_variables(device.id, device.device_uid, "api_poll", payload)
+                                    logger.debug("api_poll: %s → %d fields", device.device_uid, len(payload))
+                    except Exception as e:
+                        logger.debug("api_poll: %s failed: %s", device.device_uid, e)
+
+                await db.commit()
+        except Exception:
+            logger.debug("api_poll_worker: error in poll cycle")
 
 
 async def _token_cleanup_loop() -> None:
@@ -51,6 +155,12 @@ async def _token_cleanup_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---- Startup ----
+    # Auto-create all tables on fresh database
+    from app.db.base import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("startup: database tables ensured")
+
     await init_redis()
 
     async with AsyncSessionLocal() as db:
@@ -63,8 +173,13 @@ async def lifespan(app: FastAPI):
     ota_task = asyncio.create_task(ota_worker_loop())
     retention_task = asyncio.create_task(history_retention_loop())
     automation_task = asyncio.create_task(automation_engine_loop())
+    demo_heartbeat_task = asyncio.create_task(_demo_heartbeat_loop())
+    api_poll_task = asyncio.create_task(_api_poll_worker_loop())
+    computed_task = asyncio.create_task(_computed_variables_loop())
+    partition_task = asyncio.create_task(partition_maintenance_loop())
+    telemetry_task = asyncio.create_task(telemetry_worker_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task, computed_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()
@@ -116,17 +231,22 @@ app = FastAPI(
 #   SecurityMiddleware → RateLimitMiddleware → CacheMiddleware → CORS → routes
 # Response flows in reverse.
 
+# CORS — konfigurierbar via HUBEX_CORS_ORIGINS env var (kommasepariert)
+_cors_env = settings.cors_origins if hasattr(settings, 'cors_origins') and settings.cors_origins else ""
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Device-Token", "X-Request-ID", "X-Access-Token-Expire-Seconds"],
 )
 
 app.add_middleware(CacheMiddleware)

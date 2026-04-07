@@ -31,9 +31,21 @@ from app.db.models.automation import AutomationFireLog, AutomationRule
 from app.db.models.events import EventV1
 from app.core.system_events import emit_system_event
 
+from app.core.config import settings as _settings
+
 logger = logging.getLogger("uvicorn.error")
 
 ENGINE_INTERVAL = 5  # seconds between event-poll cycles
+
+# Semaphore limits concurrent action execution (webhook calls, DB writes)
+_action_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_action_semaphore() -> asyncio.Semaphore:
+    global _action_semaphore
+    if _action_semaphore is None:
+        _action_semaphore = asyncio.Semaphore(_settings.automation_concurrency)
+    return _action_semaphore
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +198,12 @@ async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[s
         await _action_create_alert(db, rule, cfg, context)
     elif action_type == "emit_system_event":
         await _action_emit_system_event(db, cfg, context)
+    elif action_type == "send_notification":
+        await _action_send_notification(db, rule, cfg, context)
+    elif action_type == "log_to_audit":
+        await _action_log_to_audit(db, rule, cfg, context)
+    elif action_type == "send_email":
+        await _action_send_email(db, rule, cfg, context)
     else:
         logger.warning("automation_engine: unknown action_type=%s rule_id=%d", action_type, rule.id)
 
@@ -288,6 +306,126 @@ async def _action_emit_system_event(
     await emit_system_event(db, event_type, {**payload_extra, **context})
 
 
+async def _action_send_notification(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Create a notification for the device owner."""
+    from app.db.models.notifications import Notification
+    title = cfg.get("title", f"Automation: {rule.name}")
+    message = cfg.get("message", "Automation rule fired")
+    try:
+        message = message.format(**context)
+    except (KeyError, IndexError):
+        pass
+    severity = cfg.get("severity", "info")
+    notif = Notification(
+        user_id=rule.org_id,  # Will need proper user resolution
+        type="automation",
+        severity=severity,
+        title=title,
+        message=message,
+        entity_ref=f"automation:{rule.id}",
+    )
+    db.add(notif)
+
+
+async def _action_log_to_audit(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Write an audit log entry."""
+    from app.db.models.audit import AuditEntry
+    action = cfg.get("action", "automation.action")
+    resource = cfg.get("resource", f"rule:{rule.id}")
+    db.add(AuditEntry(
+        actor_type="automation",
+        actor_id=str(rule.id),
+        action=action,
+        resource=resource,
+        metadata_json=context,
+    ))
+
+
+def _evaluate_condition_groups(groups: list[dict], payload: dict[str, Any]) -> bool:
+    """Evaluate AND/OR condition groups against event payload.
+
+    Format: [{"operator": "and"|"or", "conditions": [{"field": "...", "op": "gt"|"lt"|"eq"|"ne", "value": ...}]}]
+    Multiple groups are AND-connected (all must pass).
+    """
+    COMPARE_OPS = {
+        "gt": lambda a, b: float(a) > float(b),
+        "gte": lambda a, b: float(a) >= float(b),
+        "lt": lambda a, b: float(a) < float(b),
+        "lte": lambda a, b: float(a) <= float(b),
+        "eq": lambda a, b: str(a) == str(b),
+        "ne": lambda a, b: str(a) != str(b),
+    }
+
+    for group in groups:
+        operator = group.get("operator", "and")
+        conditions = group.get("conditions", [])
+        if not conditions:
+            continue
+
+        results = []
+        for cond in conditions:
+            field = cond.get("field", "")
+            op = cond.get("op", "eq")
+            expected = cond.get("value")
+            actual = payload.get(field)
+            if actual is None:
+                results.append(False)
+                continue
+            try:
+                results.append(COMPARE_OPS.get(op, lambda a, b: False)(actual, expected))
+            except (ValueError, TypeError):
+                results.append(False)
+
+        if operator == "or":
+            if not any(results):
+                return False
+        else:  # "and"
+            if not all(results):
+                return False
+
+    return True
+
+
+async def _action_send_email(
+    db: AsyncSession, rule: AutomationRule, cfg: dict[str, Any], context: dict[str, Any]
+) -> None:
+    """Send an email using an EmailTemplate. Config: {template_id, recipients, extra_data}."""
+    from app.db.models.email_template import EmailTemplate
+    from app.core.email import send_email
+
+    template_id = cfg.get("template_id")
+    recipients = cfg.get("recipients", [])
+    if not template_id or not recipients:
+        logger.warning("send_email: missing template_id or recipients, rule_id=%d", rule.id)
+        return
+
+    tpl = await db.get(EmailTemplate, int(template_id))
+    if not tpl:
+        logger.warning("send_email: template %s not found, rule_id=%d", template_id, rule.id)
+        return
+
+    # Build template variables from context + extra_data
+    template_vars = {**context, **(cfg.get("extra_data") or {})}
+    template_vars["rule_name"] = rule.name
+
+    # Render subject and body
+    subject = tpl.subject
+    body = tpl.body_html or tpl.body_text
+    for key, val in template_vars.items():
+        subject = subject.replace(f"{{{key}}}", str(val))
+        body = body.replace(f"{{{key}}}", str(val))
+
+    for recipient in recipients:
+        try:
+            await send_email(to=recipient, subject=subject, body=body)
+        except Exception as exc:
+            logger.error("send_email: failed to %s: %s", recipient, exc)
+
+
 # ---------------------------------------------------------------------------
 # Main evaluation cycle
 # ---------------------------------------------------------------------------
@@ -301,7 +439,7 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
             EventV1.id > last_event_id,
         )
         .order_by(EventV1.id.asc())
-        .limit(200)
+        .limit(_settings.automation_batch_size)
     )
     result = await db.execute(stmt)
     events: list[EventV1] = list(result.scalars().all())
@@ -318,9 +456,11 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
 
         # Map event type → trigger types to evaluate
         if event_type.startswith("variable."):
-            trigger_types = ["variable_threshold", "variable_geofence"]
+            trigger_types = ["variable_threshold", "variable_geofence", "variable_change"]
         elif event_type == "device.offline":
             trigger_types = ["device_offline"]
+        elif event_type == "device.online":
+            trigger_types = ["device_online"]
         elif event_type.startswith("telemetry."):
             trigger_types = ["telemetry_received"]
         else:
@@ -347,8 +487,31 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     fired = _check_device_offline(rule, payload)
                 elif rule.trigger_type == "telemetry_received":
                     fired = _check_telemetry_received(rule, payload)
+                elif rule.trigger_type == "variable_change":
+                    # Fires on any variable change event
+                    fired = event_type.startswith("variable.") if event_type else False
+                    if fired:
+                        cfg_key = rule.trigger_config.get("variable_key")
+                        if cfg_key and payload.get("variable_key") != cfg_key:
+                            fired = False
+                elif rule.trigger_type == "device_online":
+                    fired = event_type == "device.online" if event_type else False
+                    cfg_uid = rule.trigger_config.get("device_uid")
+                    if fired and cfg_uid and payload.get("device_uid") != cfg_uid:
+                        fired = False
+                elif rule.trigger_type == "schedule":
+                    # Schedule triggers are handled externally (cron), not by event matching
+                    fired = False
                 else:
                     fired = False
+
+                if not fired:
+                    continue
+
+                # AND/OR condition groups (optional)
+                condition_groups = rule.trigger_config.get("condition_groups")
+                if condition_groups and fired:
+                    fired = _evaluate_condition_groups(condition_groups, payload)
 
                 if not fired:
                     continue
@@ -361,11 +524,12 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     if (now - last).total_seconds() < rule.cooldown_seconds:
                         continue
 
-                # Execute action
+                # Execute action (with concurrency limit)
                 success = True
                 error_msg: str | None = None
                 try:
-                    await execute_action(db, rule, context={"event_type": event_type, **payload})
+                    async with _get_action_semaphore():
+                        await execute_action(db, rule, context={"event_type": event_type, **payload})
                 except Exception as exc:
                     success = False
                     error_msg = str(exc)
@@ -396,6 +560,32 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
 # Background loop
 # ---------------------------------------------------------------------------
 
+def _cron_matches(expr: str, now) -> bool:
+    """Simple cron matching: 'minute hour day_of_month month day_of_week' or '* * * * *'."""
+    parts = expr.strip().split()
+    if len(parts) != 5:
+        return False
+    fields = [now.minute, now.hour, now.day, now.month, now.weekday()]  # weekday: 0=Mon
+    for val, pattern in zip(fields, parts):
+        if pattern == "*":
+            continue
+        if "/" in pattern:
+            _, step = pattern.split("/", 1)
+            if val % int(step) != 0:
+                return False
+        elif "," in pattern:
+            if str(val) not in pattern.split(","):
+                return False
+        elif "-" in pattern:
+            lo, hi = pattern.split("-", 1)
+            if not (int(lo) <= val <= int(hi)):
+                return False
+        else:
+            if val != int(pattern):
+                return False
+    return True
+
+
 async def automation_engine_loop() -> None:
     """Background loop: process system events for automation rules every ENGINE_INTERVAL seconds."""
     last_event_id = 0
@@ -413,10 +603,45 @@ async def automation_engine_loop() -> None:
     except Exception:
         pass
 
+    _last_cron_minute = -1
+
     while True:
         try:
             async with AsyncSessionLocal() as db:
                 last_event_id = await _process_new_events(db, last_event_id)
+
+                # Schedule trigger: check once per minute
+                from datetime import datetime, timezone, timedelta
+                now = datetime.now(timezone.utc)
+                current_minute = now.hour * 60 + now.minute
+                if current_minute != _last_cron_minute:
+                    _last_cron_minute = current_minute
+                    # Find all enabled schedule rules
+                    cron_rules = await db.execute(
+                        select(AutomationRule).where(
+                            AutomationRule.enabled == True,
+                            AutomationRule.trigger_type == "schedule",
+                        )
+                    )
+                    for rule in cron_rules.scalars().all():
+                        cron_expr = rule.trigger_config.get("cron", "")
+                        if _cron_matches(cron_expr, now):
+                            # Cooldown check
+                            if rule.last_fired_at:
+                                last = rule.last_fired_at
+                                if last.tzinfo is None:
+                                    last = last.replace(tzinfo=timezone.utc)
+                                if (now - last).total_seconds() < rule.cooldown_seconds:
+                                    continue
+                            # Fire
+                            try:
+                                await execute_action(db, rule, context={"event_type": "schedule", "cron": cron_expr})
+                                rule.fire_count = (rule.fire_count or 0) + 1
+                                rule.last_fired_at = now
+                                db.add(AutomationFireLog(rule_id=rule.id, success=True, context_json={"cron": cron_expr}))
+                            except Exception as exc:
+                                db.add(AutomationFireLog(rule_id=rule.id, success=False, error_message=str(exc)[:512]))
+                    await db.commit()
         except Exception:
             logger.exception("automation_engine: unhandled error in evaluation cycle")
         await asyncio.sleep(ENGINE_INTERVAL)

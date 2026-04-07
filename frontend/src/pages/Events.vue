@@ -189,10 +189,11 @@ onUnmounted(() => { stopPolling(); });
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Events Viewer</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time event stream reader</p>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Events</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time system events. Select a stream and start monitoring.</p>
       </div>
       <div class="flex gap-2">
+        <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
         <UButton variant="secondary" size="sm" @click="retryAll">Retry</UButton>
         <UButton variant="secondary" size="sm" :disabled="!polling" @click="stopPolling">Stop</UButton>
       </div>
@@ -231,9 +232,9 @@ onUnmounted(() => { stopPolling(); });
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput">Set cursor</UButton>
-            <UButton variant="secondary" size="sm" @click="jumpToNext">Jump to next</UButton>
-            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor">ACK</UButton>
+            <UButton variant="secondary" size="sm" @click="setCursorFromInput" title="Set cursor to a specific position">Set cursor</UButton>
+            <UButton variant="secondary" size="sm" @click="jumpToNext" title="Jump to next unread event">Jump to next</UButton>
+            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" title="Mark all events up to current position as read">ACK</UButton>
           </div>
         </div>
 

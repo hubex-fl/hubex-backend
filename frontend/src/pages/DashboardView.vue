@@ -4,7 +4,7 @@
     <!-- Top bar -->
     <div class="db-topbar">
       <div class="db-topbar-left">
-        <button class="back-btn" @click="router.push('/dashboards')">← Dashboards</button>
+        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">← Dashboards</button>
         <h1 v-if="dashboard" class="db-name">{{ dashboard.name }}</h1>
         <USkeleton v-else class="h-5 w-40" />
       </div>
@@ -18,7 +18,7 @@
             @click="currentRange = r"
           >{{ r }}</button>
         </div>
-        <button class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
+        <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
           {{ editMode ? '✓ Done' : '✏ Edit' }}
         </button>
         <button class="refresh-btn" @click="loadDashboard" title="Refresh">↺</button>
@@ -37,7 +37,7 @@
       <div class="empty-icon">📊</div>
       <p class="empty-title">No widgets yet</p>
       <p class="empty-sub">Click "Edit" to add widgets to this dashboard</p>
-      <UButton @click="editMode = true; showAddWidget = true">Add Widget</UButton>
+      <UButton @click="editMode = true; openAddWidget()">Add Widget</UButton>
     </div>
 
     <!-- Dashboard grid -->
@@ -53,8 +53,10 @@
       >
         <!-- Edit mode overlay -->
         <div v-if="editMode" class="widget-edit-overlay">
-          <button class="overlay-btn del" @click="confirmDeleteWidget(widget)" title="Remove widget">✕</button>
+          <button class="overlay-btn move" @click="moveWidget(widget, -1)" title="Move left/up">◀</button>
           <button class="overlay-btn cfg" @click="openWidgetConfig(widget)" title="Configure">⚙</button>
+          <button class="overlay-btn del" @click="confirmDeleteWidget(widget)" title="Remove widget">✕</button>
+          <button class="overlay-btn move" @click="moveWidget(widget, 1)" title="Move right/down">▶</button>
         </div>
 
         <VizWidget
@@ -78,7 +80,7 @@
       </div>
 
       <!-- Add widget placeholder (edit mode) -->
-      <div v-if="editMode" class="add-widget-cell" @click="showAddWidget = true">
+      <div v-if="editMode" class="add-widget-cell" @click="openAddWidget()">
         <span class="add-icon">＋</span>
         <span>Add Widget</span>
       </div>
@@ -89,7 +91,7 @@
       <Transition name="modal">
         <div v-if="showAddWidget" class="modal-overlay" @click.self="showAddWidget = false">
           <div class="modal-box">
-            <h2 class="modal-title">Add Widget</h2>
+            <h2 class="modal-title">{{ editingWidgetId ? 'Edit Widget' : 'Add Widget' }}</h2>
             <div class="form-fields">
 
               <!-- Widget type -->
@@ -104,7 +106,6 @@
                     <option value="log">Log</option>
                     <option value="json">JSON Viewer</option>
                     <option value="map">Map (GPS)</option>
-                    <option value="image">Image URL</option>
                   </optgroup>
                   <optgroup label="Controls">
                     <option value="control_toggle">Toggle Switch</option>
@@ -113,14 +114,13 @@
                 </select>
               </div>
 
-              <!-- Variable key -->
+              <!-- Device first, then variable (filtered by device) -->
               <div class="field">
-                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="Variable" />
+                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="1. Select Device" placeholder="Choose device first..." :optional="true" />
               </div>
 
-              <!-- Device UID (optional) -->
               <div class="field">
-                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="Device" placeholder="Select device..." :optional="true" />
+                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="2. Select Variable" :placeholder="newWidget.device_uid ? 'Variables for this device...' : 'Select device first or choose global...'" />
               </div>
 
               <!-- Label -->
@@ -165,7 +165,7 @@
 
               <div class="modal-actions">
                 <UButton variant="ghost" @click="showAddWidget = false">Cancel</UButton>
-                <UButton :loading="adding" @click="submitAddWidget">Add Widget</UButton>
+                <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
               </div>
 
             </div>
@@ -196,13 +196,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UButton from "../components/ui/UButton.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import VizWidget from "../components/viz/VizWidget.vue";
 import {
   getDashboard,
   addWidget,
+  updateWidget,
   deleteWidget,
+  updateLayout,
   type Dashboard,
   type DashboardWidget,
 } from "../lib/dashboards";
@@ -226,6 +229,7 @@ function rangeToFrom(range: TimeRange): number {
 
 const route = useRoute();
 const router = useRouter();
+const isKiosk = computed(() => route.meta?.layout === "kiosk");
 
 const dashboard = ref<Dashboard | null>(null);
 const loading = ref(true);
@@ -243,6 +247,7 @@ const showAddWidget = ref(false);
 const adding = ref(false);
 const addError = ref("");
 const newWidget = ref(defaultNewWidget());
+const editingWidgetId = ref<number | null>(null);  // null = add mode, number = edit mode
 
 // Delete widget
 const deletingWidget = ref<DashboardWidget | null>(null);
@@ -268,12 +273,39 @@ watch(currentRange, () => {
   if (dashboard.value) loadAllHistory();
 });
 
+// Auto-suggest widget type + label when variable is selected
+watch(() => newWidget.value.variable_key, async (varKey) => {
+  if (!varKey) return;
+  try {
+    const defs = await apiFetch<Array<{ key: string; value_type: string; display_hint?: string; unit?: string; description?: string }>>("/api/v1/variables/definitions");
+    const def = defs.find((d: { key: string }) => d.key === varKey);
+    if (def) {
+      // Auto-fill label from key
+      if (!newWidget.value.label) newWidget.value.label = def.description || def.key;
+      // Auto-fill unit
+      if (!newWidget.value.unit && def.unit) newWidget.value.unit = def.unit;
+      // Auto-suggest widget type based on display_hint or value_type
+      const hint = def.display_hint;
+      if (hint && hint !== "auto") {
+        newWidget.value.widget_type = hint;
+      } else {
+        const typeMap: Record<string, string> = {
+          int: "gauge", float: "line_chart", bool: "bool", string: "log", json: "json",
+        };
+        newWidget.value.widget_type = typeMap[def.value_type] ?? "line_chart";
+      }
+    }
+  } catch { /* ignore — auto-suggest is best-effort */ }
+});
+
 async function loadDashboard() {
   loading.value = true;
   try {
     const id = Number(route.params.id);
     dashboard.value = await getDashboard(id);
     await loadAllHistory();
+  } catch {
+    dashboard.value = null;
   } finally {
     loading.value = false;
   }
@@ -281,11 +313,41 @@ async function loadDashboard() {
 
 const sortedWidgets = computed<DashboardWidget[]>(() => {
   if (!dashboard.value) return [];
-  return [...dashboard.value.widgets].sort((a, b) => {
-    if (a.grid_row !== b.grid_row) return a.grid_row - b.grid_row;
-    return a.grid_col - b.grid_col;
-  });
+  return [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
 });
+
+function moveWidget(widget: DashboardWidget, direction: number) {
+  if (!dashboard.value) return;
+  const widgets = dashboard.value.widgets;
+  const sorted = [...widgets].sort((a, b) => a.sort_order - b.sort_order);
+  const idx = sorted.findIndex(w => w.id === widget.id);
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= sorted.length) return;
+  // Swap sort_order
+  const tmp = sorted[idx].sort_order;
+  sorted[idx].sort_order = sorted[newIdx].sort_order;
+  sorted[newIdx].sort_order = tmp;
+  // Recalculate grid positions
+  recalcGridPositions(sorted);
+  dashboard.value.widgets = sorted;
+  // Persist to backend
+  saveLayout();
+}
+
+async function saveLayout() {
+  if (!dashboard.value) return;
+  try {
+    const items = dashboard.value.widgets.map(w => ({
+      widget_id: w.id,
+      sort_order: w.sort_order,
+      grid_col: w.grid_col,
+      grid_row: w.grid_row,
+      grid_span_w: w.grid_span_w,
+      grid_span_h: w.grid_span_h,
+    }));
+    await updateLayout(dashboard.value.id, items);
+  } catch { /* silent — layout will reload on next page visit */ }
+}
 
 async function loadAllHistory() {
   if (!dashboard.value) return;
@@ -376,42 +438,100 @@ async function handleControlChange(widget: DashboardWidget, value: unknown) {
   }
 }
 
-// Add widget
+// Add or update widget
 async function submitAddWidget() {
   adding.value = true;
   addError.value = "";
   try {
-    const id = Number(route.params.id);
-    const nextPos = getNextGridPosition();
-    const w = await addWidget(id, {
-      widget_type: newWidget.value.widget_type,
-      variable_key: newWidget.value.variable_key || null,
-      device_uid: newWidget.value.device_uid || null,
-      label: newWidget.value.label || null,
-      unit: newWidget.value.unit || null,
-      min_value: newWidget.value.min_value,
-      max_value: newWidget.value.max_value,
-      grid_col: nextPos.col,
-      grid_row: nextPos.row,
-      grid_span_w: newWidget.value.grid_span_w,
-      grid_span_h: newWidget.value.grid_span_h,
-    });
-    dashboard.value!.widgets.push(w);
+    const dashId = Number(route.params.id);
+
+    if (editingWidgetId.value) {
+      // UPDATE existing widget
+      const w = await updateWidget(dashId, editingWidgetId.value, {
+        widget_type: newWidget.value.widget_type,
+        variable_key: newWidget.value.variable_key || null,
+        device_uid: newWidget.value.device_uid || null,
+        label: newWidget.value.label || null,
+        unit: newWidget.value.unit || null,
+        min_value: newWidget.value.min_value,
+        max_value: newWidget.value.max_value,
+        grid_span_w: newWidget.value.grid_span_w,
+        grid_span_h: newWidget.value.grid_span_h,
+      });
+      const idx = dashboard.value!.widgets.findIndex((x) => x.id === editingWidgetId.value);
+      if (idx >= 0) dashboard.value!.widgets[idx] = w;
+      if (w.variable_key) loadWidgetHistory(w);
+    } else {
+      // ADD new widget
+      const nextPos = getNextGridPosition();
+      const w = await addWidget(dashId, {
+        widget_type: newWidget.value.widget_type,
+        variable_key: newWidget.value.variable_key || null,
+        device_uid: newWidget.value.device_uid || null,
+        label: newWidget.value.label || null,
+        unit: newWidget.value.unit || null,
+        min_value: newWidget.value.min_value,
+        max_value: newWidget.value.max_value,
+        grid_col: nextPos.col,
+        grid_row: nextPos.row,
+        grid_span_w: newWidget.value.grid_span_w,
+        grid_span_h: newWidget.value.grid_span_h,
+      });
+      dashboard.value!.widgets.push(w);
+      if (w.variable_key) loadWidgetHistory(w);
+    }
+
     showAddWidget.value = false;
+    editingWidgetId.value = null;
     newWidget.value = defaultNewWidget();
-    if (w.variable_key) loadWidgetHistory(w);
   } catch (e: unknown) {
-    addError.value = e instanceof Error ? e.message : "Failed to add widget";
+    const info = parseApiError(e);
+    addError.value = mapErrorToUserText(info, "Widget could not be saved.");
   } finally {
     adding.value = false;
   }
 }
 
+function recalcGridPositions(sorted: DashboardWidget[]) {
+  // Pack widgets into 12-column grid, flowing left-to-right then top-to-bottom
+  let col = 1;
+  let row = 1;
+  let rowHeight = 0;
+  for (const w of sorted) {
+    if (col + w.grid_span_w - 1 > 12) {
+      // Doesn't fit on current row → next row
+      col = 1;
+      row += rowHeight;
+      rowHeight = 0;
+    }
+    w.grid_col = col;
+    w.grid_row = row;
+    col += w.grid_span_w;
+    rowHeight = Math.max(rowHeight, w.grid_span_h);
+  }
+}
+
 function getNextGridPosition(): { col: number; row: number } {
   if (!dashboard.value?.widgets.length) return { col: 1, row: 1 };
-  const widgets = dashboard.value.widgets;
-  const maxRow = Math.max(...widgets.map((w) => w.grid_row + w.grid_span_h - 1));
-  return { col: 1, row: maxRow + 1 };
+  const sorted = [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
+  // Find first position that fits a 4-wide widget
+  let col = 1;
+  let row = 1;
+  let rowHeight = 0;
+  for (const w of sorted) {
+    if (col + w.grid_span_w - 1 > 12) {
+      col = 1;
+      row += rowHeight;
+      rowHeight = 0;
+    }
+    col += w.grid_span_w;
+    rowHeight = Math.max(rowHeight, w.grid_span_h);
+  }
+  if (col + 4 - 1 > 12) {
+    col = 1;
+    row += rowHeight;
+  }
+  return { col, row };
 }
 
 function confirmDeleteWidget(widget: DashboardWidget) {
@@ -425,13 +545,15 @@ async function submitDeleteWidget() {
     await deleteWidget(dashboard.value.id, deletingWidget.value.id);
     dashboard.value.widgets = dashboard.value.widgets.filter((w) => w.id !== deletingWidget.value!.id);
     deletingWidget.value = null;
+  } catch (e: unknown) {
+    addError.value = "Failed to remove widget";
   } finally {
     deleting.value = false;
   }
 }
 
 function openWidgetConfig(widget: DashboardWidget) {
-  // Populate edit form with existing values and reuse add modal
+  editingWidgetId.value = widget.id;
   newWidget.value = {
     widget_type: widget.widget_type,
     variable_key: widget.variable_key || "",
@@ -443,6 +565,12 @@ function openWidgetConfig(widget: DashboardWidget) {
     grid_span_w: widget.grid_span_w,
     grid_span_h: widget.grid_span_h,
   };
+  showAddWidget.value = true;
+}
+
+function openAddWidget() {
+  editingWidgetId.value = null;
+  newWidget.value = defaultNewWidget();
   showAddWidget.value = true;
 }
 </script>
@@ -523,6 +651,7 @@ function openWidgetConfig(widget: DashboardWidget) {
 .db-grid {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: 60px;
@@ -563,6 +692,7 @@ function openWidgetConfig(widget: DashboardWidget) {
 }
 .overlay-btn.del:hover { background: var(--status-bad); color: #fff; border-color: var(--status-bad); }
 .overlay-btn.cfg:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+.overlay-btn.move:hover { background: var(--bg-raised); color: var(--text-primary); }
 
 /* Add widget placeholder */
 .add-widget-cell {

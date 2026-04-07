@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   listAutomations,
   createAutomation,
@@ -15,6 +17,8 @@ import { useToastStore } from "../stores/toast";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+const route = useRoute();
+const { t } = useI18n();
 const toast = useToastStore();
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -40,7 +44,20 @@ async function reload() {
   }
 }
 
-onMounted(reload);
+onMounted(async () => {
+  await reload();
+  // Auto-open create modal with pre-filled context from Variables or DeviceDetail
+  if (route.query.create === "true") {
+    openCreate();
+    if (route.query.variable_key) {
+      formTriggerType.value = "variable_threshold";
+      trigVarKey.value = String(route.query.variable_key);
+    }
+    if (route.query.device_uid) {
+      trigDeviceUid.value = String(route.query.device_uid);
+    }
+  }
+});
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +74,7 @@ async function handleDelete(id: number) {
   try {
     await deleteAutomation(id);
     rules.value = rules.value.filter((r) => r.id !== id);
-    toast.addToast("Rule deleted", "success");
+    toast.addToast(t('toast.deleted', { item: 'Rule' }), "success");
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to delete rule"), "error");
@@ -166,6 +183,25 @@ const trigGeoPolygon = ref("[[48.137, 11.576], [48.140, 11.580], [48.135, 11.582
 // Device offline / telemetry
 const trigEventType = ref("");
 
+// Condition groups (AND/OR)
+type ConditionItem = { field: string; op: string; value: string };
+type ConditionGroup = { operator: "and" | "or"; conditions: ConditionItem[] };
+const conditionGroups = ref<ConditionGroup[]>([]);
+
+function addConditionGroup() {
+  conditionGroups.value.push({ operator: "and", conditions: [{ field: "", op: "gt", value: "" }] });
+}
+function removeConditionGroup(gi: number) {
+  conditionGroups.value.splice(gi, 1);
+}
+function addCondition(gi: number) {
+  conditionGroups.value[gi].conditions.push({ field: "", op: "gt", value: "" });
+}
+function removeCondition(gi: number, ci: number) {
+  conditionGroups.value[gi].conditions.splice(ci, 1);
+  if (conditionGroups.value[gi].conditions.length === 0) removeConditionGroup(gi);
+}
+
 // Action-specific fields
 const actVarKey = ref("");
 const actVarValue = ref('""');
@@ -185,6 +221,9 @@ const TRIGGER_TYPES = [
   { value: "variable_geofence", label: "Variable Geofence", desc: "When a GPS variable leaves or enters a zone", icon: "M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" },
   { value: "device_offline", label: "Device Offline", desc: "When a device goes offline", icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" },
   { value: "telemetry_received", label: "Telemetry Received", desc: "When telemetry data arrives", icon: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" },
+  { value: "variable_change", label: "Variable Change", desc: "When any variable value changes", icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" },
+  { value: "device_online", label: "Device Online", desc: "When a device comes back online", icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { value: "schedule", label: "Schedule (Cron)", desc: "Run on a time-based schedule", icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" },
 ];
 
 const ACTION_TYPES = [
@@ -192,6 +231,9 @@ const ACTION_TYPES = [
   { value: "call_webhook", label: "Call Webhook", desc: "Send HTTP request to external URL", icon: "M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" },
   { value: "create_alert_event", label: "Create Alert", desc: "Generate an alert event", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
   { value: "emit_system_event", label: "Emit System Event", desc: "Broadcast a system event", icon: "M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0 0a3 3 0 00-3-3H7.5a3 3 0 00-3 3m13.5 0v-6.75a3 3 0 00-3-3H7.5a3 3 0 00-3 3v6.75" },
+  { value: "send_notification", label: "Send Notification", desc: "Create an in-app notification", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
+  { value: "log_to_audit", label: "Log to Audit", desc: "Write an entry to the audit log", icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" },
+  { value: "send_email", label: "Send Email", desc: "Send an email using a template", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
 ];
 
 const OPERATOR_OPTIONS = [
@@ -265,6 +307,7 @@ function resetForm() {
   trigGeoRadius.value = 500;
   trigGeoPolygon.value = "[[48.137, 11.576], [48.140, 11.580], [48.135, 11.582]]";
   trigEventType.value = "";
+  conditionGroups.value = [];
   actVarKey.value = "";
   actVarValue.value = '""';
   actVarScope.value = "global";
@@ -380,6 +423,20 @@ function openEdit(rule: AutomationRuleOut) {
     trigEventType.value = String(tc.event_type ?? "");
   }
 
+  // Populate condition groups
+  if (tc.condition_groups && Array.isArray(tc.condition_groups)) {
+    conditionGroups.value = (tc.condition_groups as Array<Record<string, unknown>>).map((g: Record<string, unknown>) => ({
+      operator: (g.operator as "and" | "or") || "and",
+      conditions: ((g.conditions as Array<Record<string, unknown>>) || []).map((c: Record<string, unknown>) => ({
+        field: String(c.field || ""),
+        op: String(c.op || "gt"),
+        value: String(c.value ?? ""),
+      })),
+    }));
+  } else {
+    conditionGroups.value = [];
+  }
+
   // Populate action config
   const ac = rule.action_config;
   if (rule.action_type === "set_variable") {
@@ -402,6 +459,13 @@ function openEdit(rule: AutomationRuleOut) {
 
   modalError.value = null;
   modalOpen.value = true;
+}
+
+function duplicateRule(rule: AutomationRuleOut) {
+  openEdit(rule);
+  modalMode.value = "create";
+  editingId.value = null;
+  formName.value = `${rule.name} (Copy)`;
 }
 
 function closeModal() {
@@ -446,6 +510,23 @@ function buildTriggerConfig(): Record<string, unknown> {
     return cfg;
   }
   return {};
+}
+
+function buildTriggerConfigWithConditions(): Record<string, unknown> {
+  const cfg = buildTriggerConfig();
+  // Append condition groups if any
+  const groups = conditionGroups.value.filter(g => g.conditions.some(c => c.field.trim()));
+  if (groups.length) {
+    cfg.condition_groups = groups.map(g => ({
+      operator: g.operator,
+      conditions: g.conditions.filter(c => c.field.trim()).map(c => ({
+        field: c.field.trim(),
+        op: c.op,
+        value: isNaN(Number(c.value)) ? c.value : Number(c.value),
+      })),
+    }));
+  }
+  return cfg;
 }
 
 function buildActionConfig(): Record<string, unknown> {
@@ -515,7 +596,7 @@ async function handleSave() {
     description: formDescription.value.trim() || null,
     enabled: formEnabled.value,
     trigger_type: formTriggerType.value,
-    trigger_config: buildTriggerConfig(),
+    trigger_config: buildTriggerConfigWithConditions(),
     action_type: formActionType.value,
     action_config: buildActionConfig(),
     cooldown_seconds: Number(formCooldown.value),
@@ -546,6 +627,12 @@ const actionTypeLabel = computed(() => ACTION_TYPES.find((t) => t.value === form
 
 const inputClass = "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors";
 const labelClass = "text-xs font-medium text-[var(--text-muted)]";
+
+// Compact card expansion
+const expandedRuleId = ref<number | null>(null);
+function toggleRuleExpand(id: number) {
+  expandedRuleId.value = expandedRuleId.value === id ? null : id;
+}
 </script>
 
 <template>
@@ -553,8 +640,8 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Automations</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-1">If-then rules for automated actions</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('automations.title') }}</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('automations.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -641,57 +728,49 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
       </div>
     </template>
 
-    <!-- Rules list -->
-    <div v-else class="space-y-2">
+    <!-- Rules list — compact cards -->
+    <div v-else class="space-y-1.5">
       <div
         v-for="rule in rules"
         :key="rule.id"
         :class="[
-          'rounded-xl border bg-[var(--bg-surface)] px-4 py-3 transition-colors',
+          'rounded-xl border bg-[var(--bg-surface)] transition-colors',
           rule.enabled ? 'border-[var(--border)]' : 'border-[var(--border)] opacity-60',
         ]"
       >
-        <!-- Top row: name + toggle + actions -->
-        <div class="flex items-start gap-3">
-          <div class="flex-1 min-w-0">
-            <!-- Rule name + description -->
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ rule.name }}</span>
-              <span v-if="!rule.enabled" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)]">disabled</span>
-            </div>
-            <p v-if="rule.description" class="text-xs text-[var(--text-muted)] mb-2">{{ rule.description }}</p>
+        <!-- Compact row: name + IF→THEN summary + status + toggle -->
+        <button
+          class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--bg-raised)]/50 transition-colors rounded-xl"
+          @click="toggleRuleExpand(rule.id)"
+        >
+          <!-- Expand chevron -->
+          <svg
+            :class="['h-3.5 w-3.5 text-[var(--text-muted)] shrink-0 transition-transform duration-200', expandedRuleId === rule.id ? 'rotate-90' : '']"
+            fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
 
-            <!-- IF → THEN badges -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <!-- Trigger badge -->
-              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
-                IF {{ rule.trigger_type.replace("_", " ") }}
-              </span>
-              <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
+          <!-- Name -->
+          <span class="text-sm font-medium text-[var(--text-primary)] truncate min-w-0 shrink">{{ rule.name }}</span>
 
-              <!-- Arrow -->
-              <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
+          <!-- IF→THEN one-liner -->
+          <span class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-mono truncate flex-1 min-w-0">
+            <span class="text-blue-400">IF</span>
+            <span class="truncate">{{ triggerSummary(rule) }}</span>
+            <svg class="h-3 w-3 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+            <span class="text-[var(--primary)]">THEN</span>
+            <span class="truncate">{{ actionSummary(rule) }}</span>
+          </span>
 
-              <!-- Action badge -->
-              <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
-                THEN {{ rule.action_type.replace("_", " ") }}
-              </span>
-              <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
-            </div>
+          <!-- Status badges -->
+          <div class="shrink-0 flex items-center gap-2">
+            <span v-if="!rule.enabled" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)]">off</span>
+            <span v-if="rule.fire_count > 0" class="text-[10px] text-[var(--text-muted)]">{{ rule.fire_count }}x</span>
 
-            <!-- Stats -->
-            <div class="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-              <span>Fired: <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
-              <span>Last: <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
-              <span>Cooldown: <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
-            </div>
-          </div>
-
-          <!-- Controls -->
-          <div class="shrink-0 flex items-center gap-1.5">
-            <!-- Toggle -->
+            <!-- Toggle (stop propagation to prevent expand) -->
             <button
               :title="rule.enabled ? 'Disable rule' : 'Enable rule'"
               :disabled="togglingId === rule.id"
@@ -699,12 +778,42 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 'relative h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
                 rule.enabled ? 'bg-[var(--primary)]/70' : 'bg-[var(--bg-raised)]',
               ]"
-              @click="handleToggle(rule)"
+              @click.stop="handleToggle(rule)"
             >
               <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform', rule.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
             </button>
+          </div>
+        </button>
 
-            <!-- History -->
+        <!-- Expanded details -->
+        <div v-if="expandedRuleId === rule.id" class="px-4 pb-3 pt-0 border-t border-[var(--border)]">
+          <!-- Description -->
+          <p v-if="rule.description" class="text-xs text-[var(--text-muted)] mt-2 mb-2">{{ rule.description }}</p>
+
+          <!-- IF → THEN detail (visible on mobile too) -->
+          <div class="flex items-center gap-2 flex-wrap mt-2">
+            <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
+              IF {{ rule.trigger_type.replace(/_/g, " ") }}
+            </span>
+            <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
+            <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+            <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
+              THEN {{ rule.action_type.replace(/_/g, " ") }}
+            </span>
+            <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
+          </div>
+
+          <!-- Stats -->
+          <div class="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
+            <span>Fired: <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
+            <span>Last: <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
+            <span>Cooldown: <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="mt-3 flex items-center gap-1.5">
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               title="View history"
@@ -714,8 +823,6 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-
-            <!-- Edit -->
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               title="Edit rule"
@@ -725,8 +832,15 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
               </svg>
             </button>
-
-            <!-- Test fire -->
+            <button
+              class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              title="Duplicate rule"
+              @click="duplicateRule(rule)"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+              </svg>
+            </button>
             <button
               :disabled="testingId === rule.id"
               :class="[
@@ -735,12 +849,11 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10',
               ]"
+              title="Test fire rule"
               @click="handleTest(rule.id)"
             >
-              {{ testingId === rule.id ? '…' : testConfirmId === rule.id ? 'Confirm?' : 'Test' }}
+              {{ testingId === rule.id ? '...' : testConfirmId === rule.id ? 'Confirm?' : 'Test' }}
             </button>
-
-            <!-- Delete -->
             <button
               :disabled="deletingId === rule.id"
               :class="[
@@ -749,9 +862,10 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10',
               ]"
+              title="Delete rule"
               @click="handleDelete(rule.id)"
             >
-              {{ deletingId === rule.id ? '…' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
+              {{ deletingId === rule.id ? '...' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
             </button>
           </div>
         </div>
@@ -897,6 +1011,40 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
             </template>
           </div>
 
+          <!-- Additional Conditions (AND/OR) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Additional Conditions</h4>
+              <button class="text-[10px] text-[var(--primary)] hover:underline" @click="addConditionGroup">+ Add Condition Group</button>
+            </div>
+            <div v-for="(group, gi) in conditionGroups" :key="gi" class="border border-[var(--border)] rounded-lg p-3 space-y-2 bg-[var(--bg-raised)]">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-[var(--text-muted)]">Match</span>
+                  <select v-model="group.operator" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                    <option value="and">ALL conditions (AND)</option>
+                    <option value="or">ANY condition (OR)</option>
+                  </select>
+                </div>
+                <button class="text-[10px] text-red-400 hover:underline" @click="removeConditionGroup(gi)">Remove Group</button>
+              </div>
+              <div v-for="(cond, ci) in group.conditions" :key="ci" class="flex items-center gap-2">
+                <input v-model="cond.field" class="flex-1 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="variable_key" />
+                <select v-model="cond.op" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                  <option value="gt">&gt;</option>
+                  <option value="gte">≥</option>
+                  <option value="lt">&lt;</option>
+                  <option value="lte">≤</option>
+                  <option value="eq">=</option>
+                  <option value="ne">≠</option>
+                </select>
+                <input v-model="cond.value" class="w-20 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="value" />
+                <button class="text-[10px] text-red-400" @click="removeCondition(gi, ci)">×</button>
+              </div>
+              <button class="text-[10px] text-[var(--accent)] hover:underline" @click="addCondition(gi)">+ Add Condition</button>
+            </div>
+          </div>
+
           <!-- Divider -->
           <div class="border-t border-[var(--border)]" />
 
@@ -1008,9 +1156,9 @@ const labelClass = "text-xs font-medium text-[var(--text-muted)]";
           <div class="space-y-3">
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Settings</h4>
             <div class="space-y-1">
-              <label :class="labelClass">Cooldown: {{ formCooldown }}s</label>
+              <label :class="labelClass" title="Wartezeit in Sekunden bevor die Regel nach dem Feuern erneut auslösen kann">Cooldown: {{ formCooldown }}s</label>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
-              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (no cooldown)</span><span>1h</span></div>
+              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (kein Cooldown)</span><span>1h</span></div>
             </div>
             <div class="flex items-center gap-2">
               <input id="form-enabled" v-model="formEnabled" type="checkbox" class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]" />

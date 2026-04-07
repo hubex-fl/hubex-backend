@@ -197,7 +197,7 @@ const resolvedType = computed(() =>
 );
 
 const showTimeRange = computed(() =>
-  !props.compact && ["line_chart", "sparkline", "log", "bool"].includes(resolvedType.value)
+  !props.compact && ["line_chart", "sparkline", "log"].includes(resolvedType.value)
 );
 
 const widgetColor = computed(() => {

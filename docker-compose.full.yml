@@ -1,0 +1,93 @@
+
+# HUBEX Full Stack — with n8n + Portainer
+# Usage: docker-compose -f docker-compose.full.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hubex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hubex
+      POSTGRES_PASSWORD: ${HUBEX_DB_PASSWORD:-hubex}
+      POSTGRES_DB: hubex
+    volumes:
+      - hubex_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hubex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hubex-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - hubex_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: hubex-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HUBEX_DATABASE_URL: postgresql+asyncpg://hubex:${HUBEX_DB_PASSWORD:-hubex}@postgres:5432/hubex
+      HUBEX_REDIS_URL: redis://redis:6379/0
+      HUBEX_JWT_SECRET: ${HUBEX_JWT_SECRET:?Set HUBEX_JWT_SECRET in .env}
+      HUBEX_ENV: production
+      HUBEX_CORS_ORIGINS: ${HUBEX_CORS_ORIGINS:-http://localhost}
+    ports:
+      - "${HUBEX_PORT:-8000}:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: hubex-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${HUBEX_FRONTEND_PORT:-80}:80"
+
+  # ── n8n Workflow Automation (Companion) ──
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: hubex-n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_DEFAULT_BINARY_DATA_MODE: filesystem
+    volumes:
+      - hubex_n8n:/home/node/.n8n
+    ports:
+      - "5678:5678"
+
+  # ── Portainer Container Management ──
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: hubex-portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - hubex_portainer:/data
+    ports:
+      - "9443:9443"
+
+volumes:
+  hubex_pgdata:
+  hubex_redis:
+  hubex_n8n:
+  hubex_portainer:

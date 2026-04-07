@@ -1,0 +1,74 @@
+
+# HUBEX Production Stack
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hubex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hubex
+      POSTGRES_PASSWORD: ${HUBEX_DB_PASSWORD:-hubex}
+      POSTGRES_DB: hubex
+    volumes:
+      - hubex_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hubex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hubex-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - hubex_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: hubex-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HUBEX_DATABASE_URL: postgresql+asyncpg://hubex:${HUBEX_DB_PASSWORD:-hubex}@postgres:5432/hubex
+      HUBEX_REDIS_URL: redis://redis:6379/0
+      HUBEX_JWT_SECRET: ${HUBEX_JWT_SECRET:?Set HUBEX_JWT_SECRET in .env}
+      HUBEX_ENV: production
+      HUBEX_CORS_ORIGINS: ${HUBEX_CORS_ORIGINS:-http://localhost}
+    ports:
+      - "${HUBEX_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: hubex-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${HUBEX_FRONTEND_PORT:-80}:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  hubex_pgdata:
+  hubex_redis:

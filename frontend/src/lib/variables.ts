@@ -72,7 +72,12 @@ export type EffectiveVariable = {
   version: number | null;
   updated_at: string | null;
   is_secret: boolean;
-  source: "device_override" | "global_default";
+  source: string;
+  device_uid?: string | null;
+  masked?: boolean;
+  precedence?: number;
+  constraints?: { unit?: string } | null;
+  resolved_type?: string | null;
 };
 
 export type EffectiveVariables = {

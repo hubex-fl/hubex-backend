@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+const { t } = useI18n();
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UButton from "../components/ui/UButton.vue";
@@ -11,6 +13,8 @@ import { useRecentAlerts, severityStatus, relativeTime } from "../composables/us
 import { useEventStream, eventBadgeStatus, payloadPreview } from "../composables/useEventStream";
 
 const router = useRouter();
+const onboardingDismissed = ref(localStorage.getItem('hubex_onboarding_dismissed') === 'true');
+watch(onboardingDismissed, (v) => { if (v) localStorage.setItem('hubex_onboarding_dismissed', 'true'); });
 
 const { data: metrics, loading: metricsLoading } = useMetrics();
 const { alerts, loading: alertsLoading } = useRecentAlerts();
@@ -80,23 +84,47 @@ watch(events, async () => {
 
 <template>
   <div class="space-y-6">
-    <!-- ── 0. Welcome Banner (fresh install / no devices) ─────────────────── -->
+    <!-- ── 0. Getting Started Guide ─────────────────────────────────────── -->
     <div
-      v-if="!metricsLoading && metrics && metrics.devices.total === 0"
-      class="rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+      v-if="!metricsLoading && metrics && !onboardingDismissed"
+      class="rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-5 py-4"
     >
-      <div class="p-2.5 rounded-lg bg-[var(--primary)]/10 shrink-0">
-        <svg class="h-6 w-6 text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-        </svg>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🚀</span>
+          <p class="text-sm font-semibold text-[var(--text-primary)]">Getting Started with HUBEX</p>
+        </div>
+        <button class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" @click="onboardingDismissed = true">Dismiss ×</button>
       </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold text-[var(--text-primary)]">Welcome to HUBEX</p>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">No devices yet — pair your first device to start monitoring.</p>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors text-center"
+          :class="metrics.devices.total > 0 ? 'border-[var(--status-ok)]/30 bg-[var(--status-ok)]/5 text-[var(--status-ok)]' : 'border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40'"
+          @click="router.push('/devices?wizard=open')">
+          <span class="text-lg">{{ metrics.devices.total > 0 ? '✓' : '1' }}</span>
+          <span class="text-[10px] font-medium">Add Device</span>
+        </button>
+        <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors text-center"
+          :class="metrics.devices.online > 0 ? 'border-[var(--status-ok)]/30 bg-[var(--status-ok)]/5 text-[var(--status-ok)]' : 'border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40'"
+          @click="router.push('/variables')">
+          <span class="text-lg">{{ metrics.devices.online > 0 ? '✓' : '2' }}</span>
+          <span class="text-[10px] font-medium">See Data</span>
+        </button>
+        <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors text-center"
+          @click="router.push('/alerts')">
+          <span class="text-lg">3</span>
+          <span class="text-[10px] font-medium">Set Alert</span>
+        </button>
+        <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors text-center"
+          @click="router.push('/dashboards')">
+          <span class="text-lg">4</span>
+          <span class="text-[10px] font-medium">Dashboard</span>
+        </button>
+        <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors text-center"
+          @click="router.push('/automations')">
+          <span class="text-lg">5</span>
+          <span class="text-[10px] font-medium">Automate</span>
+        </button>
       </div>
-      <UButton size="sm" @click="router.push('/devices')">
-        Pair Device
-      </UButton>
     </div>
 
     <!-- ── 1. Hero Stats (3 large tiles) ────────────────────────────────────── -->
@@ -298,83 +326,12 @@ watch(events, async () => {
       </button>
     </div>
 
-    <!-- ── 4. Device Health Ring + Recent Alerts ───────────────────────────── -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Device Health Ring -->
-      <UCard data-testid="device-health-ring">
-        <template #header>
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Device Health</h3>
-        </template>
-
-        <div v-if="metricsLoading" class="flex items-center justify-center py-10">
-          <USkeleton width="160px" height="160px" rounded="full" />
-        </div>
-        <div v-else class="flex flex-col items-center gap-4 py-4">
-          <!-- SVG Donut -->
-          <svg width="160" height="160" viewBox="0 0 160 160" aria-label="Device health donut chart">
-            <!-- Background ring -->
-            <circle cx="80" cy="80" r="60" fill="none" stroke="var(--bg-raised)" stroke-width="16" />
-            <!-- Segments -->
-            <circle
-              v-for="seg in donutSegments"
-              :key="seg.label"
-              cx="80" cy="80" r="60"
-              fill="none"
-              :style="{ stroke: seg.color }"
-              stroke-width="16"
-              :stroke-dasharray="`${seg.dash} ${seg.gap}`"
-              stroke-linecap="butt"
-              :transform="`rotate(${seg.startAngle} 80 80)`"
-            />
-            <!-- Center: total count -->
-            <text
-              x="80" y="75"
-              text-anchor="middle"
-              font-family="JetBrains Mono, ui-monospace, monospace"
-              font-size="26"
-              font-weight="700"
-              fill="var(--text-primary)"
-            >{{ metrics?.devices.total ?? "—" }}</text>
-            <text
-              x="80" y="93"
-              text-anchor="middle"
-              font-family="Inter, ui-sans-serif, sans-serif"
-              font-size="11"
-              fill="var(--text-muted)"
-            >devices</text>
-          </svg>
-
-          <!-- Legend -->
-          <div class="flex gap-5 flex-wrap justify-center">
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-ok)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Online</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.online ?? 0 }}
-              </span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-warn)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Stale</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.stale ?? 0 }}
-              </span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-bad)] shrink-0" />
-              <span class="text-xs text-[var(--text-secondary)]">Offline</span>
-              <span class="text-xs font-mono font-semibold text-[var(--text-primary)]">
-                {{ metrics?.devices.offline ?? 0 }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </UCard>
-
+    <!-- ── 4. Recent Alerts (full width) ─────────────────────────────────── -->
+    <div>
       <!-- Recent Alerts -->
       <UCard data-testid="recent-alerts">
         <template #header>
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recent Alerts</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('dashboard.recentAlerts') }}</h3>
           <UButton size="sm" variant="ghost" @click="router.push('/alerts')">View All</UButton>
         </template>
 
@@ -392,7 +349,7 @@ watch(events, async () => {
         <!-- Empty -->
         <UEmpty
           v-else-if="alerts.length === 0"
-          title="No active alerts"
+          :title="t('dashboard.noActiveAlerts')"
           description="All systems are operating normally."
           icon="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           data-testid="alerts-empty"
@@ -513,7 +470,7 @@ watch(events, async () => {
             v-if="!streamPaused"
             class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse-slow"
           />
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Event Stream</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('dashboard.eventStream') }}</h3>
         </div>
         <UButton size="sm" variant="ghost" @click="togglePause">
           <!-- Resume icon -->

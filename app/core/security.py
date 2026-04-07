@@ -31,6 +31,7 @@ def create_access_token(
     expires_seconds: Optional[int] = None,
     caps: Optional[list[str]] = None,
     org_id: Optional[int] = None,
+    role: Optional[str] = None,
 ) -> str:
     now = datetime.now(timezone.utc)
     if expires_seconds is None:
@@ -48,6 +49,8 @@ def create_access_token(
         payload["caps"] = caps
     if org_id is not None:
         payload["org_id"] = org_id
+    if role:
+        payload["role"] = role
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 

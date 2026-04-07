@@ -14,7 +14,9 @@ from app.core.capabilities import (
     validate_caps,
 )
 from app.api.deps import get_db
+from app.core.api_keys import is_api_key
 from app.db.models.modules import ModuleRegistry
+from app.db.models.api_key import ApiKey
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -79,6 +81,38 @@ async def capability_guard(
         return
 
     if device_token and _has_required_caps(required, DEVICE_CAPS):
+        return
+
+    # API Key authentication (hbx_ prefix)
+    if creds and creds.credentials and is_api_key(creds.credentials):
+        from app.core.security import hash_device_token
+        from datetime import datetime, timezone
+
+        key_hash = hash_device_token(creds.credentials)
+        res = await db.execute(
+            select(ApiKey).where(ApiKey.key_hash == key_hash)
+        )
+        api_key = res.scalar_one_or_none()
+        if api_key is None or api_key.revoked:
+            if enforce:
+                _http_401(_detail("CAP_APIKEY_INVALID", "invalid or revoked API key"))
+            return
+        if api_key.expires_at and api_key.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            if enforce:
+                _http_401(_detail("CAP_APIKEY_EXPIRED", "API key has expired"))
+            return
+
+        # Update last_used_at
+        api_key.last_used_at = datetime.now(timezone.utc)
+
+        api_key_caps = api_key.caps or []
+        if not _has_required_caps(required, api_key_caps):
+            if enforce:
+                _http_403(_detail("CAP_APIKEY_FORBIDDEN", "API key lacks required capability"))
+            return
+        request.state.auth_method = "api_key"
+        request.state.api_key_id = api_key.id
+        request.state.user_id = api_key.user_id
         return
 
     if not creds or not creds.credentials:
