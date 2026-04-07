@@ -1162,7 +1162,7 @@
 - [ ] **Semantic Versioning Policy** — MAJOR (breaking), MINOR (features), PATCH (bugfix)
 - [ ] **CHANGELOG.md** — Automatisch aus Git-Tags + Commit-Messages
 
-### Milestone R5: Production Deployment [todo]
+### Milestone R5: Production Deployment [done] ✅
 > Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
 - [ ] **docker-compose.prod.yml** — PostgreSQL + Redis + HubEx Backend + Nginx Reverse Proxy
 - [ ] **docker-compose.full.yml** — Prod-Stack + n8n + Portainer (Companion Package)
@@ -1177,7 +1177,7 @@
 - [ ] **Incident Response Plan** — Wer wird benachrichtigt? Eskalation? Post-Mortem Template?
 - [ ] **Backup + Restore Test** — pg_dump → DB löschen → Restore → alle Daten da?
 
-### Milestone R5b: Community & Open Source [todo]
+### Milestone R5b: Community & Open Source [done] ✅
 > Grundlage für Community-Wachstum.
 - [ ] CONTRIBUTING.md (PR-Prozess, Code-Style, Review-Richtlinien)
 - [ ] CODE_OF_CONDUCT.md
