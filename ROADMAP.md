@@ -556,7 +556,7 @@
 
 ---
 
-## Phase 6: Erweiterung & Anbindung [done] ✅
+## Phase 6: Erweiterung & Anbindung [done] ✅ (ursprüngliche Definition → siehe aktualisierte Version weiter unten)
 
 - [x] Step 1 — n8n Node Update: Semantische Typen
   - n8n Node v2: Semantic Type resource (list, get, triggers, conversions)
@@ -1087,6 +1087,12 @@
 
 ---
 
+> **Chronologische Reihenfolge der Phasen:**
+> Phase 1-4 (Core) → Phase 5/5b/5c (UX) → Phase 6 (Erweiterung) →
+> Phase 7a/7b/7c (Production/Enterprise/Polish) → Phase 8 (Hardware-Konzept) →
+> Phase 9 (Release) → Phase 10 (Commercialization) → Phase 11 (Hardware-Impl.) →
+> Phase 12 (Evolution)
+
 ---
 
 ## Phase 9: Release-Readiness [todo]
@@ -1271,7 +1277,7 @@
 
 ---
 
-## Phase 12: Produkt-Evolution [brainstorm]
+## Phase 11b: Produkt-Evolution [brainstorm]
 > Aus Brainstorming-Sessions gesammelte Features — priorisiert, geclustert.
 > Grundprinzip: UX-Sauberkeit bewahren. Neue Features dürfen das System nicht vollstopfen.
 > Progressive Disclosure bei allem. Clean Look hat Vorrang vor Feature-Menge.
@@ -1331,7 +1337,7 @@
 
 ---
 
-## Phase 11: Hardware Implementation [coming-soon]
+## Phase 11a: Hardware Implementation [coming-soon]
 > Die funktionale Umsetzung der in Phase 8 konzipierten Hardware-Plattform.
 > Phase 8 hat Models, APIs und Spezifikationen definiert. Phase 11 macht sie real.
 > Dies ist das GRÖSSTE verbleibende Arbeitspaket — jeder Block ist ein eigenes Ökosystem.
@@ -1735,49 +1741,26 @@ Phase 8 intern:
 
 ---
 
-## Abhängigkeits-Graph (vereinfacht)
+## Abhängigkeits-Graph (aktualisiert)
 
 ```
-Phase 1-4 (Core + UI + Data + Integration) ✅
+Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
   │
-  └─► Phase 5: UX-Überholung & Fundament (M13-M20) ✅
+  └─► Phase 5/5b/5c (UX-Überholung + Completion)      ✅ DONE
         │
-        └─► Phase 5b: UX Completion ✅
+        └─► Phase 6 (Erweiterung: n8n, MCP, Bridge)   ✅ DONE
               │
-              └─► Phase 6: Erweiterung (M21-M24) ✅
+              └─► Phase 7a/7b/7c (Prod + Enterprise)   ✅ DONE
                     │
-                    └─► Phase 5c: Stabilität & Simulation ✅
+                    └─► Phase 8 (Hardware-Konzepte)     ✅ CONCEPT-DONE
                           │
-                          └─► Phase 7a: Production Readiness ✅
+                          └─► Phase 9 (Release)         ◄── NÄCHSTER SCHRITT
                                 │
-                                └─► Phase 7c: UX Polish ✅
+                                └─► Phase 10 (Commercial)
                                       │
-                                      ├─► UXP-1 (Kritische Blocker) ✅
-                                      ├─► UXP-2 (UX-Friction) ✅
-                                      ├─► UXP-3 (Verbesserungen) ✅
-                                      └─► UXP-4 (Polish) ✅
-                                            │
-                                            └─► Phase 7b: Enterprise & Business ← AKTUELL
-                                            ├─► M14b (Computed Variables) ✅
-                                            ├─► M19b (Automation Erweiterung) ✅
-                                            ├─► M18b (Dashboard Embed) ✅
-                                            ├─► M26 (Security/RBAC)
-                                            └─► M36 (Flow Editor)
-                                      │
-                                      └─► Phase 8: Hardware & Produkt-Modus (H1-H7)
+                                      ├─► Phase 11 (Hardware-Impl.)  [COMING SOON]
+                                      └─► Phase 12 (Evolution)       [BRAINSTORM]
 ```
-
----
-
-## Nächste 5 Sprints (Priorität)
-
-| Sprint | Milestone | Fokus | Abhängigkeit |
-|--------|-----------|-------|--------------|
-| **Sprint UX-1** | UX-A Steps 1-6 | Flow-Korrekturen: Kontext-Navigation, Alert-Actions, Input/Output zugeklappt | — |
-| **Sprint UX-2** | UX-B Steps 1-11 | Erklärungen, Tooltips, Bug-Fixes, Dashboard aufräumen | parallel zu UX-1 |
-| **Sprint UX-3** | UX-C Steps 1-5 | DeviceDetail: System Context, Variable-Typ-Edit, Offline-ActionBar | Sprint UX-1 |
-| **Sprint UX-4** | UX-D Steps 1-6 | Add Device Wizard (4 Flows: Hardware/Service/Bridge/Agent) | Sprint UX-3 |
-| **Sprint UX-5** | UX-E Steps 1-4 | Platinen-Ansicht Node-Graph, Dashboard Auto-Suggest, Connect-Panel Inline | Sprint UX-3 |
 
 > **Grundregel für ALLE zukünftigen Features:**
 > Bei JEDEM neuen Feature wird geprüft:
