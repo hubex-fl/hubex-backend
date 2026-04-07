@@ -1271,6 +1271,64 @@
 
 ---
 
+## Phase 12: Produkt-Evolution [brainstorm]
+> Aus Brainstorming-Sessions gesammelte Features — priorisiert, geclustert.
+> Grundprinzip: UX-Sauberkeit bewahren. Neue Features dürfen das System nicht vollstopfen.
+> Progressive Disclosure bei allem. Clean Look hat Vorrang vor Feature-Menge.
+
+### Milestone E1: Analyse-Stack [todo]
+> Cluster "Analyse & Monitoring" — zusammenhängende Features für tiefes Verständnis.
+- [ ] **Wächter** — Intelligente Überwachung ohne manuelle Regeln. HubEx lernt normales Pattern (Z-Score auf 7-Tage-Basis), alerted bei Abweichung. Einfach einschalten, null Konfiguration.
+- [ ] **Health Score** — 0-100 pro Device (Telemetrie-Regelmäßigkeit, Fehlerrate, WiFi-Stärke, Batterie). Stackbar auf Gruppen/Liegenschaften. Trend-Ansicht über Zeit.
+- [ ] **Geräte-Gesundheitshistorie** — Langzeit-Trend des Health Score. Predictive: "Bei diesem Trend wird Sensor X in 2 Wochen unzuverlässig."
+- [ ] **Device Timeline / Changelog** — Opt-in pro Device: Wann gepairt? Offline? Variable geändert? Automation gefeuert? Visuelle Zeitleiste.
+- [ ] **Vergleichsansicht** — Zwei Devices nebeneinander, gleiche Variablen übereinander. Sofort sehen welcher abweicht. Diff-View für physische Geräte.
+- [ ] **System-weite Snapshots** — "Snapshot jetzt" → alle Variable-Werte + Device-Stati einfrieren. Zwei Snapshots vergleichen: "Was hat sich geändert?"
+- [ ] **Watch Mode** — Live-Debug-Dashboard pro Device. Alle Variablen streamen in Echtzeit, Werte blinken bei Änderung. Serial-Monitor-Feeling im Browser.
+
+### Milestone E2: Automation Evolution [todo]
+> Cluster "Automation" — die Engine von einfach zu mächtig.
+- [ ] **Besserer Name** — "Automationen" umbenennen (nicht "Rezepte"). Brainstorming nötig für den richtigen Begriff.
+- [ ] **Szenarien** — Multi-Device Koordination. "Nachtmodus": Alle Lichter 10%, Heizung 18°, Alarm scharf. Ein Button → 20 Geräte gleichzeitig.
+- [ ] **Regeln validieren** — Pre-Check: "Wenn diese Regel letzte Woche aktiv gewesen wäre, hätte sie 47x gefeuert." Verhindert Alert-Fatigue.
+- [ ] **Quick Actions** — Ein-Klick-Buttons auf dem Dashboard. Großer roter "Notfall-Aus" Button der 5 Variablen gleichzeitig setzt.
+- [ ] **Notification Channels** — Multi-Kanal: Telegram Bot, Discord Webhook, Slack, SMS (Twilio), Push (Mobile App), Anruf bei kritischen Alerts.
+
+### Milestone E3: Organisation & Projekte [todo]
+> Cluster "Organisationsebene" — vom Device-Listing zur Projektverwaltung.
+- [ ] **Projekte** — Projekt = Board + Shield + Pins + Devices + Dashboards + Automationen. Speichern/Laden/Duplizieren/Teilen. Natürliche Einheit für Marketplace.
+- [ ] **Liegenschaften & GPS** — Standorte auf Karte, Devices per Standort gruppieren, Health Score pro Standort. Drill-Down: Land → Stadt → Gebäude → Raum → Device.
+- [ ] **Logbuch** — Menschliche Notizen an Zeitpunkte. "14:30 — Pumpe manuell abgestellt wegen Wartung." Macht Timeline menschlich, hilft bei Fehlersuche.
+
+### Milestone E4: Marketplace & Ökosystem [todo]
+> Blueprints, Mini-Apps, Community-Inhalte.
+- [ ] **Blueprints** — Teilbare Gesamtpakete: Devices + Dashboards + Automationen + Verdrahtungsplan + Einkaufsliste. "Blueprint: Gewächshaus-Automatisierung" → Ein Klick → alles da.
+- [ ] **Mini-Apps / App Store** — Richtige Mini-Anwendungen die IN HubEx laufen. Eigene Views, eigene Logik. Grafisch ODER per Code erstellbar. Marketplace für Free + Paid.
+- [ ] **Formeln** — Excel-artige Formeln als Variable-Typ: `=AVERAGE(temp_og, temp_eg)`. Nur wenn UX-verträglich umsetzbar.
+
+### Milestone E5: KI & Intelligenz [todo]
+> KI-gestützte Features — optional, nie im Weg.
+- [ ] **AI Assistant** — Chat-Widget im Dashboard. Nutzt MCP-Integration. "Zeig mir die Temperatur im Büro." "Erstelle eine Automation: wenn Fenster offen → Heizung aus." Funktioniert mit Ollama (lokal) oder Claude/GPT (Cloud).
+- [ ] **Natural Language Automations** — "Sage was du willst" → KI erstellt die Regel. User bestätigt vor Aktivierung.
+- [ ] **Smart Anomalie-Erklärung** — "Warum war der Stromverbrauch gestern Nacht so hoch?" → KI analysiert Variable-History und antwortet.
+
+### Milestone E6: Visualisierung Next Level [todo]
+> Über Dashboards hinaus — immersive Visualisierung.
+- [ ] **Custom View Widget (SVG)** — User lädt SVG hoch, mappt Elemente auf Variablen. Farbe/Position/Sichtbarkeit ändern sich live. Synoptik-Display für Anlagen.
+- [ ] **3D-Visualisierung** — Three.js/Babylon.js. GLTF-Modell hochladen, Mesh-Teile auf Variablen mappen. Roboterhand, Produktionsanlage, Gebäude live animiert.
+- [ ] **Playground / Sandbox** — Isolierter Bereich zum Experimentieren. Simulierte Werte, Automationen testen ohne echte Devices zu beeinflussen.
+
+### Milestone E7: Integration First [todo]
+> "UND" statt "ODER" — bestehende Systeme einbinden, nicht ersetzen.
+- [ ] **Integration Landing Pages** — "HubEx + Home Assistant", "HubEx + KNX", "HubEx + Grafana" — jeweils mit Anleitung, Screenshots, Use Cases.
+- [ ] **Echtzeit-Steuerung / Rust Worker** — Optionaler High-Performance Worker für µs-Latenz. Anbindung von Echtzeit-Bussen.
+
+### Meta-Prinzip (gilt für ALLE Features in Phase 12)
+> **UX-Sauberkeit bewahren.** Jedes neue Feature muss durch Progressive Disclosure
+> eingeblendet werden. Nur sichtbar wenn relevant. Kein Feature darf das bestehende
+> System visuell oder konzeptionell überladen. Clean Look hat Vorrang vor Feature-Menge.
+> Lieber weniger Features die perfekt funktionieren als viele die halbgar sind.
+
 ---
 
 ## Phase 11: Hardware Implementation [coming-soon]
