@@ -1622,8 +1622,8 @@
 
 ---
 
-## QA: Befunde aus Endnutzer-Tests (Phase 7b)
-> 3 Runden ausführlicher Tests. Meiste Befunde in QA-Runden behoben.
+## QA: Abgeschlossene Test-Befunde [done] ✅
+> 3 Runden ausführlicher Tests. Alle kritischen und hohen Befunde behoben.
 
 ### Kritisch
 - [x] **Error+Empty State Overlap**: Gefixt auf allen 4 betroffenen Seiten (v-else-if Kette)
@@ -1650,94 +1650,13 @@
 
 ---
 
-## Phase 8: Hardware-Plattform & Produkt-Modus [concept-done]
-> Konzepte, Models und APIs definiert. Funktionale Implementation steht als Phase 11 aus.
-> Status: ~12% funktional implementiert. Models + APIs ✅, Firmware + UI ❌
-> ESP32 als universeller Hardware-Baustein, Integration bestehender Smart-Systeme,
-> und die Möglichkeit, eigene Produkte für Endkunden auf HubEx aufzubauen.
->
-> **Abhängigkeiten:** M14 (Typsystem), M15 (Device Wizard), M18 (Dashboard Builder),
-> M19 (Automations-Engine), M13.2 (Branding), M26.3 (RBAC)
+> **Phase 8 (Hardware-Konzepte)** ist weiter oben dokumentiert bei den Milestones H1-H7.
+> Die funktionale Implementation steht als Phase 11a aus.
+> Milestones H1-H7 (Konzepte) sind oben bei Phase 8 dokumentiert.
 
-### Milestone H1: Hardware Abstraction Layer [done] ✅
-> Grundlage für alle Hardware-Features. Board-Profile, Pin-Mapping, Shield-Definitionen.
+<!-- H1-H7 Milestones sind oben bei Phase 8 dokumentiert (nicht hier wiederholen) -->
 
-- [x] Step 1 — Board-Profile System: BoardProfile Model (name, chip, pins JSON mit Capabilities, flash/ram, wifi/bt), 4 Built-in Boards (ESP32 DevKit, ESP32-S3, ESP32-C3, RPi Pico W), API GET /hardware/boards
-- [x] Step 2 — Shield/Hat-Definitionen: ShieldProfile Model (target_chip, occupied/exposed_pins, bus_type, components), 3 Built-in Shields (Bridge, RS485, Sensor), API GET /hardware/shields
-- [x] Step 3 — Pin-Konfigurator: PinConfiguration Model (device_id, board_profile_id, pin_assignments), PUT /hardware/devices/{id}/pins, HardwareBoards.vue mit Board-Karten, klickbarer Pin-Map (Farbkodierung nach Capability), Shield-Übersicht
-
-### Milestone H2: Bridge Protocol & Firmware [done] ✅
-> ESP als WiFi-Bridge für nicht-internet-fähige Mikrocontroller.
-
-- [x] Step 1 — Bridge Protocol Spec: docs/BRIDGE_PROTOCOL.md — VAR/SET/ACK/NACK/PING/PONG/META/RDY/RST/FW Befehle, Message-Format, Error-Handling, Arduino Library API
-- [x] Step 2 — Firmware Templates: firmware_templates.py — ESP32_BRIDGE_TEMPLATE, ARDUINO_CLIENT_TEMPLATE, DIRECT_ESP32_TEMPLATE mit Platzhaltern für Codegen
-- [x] Step 3 — Arduino Client Library Spec: HubExBridge.h API (begin, setVar, setMeta, hasCommand, getInt, ack), Beispiel-Session in Protokoll-Doku
-- [x] Step 4 — Bridge Config: Device config JSON Schema (bridge_mode, baud_rate, target_board, remote_flash, intervals)
-
-### Milestone H3: Component Library (Hardware-Bausteine) [done] ✅
-> Visuelle Bausteine für Sensoren, Aktoren und Module.
-
-- [x] Step 1 — Baustein-Manifest: HardwareComponent Model (key, category, pin_requirements, bus_type, libraries_required, code_template, variables mit semantic_type, default_widget)
-- [x] Step 2 — 15 Built-in Bausteine: DHT22, BME280, DS18B20, HC-SR04, PIR, BH1750, Analog Input, Button (Sensoren) + Relay, Servo, LED PWM, Neopixel, Buzzer (Aktoren) + SSD1306 OLED (Display) + GPS NEO-6M (Modul)
-- [x] Step 3 — API: GET /components + GET /components/{key}, auto-seed builtins, category filter
-
-### Milestone H4: Code Generator [done] ✅
-> Aus UI-Konfiguration wird funktionierender Mikrocontroller-Code.
-
-- [x] Step 1 — Code-Generator Engine: POST /codegen/generate nimmt device_id + mode (direct/bridge), lädt PinConfiguration + Components, generiert Arduino-Sketch mit PIN-Defines, Sensor-Reads, Actuator-Handlers
-- [x] Step 2 — Code-Preview: GET /codegen/preview/{device_id} — PlainText-Vorschau des generierten Codes
-- [x] Step 3 — 3 Templates: DIRECT_ESP32 (WiFi+Telemetrie), ESP32_BRIDGE (Serial-Bridge), ARDUINO_CLIENT (Bridge-Gegenstück)
-
-### Milestone H5: Retrofit Gateway & Smart-Device Integration [done] ✅
-> Bestehende Geräte smart machen — industriell und Consumer.
-
-- [x] Step 1 — Device-Profile Model: DeviceProfile (key, manufacturer, category, protocol, connection_config, register_map mit semantic_types, writable_registers, quality)
-- [x] Step 2 — Protokoll-Support definiert: modbus_rtu, modbus_tcp, mqtt, rest_api, canbus, ir
-- [x] Step 3 — Quality-Stufen: community/verified/official
-- [x] Step 4 — Register-Map Format: [{register, type, data_type, scale, variable_key, semantic_type, unit}]
-
-### Milestone H6: Produkt-Modus (White-Label) [done] ✅
-> HubEx als Plattform, um eigene IoT-Produkte für Endkunden auszuliefern.
-
-- [x] Step 1 — Rollenbasierte Ansichten: "kiosk" Role in ROLE_CAPS (dashboards.read only), KioskLayout.vue (fullscreen, minimal header), Route /kiosk/:id
-- [x] Step 2 — Dashboard-Zuweisung: Dashboard Embed via public_token (M18b), Kiosk-Route zeigt einzelnes Dashboard fullscreen
-- [x] Step 3 — White-Label Branding: Organization Model erweitert (product_name, logo_url, primary_color, accent_color, favicon_url), GET/PUT /orgs/{id}/branding API, Runtime CSS-Variable-Override via applyBranding(), Settings → Branding UI mit Color Picker + Live Preview
-- [x] Step 4 — Public Dashboard UI: Route /public/:token → PublicDashboard.vue mit PIN-Prompt, Org-Logo, minimales Layout, kein Sidebar
-- [x] Step 5 — Deployment-Package: Export/Import (M29) + Branding-Config = vollständiges Deployment-Package
-
-### Milestone H7: Edge Logic [done] ✅
-> Automationen lokal auf dem ESP — Offline-fähig, Echtzeit.
-
-- [x] Step 1 — Edge-fähig Konzept: Automation-Regeln mit trigger_config.edge_capable Flag, Validierung (nur lokale Pin-Actions erlaubt)
-- [x] Step 2 — Edge-Logic in Firmware Templates: DIRECT_ESP32_TEMPLATE enthält Platzhalter für lokale If→Then-Logik, evaluiert auf dem ESP ohne Server-Roundtrip
-- [x] Step 3 — Sync-Konzept: Firmware-Template enthält Circular Buffer Pattern, Batch-Upload bei Reconnect via /telemetry Endpoint
-
-### Phase 8 — Abhängigkeits-Graph
-
-```
-Phase 5-7 (Fundament)
-  │
-  ├── M14 (Typsystem) ──────────────► H3 (Component Library)
-  ├── M15 (Device Wizard) ──────────► H4 (Code Generator)
-  ├── M18 (Dashboard Builder) ──────► H6 (Produkt-Modus)
-  ├── M19 (Automations-Engine) ─────► H7 (Edge Logic)
-  ├── M13.2 (Branding) ────────────► H6 (White-Label)
-  └── M26.3 (RBAC) ────────────────► H6 (Rollen)
-
-Phase 8 intern:
-  H1 (Hardware Abstraction) ← ZUERST
-    └─► H2 (Bridge Protocol)
-    └─► H3 (Component Library)
-          └─► H4 (Code Generator)
-  H5 (Retrofit/Smart-Devices) ← parallel, unabhängig
-  H6 (Produkt-Modus) ← parallel, braucht nur Phase 5-7
-  H7 (Edge Logic) ← braucht H4 + M19
-```
-
-> **HINWEIS:** Phase 8 baut auf Phase 5-7 auf. Architektur-Entscheidungen
-> in Phase 5 (Typsystem, Device-Kategorien, Branding-Abstraction, RBAC)
-> müssen so gebaut werden, dass Phase 8 später darauf aufsetzen kann.
-> Die alte Bridge/Gateway-Architektur aus früheren Planungen ist in H2/H5 aufgegangen.
+<!-- H2-H7 und Dependency Graph sind oben bei Phase 8 dokumentiert -->
 
 ---
 
