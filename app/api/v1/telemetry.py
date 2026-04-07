@@ -147,11 +147,10 @@ async def _bridge_telemetry_to_variables(
             if not candidate_keys:
                 return
 
-            # Load matching device_writable definitions
+            # Load ALL matching definitions (regardless of device_writable)
             res = await db.execute(
                 sa_select(VariableDefinition).where(
                     VariableDefinition.key.in_(candidate_keys),
-                    VariableDefinition.device_writable == True,  # noqa: E712
                 )
             )
             defs = list(res.scalars().all())
