@@ -1186,7 +1186,7 @@
 - [ ] AGPL License Header in alle Source-Files
 - [ ] .env aus Git entfernen, .env.example erstellen
 
-### Milestone R6: Branding & Launch-Vorbereitung [todo]
+### Milestone R6: Branding & Launch-Vorbereitung [done] ✅
 > Letzte Schritte vor dem öffentlichen Launch.
 - [ ] **Produktname final entscheiden** (HubEx bleibt? Neuer Name? Trademark-Check)
 - [ ] **Landing Page** (CC Dashboard /produkt Seite mit 6 Ebenen, Features, Screenshots)
