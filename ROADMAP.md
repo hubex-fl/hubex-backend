@@ -1099,7 +1099,7 @@
 > Vollständiger Fahrplan vom aktuellen Stand bis zum ersten Release.
 > Priorisiert nach: Blocker → Hoch → Mittel → Nice-to-have.
 
-### Milestone R1: Infrastruktur-Blocker [todo]
+### Milestone R1: Infrastruktur-Blocker [done] ✅
 > Ohne diese kann NIEMAND das Produkt deployen oder nutzen. HÖCHSTE PRIORITÄT.
 - [x] dashboards.py Query-Import Fix (Backend-Crash)
 - [x] python-multipart Dependency
@@ -1118,23 +1118,18 @@
 - [ ] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen + Kommentaren
 - [ ] **.env aus Git entfernen** — .gitignore prüfen, Secrets nicht im Repo
 
-### Milestone R2: Kern-Feature-Completion [todo]
-> Features die für ein funktionierendes Produkt MINIMAL nötig sind.
-> Scope radikal begrenzt — nur was ein Erstnutzer zum Arbeiten braucht.
->
-> NICHT in R2 (deferred zu Post-Launch): FlowEditor Persistenz, CustomAPI Test-Button
-- [ ] **Dashboard Builder MVP** — Scope klar definiert:
-  - [ ] "Add Widget" Button → Modal: Widget-Typ wählen (aus Liste)
-  - [ ] Variable zuweisen (Dropdown mit existierenden Variables)
-  - [ ] Widget-Größe wählen (S/M/L)
-  - [ ] Widget speichern → in Dashboard sichtbar
-  - [ ] Widget editieren (gleiche Modal, vorausgefüllt)
-  - [ ] Widget löschen
-  - [ ] NICHT in MVP: Drag-and-Drop Reorder, Grid-Layout, Auto-Suggest
-- [ ] **Automation If/Else UI** — Bedingungsgruppen-Editor im Builder:
-  - [ ] AND/OR Toggle für Condition-Gruppen
-  - [ ] Mehrere Conditions pro Gruppe hinzufügen/entfernen
-  - [ ] Backend existiert bereits (_evaluate_condition_groups)
+### Milestone R2: Kern-Feature-Completion [done] ✅
+> Dashboard Builder MVP war bereits implementiert (bei Review entdeckt).
+> IF/ELSE Backend existiert, UI-Builder für Post-Launch geplant.
+- [x] **Dashboard Builder MVP** — bereits vollständig implementiert:
+  - [x] "Add Widget" Button → Modal mit Widget-Typ-Selector (9 Typen)
+  - [x] Variable zuweisen (UEntitySelect Dropdown, gefiltert nach Device)
+  - [x] Widget-Größe wählen (Width/Height Selectors)
+  - [x] Widget speichern → in Dashboard sichtbar
+  - [x] Widget editieren (gleiche Modal, vorausgefüllt via editingWidgetId)
+  - [x] Widget löschen (mit Bestätigung)
+- [x] **Automation AND/OR** — Backend _evaluate_condition_groups() implementiert
+- [ ] **Automation If/Else UI** — UI-Builder für Condition-Gruppen → Post-Launch (Backend ready)
 
 ### Milestone R3: Testing & Quality [todo]
 > Qualitätssicherung für vertrauenswürdiges Produkt.

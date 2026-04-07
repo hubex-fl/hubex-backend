@@ -225,17 +225,22 @@ app = FastAPI(
 #   SecurityMiddleware → RateLimitMiddleware → CacheMiddleware → CORS → routes
 # Response flows in reverse.
 
+# CORS — konfigurierbar via HUBEX_CORS_ORIGINS env var (kommasepariert)
+_cors_env = settings.cors_origins if hasattr(settings, 'cors_origins') and settings.cors_origins else ""
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Device-Token", "X-Request-ID", "X-Access-Token-Expire-Seconds"],
 )
 
 app.add_middleware(CacheMiddleware)

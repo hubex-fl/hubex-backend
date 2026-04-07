@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # Phase 7 — JWT Refresh Tokens
     refresh_token_exp_days: int = 30
 
+    # CORS — kommasepariert, leer = localhost defaults
+    cors_origins: str = ""
+
     # M27 — Scaling
     history_retention_days: int = 30
     audit_retention_days: int = 90
