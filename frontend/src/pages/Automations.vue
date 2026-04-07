@@ -183,6 +183,25 @@ const trigGeoPolygon = ref("[[48.137, 11.576], [48.140, 11.580], [48.135, 11.582
 // Device offline / telemetry
 const trigEventType = ref("");
 
+// Condition groups (AND/OR)
+type ConditionItem = { field: string; op: string; value: string };
+type ConditionGroup = { operator: "and" | "or"; conditions: ConditionItem[] };
+const conditionGroups = ref<ConditionGroup[]>([]);
+
+function addConditionGroup() {
+  conditionGroups.value.push({ operator: "and", conditions: [{ field: "", op: "gt", value: "" }] });
+}
+function removeConditionGroup(gi: number) {
+  conditionGroups.value.splice(gi, 1);
+}
+function addCondition(gi: number) {
+  conditionGroups.value[gi].conditions.push({ field: "", op: "gt", value: "" });
+}
+function removeCondition(gi: number, ci: number) {
+  conditionGroups.value[gi].conditions.splice(ci, 1);
+  if (conditionGroups.value[gi].conditions.length === 0) removeConditionGroup(gi);
+}
+
 // Action-specific fields
 const actVarKey = ref("");
 const actVarValue = ref('""');
@@ -288,6 +307,7 @@ function resetForm() {
   trigGeoRadius.value = 500;
   trigGeoPolygon.value = "[[48.137, 11.576], [48.140, 11.580], [48.135, 11.582]]";
   trigEventType.value = "";
+  conditionGroups.value = [];
   actVarKey.value = "";
   actVarValue.value = '""';
   actVarScope.value = "global";
@@ -403,6 +423,20 @@ function openEdit(rule: AutomationRuleOut) {
     trigEventType.value = String(tc.event_type ?? "");
   }
 
+  // Populate condition groups
+  if (tc.condition_groups && Array.isArray(tc.condition_groups)) {
+    conditionGroups.value = (tc.condition_groups as Array<Record<string, unknown>>).map((g: Record<string, unknown>) => ({
+      operator: (g.operator as "and" | "or") || "and",
+      conditions: ((g.conditions as Array<Record<string, unknown>>) || []).map((c: Record<string, unknown>) => ({
+        field: String(c.field || ""),
+        op: String(c.op || "gt"),
+        value: String(c.value ?? ""),
+      })),
+    }));
+  } else {
+    conditionGroups.value = [];
+  }
+
   // Populate action config
   const ac = rule.action_config;
   if (rule.action_type === "set_variable") {
@@ -478,6 +512,23 @@ function buildTriggerConfig(): Record<string, unknown> {
   return {};
 }
 
+function buildTriggerConfigWithConditions(): Record<string, unknown> {
+  const cfg = buildTriggerConfig();
+  // Append condition groups if any
+  const groups = conditionGroups.value.filter(g => g.conditions.some(c => c.field.trim()));
+  if (groups.length) {
+    cfg.condition_groups = groups.map(g => ({
+      operator: g.operator,
+      conditions: g.conditions.filter(c => c.field.trim()).map(c => ({
+        field: c.field.trim(),
+        op: c.op,
+        value: isNaN(Number(c.value)) ? c.value : Number(c.value),
+      })),
+    }));
+  }
+  return cfg;
+}
+
 function buildActionConfig(): Record<string, unknown> {
   if (formActionType.value === "set_variable") {
     let val: unknown = actVarValue.value;
@@ -545,7 +596,7 @@ async function handleSave() {
     description: formDescription.value.trim() || null,
     enabled: formEnabled.value,
     trigger_type: formTriggerType.value,
-    trigger_config: buildTriggerConfig(),
+    trigger_config: buildTriggerConfigWithConditions(),
     action_type: formActionType.value,
     action_config: buildActionConfig(),
     cooldown_seconds: Number(formCooldown.value),
@@ -958,6 +1009,40 @@ function toggleRuleExpand(id: number) {
                 <input v-model="trigEventType" type="text" placeholder="e.g. sensor.reading" :class="inputClass" />
               </div>
             </template>
+          </div>
+
+          <!-- Additional Conditions (AND/OR) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Additional Conditions</h4>
+              <button class="text-[10px] text-[var(--primary)] hover:underline" @click="addConditionGroup">+ Add Condition Group</button>
+            </div>
+            <div v-for="(group, gi) in conditionGroups" :key="gi" class="border border-[var(--border)] rounded-lg p-3 space-y-2 bg-[var(--bg-raised)]">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-[var(--text-muted)]">Match</span>
+                  <select v-model="group.operator" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                    <option value="and">ALL conditions (AND)</option>
+                    <option value="or">ANY condition (OR)</option>
+                  </select>
+                </div>
+                <button class="text-[10px] text-red-400 hover:underline" @click="removeConditionGroup(gi)">Remove Group</button>
+              </div>
+              <div v-for="(cond, ci) in group.conditions" :key="ci" class="flex items-center gap-2">
+                <input v-model="cond.field" class="flex-1 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="variable_key" />
+                <select v-model="cond.op" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                  <option value="gt">&gt;</option>
+                  <option value="gte">≥</option>
+                  <option value="lt">&lt;</option>
+                  <option value="lte">≤</option>
+                  <option value="eq">=</option>
+                  <option value="ne">≠</option>
+                </select>
+                <input v-model="cond.value" class="w-20 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="value" />
+                <button class="text-[10px] text-red-400" @click="removeCondition(gi, ci)">×</button>
+              </div>
+              <button class="text-[10px] text-[var(--accent)] hover:underline" @click="addCondition(gi)">+ Add Condition</button>
+            </div>
           </div>
 
           <!-- Divider -->

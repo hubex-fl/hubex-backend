@@ -769,8 +769,7 @@ onUnmounted(() => {
               <div v-if="pairingQrSvg || pairingQrLoading" class="flex items-start gap-3">
                 <div class="rounded-lg border border-[var(--border)] bg-white p-1 shrink-0 w-[88px] h-[88px] flex items-center justify-center">
                   <div v-if="pairingQrLoading" class="text-[var(--text-muted)] text-[10px]">…</div>
-                  <!-- eslint-disable-next-line vue/no-v-html -->
-                  <div v-else-if="pairingQrSvg" v-html="pairingQrSvg" class="w-full h-full" />
+                  <iframe v-else-if="pairingQrSvg" :srcdoc="pairingQrSvg" sandbox="" class="w-full h-full border-0" title="QR Code" />
                 </div>
                 <p class="text-[11px] text-[var(--text-muted)] leading-relaxed pt-1">
                   Scan with a QR reader to auto-fill on devices that support it

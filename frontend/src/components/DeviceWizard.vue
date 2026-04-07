@@ -455,7 +455,7 @@ watch(() => props.initialCategory, (cat) => { if (cat) category.value = cat; });
         </div>
 
         <!-- QR Code -->
-        <div v-if="pairingQrSvg" class="flex justify-center" v-html="pairingQrSvg" />
+        <iframe v-if="pairingQrSvg" :srcdoc="pairingQrSvg" sandbox="" class="w-40 h-40 mx-auto border-0" title="QR Code" />
 
         <!-- Status indicator -->
         <div class="flex items-center justify-center gap-2 py-2">

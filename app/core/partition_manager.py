@@ -43,9 +43,12 @@ async def _ensure_future_partitions(db: AsyncSession) -> None:
         next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
         end_month = (next_month + timedelta(days=32)).replace(day=1)
 
+        import re
         part_name = f"variable_history_{next_month.strftime('%Y_%m')}"
         start_str = next_month.strftime("%Y-%m-%d")
         end_str = end_month.strftime("%Y-%m-%d")
+        # Validate generated name (defense in depth)
+        assert re.match(r'^variable_history_\d{4}_\d{2}$', part_name), f"Invalid partition name: {part_name}"
 
         await db.execute(text(
             f"CREATE TABLE IF NOT EXISTS {part_name} "
@@ -79,8 +82,11 @@ async def _drop_expired_partitions(db: AsyncSession) -> None:
         ))
         partitions = [row[0] for row in result.fetchall()]
 
+        import re
         for part_name in partitions:
-            # Parse partition date from name (format: variable_history_YYYY_MM)
+            # Validate partition name format (only alphanumeric + underscore)
+            if not re.match(r'^variable_history_\d{4}_\d{2}$', part_name):
+                continue
             try:
                 parts = part_name.replace("variable_history_", "").split("_")
                 part_date = datetime(int(parts[0]), int(parts[1]), 1, tzinfo=timezone.utc)
