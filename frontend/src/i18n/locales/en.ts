@@ -260,7 +260,7 @@ export default {
     systemStage: { title: 'System Stage (read-only)' },
     tokenInspector: { title: 'Token Inspector (read-only)' },
     traceHub: { title: 'Trace Hub (read-only)' },
-    publicDashboard: { loading: 'Loading dashboard...', protectedTitle: 'Protected Dashboard', enterPin: 'Enter the PIN to access this dashboard.', noWidgets: 'This dashboard has no widgets yet.' },
+    publicDashboard: { loading: 'Loading dashboard...', protectedTitle: 'Protected Dashboard', enterPin: 'Enter the PIN to access this dashboard.', noWidgets: 'This dashboard has no widgets yet.', invalidPin: 'Invalid PIN', loadError: 'Failed to load dashboard', unlock: 'Unlock', retry: 'Retry', poweredBy: 'Powered by {name}' },
     settingsAuth: { title: 'Auth (local only)', tokenStatus: 'Token status' },
     traceTimeline: { title: 'Trace Timeline', subtitle: 'Correlated view of events, audit logs, alerts, and automations' },
     admin: { title: 'Admin Console', subtitle: 'Module lifecycle, system status, and platform configuration' },

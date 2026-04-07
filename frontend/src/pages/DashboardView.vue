@@ -4,8 +4,22 @@
     <!-- Top bar -->
     <div class="db-topbar">
       <div class="db-topbar-left">
-        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">← {{ t('nav.dashboards') }}</button>
-        <h1 v-if="dashboard" class="db-name">{{ dashboard.name }}</h1>
+        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">&#8592; {{ t('nav.dashboards') }}</button>
+        <template v-if="dashboard">
+          <template v-if="editingName">
+            <input
+              ref="nameInputRef"
+              v-model="editNameValue"
+              class="db-name-input"
+              @blur="saveDashboardName"
+              @keydown.enter="saveDashboardName"
+              @keydown.escape="editingName = false"
+            />
+          </template>
+          <h1 v-else class="db-name" :class="{ 'db-name-editable': editMode }" @click="editMode && startEditName()">
+            {{ dashboard.name }}
+          </h1>
+        </template>
         <USkeleton v-else class="h-5 w-40" />
       </div>
       <div class="db-topbar-right">
@@ -18,12 +32,122 @@
             @click="currentRange = r"
           >{{ r }}</button>
         </div>
-        <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
-          {{ editMode ? '✓ Done' : '✏ Edit' }}
+        <button v-if="!isKiosk" class="share-btn" @click="showSharePanel = !showSharePanel" title="Share">
+          &#128279;
         </button>
-        <button class="refresh-btn" @click="loadDashboard" :title="t('common.refresh')">↺</button>
+        <button v-if="!isKiosk" class="settings-btn" @click="showSettingsPanel = !showSettingsPanel" title="Settings">
+          &#9881;
+        </button>
+        <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
+          {{ editMode ? '&#10003; Done' : '&#9998; Edit' }}
+        </button>
+        <button class="refresh-btn" @click="loadDashboard" :title="t('common.refresh')">&#8634;</button>
       </div>
     </div>
+
+    <!-- Share Panel -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showSharePanel" class="modal-overlay" @click.self="showSharePanel = false">
+          <div class="modal-box modal-small">
+            <h2 class="modal-title">Share Dashboard</h2>
+            <div class="form-fields">
+              <div class="share-modes">
+                <button
+                  v-for="mode in (['private', 'public'] as const)"
+                  :key="mode"
+                  class="share-mode-btn"
+                  :class="{ active: shareMode === mode }"
+                  @click="toggleShareMode(mode)"
+                >
+                  {{ mode === 'private' ? 'Private' : 'Public' }}
+                </button>
+              </div>
+
+              <template v-if="shareMode === 'public'">
+                <div class="field">
+                  <label class="field-label">Public URL</label>
+                  <div class="share-url-row">
+                    <input readonly :value="shareUrl" class="field-input share-url-input" />
+                    <button class="copy-btn" @click="copyShareUrl" :title="copied ? 'Copied!' : 'Copy'">
+                      {{ copied ? '&#10003;' : '&#128203;' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="share-pin-label">
+                    <input type="checkbox" v-model="pinEnabled" @change="handlePinToggle" />
+                    PIN protected
+                  </label>
+                  <input
+                    v-if="pinEnabled"
+                    v-model="pinValue"
+                    class="field-input"
+                    placeholder="4-6 digit PIN"
+                    maxlength="6"
+                    @blur="savePin"
+                    @keydown.enter="savePin"
+                  />
+                </div>
+              </template>
+
+              <div class="modal-actions">
+                <UButton variant="ghost" @click="showSharePanel = false">Close</UButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Settings Panel -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showSettingsPanel" class="modal-overlay" @click.self="showSettingsPanel = false">
+          <div class="modal-box modal-small">
+            <h2 class="modal-title">Dashboard Settings</h2>
+            <div class="form-fields">
+              <div class="field">
+                <label class="field-label">Name</label>
+                <input v-model="settingsName" class="field-input" />
+              </div>
+              <div class="field">
+                <label class="field-label">Description</label>
+                <input v-model="settingsDescription" class="field-input" placeholder="Optional description" />
+              </div>
+              <div class="field">
+                <label class="share-pin-label">
+                  <input type="checkbox" v-model="settingsIsDefault" />
+                  Set as default dashboard
+                </label>
+              </div>
+              <div class="modal-actions">
+                <button class="delete-db-btn" @click="confirmDeleteDashboard">Delete Dashboard</button>
+                <UButton variant="ghost" @click="showSettingsPanel = false">Cancel</UButton>
+                <UButton :loading="savingSettings" @click="saveSettings">Save</UButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Delete Dashboard Confirm -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDeleteDashboard" class="modal-overlay" @click.self="showDeleteDashboard = false">
+          <div class="modal-box modal-small">
+            <h2 class="modal-title">Delete Dashboard?</h2>
+            <p class="modal-sub">This will permanently delete "{{ dashboard?.name }}" and all its widgets. This cannot be undone.</p>
+            <div class="modal-actions">
+              <UButton variant="ghost" @click="showDeleteDashboard = false">Cancel</UButton>
+              <UButton color="red" :loading="deletingDashboard" @click="submitDeleteDashboard">Delete</UButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Loading -->
     <div v-if="loading" class="db-grid loading-grid">
@@ -34,29 +158,46 @@
 
     <!-- Empty dashboard -->
     <div v-else-if="dashboard && !dashboard.widgets.length" class="db-empty">
-      <div class="empty-icon">📊</div>
+      <div class="empty-icon">&#128202;</div>
       <p class="empty-title">No widgets yet</p>
       <p class="empty-sub">Click "Edit" to add widgets to this dashboard</p>
       <UButton @click="editMode = true; openAddWidget()">Add Widget</UButton>
     </div>
 
     <!-- Dashboard grid -->
-    <div v-else-if="dashboard" class="db-grid">
+    <div
+      v-else-if="dashboard"
+      ref="gridRef"
+      class="db-grid"
+      @dragover.prevent="onGridDragOver"
+      @drop.prevent="onGridDrop"
+    >
       <div
         v-for="widget in sortedWidgets"
         :key="widget.id"
         class="db-widget-cell"
+        :class="{
+          'widget-edit-mode': editMode,
+          'widget-drag-over': dragOverWidgetId === widget.id,
+        }"
         :style="{
           gridColumn: `${widget.grid_col} / span ${widget.grid_span_w}`,
           gridRow: `${widget.grid_row} / span ${widget.grid_span_h}`,
         }"
+        :draggable="editMode"
+        @dragstart="onWidgetDragStart($event, widget)"
+        @dragend="onWidgetDragEnd"
+        @dragover.prevent.stop="onWidgetDragOver($event, widget)"
+        @dragleave="onWidgetDragLeave(widget)"
+        @drop.prevent.stop="onWidgetDrop($event, widget)"
       >
-        <!-- Edit mode overlay -->
-        <div v-if="editMode" class="widget-edit-overlay">
-          <button class="overlay-btn move" @click="moveWidget(widget, -1)" title="Move left/up">◀</button>
-          <button class="overlay-btn cfg" @click="openWidgetConfig(widget)" title="Configure">⚙</button>
-          <button class="overlay-btn del" @click="confirmDeleteWidget(widget)" title="Remove widget">✕</button>
-          <button class="overlay-btn move" @click="moveWidget(widget, 1)" title="Move right/down">▶</button>
+        <!-- Edit mode controls -->
+        <div v-if="editMode" class="widget-edit-controls">
+          <span class="drag-handle" title="Drag to reorder">&#10303;</span>
+          <div class="widget-edit-actions">
+            <button class="we-btn cfg" @click.stop="openWidgetConfig(widget)" title="Configure">&#9881;</button>
+            <button class="we-btn del" @click.stop="confirmDeleteWidget(widget)" title="Remove">&#10005;</button>
+          </div>
         </div>
 
         <VizWidget
@@ -77,11 +218,22 @@
           @range-change="(r) => { currentRange = r; reloadWidgetHistory(widget) }"
           @control-change="(v) => handleControlChange(widget, v)"
         />
+
+        <!-- Resize handle (edit mode only) -->
+        <div
+          v-if="editMode"
+          class="resize-handle"
+          draggable="true"
+          @dragstart.stop="onResizeStart($event, widget)"
+          @drag.stop="onResizeDrag($event, widget)"
+          @dragend.stop="onResizeEnd($event, widget)"
+          title="Drag to resize"
+        >&#9698;</div>
       </div>
 
       <!-- Add widget placeholder (edit mode) -->
       <div v-if="editMode" class="add-widget-cell" @click="openAddWidget()">
-        <span class="add-icon">＋</span>
+        <span class="add-icon">&#65291;</span>
         <span>Add Widget</span>
       </div>
     </div>
@@ -133,7 +285,7 @@
               <div v-if="isNumericType(newWidget.widget_type)" class="field-row-3">
                 <div class="field">
                   <label class="field-label">Unit</label>
-                  <input v-model="newWidget.unit" class="field-input" placeholder="°C" />
+                  <input v-model="newWidget.unit" class="field-input" placeholder="deg C" />
                 </div>
                 <div class="field">
                   <label class="field-label">Min</label>
@@ -194,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
@@ -207,6 +359,11 @@ import {
   updateWidget,
   deleteWidget,
   updateLayout,
+  updateDashboard,
+  deleteDashboard,
+  shareDashboard,
+  setDashboardPin,
+  unshareDashboard,
   type Dashboard,
   type DashboardWidget,
 } from "../lib/dashboards";
@@ -249,11 +406,48 @@ const showAddWidget = ref(false);
 const adding = ref(false);
 const addError = ref("");
 const newWidget = ref(defaultNewWidget());
-const editingWidgetId = ref<number | null>(null);  // null = add mode, number = edit mode
+const editingWidgetId = ref<number | null>(null);
 
 // Delete widget
 const deletingWidget = ref<DashboardWidget | null>(null);
 const deleting = ref(false);
+
+// Inline name editing
+const editingName = ref(false);
+const editNameValue = ref("");
+const nameInputRef = ref<HTMLInputElement | null>(null);
+
+// Share panel
+const showSharePanel = ref(false);
+const shareMode = ref<"private" | "public">("private");
+const shareUrl = ref("");
+const shareToken = ref("");
+const copied = ref(false);
+const pinEnabled = ref(false);
+const pinValue = ref("");
+
+// Settings panel
+const showSettingsPanel = ref(false);
+const settingsName = ref("");
+const settingsDescription = ref("");
+const settingsIsDefault = ref(false);
+const savingSettings = ref(false);
+
+// Delete dashboard
+const showDeleteDashboard = ref(false);
+const deletingDashboard = ref(false);
+
+// Drag-and-drop state
+const dragWidgetId = ref<number | null>(null);
+const dragOverWidgetId = ref<number | null>(null);
+const gridRef = ref<HTMLElement | null>(null);
+
+// Resize state
+const resizeWidgetId = ref<number | null>(null);
+const resizeStartX = ref(0);
+const resizeStartY = ref(0);
+const resizeStartW = ref(0);
+const resizeStartH = ref(0);
 
 function defaultNewWidget() {
   return {
@@ -282,11 +476,8 @@ watch(() => newWidget.value.variable_key, async (varKey) => {
     const defs = await apiFetch<Array<{ key: string; value_type: string; display_hint?: string; unit?: string; description?: string }>>("/api/v1/variables/definitions");
     const def = defs.find((d: { key: string }) => d.key === varKey);
     if (def) {
-      // Auto-fill label from key
       if (!newWidget.value.label) newWidget.value.label = def.description || def.key;
-      // Auto-fill unit
       if (!newWidget.value.unit && def.unit) newWidget.value.unit = def.unit;
-      // Auto-suggest widget type based on display_hint or value_type
       const hint = def.display_hint;
       if (hint && hint !== "auto") {
         newWidget.value.widget_type = hint;
@@ -297,14 +488,18 @@ watch(() => newWidget.value.variable_key, async (varKey) => {
         newWidget.value.widget_type = typeMap[def.value_type] ?? "line_chart";
       }
     }
-  } catch { /* ignore — auto-suggest is best-effort */ }
+  } catch { /* auto-suggest is best-effort */ }
 });
+
+// ── Dashboard CRUD ───────────────────────────────────────────────────────────
 
 async function loadDashboard() {
   loading.value = true;
   try {
     const id = Number(route.params.id);
     dashboard.value = await getDashboard(id);
+    // Sync share state
+    shareMode.value = dashboard.value.sharing_mode === "private" ? "private" : "public";
     await loadAllHistory();
   } catch {
     dashboard.value = null;
@@ -313,34 +508,247 @@ async function loadDashboard() {
   }
 }
 
+function startEditName() {
+  if (!dashboard.value) return;
+  editNameValue.value = dashboard.value.name;
+  editingName.value = true;
+  nextTick(() => nameInputRef.value?.focus());
+}
+
+async function saveDashboardName() {
+  if (!dashboard.value || !editNameValue.value.trim()) {
+    editingName.value = false;
+    return;
+  }
+  try {
+    const updated = await updateDashboard(dashboard.value.id, { name: editNameValue.value.trim() });
+    dashboard.value.name = updated.name;
+  } catch { /* silent */ }
+  editingName.value = false;
+}
+
+function openSettingsPanel() {
+  if (!dashboard.value) return;
+  settingsName.value = dashboard.value.name;
+  settingsDescription.value = dashboard.value.description || "";
+  settingsIsDefault.value = dashboard.value.is_default;
+  showSettingsPanel.value = true;
+}
+
+// Auto-sync settings values when panel opens
+watch(showSettingsPanel, (open) => {
+  if (open && dashboard.value) {
+    settingsName.value = dashboard.value.name;
+    settingsDescription.value = dashboard.value.description || "";
+    settingsIsDefault.value = dashboard.value.is_default;
+  }
+});
+
+async function saveSettings() {
+  if (!dashboard.value) return;
+  savingSettings.value = true;
+  try {
+    const updated = await updateDashboard(dashboard.value.id, {
+      name: settingsName.value.trim() || dashboard.value.name,
+      description: settingsDescription.value.trim() || null,
+      is_default: settingsIsDefault.value,
+    });
+    dashboard.value.name = updated.name;
+    dashboard.value.description = updated.description;
+    dashboard.value.is_default = updated.is_default;
+    showSettingsPanel.value = false;
+  } catch { /* silent */ }
+  savingSettings.value = false;
+}
+
+function confirmDeleteDashboard() {
+  showSettingsPanel.value = false;
+  showDeleteDashboard.value = true;
+}
+
+async function submitDeleteDashboard() {
+  if (!dashboard.value) return;
+  deletingDashboard.value = true;
+  try {
+    await deleteDashboard(dashboard.value.id);
+    router.push("/dashboards");
+  } catch { /* silent */ }
+  deletingDashboard.value = false;
+}
+
+// ── Sharing ──────────────────────────────────────────────────────────────────
+
+async function toggleShareMode(mode: "private" | "public") {
+  if (!dashboard.value) return;
+  if (mode === "public") {
+    try {
+      const result = await shareDashboard(dashboard.value.id);
+      shareToken.value = result.public_token;
+      shareUrl.value = `${window.location.origin}${result.url}`;
+      shareMode.value = "public";
+      dashboard.value.sharing_mode = "public";
+    } catch { /* silent */ }
+  } else {
+    try {
+      await unshareDashboard(dashboard.value.id);
+      shareMode.value = "private";
+      shareUrl.value = "";
+      shareToken.value = "";
+      pinEnabled.value = false;
+      pinValue.value = "";
+      dashboard.value.sharing_mode = "private";
+    } catch { /* silent */ }
+  }
+}
+
+function copyShareUrl() {
+  if (!shareUrl.value) return;
+  navigator.clipboard.writeText(shareUrl.value);
+  copied.value = true;
+  setTimeout(() => copied.value = false, 2000);
+}
+
+function handlePinToggle() {
+  if (!pinEnabled.value) {
+    // Unset PIN by re-sharing without pin
+    if (dashboard.value) {
+      shareDashboard(dashboard.value.id);
+    }
+    pinValue.value = "";
+  }
+}
+
+async function savePin() {
+  if (!dashboard.value || !pinValue.value || pinValue.value.length < 4) return;
+  try {
+    await setDashboardPin(dashboard.value.id, pinValue.value);
+  } catch { /* silent */ }
+}
+
+// ── Widget sorting/grid ──────────────────────────────────────────────────────
+
 const sortedWidgets = computed<DashboardWidget[]>(() => {
   if (!dashboard.value) return [];
   return [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
 });
 
-function moveWidget(widget: DashboardWidget, direction: number) {
-  if (!dashboard.value) return;
+// ── Drag-and-Drop (widget swap) ──────────────────────────────────────────────
+
+function onWidgetDragStart(e: DragEvent, widget: DashboardWidget) {
+  if (!editMode.value) return;
+  dragWidgetId.value = widget.id;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(widget.id));
+  }
+}
+
+function onWidgetDragEnd() {
+  dragWidgetId.value = null;
+  dragOverWidgetId.value = null;
+}
+
+function onWidgetDragOver(e: DragEvent, widget: DashboardWidget) {
+  if (!editMode.value || !dragWidgetId.value || dragWidgetId.value === widget.id) return;
+  if (resizeWidgetId.value) return; // Don't interfere with resize
+  dragOverWidgetId.value = widget.id;
+}
+
+function onWidgetDragLeave(widget: DashboardWidget) {
+  if (dragOverWidgetId.value === widget.id) {
+    dragOverWidgetId.value = null;
+  }
+}
+
+function onWidgetDrop(e: DragEvent, targetWidget: DashboardWidget) {
+  if (!editMode.value || !dashboard.value || resizeWidgetId.value) return;
+  const sourceId = dragWidgetId.value ?? Number(e.dataTransfer?.getData("text/plain"));
+  if (!sourceId || sourceId === targetWidget.id) return;
+
   const widgets = dashboard.value.widgets;
-  const sorted = [...widgets].sort((a, b) => a.sort_order - b.sort_order);
-  const idx = sorted.findIndex(w => w.id === widget.id);
-  const newIdx = idx + direction;
-  if (newIdx < 0 || newIdx >= sorted.length) return;
-  // Swap sort_order
-  const tmp = sorted[idx].sort_order;
-  sorted[idx].sort_order = sorted[newIdx].sort_order;
-  sorted[newIdx].sort_order = tmp;
-  // Recalculate grid positions
-  recalcGridPositions(sorted);
-  dashboard.value.widgets = sorted;
-  // Persist to backend
+  const source = widgets.find(w => w.id === sourceId);
+  const target = targetWidget;
+  if (!source) return;
+
+  // Swap grid positions
+  const tmpCol = source.grid_col;
+  const tmpRow = source.grid_row;
+  const tmpOrder = source.sort_order;
+  source.grid_col = target.grid_col;
+  source.grid_row = target.grid_row;
+  source.sort_order = target.sort_order;
+  target.grid_col = tmpCol;
+  target.grid_row = tmpRow;
+  target.sort_order = tmpOrder;
+
+  dragWidgetId.value = null;
+  dragOverWidgetId.value = null;
   saveLayout();
 }
+
+function onGridDragOver(e: DragEvent) {
+  if (!editMode.value) return;
+  e.dataTransfer!.dropEffect = "move";
+}
+
+function onGridDrop(e: DragEvent) {
+  // Grid-level drop only if not handled by a widget
+  dragWidgetId.value = null;
+  dragOverWidgetId.value = null;
+}
+
+// ── Resize ───────────────────────────────────────────────────────────────────
+
+function onResizeStart(e: DragEvent, widget: DashboardWidget) {
+  resizeWidgetId.value = widget.id;
+  resizeStartX.value = e.clientX;
+  resizeStartY.value = e.clientY;
+  resizeStartW.value = widget.grid_span_w;
+  resizeStartH.value = widget.grid_span_h;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = "none";
+    // Use a transparent drag image so the default ghost doesn't appear
+    const img = new Image();
+    img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+    e.dataTransfer.setDragImage(img, 0, 0);
+  }
+}
+
+function onResizeDrag(e: DragEvent, widget: DashboardWidget) {
+  if (!resizeWidgetId.value || resizeWidgetId.value !== widget.id) return;
+  if (e.clientX === 0 && e.clientY === 0) return; // browser sends 0,0 at end
+
+  const grid = gridRef.value;
+  if (!grid) return;
+
+  const colWidth = grid.clientWidth / 12;
+  const rowHeight = 60; // grid-auto-rows
+
+  const dx = e.clientX - resizeStartX.value;
+  const dy = e.clientY - resizeStartY.value;
+
+  const newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
+  const newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
+
+  // Clamp so widget doesn't exceed grid
+  widget.grid_span_w = Math.min(newW, 13 - widget.grid_col);
+  widget.grid_span_h = newH;
+}
+
+function onResizeEnd(e: DragEvent, widget: DashboardWidget) {
+  if (resizeWidgetId.value === widget.id) {
+    resizeWidgetId.value = null;
+    saveLayout();
+  }
+}
+
+// ── Layout persistence ───────────────────────────────────────────────────────
 
 async function saveLayout() {
   if (!dashboard.value) return;
   try {
     const items = dashboard.value.widgets.map(w => ({
-      widget_id: w.id,
+      id: w.id,
       sort_order: w.sort_order,
       grid_col: w.grid_col,
       grid_row: w.grid_row,
@@ -348,8 +756,10 @@ async function saveLayout() {
       grid_span_h: w.grid_span_h,
     }));
     await updateLayout(dashboard.value.id, items);
-  } catch { /* silent — layout will reload on next page visit */ }
+  } catch { /* silent */ }
 }
+
+// ── History loading ──────────────────────────────────────────────────────────
 
 async function loadAllHistory() {
   if (!dashboard.value) return;
@@ -440,7 +850,8 @@ async function handleControlChange(widget: DashboardWidget, value: unknown) {
   }
 }
 
-// Add or update widget
+// ── Add or update widget ─────────────────────────────────────────────────────
+
 async function submitAddWidget() {
   adding.value = true;
   addError.value = "";
@@ -448,7 +859,6 @@ async function submitAddWidget() {
     const dashId = Number(route.params.id);
 
     if (editingWidgetId.value) {
-      // UPDATE existing widget
       const w = await updateWidget(dashId, editingWidgetId.value, {
         widget_type: newWidget.value.widget_type,
         variable_key: newWidget.value.variable_key || null,
@@ -464,7 +874,6 @@ async function submitAddWidget() {
       if (idx >= 0) dashboard.value!.widgets[idx] = w;
       if (w.variable_key) loadWidgetHistory(w);
     } else {
-      // ADD new widget
       const nextPos = getNextGridPosition();
       const w = await addWidget(dashId, {
         widget_type: newWidget.value.widget_type,
@@ -494,29 +903,9 @@ async function submitAddWidget() {
   }
 }
 
-function recalcGridPositions(sorted: DashboardWidget[]) {
-  // Pack widgets into 12-column grid, flowing left-to-right then top-to-bottom
-  let col = 1;
-  let row = 1;
-  let rowHeight = 0;
-  for (const w of sorted) {
-    if (col + w.grid_span_w - 1 > 12) {
-      // Doesn't fit on current row → next row
-      col = 1;
-      row += rowHeight;
-      rowHeight = 0;
-    }
-    w.grid_col = col;
-    w.grid_row = row;
-    col += w.grid_span_w;
-    rowHeight = Math.max(rowHeight, w.grid_span_h);
-  }
-}
-
 function getNextGridPosition(): { col: number; row: number } {
   if (!dashboard.value?.widgets.length) return { col: 1, row: 1 };
   const sorted = [...dashboard.value.widgets].sort((a, b) => a.sort_order - b.sort_order);
-  // Find first position that fits a 4-wide widget
   let col = 1;
   let row = 1;
   let rowHeight = 0;
@@ -547,7 +936,7 @@ async function submitDeleteWidget() {
     await deleteWidget(dashboard.value.id, deletingWidget.value.id);
     dashboard.value.widgets = dashboard.value.widgets.filter((w) => w.id !== deletingWidget.value!.id);
     deletingWidget.value = null;
-  } catch (e: unknown) {
+  } catch {
     addError.value = "Failed to remove widget";
   } finally {
     deleting.value = false;
@@ -580,7 +969,7 @@ function openAddWidget() {
 <style scoped>
 .db-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
-/* ── Top bar ───────────────────────────────────────────── */
+/* -- Top bar ------------------------------------------------ */
 .db-topbar {
   display: flex;
   align-items: center;
@@ -603,6 +992,23 @@ function openAddWidget() {
 }
 .back-btn:hover { color: var(--text-base); background: var(--bg-elevated); }
 .db-name { font-size: 16px; font-weight: 600; color: var(--text-base); }
+.db-name-editable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--text-muted);
+  padding-bottom: 1px;
+}
+.db-name-editable:hover { border-bottom-color: var(--primary); }
+.db-name-input {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-base);
+  background: var(--bg-base);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 2px 8px;
+  outline: none;
+  width: 240px;
+}
 
 .db-topbar-right { display: flex; align-items: center; gap: 8px; }
 
@@ -621,6 +1027,20 @@ function openAddWidget() {
 }
 .tr-btn:hover { background: var(--border); color: var(--text-base); }
 .tr-btn.active { background: var(--border); color: var(--primary); }
+
+.share-btn,
+.settings-btn {
+  padding: 5px 10px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.share-btn:hover,
+.settings-btn:hover { color: var(--text-base); border-color: var(--primary); }
 
 .edit-btn {
   padding: 5px 12px;
@@ -649,7 +1069,7 @@ function openAddWidget() {
 }
 .refresh-btn:hover { color: var(--text-base); }
 
-/* ── Grid ──────────────────────────────────────────────── */
+/* -- Grid --------------------------------------------------- */
 .db-grid {
   flex: 1;
   overflow-y: auto;
@@ -666,35 +1086,88 @@ function openAddWidget() {
 .db-widget-cell {
   position: relative;
   min-height: 0;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  border-radius: 6px;
 }
 .db-widget-cell > .viz-widget,
 .db-widget-cell > * {
   height: 100%;
 }
 
-/* Edit overlay */
-.widget-edit-overlay {
+/* Edit mode: dashed border around widgets */
+.widget-edit-mode {
+  border: 1px dashed var(--border);
+  cursor: grab;
+}
+.widget-edit-mode:active { cursor: grabbing; }
+.widget-drag-over {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+/* Edit controls: top bar on each widget */
+.widget-edit-controls {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  pointer-events: none;
 }
-.overlay-btn {
-  width: 24px; height: 24px;
+.widget-edit-controls > * { pointer-events: auto; }
+
+.drag-handle {
+  font-size: 16px;
+  color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  opacity: 0.6;
+  line-height: 1;
+}
+.drag-handle:hover { opacity: 1; color: var(--text-base); }
+
+.widget-edit-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.we-btn {
+  width: 22px; height: 22px;
   border-radius: 4px;
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
-.overlay-btn.del:hover { background: var(--status-bad); color: #fff; border-color: var(--status-bad); }
-.overlay-btn.cfg:hover { background: var(--primary); color: #000; border-color: var(--primary); }
-.overlay-btn.move:hover { background: var(--bg-raised); color: var(--text-primary); }
+.we-btn.del:hover { background: var(--status-bad); color: #fff; border-color: var(--status-bad); }
+.we-btn.cfg:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: nwse-resize;
+  opacity: 0.5;
+  z-index: 10;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.resize-handle:hover { opacity: 1; color: var(--primary); }
 
 /* Add widget placeholder */
 .add-widget-cell {
@@ -733,7 +1206,82 @@ function openAddWidget() {
 /* Grid skeleton */
 .grid-skel { min-height: 120px; }
 
-/* ── Modal (reused) ────────────────────────────────────── */
+/* -- Share panel -------------------------------------------- */
+.share-modes {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.share-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.share-mode-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.share-mode-btn:hover:not(.active) { border-color: var(--text-muted); }
+
+.share-url-row {
+  display: flex;
+  gap: 4px;
+}
+.share-url-input {
+  flex: 1;
+  font-size: 11px;
+  font-family: monospace;
+}
+.copy-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.copy-btn:hover { color: var(--primary); }
+
+.share-pin-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-base);
+  cursor: pointer;
+}
+.share-pin-label input[type="checkbox"] {
+  accent-color: var(--primary);
+}
+
+/* -- Delete dashboard button -------------------------------- */
+.delete-db-btn {
+  margin-right: auto;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--status-bad);
+  background: transparent;
+  color: var(--status-bad);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.delete-db-btn:hover {
+  background: var(--status-bad);
+  color: #fff;
+}
+
+/* -- Modal (reused) ----------------------------------------- */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
@@ -748,7 +1296,7 @@ function openAddWidget() {
   max-height: 85vh;
   overflow-y: auto;
 }
-.modal-small { width: min(340px, calc(100vw - 32px)); }
+.modal-small { width: min(360px, calc(100vw - 32px)); }
 .modal-title { font-size: 17px; font-weight: 700; color: var(--text-base); margin-bottom: 16px; }
 .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }

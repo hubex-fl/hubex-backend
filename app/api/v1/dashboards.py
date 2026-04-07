@@ -10,7 +10,9 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
 from app.db.models.dashboard import Dashboard, DashboardWidget
+from app.db.models.device import Device
 from app.db.models.user import User
+from app.db.models.variables import VariableHistory
 from app.schemas.dashboard import (
     DashboardCreate,
     DashboardOut,
@@ -21,6 +23,7 @@ from app.schemas.dashboard import (
     DashboardWidgetUpdate,
     LayoutUpdate,
 )
+from app.schemas.variables import VariableHistoryOut, VariableHistoryPointOut
 
 router = APIRouter(prefix="/dashboards")
 
@@ -135,6 +138,78 @@ async def get_public_dashboard(
     if d.public_pin and d.public_pin != (pin or ""):
         raise HTTPException(status_code=403, detail="Invalid PIN")
     return d
+
+
+@router.get("/public/{token}/history", response_model=VariableHistoryOut)
+async def get_public_variable_history(
+    token: str,
+    key: str = Query(...),
+    device_uid: str | None = Query(default=None, alias="deviceUid"),
+    from_time: int | None = Query(default=None, alias="from"),
+    limit: int = Query(default=300, ge=1, le=1000),
+    pin: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch variable history for a widget on a public dashboard.
+    Only allows fetching data for variable_keys that actually exist
+    on the dashboard's widgets (security guard).
+    """
+    # Validate token + PIN
+    res = await db.execute(
+        select(Dashboard)
+        .options(selectinload(Dashboard.widgets))
+        .where(Dashboard.public_token == token, Dashboard.sharing_mode != "private")
+    )
+    d = res.scalar_one_or_none()
+    if not d:
+        raise HTTPException(status_code=404, detail="Dashboard not found or not shared")
+    if d.public_pin and d.public_pin != (pin or ""):
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+
+    # Security: only allow variable_keys present on this dashboard
+    allowed_keys = {w.variable_key for w in d.widgets if w.variable_key}
+    if key not in allowed_keys:
+        raise HTTPException(status_code=403, detail="Variable not on this dashboard")
+
+    # Resolve device_id from uid
+    device_id = None
+    if device_uid:
+        dev_res = await db.execute(select(Device.id).where(Device.device_uid == device_uid))
+        device_id = dev_res.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    if from_time:
+        from_dt = datetime.fromtimestamp(from_time, tz=timezone.utc)
+    else:
+        from_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    stmt = (
+        select(VariableHistory)
+        .where(
+            VariableHistory.variable_key == key,
+            VariableHistory.recorded_at >= from_dt,
+            VariableHistory.recorded_at <= now,
+        )
+    )
+    if device_id is not None:
+        stmt = stmt.where(VariableHistory.device_id == device_id)
+
+    stmt = stmt.order_by(VariableHistory.recorded_at.desc()).limit(limit)
+    res = await db.execute(stmt)
+    rows = res.scalars().all()
+    points = [
+        VariableHistoryPointOut(
+            recorded_at=row.recorded_at,
+            value=row.value_json,
+            numeric_value=row.numeric_value,
+            source=row.source,
+            t=row.recorded_at.timestamp() if row.recorded_at else 0,
+            v=row.numeric_value,
+            raw=row.value_json,
+        )
+        for row in reversed(rows)
+    ]
+    return VariableHistoryOut(key=key, device_uid=device_uid, points=points, downsampled=False)
 
 
 @router.post("/{dashboard_id}/share")
@@ -323,7 +398,7 @@ async def update_layout(
     """Bulk update widget positions for drag-drop reorder."""
     d = await _get_dashboard_or_404(dashboard_id, current_user.id, db)
     for item in data.widgets:
-        widget_id = item.get("id")
+        widget_id = item.get("widget_id") or item.get("id")
         if not widget_id:
             continue
         updates = {

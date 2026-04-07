@@ -260,7 +260,7 @@ export default {
     systemStage: { title: 'System-Stufe (nur Ansicht)' },
     tokenInspector: { title: 'Token-Inspektor (nur Ansicht)' },
     traceHub: { title: 'Trace Hub (nur Ansicht)' },
-    publicDashboard: { loading: 'Dashboard wird geladen...', protectedTitle: 'Geschütztes Dashboard', enterPin: 'Geben Sie die PIN ein, um auf dieses Dashboard zuzugreifen.', noWidgets: 'Dieses Dashboard hat noch keine Widgets.' },
+    publicDashboard: { loading: 'Dashboard wird geladen...', protectedTitle: 'Geschütztes Dashboard', enterPin: 'Geben Sie die PIN ein, um auf dieses Dashboard zuzugreifen.', noWidgets: 'Dieses Dashboard hat noch keine Widgets.', invalidPin: 'Ungueltige PIN', loadError: 'Dashboard konnte nicht geladen werden', unlock: 'Entsperren', retry: 'Erneut versuchen', poweredBy: 'Bereitgestellt von {name}' },
     settingsAuth: { title: 'Auth (nur lokal)', tokenStatus: 'Token-Status' },
     traceTimeline: { title: 'Trace-Zeitleiste', subtitle: 'Korrelierte Ansicht von Ereignissen, Audit-Logs, Alarmen und Automatisierungen' },
     admin: { title: 'Admin-Konsole', subtitle: 'Modul-Verwaltung, Systemstatus und Plattform-Konfiguration' },

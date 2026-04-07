@@ -57,7 +57,7 @@ class DashboardWidget(Base):
     grid_col: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     grid_row: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     grid_span_w: Mapped[int] = mapped_column(Integer, nullable=False, default=4, server_default="4")
-    grid_span_h: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    grid_span_h: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default="3")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

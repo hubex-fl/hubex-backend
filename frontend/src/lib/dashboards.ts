@@ -68,11 +68,12 @@ export interface WidgetCreate {
 }
 
 export interface LayoutItem {
-  widget_id: number;
+  id: number;
   grid_col: number;
   grid_row: number;
   grid_span_w: number;
   grid_span_h: number;
+  sort_order?: number;
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -136,6 +137,25 @@ export async function updateLayout(dashboardId: number, items: LayoutItem[]): Pr
     method: "PUT",
     body: JSON.stringify({ widgets: items }),
   });
+}
+
+// ─── Sharing ─────────────────────────────────────────────────────────────────
+
+export interface ShareResult {
+  public_token: string;
+  url: string;
+}
+
+export async function shareDashboard(dashboardId: number): Promise<ShareResult> {
+  return apiFetch<ShareResult>(`${BASE}/${dashboardId}/share`, { method: "POST" });
+}
+
+export async function setDashboardPin(dashboardId: number, pin: string): Promise<{ ok: boolean; sharing_mode: string }> {
+  return apiFetch(`${BASE}/${dashboardId}/share/pin?pin=${encodeURIComponent(pin)}`, { method: "POST" });
+}
+
+export async function unshareDashboard(dashboardId: number): Promise<{ ok: boolean; sharing_mode: string }> {
+  return apiFetch(`${BASE}/${dashboardId}/unshare`, { method: "POST" });
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────────

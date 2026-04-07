@@ -15,12 +15,14 @@ class DashboardWidgetCreate(BaseModel):
     grid_col: int = 0
     grid_row: int = 0
     grid_span_w: int = 4
-    grid_span_h: int = 1
+    grid_span_h: int = 3
     sort_order: int = 0
 
 
 class DashboardWidgetUpdate(BaseModel):
     widget_type: Optional[str] = None
+    variable_key: Optional[str] = None
+    device_uid: Optional[str] = None
     label: Optional[str] = None
     unit: Optional[str] = None
     min_value: Optional[float] = None
