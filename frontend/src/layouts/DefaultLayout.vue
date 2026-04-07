@@ -8,7 +8,8 @@ import { useThemeStore } from "../stores/theme";
 import { useToastStore } from "../stores/toast";
 import { useServerHealthStore } from "../stores/serverHealth";
 import UToast from "../components/ui/UToast.vue";
-import { branding } from "../lib/branding";
+import { branding, loadOrgBranding } from "../lib/branding";
+import { useAuthStore } from "../stores/auth";
 import UOfflineBanner from "../components/ui/UOfflineBanner.vue";
 import CommandPalette from "../components/CommandPalette.vue";
 import NotificationBell from "../components/NotificationBell.vue";
@@ -22,6 +23,7 @@ const { signal } = useAbortHandle();
 const themeStore = useThemeStore();
 const toastStore = useToastStore();
 const serverHealth = useServerHealthStore();
+const authStore = useAuthStore();
 
 const ws = useWebSocket();
 const prefsStore = usePreferencesStore();
@@ -63,6 +65,8 @@ onMounted(async () => {
   themeStore.initFromStorage();
   refreshCapabilities(signal);
   ws.start();
+  // Load org branding on page refresh (when already logged in)
+  if (authStore.orgId) loadOrgBranding(authStore.orgId);
   await prefsStore.load();
   // Restore collapsed groups from preferences (default: Daten + System collapsed)
   const saved = prefsStore.get<string[]>("sidebar_collapsed_groups", null);

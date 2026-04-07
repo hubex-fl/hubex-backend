@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { getToken, setToken, clearToken, apiFetch } from "../lib/api";
 import { refreshCapabilities } from "../lib/capabilities";
+import { loadOrgBranding, resetBranding } from "../lib/branding";
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref<string | null>(getToken());
@@ -51,6 +52,8 @@ export const useAuthStore = defineStore("auth", () => {
       setToken(res.access_token);
       _syncFromToken(res.access_token);
       await refreshCapabilities();
+      // Load org branding after successful login
+      if (orgId.value) loadOrgBranding(orgId.value);
     }
     return "ok";
   }
@@ -67,11 +70,13 @@ export const useAuthStore = defineStore("auth", () => {
     mfaToken.value = null;
     mfaMethods.value = [];
     await refreshCapabilities();
+    if (orgId.value) loadOrgBranding(orgId.value);
   }
 
   function logout(): void {
     clearToken();
     _syncFromToken(null);
+    resetBranding();
   }
 
   async function switchOrg(id: number): Promise<void> {
@@ -82,6 +87,7 @@ export const useAuthStore = defineStore("auth", () => {
     setToken(res.access_token);
     _syncFromToken(res.access_token);
     await refreshCapabilities();
+    if (orgId.value) loadOrgBranding(orgId.value);
   }
 
   // Initialise from localStorage on store creation

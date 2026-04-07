@@ -198,27 +198,42 @@ Clear browser localStorage after reset!
 
 ---
 
-## Adding HTTPS (Optional)
+## Adding HTTPS (Recommended for Production)
 
-Install Caddy as reverse proxy:
+Caddy provides automatic HTTPS with Let's Encrypt certificates (zero config TLS).
 
 ```bash
-apt install -y caddy
+# Install Caddy
+apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+apt update && apt install -y caddy
 
+# Configure reverse proxy (replace yourdomain.com)
 cat > /etc/caddy/Caddyfile << 'EOF'
 yourdomain.com {
-    reverse_proxy localhost:80
+    reverse_proxy localhost:3000
 }
 EOF
 
+systemctl enable caddy
 systemctl restart caddy
 ```
 
-Update `.env`:
+Update `.env` to move frontend off port 80 (Caddy uses 80/443):
 ```bash
 HUBEX_CORS_ORIGINS=https://yourdomain.com
-HUBEX_FRONTEND_PORT=3000  # Move frontend to avoid conflict with Caddy
+HUBEX_FRONTEND_PORT=3000
 ```
+
+Restart the stack:
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Verify: `curl -s -o /dev/null -w "%{http_code}" https://yourdomain.com/` should return `200`.
+
+Caddy automatically obtains and renews certificates. WebSocket connections (telemetry) are proxied automatically.
 
 ---
 

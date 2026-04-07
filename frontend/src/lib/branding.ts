@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import { apiFetch } from "./api";
 
 const defaults = {
   productName: 'HubEx',
@@ -57,6 +58,25 @@ export function applyBranding(config: {
     branding.faviconUrl = config.favicon_url;
     const link = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (link) link.href = config.favicon_url;
+  }
+}
+
+/**
+ * Load org branding from the API and apply it.
+ * Called after login or on app mount when a token exists.
+ */
+export async function loadOrgBranding(orgId: number): Promise<void> {
+  try {
+    const data = await apiFetch<{
+      product_name: string | null;
+      logo_url: string | null;
+      primary_color: string | null;
+      accent_color: string | null;
+      favicon_url: string | null;
+    }>(`/api/v1/orgs/${orgId}/branding`);
+    applyBranding(data);
+  } catch {
+    // Ignore — use defaults if branding endpoint fails
   }
 }
 

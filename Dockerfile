@@ -12,9 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
+# Copy application + Alembic config
 COPY app/ app/
 COPY scripts/ scripts/
+COPY alembic/ alembic/
+COPY alembic.ini .
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
@@ -22,4 +24,6 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Entrypoint: run migrations, then start app
+RUN chmod +x scripts/docker-entrypoint.sh
+ENTRYPOINT ["scripts/docker-entrypoint.sh"]

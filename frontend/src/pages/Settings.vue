@@ -191,6 +191,14 @@ async function loadOrgs() {
     if (orgs.value.length && !selectedOrg.value) {
       selectedOrg.value = orgs.value[0];
       loadOrgMembers(orgs.value[0].id);
+      // Load saved branding into form
+      try {
+        const b = await apiFetch<{ product_name: string | null; primary_color: string | null; accent_color: string | null; logo_url: string | null }>(`/api/v1/orgs/${orgs.value[0].id}/branding`);
+        if (b.product_name) brandName.value = b.product_name;
+        if (b.primary_color) brandPrimary.value = b.primary_color;
+        if (b.accent_color) brandAccent.value = b.accent_color;
+        if (b.logo_url) brandLogo.value = b.logo_url;
+      } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
   orgsLoading.value = false;

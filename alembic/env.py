@@ -1,4 +1,5 @@
 from logging.config import fileConfig
+import os
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -10,22 +11,24 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
+# Override sqlalchemy.url from environment if available (Docker-compatible)
+db_url = os.getenv("DATABASE_URL") or os.getenv("HUBEX_DATABASE_URL")
+if db_url:
+    # Alembic needs sync driver (psycopg2), not asyncpg
+    db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    config.set_main_option("sqlalchemy.url", db_url)
+
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# Import all models so Base.metadata is populated
 from app.db.base import Base
-import app.db.models  # noqa: F401  (wichtig: registriert Models in Base.metadata)
+import app.db.models  # noqa: F401
 
 target_metadata = Base.metadata
 

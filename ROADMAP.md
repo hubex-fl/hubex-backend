@@ -1106,7 +1106,7 @@
 - [x] Devices.vue Error+Empty Overlap
 - [x] Sidebar Default-State Flash
 - [x] Correlation.vue Route entfernt
-- [ ] **Alembic Migration System** — Konzept definiert, manuelle SQL-Migrations als Überbrückung in BAT-Dateien. Vollständiges Alembic Setup für Phase 10.
+- [x] **Alembic Migration System** — 48 Migrations, env.py mit ENV-Var Support, Docker-Entrypoint mit `alembic upgrade head` vor App-Start
 - [x] **CORS konfigurierbar** — HUBEX_CORS_ORIGINS env var implementiert, Methods/Headers eingeschränkt
 - [x] **requirements.txt** — python-multipart + requests ergänzt, alle Dependencies dokumentiert
 - [x] **DB-Schema-Sync Script** — in BAT-Datei integriert (19 CREATE TABLE + 7 ALTER TABLE, idempotent)
@@ -1139,7 +1139,7 @@
 - [x] **Backward-Compatibility**: API v1 Endpoints stabil, keine Breaking Changes
 - [ ] **E2E Tests (Playwright)** → R3b (braucht separates Setup)
 - [ ] **Load-Test (100+ Devices)** → R3b (braucht dedizierte Infrastruktur)
-- [ ] **Self-Hosting UX Test** → R3b (braucht frische VM)
+- [x] **Self-Hosting UX Test** — Getestet auf Hostinger VPS (hubextest.tech), Docker Desktop lokal, alle Flows verifiziert
 
 ### Milestone R4: Dokumentation [done] ✅
 > Ohne Doku kann niemand das Produkt verstehen oder betreiben.
@@ -1169,9 +1169,9 @@
 - [x] **Health Monitoring** — /health + /ready Endpoints, Docker HEALTHCHECK in allen Services
 - [x] **Ressourcen-Empfehlung** — in docs/OPERATOR_RUNBOOK.md dokumentiert
 - [x] **Update-Strategie** — in docs/OPERATOR_RUNBOOK.md dokumentiert
-- [ ] **HTTPS/TLS Anleitung** — Let's Encrypt Setup → Post-Launch (braucht Domain)
+- [x] **HTTPS/TLS Anleitung** — Caddy + Let's Encrypt in docs/VPS_SETUP.md, getestet auf hubextest.tech
 - [ ] **Incident Response Plan** — Post-Launch (braucht Team-Struktur)
-- [ ] **Backup + Restore Test** — braucht frische Instanz zum Testen
+- [x] **Backup + Restore Test** — scripts/backup.sh + scripts/restore.sh mit pg_dump/restore, 30-Tage Retention
 
 ### Milestone R5b: Community & Open Source [done] ✅
 > Grundlage für Community-Wachstum.
