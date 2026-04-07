@@ -14,8 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
 COPY app/ app/
-COPY alembic/ alembic/ 2>/dev/null || true
-COPY alembic.ini alembic.ini 2>/dev/null || true
 COPY scripts/ scripts/
 
 # Health check
