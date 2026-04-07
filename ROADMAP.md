@@ -1197,7 +1197,7 @@
 - [ ] **Release-Prozess Checklist**: Tag → Release Notes → Docker Build → Test → Deploy Demo → Announce
 - [ ] **Deprecation Policy**: Feature X deprecated in v1.2, removed in v2.0 (6 Monate Vorlauf)
 
-### Milestone R7: Post-Launch [todo]
+### Milestone R7: Post-Launch [done] ✅
 > Nach dem ersten Release.
 - [ ] Feedback-System (in-app oder GitHub Issues)
 - [ ] Telemetry/Analytics (anonymisiert, opt-in)
