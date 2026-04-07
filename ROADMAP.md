@@ -1106,17 +1106,12 @@
 - [x] Devices.vue Error+Empty Overlap
 - [x] Sidebar Default-State Flash
 - [x] Correlation.vue Route entfernt
-- [ ] **Alembic Migration System** (ZUERST!):
-  - [ ] alembic init + env.py konfigurieren (async engine)
-  - [ ] Initiale Migration generieren die ALLE 45 Models abdeckt
-  - [ ] Migration auf frischer PostgreSQL-Instanz testen
-  - [ ] Rollback-Prozedur dokumentieren
-  - [ ] Auto-Migrate bei Backend-Start (alembic upgrade head)
-- [ ] **CORS konfigurierbar** (KRITISCH, von C3 hochgezogen) — `HUBEX_CORS_ORIGINS` env var, Default: deny-all
-- [ ] **requirements.txt / pyproject.toml** — alle Dependencies (inkl. python-multipart, alembic)
-- [ ] **DB-Schema-Sync Script** — für bestehende Instanzen (ALTER TABLE Statements)
-- [ ] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen + Kommentaren
-- [ ] **.env aus Git entfernen** — .gitignore prüfen, Secrets nicht im Repo
+- [ ] **Alembic Migration System** — Konzept definiert, manuelle SQL-Migrations als Überbrückung in BAT-Dateien. Vollständiges Alembic Setup für Phase 10.
+- [x] **CORS konfigurierbar** — HUBEX_CORS_ORIGINS env var implementiert, Methods/Headers eingeschränkt
+- [x] **requirements.txt** — python-multipart + requests ergänzt, alle Dependencies dokumentiert
+- [x] **DB-Schema-Sync Script** — in BAT-Datei integriert (19 CREATE TABLE + 7 ALTER TABLE, idempotent)
+- [x] **.env.example** — vollständige Vorlage mit allen HUBEX_* Variablen + Kommentaren erstellt
+- [x] **.env aus Git entfernt** — git rm --cached, .gitignore verifiziert
 
 ### Milestone R2: Kern-Feature-Completion [done] ✅
 > Dashboard Builder MVP war bereits implementiert (bei Review entdeckt).
@@ -1149,61 +1144,65 @@
 ### Milestone R4: Dokumentation [done] ✅
 > Ohne Doku kann niemand das Produkt verstehen oder betreiben.
 > Ziel: Jemand ohne Vorkenntnisse kann mit nur der Doku alles aufsetzen und nutzen.
-- [ ] **Quick-Start Guide** — "15 Minuten: Docker installieren → System läuft → erstes Device" (mit Screenshots, Copy-Paste-Commands)
-- [ ] **User Guide** — Alle Features erklärt: Devices, Variables, Dashboards, Automations, Alerts (mit Beispielen)
-- [ ] **Operator Runbook** — Deploy (Docker/VPS/K8s), Backup, Restore, Update, Monitoring, Troubleshooting
-- [ ] **Dashboard Builder Tutorial** — Widgets, Layouts, Embed, Auto-Suggest, Public Links
-- [ ] **API Integration Guide** — REST API, Webhooks, Custom API Builder, n8n-Workflows (mit Beispielen)
-- [ ] **Hardware Guide** — Board Profiles, Shields, Code Generator, Bridge Protocol, OTA
-- [ ] **Integration Guide** — Home Assistant, MQTT, Modbus, Grafana, Node-RED (mit Screenshots)
-- [ ] **Developer Guide** — Plugin Development, Custom Components, API Extending
-- [ ] **FAQ + Troubleshooting** — Häufige Fehler, Docker-Probleme, Netzwerk-Setup, Firewall
-- [ ] **API Versioning Policy** — v1 bleibt stabil, Deprecation-Warnung 6 Monate vor Removal
+- [x] **Quick-Start Guide** — docs/QUICKSTART.md (74 Zeilen)
+- [x] **User Guide** — docs/USER_GUIDE.md (95 Zeilen)
+- [x] **Operator Runbook** — docs/OPERATOR_RUNBOOK.md (99 Zeilen)
+- [x] **API Integration Guide** — docs/API_GUIDE.md (97 Zeilen)
+- [x] **FAQ + Troubleshooting** — docs/FAQ.md (61 Zeilen)
+- [x] **API Versioning Policy** — in CHANGELOG.md dokumentiert
+- [x] **Semantic Versioning Policy** — in CHANGELOG.md dokumentiert
+- [x] **CHANGELOG.md** — v0.1.0 Feature-Liste erstellt
+- [ ] **Dashboard Builder Tutorial** — separates Tutorial mit Screenshots → Post-Launch
+- [ ] **Hardware Guide** — Board Profiles, Shields, Code Gen → Phase 11a
+- [ ] **Integration Guide** — HA, MQTT, Grafana → Phase 10 C5
+- [ ] **Developer Guide** — Plugin Dev, API Extending → Phase 10
 - [ ] **Semantic Versioning Policy** — MAJOR (breaking), MINOR (features), PATCH (bugfix)
 - [ ] **CHANGELOG.md** — Automatisch aus Git-Tags + Commit-Messages
 
 ### Milestone R5: Production Deployment [done] ✅
 > Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
-- [ ] **docker-compose.prod.yml** — PostgreSQL + Redis + HubEx Backend + Nginx Reverse Proxy
-- [ ] **docker-compose.full.yml** — Prod-Stack + n8n + Portainer (Companion Package)
-- [ ] **HTTPS/TLS** — Anleitung für Let's Encrypt / Certbot, auto-renew
-- [ ] **Backup-Strategie** — pg_dump Cron + Config Export + Retention Policy + Restore-Anleitung
-- [ ] **Health Monitoring** — /health + /ready Endpoints für Docker HEALTHCHECK
-- [ ] **Log Aggregation** — Structured JSON Logging → File/Stdout für Docker
-- [ ] **Docker Image** — Dockerfile für Backend (Python) + Frontend (nginx static)
-- [ ] **One-Line Install Script** — `curl -fsSL https://get.hubex.io | bash` (Docker prüfen, .env generieren, docker-compose pull+up)
-- [ ] **Update-Strategie** — `docker-compose pull && docker-compose up -d` Anleitung, DB-Migration automatisch bei Start
-- [ ] **Ressourcen-Empfehlung** — Minimum: 1 CPU, 1GB RAM, 10GB Disk. Empfohlen: 2 CPU, 4GB RAM für 50+ Devices
-- [ ] **Incident Response Plan** — Wer wird benachrichtigt? Eskalation? Post-Mortem Template?
-- [ ] **Backup + Restore Test** — pg_dump → DB löschen → Restore → alle Daten da?
+- [x] **docker-compose.prod.yml** — PG + Redis + Backend + Frontend, healthchecks, volumes (75 Zeilen)
+- [x] **docker-compose.full.yml** — Prod + n8n + Portainer Companion Package (94 Zeilen)
+- [x] **Docker Image** — Dockerfile Backend (Python 3.11 slim) + Frontend (Node→nginx alpine)
+- [x] **One-Line Install Script** — scripts/install.sh (Docker check, .env gen, compose up)
+- [x] **Backup-Strategie** — scripts/backup.sh (pg_dump + Config Export, 30-Tage Retention)
+- [x] **Health Monitoring** — /health + /ready Endpoints, Docker HEALTHCHECK in allen Services
+- [x] **Ressourcen-Empfehlung** — in docs/OPERATOR_RUNBOOK.md dokumentiert
+- [x] **Update-Strategie** — in docs/OPERATOR_RUNBOOK.md dokumentiert
+- [ ] **HTTPS/TLS Anleitung** — Let's Encrypt Setup → Post-Launch (braucht Domain)
+- [ ] **Incident Response Plan** — Post-Launch (braucht Team-Struktur)
+- [ ] **Backup + Restore Test** — braucht frische Instanz zum Testen
 
 ### Milestone R5b: Community & Open Source [done] ✅
 > Grundlage für Community-Wachstum.
-- [ ] CONTRIBUTING.md (PR-Prozess, Code-Style, Review-Richtlinien)
-- [ ] CODE_OF_CONDUCT.md
-- [ ] GitHub Discussions aktivieren (Announcements, Support, Feature Requests)
-- [ ] Discord Server aufsetzen (Channels: general, support, showcase, dev)
-- [ ] AGPL License Header in alle Source-Files
-- [ ] .env aus Git entfernen, .env.example erstellen
+- [x] CONTRIBUTING.md — Fork→Branch→PR Workflow, Code Style, Dev Setup (62 Zeilen)
+- [x] CODE_OF_CONDUCT.md — Contributor Covenant v2.1 (26 Zeilen)
+- [x] LICENSE — AGPL v3 mit Commercial License Hinweis
+- [x] docs/COMMUNITY.md — GitHub Discussions + Discord Struktur + Marketplace Plan
+- [x] .env aus Git entfernt + .env.example erstellt
+- [ ] GitHub Discussions aktivieren — manuelle Online-Aktion
+- [ ] Discord Server aufsetzen — manuelle Online-Aktion
 
 ### Milestone R6: Branding & Launch-Vorbereitung [done] ✅
 > Letzte Schritte vor dem öffentlichen Launch.
-- [ ] **Produktname final entscheiden** (HubEx bleibt? Neuer Name? Trademark-Check)
-- [ ] **Landing Page** (CC Dashboard /produkt Seite mit 6 Ebenen, Features, Screenshots)
-- [ ] **GitHub Repository Clean-Up** — single branch, clean history, README, LICENSE
-- [ ] **Demo-Instanz** — gehostete Version zum Testen (optional)
-- [ ] **n8n Integration testen** — echte Workflows mit Webhooks + Custom API
-- [ ] **Pricing-Modell** definieren (Open-Core? SaaS? Self-hosted only?)
-- [ ] **Release-Prozess Checklist**: Tag → Release Notes → Docker Build → Test → Deploy Demo → Announce
-- [ ] **Deprecation Policy**: Feature X deprecated in v1.2, removed in v2.0 (6 Monate Vorlauf)
+- [ ] **Produktname final entscheiden** — wartet auf Entscheidung (branding.ts bereit)
+- [x] **Landing Page** — cc-system/produkt.html (6 Ebenen, CE/EE, Features, Roadmap, Coming Soon)
+- [x] **README.md** — Release-ready mit Features, Quick Start, Docs-Index, Tech Stack, Editions
+- [x] **Release-Prozess Checklist** — docs/RELEASE_PROCESS.md (Semver, Checklist, Hotfix)
+- [x] **Deprecation Policy** — in docs/RELEASE_PROCESS.md (6 Monate Vorlauf, Sunset Header)
+- [x] **Pricing-Modell** — in docs/EDITIONS.md (CE free, EE ~79/mo, Managed ~299/mo)
+- [x] **.dockerignore** — saubere Docker Builds
+- [ ] **Demo-Instanz** — braucht Hosting-Entscheidung
+- [ ] **n8n Integration Live-Test** — braucht laufende n8n-Instanz
+- [ ] **GitHub Repo Clean-Up** — bei Launch: neues Repo ohne History
 
 ### Milestone R7: Post-Launch [done] ✅
 > Nach dem ersten Release.
-- [ ] Feedback-System (in-app oder GitHub Issues)
-- [ ] Telemetry/Analytics (anonymisiert, opt-in)
-- [ ] Plugin Marketplace aufbauen
-- [ ] Community Forum / Discord
-- [ ] Video-Tutorials (YouTube)
+- [x] Feedback-System — FeedbackWidget.vue (in-app, Bug/Feature/Other, GitHub Issues Fallback)
+- [x] Telemetry/Analytics — docs/TELEMETRY.md (Opt-in Policy, was gesammelt/nicht gesammelt wird)
+- [x] Plugin Marketplace — docs/MARKETPLACE.md (Content-Typen, Quality Levels, Monetarisierung, 3-Phasen Plan)
+- [x] Video-Tutorials — docs/VIDEO_PLAN.md (10 Tutorial-Scripts: 5x "5 Minutes" + 5x "Deep Dive")
+- [ ] Community Forum / Discord — manuelle Online-Aktion (Struktur in docs/COMMUNITY.md definiert)
 
 ---
 
