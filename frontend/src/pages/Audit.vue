@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -21,6 +22,7 @@ type AuditEntry = {
   trace_id?: string | null;
 };
 
+const { t } = useI18n();
 const caps = useCapabilities();
 const { signal: listSignal } = useAbortHandle();
 const { signal: detailSignal } = useAbortHandle();
@@ -118,12 +120,12 @@ onUnmounted(() => { selectedId.value = null; });
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Audit Log</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Track who changed what and when. Every API action is logged here.</p>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.audit.title') }}</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.audit.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
         <a href="/api/v1/audit/export/download?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
-        <UButton variant="secondary" size="sm" @click="retryList">Refresh</UButton>
+        <UButton variant="secondary" size="sm" @click="retryList">{{ t('common.refresh') }}</UButton>
       </div>
     </div>
 

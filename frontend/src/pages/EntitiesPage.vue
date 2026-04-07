@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useEntities, type Entity, type EntityBinding, type EntityHealth } from "../composables/useEntities";
 import { apiFetch } from "../lib/api";
 import { useCapabilities, hasCap } from "../lib/capabilities";
@@ -14,6 +15,7 @@ import USkeleton from "../components/ui/USkeleton.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+const { t } = useI18n();
 const caps = useCapabilities();
 const { entities, loading, error, reload } = useEntities();
 
@@ -310,8 +312,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     <!-- ── Page Header ──────────────────────────────────────────────────────── -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Entities &amp; Groups</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-0.5">Logical groups of devices — rooms, machines, systems. Group devices to monitor health and automate together.</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.entities.title') }}</h1>
+        <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <UBadge status="neutral" :label="`${entities.length} entities`" />
@@ -606,14 +608,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="secondary" size="sm" @click="createOpen = false">Cancel</UButton>
+          <UButton variant="secondary" size="sm" @click="createOpen = false">{{ t('common.cancel') }}</UButton>
           <UButton
             variant="primary"
             size="sm"
             :loading="createLoading"
             @click="submitCreate"
           >
-            Create
+            {{ t('common.create') }}
           </UButton>
         </div>
       </template>
@@ -644,14 +646,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="secondary" size="sm" @click="editOpen = false">Cancel</UButton>
+          <UButton variant="secondary" size="sm" @click="editOpen = false">{{ t('common.cancel') }}</UButton>
           <UButton
             variant="primary"
             size="sm"
             :loading="editLoading"
             @click="submitEdit"
           >
-            Save
+            {{ t('common.save') }}
           </UButton>
         </div>
       </template>
@@ -674,14 +676,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="secondary" size="sm" @click="deleteOpen = false">Cancel</UButton>
+          <UButton variant="secondary" size="sm" @click="deleteOpen = false">{{ t('common.cancel') }}</UButton>
           <UButton
             variant="danger"
             size="sm"
             :loading="deleteLoading"
             @click="submitDelete"
           >
-            Delete
+            {{ t('common.delete') }}
           </UButton>
         </div>
       </template>

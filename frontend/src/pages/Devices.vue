@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
@@ -20,6 +21,7 @@ import DeviceWizard from "../components/DeviceWizard.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
+const { t } = useI18n();
 const { open: openConnectPanel } = useConnectPanel();
 
 // ── Device Wizard ──────────────────────────────────────────────────────────────
@@ -661,11 +663,11 @@ onUnmounted(() => {
     <!-- ── 1. Page Header ──────────────────────────────────────────────────── -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Devices</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('devices.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
-          <span v-if="refreshing" class="text-[var(--text-muted)]">Refreshing...</span>
+          <span v-if="refreshing" class="text-[var(--text-muted)]">{{ t('common.loading') }}</span>
           <span v-else>
-            Manage and pair IoT devices
+            {{ t('devices.subtitle') }}
             <span v-if="includeUnclaimed" class="ml-1 text-[var(--status-warn)]">
               — admin view (includes unclaimed)
             </span>
@@ -677,13 +679,13 @@ onUnmounted(() => {
           <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          + Device
+          + {{ t('devices.addDevice') }}
         </UButton>
         <UButton size="sm" variant="secondary" :loading="isRefreshing" @click="handleRefresh">
           <svg v-if="!isRefreshing" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Refresh
+          {{ t('common.refresh') }}
         </UButton>
       </div>
     </div>
@@ -829,7 +831,7 @@ onUnmounted(() => {
           <UInput
             v-model="searchQuery"
             variant="search"
-            placeholder="Search devices…"
+            :placeholder="t('devices.searchByUid')"
           />
         </div>
         <USelect v-model="sortBy" :options="sortOptions" />
@@ -954,7 +956,7 @@ onUnmounted(() => {
               <td colspan="7" class="py-2">
                 <UEmpty
                   v-if="hasActiveFilter"
-                  title="No devices match"
+                  :title="t('devices.emptyState.title')"
                   description="Try adjusting your search or filter."
                   icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
                 >
@@ -962,11 +964,11 @@ onUnmounted(() => {
                 </UEmpty>
                 <UEmpty
                   v-else-if="!fetchError"
-                  title="No devices connected yet"
-                  description="Hardware, APIs, bridges, agents — everything connects here."
+                  :title="t('devices.emptyState.title')"
+                  :description="t('devices.emptyState.description')"
                   icon="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"
                 >
-                  <UButton size="sm" @click="showDeviceWizard = true">Connect your first device</UButton>
+                  <UButton size="sm" @click="showDeviceWizard = true">{{ t('devices.emptyState.cta') }}</UButton>
                 </UEmpty>
               </td>
             </tr>
@@ -1114,7 +1116,7 @@ onUnmounted(() => {
         <!-- Empty state cards -->
         <UEmpty
           v-else-if="!visibleDevices.length && hasActiveFilter"
-          title="No devices match"
+          :title="t('devices.emptyState.title')"
           description="Try adjusting your search or filter."
           icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
         >
@@ -1131,9 +1133,9 @@ onUnmounted(() => {
             </svg>
           </div>
           <div class="space-y-1.5 max-w-xs">
-            <h3 class="text-base font-semibold text-[var(--text-primary)]">Connect your first device</h3>
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">{{ t('devices.emptyState.cta') }}</h3>
             <p class="text-sm text-[var(--text-muted)]">
-              Hardware, APIs, bridges, agents — everything connects here.
+              {{ t('devices.emptyState.description') }}
             </p>
           </div>
           <!-- Primary CTA → opens wizard -->
@@ -1142,12 +1144,12 @@ onUnmounted(() => {
               <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Connect your first device
+              {{ t('devices.emptyState.cta') }}
             </UButton>
           </div>
           <!-- Helpful hint -->
           <p class="text-xs text-[var(--text-muted)] max-w-sm">
-            Devices auto-discover variables from telemetry and integrate with alerts &amp; automations out of the box.
+            {{ t('devices.emptyState.hint') }}
           </p>
         </div>
 

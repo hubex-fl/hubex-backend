@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch, setToken } from "../lib/api";
 
+const { t } = useI18n();
 const deviceUid = ref("");
 const startResult = ref<any | null>(null);
 const startError = ref<string | null>(null);
@@ -75,15 +77,15 @@ async function copyToken() {
 
 <template>
   <div style="max-width: 900px; margin: 0 auto; padding: 24px;">
-    <h2>Pairing</h2>
+    <h2>{{ t('nav.pairing') }}</h2>
 
     <div style="margin-top: 16px; padding: 16px; border: 1px solid #ddd; border-radius: 12px;">
-      <h3>Pairing Start</h3>
+      <h3>{{ t('devices.wizard.startPairing') }}</h3>
 
       <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px;">
         <input
           v-model="deviceUid"
-          placeholder="device_uid"
+          :placeholder="t('devices.deviceUid')"
           style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px;"
         />
         <button @click="startPairing" style="padding: 10px 16px;">
@@ -105,11 +107,11 @@ async function copyToken() {
       v-if="startResult?.pairing_code"
       style="margin-top: 16px; padding: 16px; border: 1px solid #ddd; border-radius: 12px;"
     >
-      <h3>Pairing Confirm</h3>
+      <h3>{{ t('common.confirm') }}</h3>
 
       <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px;">
         <button @click="confirmPairing" :disabled="confirming" style="padding: 10px 16px;">
-          {{ confirming ? "Confirming..." : "Confirm" }}
+          {{ confirming ? "Confirming..." : t('common.confirm') }}
         </button>
       </div>
 

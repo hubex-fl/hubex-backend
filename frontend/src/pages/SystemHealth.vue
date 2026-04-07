@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ interface MetricsResponse {
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
+
+const { t } = useI18n();
 
 const health = ref<HealthResponse | null>(null);
 const readiness = ref<HealthResponse | null>(null);
@@ -144,7 +147,7 @@ function deviceHealthPercent(): number {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">System Health</h1>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('health.title') }}</h1>
         <p class="text-sm text-[var(--text-muted)] mt-1">Backend, database, and infrastructure status</p>
       </div>
 
@@ -161,7 +164,7 @@ function deviceHealthPercent(): number {
           <svg class="h-3.5 w-3.5" :class="refreshing ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Refresh
+          {{ t('common.refresh') }}
         </button>
       </div>
     </div>

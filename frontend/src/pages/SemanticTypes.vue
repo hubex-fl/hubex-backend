@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   listSemanticTypes,
   createSemanticType,
@@ -22,6 +23,7 @@ import UModal from "../components/ui/UModal.vue";
 /* ------------------------------------------------------------------ */
 /* State                                                               */
 /* ------------------------------------------------------------------ */
+const { t } = useI18n();
 const types = ref<SemanticType[]>([]);
 const loading = ref(false);
 const error = ref("");
@@ -232,7 +234,7 @@ onMounted(fetchTypes);
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Semantic Types</h2>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('nav.semanticTypes') }}</h2>
         <p class="text-sm text-[var(--text-muted)] mt-0.5">
           Manage data types that define how variables are interpreted, validated, and visualized.
         </p>
@@ -422,7 +424,7 @@ onMounted(fetchTypes);
 
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="modalOpen = false">Cancel</UButton>
+          <UButton variant="ghost" @click="modalOpen = false">{{ t('common.cancel') }}</UButton>
           <UButton :loading="saving" @click="saveType">
             {{ editingType ? 'Save Changes' : 'Create Type' }}
           </UButton>
@@ -439,8 +441,8 @@ onMounted(fetchTypes);
       </p>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="deleteModalOpen = false">Cancel</UButton>
-          <UButton variant="danger" :loading="deleting" @click="doDelete">Delete</UButton>
+          <UButton variant="ghost" @click="deleteModalOpen = false">{{ t('common.cancel') }}</UButton>
+          <UButton variant="danger" :loading="deleting" @click="doDelete">{{ t('common.delete') }}</UButton>
         </div>
       </template>
     </UModal>

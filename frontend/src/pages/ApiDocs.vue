@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import UCard from "../components/ui/UCard.vue";
+
+const { t } = useI18n();
 import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 
@@ -106,9 +109,9 @@ const sections: ApiSection[] = [
   <div class="max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">API Documentation</h1>
+      <h1 class="text-2xl font-bold text-[var(--text-primary)]">{{ t('pages.apiDocs.title') }}</h1>
       <p class="mt-1 text-sm text-[var(--text-muted)]">
-        HUBEX exposes a RESTful API. Explore interactively via Swagger or ReDoc, or use the OpenAPI spec directly.
+        {{ t('pages.apiDocs.subtitle') }}
       </p>
     </div>
 

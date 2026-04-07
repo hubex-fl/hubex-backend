@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -34,6 +35,7 @@ type EventsResponse = {
 };
 
 const caps = useCapabilities();
+const { t } = useI18n();
 const { signal } = useAbortHandle();
 
 const canReadDevices = computed(() => hasCap("devices.read"));
@@ -335,7 +337,7 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>Observability (read-only)</h2>
+      <h2>{{ t('nav.observability') }}</h2>
       <button class="btn secondary" @click="retryAll">Retry</button>
     </div>
 

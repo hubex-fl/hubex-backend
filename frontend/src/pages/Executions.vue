@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -20,6 +21,7 @@ type TaskItemWithClient = TaskItem & { client_id: number };
 
 const caps = useCapabilities();
 const router = useRouter();
+const { t } = useI18n();
 const { signal } = useAbortHandle();
 
 const deviceIdInput = ref("");
@@ -108,9 +110,9 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>Executions / Tasks (read-only)</h2>
+      <h2>{{ t('nav.executions') }}</h2>
       <div class="row">
-        <button class="btn secondary" @click="retry">Refresh</button>
+        <button class="btn secondary" @click="retry">{{ t('common.refresh') }}</button>
         <button class="btn secondary" @click="openTraceHub">Open in Trace Hub</button>
       </div>
     </div>

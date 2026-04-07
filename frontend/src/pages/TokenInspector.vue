@@ -1,6 +1,9 @@
 ﻿<script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { getToken } from "../lib/api";
+
+const { t } = useI18n();
 
 function decodePayload(token: string) {
   const parts = token.split(".");
@@ -49,7 +52,7 @@ const caps = computed(() => {
 
 <template>
   <div class="card">
-    <h2>Token Inspector (read-only)</h2>
+    <h2>{{ t('pages.tokenInspector.title') }}</h2>
 
     <div v-if="!token" class="muted">Token missing</div>
     <div v-else-if="invalid" class="error">Invalid token format</div>

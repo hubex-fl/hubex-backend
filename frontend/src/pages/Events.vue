@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -27,6 +28,7 @@ type EventsResponse = {
   items: EventItem[];
 };
 
+const { t } = useI18n();
 const caps = useCapabilities();
 const { signal } = useAbortHandle();
 
@@ -189,8 +191,8 @@ onUnmounted(() => { stopPolling(); });
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Events</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Real-time system events. Select a stream and start monitoring.</p>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
         <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>

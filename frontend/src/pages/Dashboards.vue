@@ -4,7 +4,7 @@
     <!-- Header -->
     <div class="page-header">
       <div>
-        <h1 class="page-title">Dashboards</h1>
+        <h1 class="page-title">{{ t('nav.dashboards') }}</h1>
         <p class="page-sub">Visualize and control your devices</p>
       </div>
       <UButton icon="M12 4.5v15m7.5-7.5h-15" @click="showCreateModal = true">
@@ -75,8 +75,8 @@
                 </div>
               </div>
               <div class="modal-actions">
-                <UButton variant="ghost" @click="showCreateModal = false">Cancel</UButton>
-                <UButton @click="createStep = 2">Next →</UButton>
+                <UButton variant="ghost" @click="showCreateModal = false">{{ t('common.cancel') }}</UButton>
+                <UButton @click="createStep = 2">{{ t('common.next') }} →</UButton>
               </div>
             </div>
 
@@ -104,9 +104,9 @@
               </div>
               <p v-if="createError" class="field-error">{{ createError }}</p>
               <div class="modal-actions">
-                <UButton variant="ghost" @click="createStep = 1">← Back</UButton>
+                <UButton variant="ghost" @click="createStep = 1">← {{ t('common.back') }}</UButton>
                 <UButton :loading="creating" :disabled="!newName.trim()" @click="submitCreate">
-                  Create
+                  {{ t('common.create') }}
                 </UButton>
               </div>
             </div>
@@ -122,6 +122,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
@@ -136,6 +137,7 @@ import {
 } from "../lib/dashboards";
 
 const router = useRouter();
+const { t } = useI18n();
 
 const dashboards = ref<DashboardSummary[]>([]);
 const loading = ref(true);

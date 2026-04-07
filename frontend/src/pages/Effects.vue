@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
@@ -16,6 +17,7 @@ type EffectItem = {
   error_json: Record<string, unknown> | null;
 };
 
+const { t } = useI18n();
 const caps = useCapabilities();
 const { signal: listSignal } = useAbortHandle();
 const { signal: detailSignal } = useAbortHandle();
@@ -208,7 +210,7 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>Effects Trace (read-only)</h2>
+      <h2>{{ t('nav.effects') }}</h2>
       <div class="row">
         <button class="btn secondary" @click="retryList">Retry</button>
         <button class="btn secondary" @click="stopPolling" :disabled="!polling">Stop</button>

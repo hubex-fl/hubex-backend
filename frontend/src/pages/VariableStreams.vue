@@ -5,6 +5,7 @@
  * Foundation for M20 Dashboard Builder.
  */
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   type VariableDefinition,
   type VariableScope,
@@ -24,6 +25,8 @@ import USelect from "../components/ui/USelect.vue";
 import UInput  from "../components/ui/UInput.vue";
 import UBadge  from "../components/ui/UBadge.vue";
 import VizWidget from "../components/viz/VizWidget.vue";
+
+const { t } = useI18n();
 
 // ── State ──────────────────────────────────────────────────────────────
 const definitions  = ref<VariableDefinition[]>([]);
@@ -233,7 +236,7 @@ const fullscreenDef = computed(() =>
       <div class="header-left">
         <div class="header-title-row">
           <span class="streams-icon">◈</span>
-          <h1 class="streams-title">Variable Streams</h1>
+          <h1 class="streams-title">{{ t('variables.streams') }}</h1>
           <span v-if="refreshing" class="refresh-dot" title="Refreshing…" />
         </div>
         <p class="streams-sub">Live variable monitoring · {{ activeDefs.length }} streams</p>
@@ -259,7 +262,7 @@ const fullscreenDef = computed(() =>
         </div>
         <UButton size="sm" variant="secondary" @click="loadAll">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Refresh
+          {{ t('common.refresh') }}
         </UButton>
       </div>
     </div>

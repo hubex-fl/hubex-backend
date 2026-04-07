@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
+
+const { t } = useI18n();
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -192,7 +195,7 @@ onMounted(loadSystemGraph);
     <!-- Toolbar -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-surface)]">
       <div class="flex items-center gap-2">
-        <h1 class="text-sm font-semibold text-[var(--text-primary)]">Flow Editor</h1>
+        <h1 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.flowEditor.title') }}</h1>
         <span class="text-[10px] text-[var(--text-muted)]">{{ nodes.length }} nodes, {{ edges.length }} edges</span>
         <input v-model="searchQuery" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] w-28 text-[var(--text-primary)]" placeholder="Search nodes..." />
         <router-link to="/automations" class="text-[10px] text-[var(--primary)] hover:underline">Automations</router-link>
@@ -223,7 +226,7 @@ onMounted(loadSystemGraph);
       style="background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 30px 30px;"
     >
       <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
-        <span class="text-sm text-[var(--text-muted)]">Loading system graph...</span>
+        <span class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.loading') }}</span>
       </div>
 
       <!-- SVG Edges -->
@@ -283,8 +286,8 @@ onMounted(loadSystemGraph);
       <!-- Help hint -->
       <div v-if="!loading && !nodes.length" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
-          <p class="text-sm text-[var(--text-muted)]">Empty canvas</p>
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Add nodes from the toolbar, drag to position, double-click ports to connect</p>
+          <p class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.emptyCanvas') }}</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.flowEditor.emptyCanvasHint') }}</p>
         </div>
       </div>
     </div>

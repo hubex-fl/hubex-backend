@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch, getToken, reissueDeviceToken, unclaimDevice } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { hasCap, useCapabilities } from "../lib/capabilities";
@@ -29,6 +30,7 @@ const { open: openConnectPanel } = useConnectPanel();
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const deviceId = ref(route.params.id as string);
 
 type DeviceConfig = {
@@ -1800,7 +1802,7 @@ onUnmounted(() => {
             <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
-            Refresh
+            {{ t('common.refresh') }}
           </UButton>
           <UButton variant="secondary" size="sm" :disabled="!deviceInfo?.device_uid" @click="copyUid">
             Copy UID
@@ -1813,7 +1815,7 @@ onUnmounted(() => {
             size="sm"
             @click="$router.push({ path: '/alerts', query: { create: 'true', device_uid: deviceInfo.device_uid } })"
           >
-            Set up Alert
+            {{ t('devices.setupAlert') }}
           </UButton>
         </div>
       </div>
@@ -1909,7 +1911,7 @@ onUnmounted(() => {
           <p class="font-mono text-[var(--text-primary)]">{{ deviceInfo.firmware_version }}</p>
         </div>
         <div>
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Health</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.health') }}</p>
           <p :class="deviceInfo?.health === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">{{ deviceInfo?.health }}</p>
         </div>
         <div v-if="deviceInfo?.last_seen_at">
@@ -1931,10 +1933,10 @@ onUnmounted(() => {
             {{ deviceInfo.category === 'service' ? 'API Configuration' : deviceInfo.category === 'bridge' ? 'Bridge Configuration' : 'Agent Configuration' }}
           </h3>
           <div class="flex items-center gap-2">
-            <UButton v-if="!configEditing" size="sm" variant="ghost" @click="startConfigEdit">Edit</UButton>
+            <UButton v-if="!configEditing" size="sm" variant="ghost" @click="startConfigEdit">{{ t('common.edit') }}</UButton>
             <template v-else>
-              <UButton size="sm" variant="ghost" @click="cancelConfigEdit">Cancel</UButton>
-              <UButton size="sm" :loading="configSaving" @click="saveConfig">Save</UButton>
+              <UButton size="sm" variant="ghost" @click="cancelConfigEdit">{{ t('common.cancel') }}</UButton>
+              <UButton size="sm" :loading="configSaving" @click="saveConfig">{{ t('common.save') }}</UButton>
             </template>
           </div>
         </div>
@@ -1982,7 +1984,7 @@ onUnmounted(() => {
           {{ configTestResult.message }}
         </div>
         <UButton v-if="!configEditing && deviceInfo.config?.endpoint_url" size="sm" variant="secondary" :loading="configTesting" @click="testConnection">
-          Test Connection
+          {{ t('devices.testConnection') }}
         </UButton>
       </div>
 
@@ -2040,7 +2042,7 @@ onUnmounted(() => {
     <div v-if="!restrictUnclaimed" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
       <!-- Section header -->
       <div class="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center justify-between">
-        <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">System Context</h3>
+        <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('common.status') }}</h3>
         <span class="text-[10px] text-[var(--text-muted)]">Where this device fits in your infrastructure</span>
       </div>
 
@@ -2127,7 +2129,7 @@ onUnmounted(() => {
 
             <!-- Connected Automations + Alerts -->
             <div>
-              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Connected</p>
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">{{ t('devices.connected') }}</p>
 
               <!-- Linked automations -->
               <div v-if="linkedAutomations.length" class="space-y-1 mb-2">
@@ -2291,7 +2293,7 @@ onUnmounted(() => {
               class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse"
             />
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-              <span class="text-[var(--primary)] mr-1">📡</span>Telemetry
+              <span class="text-[var(--primary)] mr-1">📡</span>{{ t('nav.devices') }}
               <span class="text-[var(--text-muted)] font-normal ml-1">· Sensor Data</span>
               <span v-if="!showInputPanel && telemetry.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ telemetry.length }})</span>
             </h3>
@@ -2600,7 +2602,7 @@ onUnmounted(() => {
     <UCard v-if="!restrictUnclaimed" padding="none">
       <template #header>
         <div class="flex items-center gap-2">
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Tasks</h3>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('nav.executions') }}</h3>
           <span
             v-if="currentTask?.has_active_lease && !isLeaseExpiredLocally"
             class="text-xs text-[var(--text-muted)]"
@@ -2660,7 +2662,7 @@ onUnmounted(() => {
     <!-- ── Recovery ───────────────────────────────────────────────────────── -->
     <UCard v-if="!restrictUnclaimed" padding="md">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Recovery</h3>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('common.actions') }}</h3>
         <router-link to="/audit" class="text-xs text-[var(--primary)] hover:underline">Audit log</router-link>
       </template>
 
@@ -2717,7 +2719,7 @@ onUnmounted(() => {
     <!-- ── Danger Zone ────────────────────────────────────────────────────── -->
     <UCard v-if="!restrictUnclaimed && canUnclaim" padding="md" class="border-[var(--status-bad)]/20">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--status-bad)]">Remove Device</h3>
+        <h3 class="text-sm font-semibold text-[var(--status-bad)]">{{ t('common.delete') }}</h3>
       </template>
 
       <p class="text-xs text-[var(--text-muted)] mb-3">

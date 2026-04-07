@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+
+const { t } = useI18n();
 import { branding } from "../lib/branding";
 
 const route = useRoute();
@@ -73,14 +76,14 @@ onMounted(() => loadDashboard());
 
     <!-- Loading -->
     <div v-if="loading" class="flex-1 flex items-center justify-center">
-      <p class="text-sm text-[var(--text-muted)]">Loading dashboard...</p>
+      <p class="text-sm text-[var(--text-muted)]">{{ t('pages.publicDashboard.loading') }}</p>
     </div>
 
     <!-- PIN required -->
     <div v-else-if="needsPin" class="flex-1 flex items-center justify-center">
       <div class="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-8 shadow-2xl w-full max-w-sm">
-        <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Protected Dashboard</h2>
-        <p class="text-xs text-[var(--text-muted)] mb-4">Enter the PIN to access this dashboard.</p>
+        <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">{{ t('pages.publicDashboard.protectedTitle') }}</h2>
+        <p class="text-xs text-[var(--text-muted)] mb-4">{{ t('pages.publicDashboard.enterPin') }}</p>
         <input
           v-model="pinInput"
           type="password"
@@ -113,7 +116,7 @@ onMounted(() => loadDashboard());
       <p v-if="dashboard.description" class="text-xs text-[var(--text-muted)] mb-4">{{ dashboard.description }}</p>
 
       <div v-if="!dashboard.widgets.length" class="text-center py-12">
-        <p class="text-sm text-[var(--text-muted)]">This dashboard has no widgets yet.</p>
+        <p class="text-sm text-[var(--text-muted)]">{{ t('pages.publicDashboard.noWidgets') }}</p>
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

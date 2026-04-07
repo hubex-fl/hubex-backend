@@ -4,7 +4,7 @@
     <!-- Top bar -->
     <div class="db-topbar">
       <div class="db-topbar-left">
-        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">← Dashboards</button>
+        <button v-if="!isKiosk" class="back-btn" @click="router.push('/dashboards')">← {{ t('nav.dashboards') }}</button>
         <h1 v-if="dashboard" class="db-name">{{ dashboard.name }}</h1>
         <USkeleton v-else class="h-5 w-40" />
       </div>
@@ -21,7 +21,7 @@
         <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
           {{ editMode ? '✓ Done' : '✏ Edit' }}
         </button>
-        <button class="refresh-btn" @click="loadDashboard" title="Refresh">↺</button>
+        <button class="refresh-btn" @click="loadDashboard" :title="t('common.refresh')">↺</button>
       </div>
     </div>
 
@@ -164,7 +164,7 @@
               <p v-if="addError" class="field-error">{{ addError }}</p>
 
               <div class="modal-actions">
-                <UButton variant="ghost" @click="showAddWidget = false">Cancel</UButton>
+                <UButton variant="ghost" @click="showAddWidget = false">{{ t('common.cancel') }}</UButton>
                 <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
               </div>
 
@@ -182,7 +182,7 @@
             <h2 class="modal-title">Remove Widget?</h2>
             <p class="modal-sub">Remove "{{ deletingWidget.label || deletingWidget.variable_key || 'this widget' }}" from the dashboard?</p>
             <div class="modal-actions">
-              <UButton variant="ghost" @click="deletingWidget = null">Cancel</UButton>
+              <UButton variant="ghost" @click="deletingWidget = null">{{ t('common.cancel') }}</UButton>
               <UButton color="red" :loading="deleting" @click="submitDeleteWidget">Remove</UButton>
             </div>
           </div>
@@ -196,6 +196,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UButton from "../components/ui/UButton.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
@@ -229,6 +230,7 @@ function rangeToFrom(range: TimeRange): number {
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const isKiosk = computed(() => route.meta?.layout === "kiosk");
 
 const dashboard = ref<Dashboard | null>(null);

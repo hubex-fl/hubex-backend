@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import {
@@ -37,6 +38,7 @@ import { useConnectPanel } from "../composables/useConnectPanel";
 import { useRouter } from "vue-router";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
@@ -568,7 +570,7 @@ onMounted(async () => {
     <!-- ── Header ─────────────────────────────────────────────────── -->
     <div class="vars-header">
       <div class="vars-header-left">
-        <h1 class="vars-title">Variables</h1>
+        <h1 class="vars-title">{{ t('variables.title') }}</h1>
         <span class="vars-count">{{ filteredRows.length }}</span>
       </div>
       <UButton @click="openCreate" size="sm">

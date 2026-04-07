@@ -1,6 +1,9 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+
+const { t } = useI18n();
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { runRefresh } from "../lib/refresh";
@@ -448,7 +451,7 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>System Stage (read-only)</h2>
+      <h2>{{ t('pages.systemStage.title') }}</h2>
       <div class="page-meta">
         <span v-if="loading" class="muted">Refreshing...</span>
         <span v-else class="muted">Last updated: {{ lastUpdated ?? "-" }}</span>

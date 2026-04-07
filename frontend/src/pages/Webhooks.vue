@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UCard from "../components/ui/UCard.vue";
@@ -10,6 +11,7 @@ import UModal from "../components/ui/UModal.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import { useToastStore } from "../stores/toast";
+const { t } = useI18n();
 const toast = useToastStore();
 
 type Webhook = {
@@ -130,11 +132,11 @@ onMounted(loadWebhooks);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">Webhooks</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">HTTP callbacks for system events — integrate with n8n, Zapier, or custom endpoints</p>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.webhooks.title') }}</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.webhooks.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
-        <UButton size="sm" variant="secondary" @click="loadWebhooks">Refresh</UButton>
+        <UButton size="sm" variant="secondary" @click="loadWebhooks">{{ t('common.refresh') }}</UButton>
         <UButton size="sm" @click="showCreate = true">+ New Webhook</UButton>
       </div>
     </div>
@@ -215,8 +217,8 @@ onMounted(loadWebhooks);
         <div v-if="createError" class="text-xs text-[var(--status-bad)]">{{ createError }}</div>
       </div>
       <template #footer>
-        <UButton variant="ghost" @click="showCreate = false">Cancel</UButton>
-        <UButton :loading="createSaving" @click="createWebhook">Create</UButton>
+        <UButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</UButton>
+        <UButton :loading="createSaving" @click="createWebhook">{{ t('common.create') }}</UButton>
       </template>
     </UModal>
   </div>

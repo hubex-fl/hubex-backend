@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch, clearToken, getToken, setToken } from "../lib/api";
+
+const { t } = useI18n();
 import { refreshCapabilities, useCapabilities } from "../lib/capabilities";
 import { useAbortHandle } from "../lib/abort";
 
@@ -56,8 +59,8 @@ async function login() {
 
 <template>
   <div class="page">
-    <h2>Auth (local only)</h2>
-    <p class="muted">Token status: {{ status }}</p>
+    <h2>{{ t('pages.settingsAuth.title') }}</h2>
+    <p class="muted">{{ t('pages.settingsAuth.tokenStatus') }}: {{ status }}</p>
 
     <div class="form-row">
       <input
