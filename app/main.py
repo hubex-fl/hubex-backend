@@ -155,6 +155,12 @@ async def _token_cleanup_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---- Startup ----
+    # Auto-create all tables on fresh database
+    from app.db.base import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("startup: database tables ensured")
+
     await init_redis()
 
     async with AsyncSessionLocal() as db:
