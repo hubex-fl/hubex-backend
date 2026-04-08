@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { useAlerts } from "../composables/useAlerts";
@@ -10,11 +10,39 @@ import { useToastStore } from "../stores/toast";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { relativeTime } from "../composables/useRecentAlerts";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import { apiFetch } from "../lib/api";
+import type { Device } from "../composables/useDevices";
 
 const alertRoute = useRoute();
+const router = useRouter();
 const { t } = useI18n();
 const caps = useCapabilities();
 const toast = useToastStore();
+
+// ── Device name lookup ───────────────────────────────────────────────────────
+const deviceMap = ref<Map<number, string>>(new Map());
+
+async function fetchDeviceNames() {
+  try {
+    const devices = await apiFetch<Device[]>("/api/v1/devices");
+    const map = new Map<number, string>();
+    for (const d of devices) {
+      map.set(d.id, d.name || d.device_uid);
+    }
+    deviceMap.value = map;
+  } catch {
+    // Non-critical — device links still work, just without names
+  }
+}
+
+function deviceNameFor(deviceId: number | null): string {
+  if (!deviceId) return "";
+  return deviceMap.value.get(deviceId) || t('alerts.deviceUnknown', { id: deviceId });
+}
+
+onMounted(() => {
+  fetchDeviceNames();
+});
 
 const {
   rules,
@@ -63,11 +91,36 @@ function ruleNameFor(ruleId: number): string {
   return r ? r.name : `Rule #${ruleId}`;
 }
 
+function variableKeyForRule(ruleId: number): string {
+  const r = rules.value.find((r) => r.id === ruleId);
+  if (r?.condition_type === "variable_threshold" && r.condition_config?.variable_key) {
+    return String(r.condition_config.variable_key);
+  }
+  return "";
+}
+
+function deviceUidForRule(ruleId: number): string {
+  const r = rules.value.find((r) => r.id === ruleId);
+  if (r?.condition_config?.device_uid) {
+    return String(r.condition_config.device_uid);
+  }
+  return "";
+}
+
 // ── Event Actions ─────────────────────────────────────────────────────────
 const ackingIds = ref(new Set<number>());
 const resolvingIds = ref(new Set<number>());
 const justAckedId = ref<number | null>(null);
 const justAckedRuleId = ref<number | null>(null);
+
+/** Count how many times the same rule fired today (for recurring alert hint) */
+function todayCountForRule(ruleId: number): number {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return events.value.filter(
+    (e) => e.rule_id === ruleId && new Date(e.triggered_at).getTime() >= todayStart.getTime(),
+  ).length;
+}
 
 async function handleAck(event: AlertEvent) {
   ackingIds.value.add(event.id);
@@ -76,11 +129,13 @@ async function handleAck(event: AlertEvent) {
     toast.addToast(t('alerts.acknowledged'), "success");
     justAckedId.value = event.id;
     justAckedRuleId.value = event.rule_id;
-    // Auto-dismiss after 15s
-    setTimeout(() => { if (justAckedId.value === event.id) justAckedId.value = null; }, 15000);
+    // Auto-dismiss after 10s
+    setTimeout(() => { if (justAckedId.value === event.id) dismissAckBar(); }, 10000);
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to acknowledge alert"), "error");
+    // Refresh to get current state (event may have been auto-resolved)
+    await reload();
   } finally {
     ackingIds.value.delete(event.id);
   }
@@ -91,6 +146,32 @@ function dismissAckBar() {
   justAckedRuleId.value = null;
 }
 
+/** Mute = disable the rule that fired this alert */
+const mutingRuleId = ref<number | null>(null);
+
+async function handleMuteRule(ruleId: number) {
+  mutingRuleId.value = ruleId;
+  try {
+    await updateRule(ruleId, { enabled: false });
+    toast.addToast(t('alerts.ruleMuted'), "success");
+    dismissAckBar();
+  } catch (err) {
+    const info = parseApiError(err);
+    toast.addToast(mapErrorToUserText(info, "Failed to mute rule"), "error");
+  } finally {
+    mutingRuleId.value = null;
+  }
+}
+
+function navigateToAutomation(ruleId: number) {
+  const query: Record<string, string> = { create: 'true' };
+  const vk = variableKeyForRule(ruleId);
+  if (vk) query.variable_key = vk;
+  const duid = deviceUidForRule(ruleId);
+  if (duid) query.device_uid = duid;
+  router.push({ path: '/automations', query });
+}
+
 async function handleResolve(event: AlertEvent) {
   resolvingIds.value.add(event.id);
   try {
@@ -99,6 +180,8 @@ async function handleResolve(event: AlertEvent) {
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to resolve alert"), "error");
+    // Refresh to get current state
+    await reload();
   } finally {
     resolvingIds.value.delete(event.id);
   }
@@ -347,7 +430,7 @@ const statusClass: Record<string, string> = {
           <svg class="h-3.5 w-3.5" :class="isRefreshing ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Refresh
+          {{ t('alerts.refresh') }}
         </button>
         </div>
       </div>
@@ -363,7 +446,7 @@ const statusClass: Record<string, string> = {
       <!-- Tabs -->
       <div class="flex gap-1 border-b border-[var(--border)]">
         <button
-          v-for="tab in [{ key: 'events', label: 'Events' }, { key: 'rules', label: 'Rules' }]"
+          v-for="tab in [{ key: 'events', label: t('alerts.events') }, { key: 'rules', label: t('alerts.rules') }]"
           :key="tab.key"
           :class="[
             'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
@@ -405,7 +488,7 @@ const statusClass: Record<string, string> = {
               ]"
               @click="statusFilter = s as typeof statusFilter"
             >
-              {{ s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1) }}
+              {{ s === 'all' ? t('alerts.allFilter') : s.charAt(0).toUpperCase() + s.slice(1) }}
             </button>
           </div>
 
@@ -414,113 +497,137 @@ const statusClass: Record<string, string> = {
             v-model="ruleFilter"
             class="ml-auto text-xs px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]"
           >
-            <option value="all">All Rules</option>
+            <option value="all">{{ t('alerts.allRules') }}</option>
             <option v-for="r in rules" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
 
           <!-- Contextual: Create Automation from alerts -->
           <button
             class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-            title="Create automation to handle these alerts"
-            @click="$router.push({ path: '/automations', query: { create: 'true' } })"
+            :title="t('alerts.createAutomation')"
+            @click="ruleFilter !== 'all' ? navigateToAutomation(ruleFilter as number) : router.push({ path: '/automations', query: { create: 'true' } })"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
-            Create Automation
+            {{ t('alerts.createAutomation') }}
           </button>
         </div>
 
         <!-- Event list -->
         <UEmpty
           v-if="filteredEvents.length === 0"
-          title="No alert events"
-          description="Alert events appear here when a rule is triggered. They are generated automatically when conditions are met."
+          :title="t('alerts.noEvents')"
+          :description="t('alerts.noEventsDesc')"
           icon="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
         />
 
         <div v-else class="space-y-2">
-          <div
-            v-for="ev in filteredEvents"
-            :key="ev.id"
-            class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 flex items-start gap-3"
-          >
-            <!-- Severity badge -->
-            <span
-              :class="['shrink-0 mt-0.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[ev.status === 'firing' ? (rules.find(r => r.id === ev.rule_id)?.severity ?? 'info') : (rules.find(r => r.id === ev.rule_id)?.severity ?? 'info')]]"
+          <template v-for="ev in filteredEvents" :key="ev.id">
+            <div
+              class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 flex items-start gap-3"
             >
-              {{ rules.find(r => r.id === ev.rule_id)?.severity ?? "info" }}
-            </span>
+              <!-- Severity badge -->
+              <span
+                :class="['shrink-0 mt-0.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[rules.find(r => r.id === ev.rule_id)?.severity ?? 'info']]"
+              >
+                {{ rules.find(r => r.id === ev.rule_id)?.severity ?? "info" }}
+              </span>
 
-            <!-- Main content -->
-            <div class="flex-1 min-w-0 space-y-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <!-- Status badge -->
-                <span
-                  :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', statusClass[ev.status], ev.status === 'firing' ? 'animate-pulse' : '']"
+              <!-- Main content -->
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Status badge -->
+                  <span
+                    :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', statusClass[ev.status], ev.status === 'firing' ? 'animate-pulse' : '']"
+                  >
+                    {{ ev.status }}
+                  </span>
+                  <span class="text-xs text-[var(--text-muted)]">{{ ruleNameFor(ev.rule_id) }}</span>
+                  <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
+                </div>
+                <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ ev.message }}</p>
+                <!-- Clickable device name link -->
+                <router-link
+                  v-if="ev.device_id"
+                  :to="`/devices/${ev.device_id}`"
+                  class="inline-flex items-center gap-1 text-xs text-[var(--primary)] hover:underline mt-0.5"
                 >
-                  {{ ev.status }}
-                </span>
-                <span class="text-xs text-[var(--text-muted)]">{{ ruleNameFor(ev.rule_id) }}</span>
-                <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                  </svg>
+                  {{ deviceNameFor(ev.device_id) }}
+                </router-link>
               </div>
-              <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ ev.message }}</p>
-              <!-- Clickable device link -->
-              <router-link
-                v-if="ev.device_id"
-                :to="`/devices/${ev.device_id}`"
-                class="inline-flex items-center gap-1 text-xs text-[var(--primary)] hover:underline mt-0.5"
-              >
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-                </svg>
-                Device #{{ ev.device_id }}
-              </router-link>
+
+              <!-- Actions -->
+              <div class="shrink-0 flex gap-1.5">
+                <button
+                  v-if="ev.status === 'firing'"
+                  :disabled="ackingIds.has(ev.id)"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 disabled:opacity-50 transition-colors"
+                  @click="handleAck(ev)"
+                >
+                  {{ ackingIds.has(ev.id) ? '...' : t('alerts.acknowledge') }}
+                </button>
+                <button
+                  v-if="ev.status !== 'resolved'"
+                  :disabled="resolvingIds.has(ev.id)"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 disabled:opacity-50 transition-colors"
+                  @click="handleResolve(ev)"
+                >
+                  {{ resolvingIds.has(ev.id) ? '...' : t('alerts.resolve') }}
+                </button>
+              </div>
             </div>
 
-            <!-- Actions -->
-            <div class="shrink-0 flex gap-1.5">
-              <button
-                v-if="ev.status === 'firing'"
-                :disabled="ackingIds.has(ev.id)"
-                class="px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 disabled:opacity-50 transition-colors"
-                @click="handleAck(ev)"
-              >
-                {{ ackingIds.has(ev.id) ? "…" : "Ack" }}
-              </button>
-              <button
-                v-if="ev.status !== 'resolved'"
-                :disabled="resolvingIds.has(ev.id)"
-                class="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 disabled:opacity-50 transition-colors"
-                @click="handleResolve(ev)"
-              >
-                {{ resolvingIds.has(ev.id) ? "…" : "Resolve" }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Post-Acknowledge Action Bar -->
-          <div
-            v-if="justAckedId === ev.id"
-            class="flex items-center gap-3 px-4 py-2 mt-1 rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 text-xs"
-          >
-            <span class="text-[var(--text-muted)]">Alert acknowledged.</span>
-            <router-link
-              v-if="ev.device_uid || ev.device_id"
-              :to="`/devices/${ev.device_uid || ev.device_id}`"
-              class="text-[var(--primary)] hover:underline"
-            >Zum Device</router-link>
-            <button
-              class="text-[var(--primary)] hover:underline"
-              @click="$router.push({ path: '/automations', query: { create: 'true', variable_key: ev.variable_key || '' } })"
-            >Create Automation</button>
-            <button
-              class="text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-auto"
-              @click="dismissAckBar"
+            <!-- Post-Acknowledge Action Bar -->
+            <Transition
+              enter-active-class="transition-all duration-300 ease-out"
+              leave-active-class="transition-all duration-200 ease-in"
+              enter-from-class="opacity-0 -translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 -translate-y-1"
             >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
+              <div
+                v-if="justAckedId === ev.id"
+                class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 text-xs"
+              >
+                <span class="text-[var(--text-muted)]">{{ t('alerts.ackBarMessage') }} &rarr;</span>
+                <router-link
+                  v-if="ev.device_id"
+                  :to="`/devices/${ev.device_id}`"
+                  class="text-[var(--primary)] hover:underline font-medium"
+                >{{ t('alerts.viewDevice') }}</router-link>
+                <button
+                  class="text-[var(--primary)] hover:underline font-medium"
+                  @click="navigateToAutomation(ev.rule_id)"
+                >{{ t('alerts.createAutomation') }}</button>
+                <button
+                  class="text-[var(--primary)] hover:underline font-medium"
+                  :title="t('alerts.muteRuleTooltip')"
+                  :disabled="mutingRuleId === ev.rule_id"
+                  @click="handleMuteRule(ev.rule_id)"
+                >{{ mutingRuleId === ev.rule_id ? '...' : t('alerts.muteRule') }}</button>
+
+                <!-- Recurring alert hint -->
+                <span
+                  v-if="todayCountForRule(ev.rule_id) > 3"
+                  class="text-[var(--status-warn)] italic"
+                >
+                  {{ t('alerts.recurringHint', { count: todayCountForRule(ev.rule_id) }) }}
+                </span>
+
+                <button
+                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-auto"
+                  @click="dismissAckBar"
+                >
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </Transition>
+          </template>
         </div>
       </template>
 

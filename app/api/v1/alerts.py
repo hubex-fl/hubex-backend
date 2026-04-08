@@ -227,11 +227,16 @@ async def get_alert_event(event_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/alerts/{event_id}/ack", response_model=AlertEventOut)
 async def acknowledge_alert_event(
     event_id: int,
-    data: AckIn,
+    data: AckIn | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     ev = await _get_event_or_404(event_id, db)
-    if ev.status != "firing":
+    if data is None:
+        data = AckIn()
+    # Idempotent: if already acknowledged, return as-is
+    if ev.status == "acknowledged":
+        return ev
+    if ev.status not in ("firing", "acknowledged"):
         raise HTTPException(status_code=409, detail=f"cannot acknowledge event with status '{ev.status}'")
 
     now = datetime.now(timezone.utc)
@@ -258,8 +263,9 @@ async def resolve_alert_event(
     db: AsyncSession = Depends(get_db),
 ):
     ev = await _get_event_or_404(event_id, db)
+    # Idempotent: if already resolved, return as-is
     if ev.status == "resolved":
-        raise HTTPException(status_code=409, detail="event is already resolved")
+        return ev
 
     now = datetime.now(timezone.utc)
     ev.status = "resolved"

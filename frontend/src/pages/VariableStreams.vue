@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * Variable Streams — Real-time variable monitoring dashboard.
- * Grafana / Home Assistant / n8n-inspired design.
- * Foundation for M20 Dashboard Builder.
+ * Variable Streams — Clean, grouped live variable monitoring.
+ * Progressive Disclosure: streams grouped by device, collapsed by default.
+ * Click a group header to expand, click a stream row to see full detail.
  */
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -21,10 +21,10 @@ import { apiFetch } from "../lib/api";
 import type { Device } from "../composables/useDevices";
 
 import UButton from "../components/ui/UButton.vue";
-import USelect from "../components/ui/USelect.vue";
-import UInput  from "../components/ui/UInput.vue";
 import UBadge  from "../components/ui/UBadge.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import VizWidget from "../components/viz/VizWidget.vue";
+import VizSparkline from "../components/viz/VizSparkline.vue";
 
 const { t } = useI18n();
 
@@ -35,25 +35,21 @@ const historyData  = ref<Record<string, VizDataPoint[]>>({});
 const loading      = ref(true);
 const error        = ref<string | null>(null);
 
-// Device selector (M8d Step 6)
+// Device filter
 const deviceUid    = ref(localStorage.getItem("streams_device_uid") ?? "");
 const availableDevices = ref<Device[]>([]);
 const devicesLoading = ref(false);
-const scopeFilter  = ref<"all" | VariableScope>("all");
 const searchTerm   = ref("");
 const timeRange    = ref<TimeRange>("1h");
-const selectedKeys = ref<Set<string>>(new Set());
-const gridCols     = ref<2 | 3 | 4>(3);
-const fullscreenKey = ref<string | null>(null);
 const refreshing   = ref(false);
 
-// ── Grid col options ───────────────────────────────────────────────────
-const COL_OPTIONS = [
-  { value: 2, label: "2 cols" },
-  { value: 3, label: "3 cols" },
-  { value: 4, label: "4 cols" },
-] as const;
+// Progressive disclosure: expanded groups (collapsed by default)
+const expandedGroups = ref<Set<string>>(new Set());
 
+// Detail overlay for a single stream
+const detailKey = ref<string | null>(null);
+
+// ── Time range options ────────────────────────────────────────────────
 const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: "1h",  label: "1h" },
   { value: "6h",  label: "6h" },
@@ -62,25 +58,26 @@ const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: "30d", label: "30d" },
 ];
 
-const SCOPE_OPTIONS = [
-  { value: "all",    label: "All scopes" },
-  { value: "global", label: "Global" },
-  { value: "device", label: "Device" },
-] as const;
+// ── Group definitions by scope/device ─────────────────────────────────
+interface StreamGroup {
+  id: string;        // "global" or device_uid
+  label: string;
+  isDevice: boolean;
+  device?: Device;
+  streams: VariableDefinition[];
+}
 
-const deviceOptions = computed(() => [
-  { value: "", label: "All devices" },
-  ...availableDevices.value.map((d) => ({
-    value: d.device_uid,
-    label: d.label || d.device_uid,
-  })),
-]);
-
-// ── Filtered definitions ───────────────────────────────────────────────
 const filteredDefs = computed(() => {
   const term = searchTerm.value.trim().toLowerCase();
   return definitions.value.filter((d) => {
-    if (scopeFilter.value !== "all" && d.scope !== scopeFilter.value) return false;
+    // If device filter is set, only show device-scoped vars
+    if (deviceUid.value && d.scope === "device") return true;
+    if (deviceUid.value && d.scope === "global") return true;
+    if (!term) return true;
+    return d.key.toLowerCase().includes(term)
+      || (d.category ?? "").toLowerCase().includes(term)
+      || (d.description ?? "").toLowerCase().includes(term);
+  }).filter((d) => {
     if (!term) return true;
     return d.key.toLowerCase().includes(term)
       || (d.category ?? "").toLowerCase().includes(term)
@@ -88,10 +85,95 @@ const filteredDefs = computed(() => {
   });
 });
 
-const activeDefs = computed(() =>
-  selectedKeys.value.size === 0
-    ? filteredDefs.value
-    : filteredDefs.value.filter((d) => selectedKeys.value.has(d.key))
+const streamGroups = computed<StreamGroup[]>(() => {
+  const groups: StreamGroup[] = [];
+  const globalStreams = filteredDefs.value.filter((d) => d.scope === "global");
+  const deviceStreams = filteredDefs.value.filter((d) => d.scope === "device");
+
+  if (globalStreams.length) {
+    groups.push({
+      id: "global",
+      label: t('variableStreams.globalVariables'),
+      isDevice: false,
+      streams: globalStreams,
+    });
+  }
+
+  if (deviceUid.value) {
+    // When a specific device is selected, show device streams under that device
+    const dev = availableDevices.value.find((d) => d.device_uid === deviceUid.value);
+    if (deviceStreams.length) {
+      groups.push({
+        id: deviceUid.value,
+        label: dev?.name || deviceUid.value,
+        isDevice: true,
+        device: dev,
+        streams: deviceStreams,
+      });
+    }
+  } else {
+    // No device filter: show device-scoped streams grouped generically
+    if (deviceStreams.length) {
+      groups.push({
+        id: "device-scoped",
+        label: t('variableStreams.deviceVariables'),
+        isDevice: true,
+        streams: deviceStreams,
+      });
+    }
+  }
+
+  return groups;
+});
+
+const totalStreamCount = computed(() =>
+  streamGroups.value.reduce((sum, g) => sum + g.streams.length, 0)
+);
+
+// ── Group toggle ──────────────────────────────────────────────────────
+function toggleGroup(groupId: string) {
+  const next = new Set(expandedGroups.value);
+  if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+  expandedGroups.value = next;
+}
+
+function isGroupExpanded(groupId: string): boolean {
+  return expandedGroups.value.has(groupId);
+}
+
+// ── Format helpers ────────────────────────────────────────────────────
+function formatValue(val: unknown): string {
+  if (val === null || val === undefined) return "--";
+  if (typeof val === "number") return Number.isInteger(val) ? String(val) : (val as number).toFixed(2);
+  if (typeof val === "boolean") return val ? "true" : "false";
+  if (typeof val === "object") return JSON.stringify(val).slice(0, 40);
+  return String(val).slice(0, 40);
+}
+
+function lastUpdateText(key: string): string {
+  const pts = historyData.value[key];
+  if (!pts?.length) return "--";
+  const last = Math.max(...pts.map((p) => p.t));
+  const ago = Math.floor(Date.now() / 1000 - last);
+  if (ago < 60)   return `${ago}s`;
+  if (ago < 3600) return `${Math.floor(ago / 60)}m`;
+  if (ago < 86400) return `${Math.floor(ago / 3600)}h`;
+  return `${Math.floor(ago / 86400)}d`;
+}
+
+// ── Detail overlay ────────────────────────────────────────────────────
+function openDetail(key: string) {
+  detailKey.value = key;
+}
+function closeDetail() {
+  detailKey.value = null;
+}
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") closeDetail();
+}
+
+const detailDef = computed(() =>
+  detailKey.value ? definitions.value.find((d) => d.key === detailKey.value) ?? null : null
 );
 
 // ── Load data ─────────────────────────────────────────────────────────
@@ -99,7 +181,7 @@ async function loadAll() {
   loading.value = true;
   error.value = null;
   try {
-    const defs = await listDefinitions(scopeFilter.value === "all" ? undefined : scopeFilter.value);
+    const defs = await listDefinitions();
     definitions.value = defs;
     await Promise.all([loadCurrentValues(defs), loadAllHistory(defs)]);
   } catch (e) {
@@ -151,7 +233,7 @@ async function loadAllHistory(defs: VariableDefinition[]) {
   historyData.value = hist;
 }
 
-// ── Auto-refresh ───────────────────────────────────────────────────────
+// ── Auto-refresh ──────────────────────────────────────────────────────
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 function startRefresh() {
@@ -171,35 +253,7 @@ function stopRefresh() {
   if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
 }
 
-// ── Fullscreen ─────────────────────────────────────────────────────────
-function openFullscreen(key: string) {
-  fullscreenKey.value = key;
-}
-function closeFullscreen() {
-  fullscreenKey.value = null;
-}
-
-function handleKeydown(e: KeyboardEvent) {
-  if (e.key === "Escape") closeFullscreen();
-}
-
-// ── Toggle selection ───────────────────────────────────────────────────
-function toggleSelect(key: string) {
-  const next = new Set(selectedKeys.value);
-  if (next.has(key)) next.delete(key); else next.add(key);
-  selectedKeys.value = next;
-}
-
-function clearSelection() {
-  selectedKeys.value = new Set();
-}
-
-// ── Watchers ────────────────────────────────────────────────────────────
-watch([scopeFilter, deviceUid], loadAll);
-watch(deviceUid, (v) => localStorage.setItem("streams_device_uid", v));
-watch(timeRange, () => loadAllHistory(definitions.value));
-
-// ── Load available devices for selector ───────────────────────────────────
+// ── Load available devices ────────────────────────────────────────────
 async function loadDevices() {
   devicesLoading.value = true;
   try {
@@ -212,7 +266,14 @@ async function loadDevices() {
   }
 }
 
-// ── Lifecycle ────────────────────────────────────────────────────────────
+// ── Watchers ──────────────────────────────────────────────────────────
+watch(deviceUid, (v) => {
+  localStorage.setItem("streams_device_uid", v);
+  loadAll();
+});
+watch(timeRange, () => loadAllHistory(definitions.value));
+
+// ── Lifecycle ─────────────────────────────────────────────────────────
 onMounted(() => {
   loadDevices();
   loadAll();
@@ -223,10 +284,6 @@ onUnmounted(() => {
   stopRefresh();
   window.removeEventListener("keydown", handleKeydown);
 });
-
-const fullscreenDef = computed(() =>
-  fullscreenKey.value ? definitions.value.find((d) => d.key === fullscreenKey.value) ?? null : null
-);
 </script>
 
 <template>
@@ -237,12 +294,11 @@ const fullscreenDef = computed(() =>
         <div class="header-title-row">
           <span class="streams-icon">◈</span>
           <h1 class="streams-title">{{ t('variables.streams') }}</h1>
-          <span v-if="refreshing" class="refresh-dot" title="Refreshing…" />
+          <span v-if="refreshing" class="refresh-dot" :title="t('variableStreams.refreshing')" />
         </div>
-        <p class="streams-sub">Live variable monitoring · {{ activeDefs.length }} streams</p>
+        <p class="streams-desc">{{ t('variableStreams.description') }}</p>
       </div>
       <div class="header-right">
-        <!-- Time range tabs -->
         <div class="time-tabs">
           <button
             v-for="tr in TIME_RANGES" :key="tr.value"
@@ -250,15 +306,6 @@ const fullscreenDef = computed(() =>
             :class="{ active: timeRange === tr.value }"
             @click="timeRange = tr.value"
           >{{ tr.label }}</button>
-        </div>
-        <!-- Grid cols -->
-        <div class="grid-selector">
-          <button
-            v-for="opt in COL_OPTIONS" :key="opt.value"
-            class="grid-btn"
-            :class="{ active: gridCols === opt.value }"
-            @click="gridCols = opt.value"
-          >{{ opt.label }}</button>
         </div>
         <UButton size="sm" variant="secondary" @click="loadAll">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -269,88 +316,144 @@ const fullscreenDef = computed(() =>
 
     <!-- ── Filters ────────────────────────────────────────────── -->
     <div class="streams-filters">
-      <UInput v-model="searchTerm" placeholder="Filter streams…" class="filter-search" />
-      <USelect v-model="scopeFilter" class="filter-scope">
-        <option value="all">All scopes</option>
-        <option value="global">Global</option>
-        <option value="device">Device</option>
-      </USelect>
-      <USelect v-model="deviceUid" :options="deviceOptions" class="filter-device" :disabled="devicesLoading" />
-      <button v-if="selectedKeys.size" class="clear-sel" @click="clearSelection">
-        Clear selection ({{ selectedKeys.size }})
-      </button>
+      <div class="filter-device-wrap">
+        <UEntitySelect
+          v-model="deviceUid"
+          entity-type="device"
+          :placeholder="t('variableStreams.filterByDevice')"
+          :optional="true"
+        />
+      </div>
+      <input
+        v-model="searchTerm"
+        type="text"
+        class="filter-search"
+        :placeholder="t('variableStreams.searchStreams')"
+      />
+      <span class="stream-count">{{ totalStreamCount }} {{ t('variableStreams.streamsLabel') }}</span>
     </div>
 
     <!-- ── Error ──────────────────────────────────────────────── -->
     <div v-if="error" class="streams-error">{{ error }}</div>
 
     <!-- ── Loading ───────────────────────────────────────────── -->
-    <div v-if="loading" class="streams-grid" :style="{ '--cols': gridCols }">
-      <div v-for="i in 6" :key="i" class="stream-skeleton" />
-    </div>
-
-    <!-- ── Empty ─────────────────────────────────────────────── -->
-    <div v-else-if="!activeDefs.length" class="streams-empty">
-      <span class="empty-icon">◈</span>
-      <p>No variable streams match your filter</p>
-      <UButton size="sm" variant="secondary" @click="searchTerm = ''; scopeFilter = 'all'">
-        Clear filters
-      </UButton>
-    </div>
-
-    <!-- ── Grid ──────────────────────────────────────────────── -->
-    <div v-else class="streams-grid" :style="{ '--cols': gridCols }">
-      <div
-        v-for="def in activeDefs"
-        :key="def.key"
-        class="stream-card"
-        :class="{ 'card-selected': selectedKeys.has(def.key) }"
-      >
-        <!-- Selection checkbox (top-left overlay) -->
-        <div
-          class="card-select-overlay"
-          :class="{ selected: selectedKeys.has(def.key) }"
-          @click.stop="toggleSelect(def.key)"
-          title="Toggle selection"
-        >
-          <svg v-if="selectedKeys.has(def.key)" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-
-        <!-- Fullscreen button (top-right overlay) -->
-        <button class="card-expand-btn" @click="openFullscreen(def.key)" title="Fullscreen">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-          </svg>
-        </button>
-
-        <!-- VizWidget -->
-        <VizWidget
-          :variableKey="def.key"
-          :label="def.key"
-          :unit="def.unit ?? undefined"
-          :valueType="def.value_type"
-          :displayHint="def.display_hint"
-          :currentValue="currentValues[def.key]"
-          :points="historyData[def.key] ?? []"
-          :min="def.min_value"
-          :max="def.max_value"
-          :height="180"
-          :compact="false"
-          :showHeader="true"
-          :timeRange="timeRange"
-          @range-change="(r) => { timeRange = r; loadAllHistory(definitions) }"
-        />
+    <div v-if="loading" class="streams-loading">
+      <div v-for="i in 3" :key="i" class="skeleton-group">
+        <div class="skeleton-header" />
+        <div class="skeleton-row" v-for="j in 2" :key="j" />
       </div>
     </div>
 
-    <!-- ── Fullscreen overlay ─────────────────────────────────── -->
+    <!-- ── Empty ─────────────────────────────────────────────── -->
+    <div v-else-if="!streamGroups.length" class="streams-empty">
+      <span class="empty-icon">◈</span>
+      <p>{{ t('variableStreams.noStreams') }}</p>
+      <UButton size="sm" variant="secondary" @click="searchTerm = ''; deviceUid = ''">
+        {{ t('variableStreams.clearFilters') }}
+      </UButton>
+    </div>
+
+    <!-- ── Grouped streams ───────────────────────────────────── -->
+    <div v-else class="streams-groups">
+      <div
+        v-for="group in streamGroups"
+        :key="group.id"
+        class="stream-group"
+      >
+        <!-- Group header — click to expand/collapse -->
+        <button
+          class="group-header"
+          :class="{ expanded: isGroupExpanded(group.id) }"
+          @click="toggleGroup(group.id)"
+        >
+          <div class="group-left">
+            <svg class="chevron" :class="{ rotated: isGroupExpanded(group.id) }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span v-if="group.isDevice" class="group-icon-device">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+              </svg>
+            </span>
+            <span v-else class="group-icon-global">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+              </svg>
+            </span>
+            <span class="group-name">{{ group.label }}</span>
+            <span class="group-count">{{ group.streams.length }}</span>
+          </div>
+          <div class="group-right">
+            <UBadge
+              v-if="group.device?.online"
+              variant="success"
+              size="sm"
+            >{{ t('status.online') }}</UBadge>
+            <UBadge
+              v-else-if="group.device && !group.device.online"
+              variant="danger"
+              size="sm"
+            >{{ t('status.offline') }}</UBadge>
+          </div>
+        </button>
+
+        <!-- Expanded: stream rows -->
+        <div v-if="isGroupExpanded(group.id)" class="group-body">
+          <div class="stream-table-header">
+            <span class="col-key">{{ t('variableStreams.colKey') }}</span>
+            <span class="col-value">{{ t('variableStreams.colValue') }}</span>
+            <span class="col-sparkline">{{ t('variableStreams.colTrend') }}</span>
+            <span class="col-updated">{{ t('variableStreams.colUpdated') }}</span>
+            <span class="col-type">{{ t('common.type') }}</span>
+          </div>
+          <button
+            v-for="def in group.streams"
+            :key="def.key"
+            class="stream-row"
+            @click="openDetail(def.key)"
+            :title="def.description || def.key"
+          >
+            <span class="col-key">
+              <code class="key-name">{{ def.key }}</code>
+              <span v-if="def.unit" class="key-unit">({{ def.unit }})</span>
+            </span>
+            <span class="col-value">
+              <code class="current-val">{{ formatValue(currentValues[def.key]) }}</code>
+            </span>
+            <span class="col-sparkline">
+              <VizSparkline
+                :points="historyData[def.key] ?? []"
+                :label="def.key"
+                :width="80"
+                :height="24"
+              />
+            </span>
+            <span class="col-updated">
+              {{ lastUpdateText(def.key) }}
+            </span>
+            <span class="col-type">
+              <span class="type-badge">{{ def.value_type }}</span>
+            </span>
+          </button>
+
+          <div v-if="!group.streams.length" class="group-empty">
+            {{ t('variableStreams.noStreamsInGroup') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Detail overlay ────────────────────────────────────── -->
     <Teleport to="body">
-      <div v-if="fullscreenKey && fullscreenDef" class="fullscreen-overlay" @click.self="closeFullscreen">
-        <div class="fullscreen-panel">
-          <div class="fullscreen-header">
-            <span class="fs-title">{{ fullscreenDef.key }}</span>
-            <div class="fs-actions">
+      <div v-if="detailKey && detailDef" class="detail-overlay" @click.self="closeDetail">
+        <div class="detail-panel">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <code class="detail-key">{{ detailDef.key }}</code>
+              <span v-if="detailDef.unit" class="detail-unit">{{ detailDef.unit }}</span>
+              <span class="detail-scope">{{ detailDef.scope }}</span>
+            </div>
+            <div class="detail-actions">
               <div class="time-tabs">
                 <button
                   v-for="tr in TIME_RANGES" :key="tr.value"
@@ -359,30 +462,30 @@ const fullscreenDef = computed(() =>
                   @click="timeRange = tr.value; loadAllHistory(definitions)"
                 >{{ tr.label }}</button>
               </div>
-              <button class="fs-close" @click="closeFullscreen" title="Close (Esc)">
+              <button class="detail-close" @click="closeDetail" :title="t('variableStreams.closeEsc')">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
           </div>
-          <div class="fullscreen-body">
+          <div class="detail-body">
             <VizWidget
-              :variableKey="fullscreenDef.key"
-              :label="fullscreenDef.key"
-              :unit="fullscreenDef.unit ?? undefined"
-              :valueType="fullscreenDef.value_type"
+              :variableKey="detailDef.key"
+              :label="detailDef.key"
+              :unit="detailDef.unit ?? undefined"
+              :valueType="detailDef.value_type"
               :displayHint="'line_chart'"
-              :currentValue="currentValues[fullscreenDef.key]"
-              :points="historyData[fullscreenDef.key] ?? []"
-              :min="fullscreenDef.min_value"
-              :max="fullscreenDef.max_value"
-              :height="400"
+              :currentValue="currentValues[detailDef.key]"
+              :points="historyData[detailDef.key] ?? []"
+              :min="detailDef.min_value"
+              :max="detailDef.max_value"
+              :height="350"
               :showHeader="false"
               :timeRange="timeRange"
             />
           </div>
-          <div v-if="fullscreenDef.description" class="fullscreen-footer">
-            <span class="fs-desc">{{ fullscreenDef.description }}</span>
-            <span v-if="fullscreenDef.category" class="fs-cat">{{ fullscreenDef.category }}</span>
+          <div v-if="detailDef.description || detailDef.category" class="detail-footer">
+            <span v-if="detailDef.description" class="detail-desc">{{ detailDef.description }}</span>
+            <span v-if="detailDef.category" class="detail-cat">{{ detailDef.category }}</span>
           </div>
         </div>
       </div>
@@ -397,7 +500,7 @@ const fullscreenDef = computed(() =>
   padding-bottom: 40px;
 }
 
-/* ── Header ─────────────────────────────────────────────────── */
+/* ── Header ───────────────────────────────────────────────── */
 .streams-header {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
   flex-wrap: wrap;
@@ -406,7 +509,7 @@ const fullscreenDef = computed(() =>
 .header-title-row { display: flex; align-items: center; gap: 10px; }
 .streams-icon { font-size: 20px; color: #58a6ff; }
 .streams-title { font-size: 20px; font-weight: 600; color: #e6edf3; margin: 0; }
-.streams-sub { font-size: 12px; color: #8b949e; margin: 0; }
+.streams-desc { font-size: 13px; color: #8b949e; margin: 0; max-width: 520px; line-height: 1.5; }
 .refresh-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: #58a6ff; animation: pulse 1s infinite;
@@ -427,29 +530,23 @@ const fullscreenDef = computed(() =>
 .time-tab:hover  { background: #30363d; color: #c9d1d9; }
 .time-tab.active { background: #30363d; color: #58a6ff; font-weight: 600; }
 
-/* ── Grid selector ────────────────────────────────────────── */
-.grid-selector {
-  display: flex; gap: 1px; background: #21262d; border-radius: 5px; padding: 2px;
-}
-.grid-btn {
-  padding: 3px 8px; font-size: 10px; color: #8b949e; border: none;
-  background: transparent; border-radius: 3px; cursor: pointer;
-}
-.grid-btn.active { background: #30363d; color: #c9d1d9; }
-
-/* ── Filters ─────────────────────────────────────────────── */
+/* ── Filters ──────────────────────────────────────────────── */
 .streams-filters {
-  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
-.filter-search { flex: 1; min-width: 160px; }
-.filter-scope  { width: 130px; }
-.filter-device { width: 200px; }
-.clear-sel {
-  font-size: 12px; color: #58a6ff; background: #58a6ff11; border: 1px solid #58a6ff33;
-  border-radius: 4px; padding: 4px 10px; cursor: pointer;
-  white-space: nowrap;
+.filter-device-wrap { width: 240px; }
+.filter-search {
+  flex: 1; min-width: 160px;
+  padding: 7px 12px; font-size: 13px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+  color: #e6edf3; outline: none;
+  transition: border-color 0.15s;
 }
-.clear-sel:hover { background: #58a6ff22; }
+.filter-search:focus { border-color: #58a6ff; }
+.filter-search::placeholder { color: #484f58; }
+.stream-count {
+  font-size: 12px; color: #8b949e; white-space: nowrap;
+}
 
 /* ── Error ───────────────────────────────────────────────── */
 .streams-error {
@@ -457,59 +554,25 @@ const fullscreenDef = computed(() =>
   border-radius: 6px; color: #f85149; font-size: 13px; padding: 10px 14px;
 }
 
-/* ── Grid ────────────────────────────────────────────────── */
-.streams-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
-  gap: 12px;
+/* ── Loading ─────────────────────────────────────────────── */
+.streams-loading {
+  display: flex; flex-direction: column; gap: 12px;
 }
-
-/* ── Card ────────────────────────────────────────────────── */
-.stream-card {
-  position: relative;
-  border-radius: 6px;
-  transition: transform 0.1s, box-shadow 0.15s;
+.skeleton-group {
+  display: flex; flex-direction: column; gap: 4px;
 }
-.stream-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-}
-.stream-card.card-selected {
-  outline: 2px solid #58a6ff55;
-  outline-offset: 1px;
-}
-
-/* Selection overlay (top-left circle) */
-.card-select-overlay {
-  position: absolute; top: 8px; left: 8px; z-index: 10;
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 1px solid #30363d; background: #21262d;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.1s;
-  color: #58a6ff;
-}
-.stream-card:hover .card-select-overlay,
-.card-select-overlay.selected { opacity: 1; }
-.card-select-overlay.selected { background: #58a6ff; border-color: #58a6ff; color: #fff; }
-
-/* Expand button (top-right) */
-.card-expand-btn {
-  position: absolute; top: 8px; right: 8px; z-index: 10;
-  width: 22px; height: 22px; border-radius: 4px;
-  border: 1px solid #30363d; background: #21262d;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  color: #8b949e; opacity: 0; transition: opacity 0.1s;
-}
-.stream-card:hover .card-expand-btn { opacity: 1; }
-.card-expand-btn:hover { color: #58a6ff; background: #30363d; }
-
-/* ── Skeleton ─────────────────────────────────────────────── */
-.stream-skeleton {
-  height: 240px;
+.skeleton-header {
+  height: 44px;
   background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
   background-size: 200% 100%;
-  border-radius: 6px;
-  border: 1px solid #30363d;
+  border-radius: 6px; border: 1px solid #30363d;
+  animation: shimmer 1.4s infinite;
+}
+.skeleton-row {
+  height: 36px; margin-left: 16px;
+  background: linear-gradient(90deg, #161b22 25%, #21262d 50%, #161b22 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
   animation: shimmer 1.4s infinite;
 }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -521,52 +584,179 @@ const fullscreenDef = computed(() =>
 }
 .empty-icon { font-size: 32px; color: #30363d; }
 
-/* ── Fullscreen ──────────────────────────────────────────── */
-.fullscreen-overlay {
+/* ── Groups ──────────────────────────────────────────────── */
+.streams-groups {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.stream-group {
+  border: 1px solid #21262d; border-radius: 8px;
+  overflow: hidden; background: #0d1117;
+}
+
+/* ── Group header ────────────────────────────────────────── */
+.group-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 10px 14px; gap: 12px;
+  background: #161b22; border: none; cursor: pointer;
+  transition: background 0.1s;
+}
+.group-header:hover { background: #1c2128; }
+.group-header.expanded { border-bottom: 1px solid #21262d; }
+.group-left { display: flex; align-items: center; gap: 8px; }
+.group-right { display: flex; align-items: center; gap: 8px; }
+
+.chevron {
+  color: #484f58; transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.chevron.rotated { transform: rotate(90deg); }
+
+.group-icon-device,
+.group-icon-global {
+  color: #8b949e; display: flex; align-items: center;
+}
+.group-icon-device { color: #58a6ff; }
+.group-icon-global { color: #2dd4bf; }
+
+.group-name {
+  font-size: 13px; font-weight: 600; color: #e6edf3;
+}
+.group-count {
+  font-size: 11px; color: #8b949e; background: #21262d;
+  padding: 1px 7px; border-radius: 10px;
+}
+
+/* ── Group body (expanded) ───────────────────────────────── */
+.group-body {
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.stream-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 100px 70px 70px;
+  gap: 8px; padding: 6px 14px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #484f58; border-bottom: 1px solid #21262d;
+  user-select: none;
+}
+
+/* ── Stream row ──────────────────────────────────────────── */
+.stream-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 100px 70px 70px;
+  gap: 8px; padding: 8px 14px;
+  align-items: center;
+  border: none; background: transparent; cursor: pointer;
+  width: 100%; text-align: left;
+  border-bottom: 1px solid #161b2200;
+  transition: background 0.1s, border-color 0.1s;
+}
+.stream-row:hover {
+  background: #161b22;
+  border-bottom-color: #21262d;
+}
+.stream-row:last-child { border-bottom: none; }
+
+.col-key {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+}
+.key-name {
+  font-size: 12px; color: #c9d1d9; font-family: 'IBM Plex Mono', monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.key-unit { font-size: 11px; color: #484f58; flex-shrink: 0; }
+
+.col-value { min-width: 0; }
+.current-val {
+  font-size: 12px; color: #e6edf3; font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+}
+
+.col-sparkline { display: flex; align-items: center; }
+
+.col-updated {
+  font-size: 11px; color: #8b949e; text-align: right;
+}
+
+.col-type { display: flex; align-items: center; }
+.type-badge {
+  font-size: 10px; color: #8b949e; background: #21262d;
+  padding: 2px 6px; border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.group-empty {
+  padding: 20px 14px; text-align: center;
+  font-size: 13px; color: #484f58;
+}
+
+/* ── Detail overlay ──────────────────────────────────────── */
+.detail-overlay {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(0,0,0,0.85);
   backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
 }
-.fullscreen-panel {
+.detail-panel {
   background: #161b22; border: 1px solid #30363d;
-  border-radius: 10px; width: 100%; max-width: 1100px;
+  border-radius: 10px; width: 100%; max-width: 900px;
   overflow: hidden; display: flex; flex-direction: column;
   max-height: calc(100vh - 48px);
 }
-.fullscreen-header {
+.detail-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px 12px; border-bottom: 1px solid #21262d;
+  flex-wrap: wrap; gap: 8px;
 }
-.fs-title { font-family: monospace; font-size: 16px; font-weight: 600; color: #e6edf3; }
-.fs-actions { display: flex; align-items: center; gap: 10px; }
-.fs-close {
+.detail-title-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.detail-key {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px; font-weight: 600; color: #e6edf3;
+}
+.detail-unit { font-size: 13px; color: #8b949e; }
+.detail-scope {
+  font-size: 10px; color: #58a6ff; background: #58a6ff11;
+  padding: 2px 8px; border-radius: 10px; text-transform: uppercase;
+}
+.detail-actions { display: flex; align-items: center; gap: 10px; }
+.detail-close {
   width: 28px; height: 28px; border-radius: 4px;
   background: #21262d; border: 1px solid #30363d;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   color: #8b949e;
 }
-.fs-close:hover { color: #f85149; }
-.fullscreen-body { padding: 16px 20px; flex: 1; overflow: auto; }
-.fullscreen-footer {
+.detail-close:hover { color: #f85149; }
+.detail-body { padding: 16px 20px; flex: 1; overflow: auto; }
+.detail-footer {
   padding: 10px 20px; border-top: 1px solid #21262d;
   display: flex; gap: 10px; align-items: center;
   font-size: 12px;
 }
-.fs-desc { color: #8b949e; }
-.fs-cat {
+.detail-desc { color: #8b949e; }
+.detail-cat {
   color: #58a6ff; background: #58a6ff11;
   padding: 2px 8px; border-radius: 10px;
   font-size: 10px;
 }
 
 /* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .streams-grid { --cols: 2 !important; }
-}
-@media (max-width: 640px) {
-  .streams-grid { --cols: 1 !important; }
+@media (max-width: 768px) {
+  .stream-table-header { display: none; }
+  .stream-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 4px;
+  }
+  .col-sparkline,
+  .col-type { display: none; }
+  .col-updated { grid-column: 2; grid-row: 1; }
+  .col-value { grid-column: 1 / -1; grid-row: 2; }
+  .filter-device-wrap { width: 100%; }
   .header-right { flex-direction: column; align-items: flex-start; }
 }
 </style>

@@ -192,7 +192,7 @@ onUnmounted(() => { stopPolling(); });
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.subtitle') }}</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.description') }}</p>
       </div>
       <div class="flex gap-2">
         <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
@@ -234,9 +234,9 @@ onUnmounted(() => { stopPolling(); });
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput" title="Set cursor to a specific position">Set cursor</UButton>
-            <UButton variant="secondary" size="sm" @click="jumpToNext" title="Jump to next unread event">Jump to next</UButton>
-            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" title="Mark all events up to current position as read">ACK</UButton>
+            <UButton variant="secondary" size="sm" @click="setCursorFromInput" :title="t('pages.events.setCursorTooltip')">Set cursor</UButton>
+            <UButton variant="secondary" size="sm" @click="jumpToNext" :title="t('pages.events.jumpToNextTooltip')">Jump to next</UButton>
+            <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" :title="t('pages.events.ackTooltip')">ACK</UButton>
           </div>
         </div>
 

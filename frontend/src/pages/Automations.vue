@@ -950,7 +950,7 @@ function toggleRuleExpand(id: number) {
 
             <!-- Variable Geofence config -->
             <template v-else-if="formTriggerType === 'variable_geofence'">
-              <p class="text-[10px] text-[var(--text-muted)] bg-[var(--bg-raised)] rounded px-2 py-1">
+              <p class="text-[10px] text-[var(--text-muted)] bg-[var(--bg-raised)] rounded px-2 py-1" :title="t('automations.geofenceTooltip')">
                 GPS variable should contain <code class="font-mono">{{"{"}}lat: number, lng: number{{"}"}}</code>
               </p>
               <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" />
@@ -1097,7 +1097,7 @@ function toggleRuleExpand(id: number) {
             <!-- Call Webhook config -->
             <template v-else-if="formActionType === 'call_webhook'">
               <div class="space-y-1">
-                <label :class="labelClass">URL <span class="text-red-400">*</span></label>
+                <label :class="labelClass" :title="t('automations.webhookUrlTooltip')">URL <span class="text-red-400">*</span></label>
                 <input v-model="actWebhookUrl" type="url" placeholder="https://hooks.example.com/..." :class="inputClass" />
               </div>
               <div class="space-y-1">
@@ -1109,11 +1109,11 @@ function toggleRuleExpand(id: number) {
                 </select>
               </div>
               <div class="space-y-1">
-                <label :class="labelClass">Headers (JSON)</label>
+                <label :class="labelClass" :title="t('automations.webhookHeadersTooltip')">Headers (JSON)</label>
                 <textarea v-model="actWebhookHeaders" rows="2" placeholder='{"Authorization": "Bearer ..."}' :class="[inputClass, 'font-mono text-[10px]']" />
               </div>
               <div class="space-y-1">
-                <label :class="labelClass">Payload Template (JSON)</label>
+                <label :class="labelClass" :title="t('automations.webhookPayloadTooltip')">Payload Template (JSON)</label>
                 <textarea v-model="actWebhookPayload" rows="3" placeholder='{"key": "value"}' :class="[inputClass, 'font-mono text-[10px]']" />
               </div>
             </template>
@@ -1156,7 +1156,7 @@ function toggleRuleExpand(id: number) {
           <div class="space-y-3">
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Settings</h4>
             <div class="space-y-1">
-              <label :class="labelClass" title="Wartezeit in Sekunden bevor die Regel nach dem Feuern erneut auslösen kann">Cooldown: {{ formCooldown }}s</label>
+              <label :class="labelClass" :title="t('automations.cooldownTooltip')">Cooldown: {{ formCooldown }}s</label>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
               <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (kein Cooldown)</span><span>1h</span></div>
             </div>

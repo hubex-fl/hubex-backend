@@ -486,6 +486,22 @@ const connectionLabel = computed(() => {
   if (h === "stale") return "Unterbrochen";
   return "Offline";
 });
+const offlineLastContactTime = computed(() => {
+  const info = deviceInfo.value;
+  if (!info) return "---";
+  if (info.last_seen_at) {
+    try {
+      const dt = new Date(info.last_seen_at);
+      if (Number.isFinite(dt.getTime())) {
+        return dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+    } catch { /* fallback */ }
+  }
+  if (info.last_seen_age_seconds !== null) {
+    return fmtAge(info.last_seen_age_seconds);
+  }
+  return "---";
+});
 const telemetryBattery = computed(() => {
   const p = latestTelemetry.value?.payload;
   if (!p) return null;
@@ -1062,7 +1078,7 @@ async function loadSparklines(): Promise<void> {
   const uid = deviceInfo.value?.device_uid;
   if (!uid) return;
   const numericVars = variables.value.filter(
-    (v) => v.value_type === "int" || v.value_type === "float"
+    (v) => v.resolved_type === "int" || v.resolved_type === "float"
   );
   if (!numericVars.length) return;
 
@@ -1686,7 +1702,30 @@ onUnmounted(() => {
       <span v-if="restrictUnclaimed" class="ml-1 text-[var(--text-muted)]">Claim to view full details.</span>
     </div>
 
-    <!-- Offline ActionBar removed — status shown ONCE in hero card -->
+    <!-- Offline ActionBar — prominent when device is offline -->
+    <div
+      v-if="deviceInfo && !heroRingOnline && !deviceInfoLoading"
+      class="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-[var(--status-bad)]/30 bg-[var(--status-bad)]/5 text-sm"
+    >
+      <span class="flex items-center gap-2 text-[var(--status-bad)] font-semibold">
+        <span class="h-2.5 w-2.5 rounded-full bg-[var(--status-bad)] shrink-0" />
+        {{ t('devices.offline') }}
+      </span>
+      <span class="text-[var(--text-muted)] text-xs">
+        {{ t('devices.offlineSince', { time: offlineLastContactTime }) }}
+      </span>
+      <div class="flex gap-2 ml-auto">
+        <UButton size="sm" variant="secondary" :disabled="capsUnavailable" @click="refreshNow">
+          {{ t('devices.testConnection') }}
+        </UButton>
+        <UButton
+          size="sm"
+          @click="$router.push({ path: '/alerts', query: { create: 'true', device_uid: deviceInfo.device_uid } })"
+        >
+          {{ t('devices.setupAlert') }}
+        </UButton>
+      </div>
+    </div>
 
     <!-- ── Hero Card ─────────────────────────────────────────────────────────── -->
     <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
@@ -2478,9 +2517,14 @@ onUnmounted(() => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs font-mono font-semibold text-[var(--text-primary)] truncate">{{ row.key }}</span>
-                <UBadge v-if="row.value_type" :status="(row.value_type === 'int' || row.value_type === 'float') ? 'ok' : row.value_type === 'bool' ? 'warn' : 'neutral'" size="sm" class="shrink-0">
-                  {{ row.value_type }}{{ row.unit ? ` · ${row.unit}` : '' }}
+                <UBadge v-if="row.resolved_type" :status="(row.resolved_type === 'int' || row.resolved_type === 'float') ? 'ok' : row.resolved_type === 'bool' ? 'warn' : 'neutral'" size="sm" class="shrink-0">
+                  {{ row.resolved_type }}{{ row.constraints?.unit ? ` · ${row.constraints.unit}` : '' }}
                 </UBadge>
+                <span
+                  v-if="row.constraints?.direction"
+                  class="text-[9px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-muted)] shrink-0"
+                  :title="row.constraints.direction === 'read_only' ? 'Read-only variable' : 'Write-only variable'"
+                >{{ row.constraints.direction === 'read_only' ? 'R' : 'W' }}</span>
               </div>
               <!-- Edit mode -->
               <div v-if="editingVarKey === row.key" class="mt-1.5 space-y-2">
@@ -2520,11 +2564,11 @@ onUnmounted(() => {
               <!-- View mode -->
               <div v-else class="flex items-center gap-2 mt-0.5">
                 <p class="text-xs font-mono text-[var(--text-muted)] truncate flex-1">
-                  {{ variableValueText(row) }}
+                  {{ variableValueText(row) }}<span v-if="row.constraints?.unit && !row.is_secret" class="text-[var(--text-muted)] ml-1">{{ row.constraints.unit }}</span>
                 </p>
                 <!-- Inline sparkline for numeric variables (M8d Step 2) -->
                 <VizSparkline
-                  v-if="(row.value_type === 'int' || row.value_type === 'float') && sparklineData[row.key]?.length"
+                  v-if="(row.resolved_type === 'int' || row.resolved_type === 'float') && sparklineData[row.key]?.length"
                   :points="sparklineData[row.key]"
                   :width="72"
                   :height="22"

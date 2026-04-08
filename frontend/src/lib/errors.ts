@@ -18,33 +18,42 @@ export function parseApiError(err: unknown): ApiErrorInfo {
   let detailMessage: string | undefined;
   let meta: Record<string, unknown> | undefined;
 
-  const httpMatch = message.match(/^HTTP\s+(\d{3})(?:\s+([^:]+))?:\s*([\s\S]*)$/i);
+  // Extract HTTP status prefix if present (e.g. "HTTP 422: {...}")
+  let body = message;
+  const httpMatch = message.match(/^HTTP\s+(\d{3})(?:\s+[^:]+)?:\s*([\s\S]*)$/i);
   if (httpMatch) {
     httpStatus = Number(httpMatch[1]);
-    detailMessage = httpMatch[3] || "";
-  } else {
-    const trimmed = message.trim();
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === "object" && "detail" in parsed) {
-          const d = (parsed as any).detail;
-          if (d && typeof d === "object") {
-            code = safeString(d.code);
-            detailMessage = safeString(d.message ?? d.detail ?? d);
-            if ("meta" in d && d.meta && typeof d.meta === "object") {
-              meta = d.meta as Record<string, unknown>;
-            }
-          } else {
-            detailMessage = safeString(d);
+    body = (httpMatch[2] || "").trim();
+  }
+
+  // Try to parse the body as JSON
+  const trimmed = body.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object" && "detail" in parsed) {
+        const d = (parsed as any).detail;
+        if (Array.isArray(d)) {
+          // Pydantic validation error: detail is an array of error objects
+          const msgs = d.map((e: any) => safeString(e.msg || e.message || e)).filter(Boolean);
+          detailMessage = msgs.join("; ") || "Validation error";
+        } else if (d && typeof d === "object") {
+          code = safeString(d.code);
+          detailMessage = safeString(d.message ?? d.detail ?? d);
+          if ("meta" in d && d.meta && typeof d.meta === "object") {
+            meta = d.meta as Record<string, unknown>;
           }
+        } else {
+          detailMessage = safeString(d);
         }
-      } catch {
-        detailMessage = message;
       }
-    } else {
-      detailMessage = message;
+    } catch {
+      detailMessage = body || message;
     }
+  }
+
+  if (!detailMessage) {
+    detailMessage = body || message;
   }
 
   return {
@@ -84,6 +93,9 @@ export function mapErrorToUserText(
   if (msg.includes("pairing code not found")) return "Invalid pairing code";
   if (msg.includes("pairing code expired")) return "Pairing code expired";
   if (msg.includes("pairing code already used")) return "Pairing code already used";
+  if (msg.includes("cannot acknowledge event")) return "This alert was already resolved or acknowledged.";
+  if (msg.includes("cannot resolve event")) return "This alert was already resolved.";
+  if (msg.includes("alert event not found")) return "This alert event no longer exists.";
   if (msg.includes("validation error")) return "Please check your input — some fields are invalid.";
   if (msg.includes("not found")) return "The requested resource was not found.";
   if (msg.includes("already exists")) return "This item already exists.";

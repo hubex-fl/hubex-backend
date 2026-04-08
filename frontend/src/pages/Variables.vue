@@ -592,7 +592,7 @@ onMounted(async () => {
         <UToggle v-model="hideUnrelated" size="sm" />
         <span>Only assigned</span>
       </label>
-      <label class="toolbar-toggle" title="Geheime Variablen in der Übersicht anzeigen/maskieren (z.B. API-Keys, Passwörter)">
+      <label class="toolbar-toggle" :title="t('variables.secretsTooltip')">
         <UToggle v-model="showSecrets" size="sm" />
         <span>Secrets</span>
       </label>

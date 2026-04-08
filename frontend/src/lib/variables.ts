@@ -76,7 +76,7 @@ export type EffectiveVariable = {
   device_uid?: string | null;
   masked?: boolean;
   precedence?: number;
-  constraints?: { unit?: string } | null;
+  constraints?: { unit?: string; direction?: string; min?: number; max?: number } | null;
   resolved_type?: string | null;
 };
 

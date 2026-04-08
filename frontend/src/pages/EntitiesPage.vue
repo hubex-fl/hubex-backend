@@ -526,8 +526,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   <thead>
                     <tr class="text-left text-[var(--text-muted)]">
                       <th class="pb-1.5 pr-4 font-medium">Device ID</th>
-                      <th class="pb-1.5 pr-4 font-medium">Enabled</th>
-                      <th class="pb-1.5 pr-4 font-medium">Priority</th>
+                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.enableBindingTooltip')">Enabled</th>
+                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.priorityTooltip')">Priority</th>
                       <th class="pb-1.5 font-medium"></th>
                     </tr>
                   </thead>
@@ -709,12 +709,12 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
             type="number"
             placeholder="0"
           />
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Priority when multiple bindings apply (higher = more important)</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.entities.priorityTooltip') }}</p>
         </div>
         <div class="flex flex-col gap-1">
           <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Enabled</span>
           <UToggle v-model="bindEnabled" label="Enable binding" />
-          <p class="text-[10px] text-[var(--text-muted)]">Disabled bindings are kept but ignored during evaluation</p>
+          <p class="text-[10px] text-[var(--text-muted)]">{{ t('pages.entities.enableBindingTooltip') }}</p>
         </div>
         <div
           v-if="bindError"

@@ -175,15 +175,42 @@ async function submitCreate() {
       is_default: newIsDefault.value,
     });
 
-    // Add template widgets
+    // Add template widgets (errors are non-fatal — dashboard is already created)
     const tpl = DASHBOARD_TEMPLATES.find((t) => t.id === selectedTemplate.value);
     if (tpl && tpl.widgets.length) {
-      let col = 1;
-      let row = 1;
+      let col = 0;
+      let row = 0;
+      let rowMaxH = 0;
       for (const w of tpl.widgets) {
-        await addWidget(db.id, { ...w, grid_col: col, grid_row: row });
-        col += (w.grid_span_w ?? 4);
-        if (col > 12) { col = 1; row += (w.grid_span_h ?? 3); }
+        const spanW = w.grid_span_w ?? 4;
+        const spanH = w.grid_span_h ?? 3;
+        // Wrap to next row if widget won't fit in remaining columns
+        if (col + spanW > 12) {
+          col = 0;
+          row += rowMaxH || spanH;
+          rowMaxH = 0;
+        }
+        rowMaxH = Math.max(rowMaxH, spanH);
+        try {
+          await addWidget(db.id, {
+            widget_type: w.widget_type,
+            label: w.label ?? null,
+            variable_key: w.variable_key ?? null,
+            device_uid: w.device_uid ?? null,
+            unit: w.unit ?? null,
+            min_value: w.min_value ?? null,
+            max_value: w.max_value ?? null,
+            display_config: w.display_config ?? null,
+            grid_col: col,
+            grid_row: row,
+            grid_span_w: spanW,
+            grid_span_h: spanH,
+          });
+        } catch {
+          // Skip failed widget — dashboard still usable
+          console.warn(`Failed to add template widget "${w.label}"`);
+        }
+        col += spanW;
       }
     }
 
@@ -196,7 +223,7 @@ async function submitCreate() {
     router.push(`/dashboards/${db.id}`);
   } catch (e: unknown) {
     const info = parseApiError(e);
-    createError.value = mapErrorToUserText(info, "Dashboard konnte nicht erstellt werden. Bitte prüfe Name und Template.");
+    createError.value = mapErrorToUserText(info, "Could not create dashboard. Please check your input.");
   } finally {
     creating.value = false;
   }

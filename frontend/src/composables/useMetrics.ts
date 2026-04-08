@@ -9,6 +9,7 @@ export interface MetricsResponse {
   alerts: { firing: number; acknowledged: number };
   events_24h: number;
   webhooks_active: number;
+  automations_active: number;
   uptime_seconds: number;
 }
 

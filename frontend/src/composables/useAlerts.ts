@@ -141,7 +141,11 @@ export function useAlerts(intervalMs = 10_000) {
   }
 
   async function ackEvent(id: number): Promise<void> {
-    const updated = await apiFetch<AlertEvent>(`/api/v1/alerts/${id}/ack`, { method: "POST", body: JSON.stringify({}) });
+    const updated = await apiFetch<AlertEvent>(`/api/v1/alerts/${id}/ack`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
     const idx = events.value.findIndex((e) => e.id === id);
     if (idx !== -1) {
       Object.assign(events.value[idx], updated);
@@ -150,7 +154,9 @@ export function useAlerts(intervalMs = 10_000) {
   }
 
   async function resolveEvent(id: number): Promise<void> {
-    const updated = await apiFetch<AlertEvent>(`/api/v1/alerts/${id}/resolve`, { method: "POST", body: JSON.stringify({}) });
+    const updated = await apiFetch<AlertEvent>(`/api/v1/alerts/${id}/resolve`, {
+      method: "POST",
+    });
     const idx = events.value.findIndex((e) => e.id === id);
     if (idx !== -1) {
       Object.assign(events.value[idx], updated);

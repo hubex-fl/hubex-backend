@@ -303,11 +303,28 @@ async def test_acknowledge_alert_event():
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_already_acknowledged_returns_409():
+async def test_acknowledge_already_acknowledged_is_idempotent():
     _, Session = await _mk_session()
     app = await _mk_app(Session)
     rule_id = await _seed_rule(Session)
     event_id = await _seed_event(Session, rule_id, "acknowledged")
+
+    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
+        resp = await c.post(
+            f"/api/v1/alerts/{event_id}/ack",
+            json={},
+            headers=_auth(["alerts.write"]),
+        )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "acknowledged"
+
+
+@pytest.mark.asyncio
+async def test_acknowledge_resolved_returns_409():
+    _, Session = await _mk_session()
+    app = await _mk_app(Session)
+    rule_id = await _seed_rule(Session)
+    event_id = await _seed_event(Session, rule_id, "resolved")
 
     async with httpx.AsyncClient(app=app, base_url="http://test") as c:
         resp = await c.post(
@@ -338,7 +355,7 @@ async def test_resolve_alert_event():
 
 
 @pytest.mark.asyncio
-async def test_resolve_already_resolved_returns_409():
+async def test_resolve_already_resolved_is_idempotent():
     _, Session = await _mk_session()
     app = await _mk_app(Session)
     rule_id = await _seed_rule(Session)
@@ -349,7 +366,8 @@ async def test_resolve_already_resolved_returns_409():
             f"/api/v1/alerts/{event_id}/resolve",
             headers=_auth(["alerts.write"]),
         )
-    assert resp.status_code == 409
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "resolved"
 
 
 # ---------------------------------------------------------------------------

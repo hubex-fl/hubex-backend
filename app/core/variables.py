@@ -148,6 +148,8 @@ def _constraints(definition: VariableDefinition) -> dict[str, Any] | None:
         constraints["regex"] = definition.regex
     if definition.unit:
         constraints["unit"] = definition.unit
+    if definition.direction and definition.direction != "read_write":
+        constraints["direction"] = definition.direction
     return constraints or None
 
 

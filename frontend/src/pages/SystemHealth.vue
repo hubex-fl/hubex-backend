@@ -252,7 +252,7 @@ function deviceHealthPercent(): number {
           <p :class="['text-sm font-semibold', redisStatus === 'disabled' ? 'text-[var(--text-muted)]' : statusColor(redisStatus)]">
             {{ redisStatus }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1" title="In-memory cache for fast data queries and real-time communication">Cache / Pub-Sub</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1" :title="t('health.redisTooltip')">Cache / Pub-Sub</p>
         </div>
       </div>
 

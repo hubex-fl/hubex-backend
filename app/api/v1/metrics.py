@@ -13,6 +13,7 @@ from app.db.models.alerts import AlertEvent
 from app.db.models.device import Device
 from app.db.models.entities import Entity
 from app.db.models.events import EventV1
+from app.db.models.automation import AutomationRule
 from app.db.models.user import User
 from app.db.models.webhooks import WebhookSubscription
 
@@ -43,6 +44,7 @@ class MetricsOut(BaseModel):
     alerts: AlertMetrics
     events_24h: int
     webhooks_active: int
+    automations_active: int
     uptime_seconds: float
 
 
@@ -119,6 +121,15 @@ async def get_metrics(
         )
     ).scalar_one()
 
+    # Automations (enabled rules)
+    automations_active = (
+        await db.execute(
+            select(func.count()).select_from(AutomationRule).where(
+                AutomationRule.enabled.is_(True)
+            )
+        )
+    ).scalar_one()
+
     return MetricsOut(
         devices=DeviceMetrics(
             total=total_devices,
@@ -131,5 +142,6 @@ async def get_metrics(
         alerts=AlertMetrics(firing=firing_alerts, acknowledged=acked_alerts),
         events_24h=events_24h,
         webhooks_active=webhooks_active,
+        automations_active=automations_active,
         uptime_seconds=time.time() - _START_TIME,
     )

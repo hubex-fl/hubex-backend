@@ -52,7 +52,10 @@ export async function apiFetch<T>(
   }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+  if (res.status === 204) {
+    return undefined as T;
   }
   return (await res.json()) as T;
 }
