@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
@@ -15,6 +15,8 @@ interface ApiDevice {
   device_uid: string;
   name: string | null;
   category?: string;
+  status?: string;
+  last_seen?: string;
 }
 
 interface ApiVariable {
@@ -23,6 +25,8 @@ interface ApiVariable {
   value_type: string;
   description: string | null;
   unit: string | null;
+  current_value?: unknown;
+  direction?: string;
 }
 
 interface ApiAutomation {
@@ -44,6 +48,8 @@ interface ApiAlertRule {
   entity_id: string | null;
   severity: string;
   enabled: boolean;
+  last_fired_at?: string;
+  events_today?: number;
 }
 
 interface ApiWebhook {
@@ -51,6 +57,8 @@ interface ApiWebhook {
   url: string;
   event_filter: string[];
   active: boolean;
+  delivery_count?: number;
+  last_delivery_status?: string;
 }
 
 // ── Flow node type ─────────────────────────────────────────────────────────
@@ -86,11 +94,17 @@ const selectedNode = ref<FlowNode | null>(null);
 const hoveredNode = ref<string | null>(null);
 const loading = ref(true);
 const searchQuery = ref("");
+const searchFocused = ref(false);
+const searchDropdownIndex = ref(0);
 const zoom = ref(1);
 const pan = ref({ x: 0, y: 0 });
 const isPanning = ref(false);
 const panStart = ref({ x: 0, y: 0 });
 const canvasRef = ref<HTMLElement | null>(null);
+const transformLayerRef = ref<HTMLElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const isAnimating = ref(false);
+const pulsingNodeId = ref<string | null>(null);
 
 // Stats
 const stats = ref({ devices: 0, variables: 0, automations: 0, alerts: 0, webhooks: 0 });
@@ -98,6 +112,27 @@ const stats = ref({ devices: 0, variables: 0, automations: 0, alerts: 0, webhook
 // ── Legend toggle ──────────────────────────────────────────────────────────
 
 const showLegend = ref(false);
+
+// ── Filter state ──────────────────────────────────────────────────────────
+
+const filterTypes = ref<Record<NodeType, boolean>>({
+  device: true,
+  variable: true,
+  automation: true,
+  alert: true,
+  webhook: true,
+});
+const filterOnlyActive = ref(false);
+const filterOnlyOffline = ref(false);
+const filterPathNodeId = ref<string | null>(null);
+
+// ── Context menu state ────────────────────────────────────────────────────
+
+const contextMenu = ref<{ x: number; y: number; node: FlowNode } | null>(null);
+
+// ── Detail panel state ────────────────────────────────────────────────────
+
+const inspectorOpen = ref(false);
 
 // ── Colors & Icons ─────────────────────────────────────────────────────────
 
@@ -124,14 +159,6 @@ const EDGE_COLORS: Record<string, string> = {
   monitor: "#F5A623",
 };
 
-const NODE_LABELS: Record<NodeType, string> = {
-  device: "Device",
-  variable: "Variable",
-  automation: "Automation",
-  alert: "Alert Rule",
-  webhook: "Webhook",
-};
-
 // ── Layout constants ───────────────────────────────────────────────────────
 
 const COL_X = [60, 300, 560, 820]; // 4 columns
@@ -143,12 +170,48 @@ const COL_START_Y = 60;
 
 // ── Computed ───────────────────────────────────────────────────────────────
 
+// Get the set of node IDs that are connected to the filterPathNodeId
+const pathFilterIds = computed(() => {
+  if (!filterPathNodeId.value) return null;
+  const ids = new Set<string>();
+  ids.add(filterPathNodeId.value);
+  // Walk all edges recursively to find connected nodes
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const e of edges.value) {
+      if (ids.has(e.from) && !ids.has(e.to)) {
+        ids.add(e.to);
+        changed = true;
+      }
+      if (ids.has(e.to) && !ids.has(e.from)) {
+        ids.add(e.from);
+        changed = true;
+      }
+    }
+  }
+  return ids;
+});
+
 const visibleNodes = computed(() => {
-  if (!searchQuery.value) return nodes.value;
-  const q = searchQuery.value.toLowerCase();
-  return nodes.value.filter(
-    (n) => n.label.toLowerCase().includes(q) || n.type.includes(q) || n.sublabel.toLowerCase().includes(q)
-  );
+  return nodes.value.filter((n) => {
+    // Type filter
+    if (!filterTypes.value[n.type]) return false;
+    // Only active filter
+    if (filterOnlyActive.value) {
+      if (n.type === "automation" && n.enabled === false) return false;
+      if (n.type === "alert" && n.enabled === false) return false;
+      if (n.type === "webhook" && n.enabled === false) return false;
+    }
+    // Only offline devices filter
+    if (filterOnlyOffline.value && n.type === "device") {
+      const status = (n.meta?.status as string) || "";
+      if (status === "online") return false;
+    }
+    // Path filter
+    if (pathFilterIds.value && !pathFilterIds.value.has(n.id)) return false;
+    return true;
+  });
 });
 
 const visibleEdges = computed(() => {
@@ -177,6 +240,21 @@ const highlightedNodes = computed(() => {
     ids.add(e.to);
   }
   return ids;
+});
+
+// Search results for dropdown
+const searchResults = computed(() => {
+  if (!searchQuery.value.trim()) return [];
+  const q = searchQuery.value.toLowerCase();
+  return nodes.value
+    .filter(
+      (n) =>
+        n.label.toLowerCase().includes(q) ||
+        n.type.includes(q) ||
+        n.sublabel.toLowerCase().includes(q) ||
+        (n.meta?.url as string || "").toLowerCase().includes(q)
+    )
+    .slice(0, 8);
 });
 
 // ── Load system graph ──────────────────────────────────────────────────────
@@ -221,7 +299,12 @@ async function loadSystemGraph() {
         y,
         column: 0,
         route: `/devices/${d.id}`,
-        meta: { device_id: d.id, category: d.category },
+        meta: {
+          device_id: d.id,
+          category: d.category,
+          status: d.status || "unknown",
+          last_seen: d.last_seen,
+        },
       });
       y += NODE_H_DEVICE + ROW_GAP;
     }
@@ -239,11 +322,18 @@ async function loadSystemGraph() {
         y,
         column: 1,
         route: "/variables",
-        meta: { scope: v.scope, value_type: v.value_type },
+        meta: {
+          scope: v.scope,
+          value_type: v.value_type,
+          unit: v.unit,
+          current_value: v.current_value,
+          direction: v.direction,
+          description: v.description,
+        },
       });
       y += NODE_H_SMALL + ROW_GAP;
 
-      // Connect device-scoped variables to ALL devices (they belong to each device)
+      // Connect device-scoped variables to ALL devices
       if (v.scope === "device") {
         for (const d of devices) {
           newEdges.push({
@@ -276,6 +366,7 @@ async function loadSystemGraph() {
           action_type: a.action_type,
           trigger_config: a.trigger_config,
           action_config: a.action_config,
+          description: a.description,
         },
       });
       y += NODE_H_SMALL + ROW_GAP;
@@ -310,7 +401,6 @@ async function loadSystemGraph() {
             });
           }
         } else {
-          // All devices
           for (const d of devices) {
             newEdges.push({
               id: `edge-dev-auto-${d.id}-${a.id}`,
@@ -358,7 +448,7 @@ async function loadSystemGraph() {
     }
 
     // Alert rules (same column, below automations)
-    y += 20; // gap between sections
+    y += 20;
     for (const ar of alertRules) {
       const alertNodeId = `alert-${ar.id}`;
       newNodes.push({
@@ -371,7 +461,13 @@ async function loadSystemGraph() {
         column: 2,
         route: "/alerts",
         enabled: ar.enabled,
-        meta: { severity: ar.severity, condition_type: ar.condition_type },
+        meta: {
+          severity: ar.severity,
+          condition_type: ar.condition_type,
+          condition_config: ar.condition_config,
+          last_fired_at: ar.last_fired_at,
+          events_today: ar.events_today,
+        },
       });
       y += NODE_H_SMALL + ROW_GAP;
 
@@ -395,7 +491,6 @@ async function loadSystemGraph() {
       // Connect device-related alert rules to devices
       if (ar.condition_type === "device_offline" || ar.condition_type === "entity_health") {
         if (ar.entity_id) {
-          // Try to match entity_id to a device
           const matchDevice = devices.find(
             (d) => d.device_uid === ar.entity_id || String(d.id) === ar.entity_id
           );
@@ -409,7 +504,6 @@ async function loadSystemGraph() {
             });
           }
         } else {
-          // All devices
           for (const d of devices) {
             newEdges.push({
               id: `edge-dev-alert-${d.id}-${ar.id}`,
@@ -435,7 +529,11 @@ async function loadSystemGraph() {
         column: 3,
         route: "/webhooks",
         enabled: wh.active,
-        meta: { url: wh.url },
+        meta: {
+          url: wh.url,
+          delivery_count: wh.delivery_count,
+          last_delivery_status: wh.last_delivery_status,
+        },
       });
       y += NODE_H_SMALL + ROW_GAP;
     }
@@ -462,7 +560,13 @@ function truncateUrl(url: string): string {
 // ── Node interaction ───────────────────────────────────────────────────────
 
 function selectNode(node: FlowNode) {
-  selectedNode.value = selectedNode.value?.id === node.id ? null : node;
+  if (selectedNode.value?.id === node.id) {
+    selectedNode.value = null;
+    inspectorOpen.value = false;
+  } else {
+    selectedNode.value = node;
+    inspectorOpen.value = true;
+  }
 }
 
 function navigateToNode(node: FlowNode) {
@@ -485,22 +589,16 @@ function getEdgePath(edge: FlowEdge): string {
   const fromH = getNodeHeight(fromNode.type);
   const toH = getNodeHeight(toNode.type);
 
-  // Right side of from-node
   const x1 = fromNode.x + NODE_W;
   const y1 = fromNode.y + fromH / 2;
-
-  // Left side of to-node
   const x2 = toNode.x;
   const y2 = toNode.y + toH / 2;
 
-  // If same column or to is left of from, draw differently
   if (toNode.column <= fromNode.column) {
-    // Curve around
     const midX = Math.min(x1, x2) - 40;
     return `M${x1},${y1} C${x1 + 40},${y1} ${midX},${y2} ${x2},${y2}`;
   }
 
-  // Normal left-to-right bezier
   const dx = Math.abs(x2 - x1);
   const cpOffset = Math.min(dx * 0.4, 80);
   return `M${x1},${y1} C${x1 + cpOffset},${y1} ${x2 - cpOffset},${y2} ${x2},${y2}`;
@@ -552,7 +650,7 @@ function fitToView() {
   const canvas = canvasRef.value;
   if (!canvas) return;
 
-  const cw = canvas.clientWidth;
+  const cw = canvas.clientWidth - (inspectorOpen.value ? 300 : 0);
   const ch = canvas.clientHeight;
   const contentW = maxX - minX + 80;
   const contentH = maxY - minY + 80;
@@ -567,13 +665,158 @@ function fitToView() {
   };
 }
 
-// ── Lifecycle ──────────────────────────────────────────────────────────────
+// ── Animated Camera Fly-To ────────────────────────────────────────────────
+
+function flyToNode(node: FlowNode) {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const nodeH = getNodeHeight(node.type);
+  const nodeCenterX = node.x + NODE_W / 2;
+  const nodeCenterY = node.y + nodeH / 2;
+
+  const cw = canvas.clientWidth - (inspectorOpen.value ? 300 : 0);
+  const ch = canvas.clientHeight;
+
+  // Target: center the node in the viewport
+  const targetZoom = Math.max(zoom.value, 1.0);
+  const targetPanX = cw / 2 - nodeCenterX * targetZoom;
+  const targetPanY = ch / 2 - nodeCenterY * targetZoom;
+
+  // Enable CSS transition on the transform layer
+  isAnimating.value = true;
+  pulsingNodeId.value = null;
+
+  // Apply new transform (CSS transition will animate it)
+  zoom.value = targetZoom;
+  pan.value = { x: targetPanX, y: targetPanY };
+
+  // After transition ends, start pulsing
+  setTimeout(() => {
+    isAnimating.value = false;
+    pulsingNodeId.value = node.id;
+    // Stop pulsing after 3 seconds
+    setTimeout(() => {
+      if (pulsingNodeId.value === node.id) {
+        pulsingNodeId.value = null;
+      }
+    }, 3000);
+  }, 650);
+}
+
+// ── Search handling ───────────────────────────────────────────────────────
+
+function onSearchKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") {
+    searchQuery.value = "";
+    searchFocused.value = false;
+    (e.target as HTMLElement)?.blur();
+    return;
+  }
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    searchDropdownIndex.value = Math.min(searchDropdownIndex.value + 1, searchResults.value.length - 1);
+    return;
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    searchDropdownIndex.value = Math.max(searchDropdownIndex.value - 1, 0);
+    return;
+  }
+  if (e.key === "Enter" && searchResults.value.length > 0) {
+    e.preventDefault();
+    const node = searchResults.value[searchDropdownIndex.value];
+    if (node) selectSearchResult(node);
+  }
+}
+
+function selectSearchResult(node: FlowNode) {
+  searchQuery.value = "";
+  searchFocused.value = false;
+  selectedNode.value = node;
+  inspectorOpen.value = true;
+  flyToNode(node);
+}
+
+watch(searchQuery, () => {
+  searchDropdownIndex.value = 0;
+});
+
+// ── Context menu ──────────────────────────────────────────────────────────
+
+function onNodeContextMenu(e: MouseEvent, node: FlowNode) {
+  e.preventDefault();
+  e.stopPropagation();
+  contextMenu.value = { x: e.clientX, y: e.clientY, node };
+}
+
+function closeContextMenu() {
+  contextMenu.value = null;
+}
+
+function ctxGoToDetail() {
+  if (contextMenu.value?.node) {
+    navigateToNode(contextMenu.value.node);
+  }
+  closeContextMenu();
+}
+
+function ctxHighlightConnections() {
+  if (contextMenu.value?.node) {
+    selectedNode.value = contextMenu.value.node;
+    inspectorOpen.value = true;
+  }
+  closeContextMenu();
+}
+
+function ctxFilterToPath() {
+  if (contextMenu.value?.node) {
+    filterPathNodeId.value = contextMenu.value.node.id;
+    selectedNode.value = contextMenu.value.node;
+    inspectorOpen.value = true;
+  }
+  closeContextMenu();
+}
+
+function clearPathFilter() {
+  filterPathNodeId.value = null;
+}
+
+// ── Close context menu on click outside ───────────────────────────────────
+
+function onDocumentClick() {
+  if (contextMenu.value) {
+    closeContextMenu();
+  }
+}
 
 onMounted(async () => {
+  document.addEventListener("click", onDocumentClick);
   await loadSystemGraph();
   await nextTick();
   fitToView();
 });
+
+onUnmounted(() => {
+  document.removeEventListener("click", onDocumentClick);
+});
+
+// ── Inspector helpers ─────────────────────────────────────────────────────
+
+function getInspectorRoute(node: FlowNode): string {
+  switch (node.type) {
+    case "device": return t("pages.flowEditor.goToDevice");
+    case "variable": return t("pages.flowEditor.goToVariable");
+    case "automation": return t("pages.flowEditor.editAutomation");
+    case "alert": return t("pages.flowEditor.viewAlerts");
+    case "webhook": return t("pages.flowEditor.viewWebhook");
+    default: return t("pages.flowEditor.openDetail");
+  }
+}
+
+function getConnectedCount(nodeId: string): number {
+  return edges.value.filter((e) => e.from === nodeId || e.to === nodeId).length;
+}
 
 // Column headers
 const columnHeaders = computed(() => [
@@ -582,6 +825,25 @@ const columnHeaders = computed(() => [
   { label: t("pages.flowEditor.colLogic"), count: stats.value.automations + stats.value.alerts, color: NODE_COLORS.automation },
   { label: t("pages.flowEditor.colOutputs"), count: stats.value.webhooks, color: NODE_COLORS.webhook },
 ]);
+
+// Toggle filter type
+function toggleFilterType(type: NodeType) {
+  filterTypes.value[type] = !filterTypes.value[type];
+}
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return !filterTypes.value.device || !filterTypes.value.variable || !filterTypes.value.automation ||
+    !filterTypes.value.alert || !filterTypes.value.webhook ||
+    filterOnlyActive.value || filterOnlyOffline.value || filterPathNodeId.value !== null;
+});
+
+function resetFilters() {
+  filterTypes.value = { device: true, variable: true, automation: true, alert: true, webhook: true };
+  filterOnlyActive.value = false;
+  filterOnlyOffline.value = false;
+  filterPathNodeId.value = null;
+}
 </script>
 
 <template>
@@ -599,12 +861,6 @@ const columnHeaders = computed(() => [
             class="px-1.5 py-0.5 rounded text-[9px] font-mono border border-[var(--border)] text-[var(--text-muted)]"
           >{{ key }}:{{ s }}</span>
         </div>
-
-        <input
-          v-model="searchQuery"
-          class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] w-32 text-[var(--text-primary)]"
-          :placeholder="t('pages.flowEditor.searchPlaceholder')"
-        />
       </div>
 
       <div class="flex items-center gap-1.5">
@@ -634,200 +890,564 @@ const columnHeaders = computed(() => [
       </div>
     </div>
 
-    <!-- Legend overlay -->
-    <Transition name="fade">
-      <div v-if="showLegend" class="absolute top-14 right-4 z-50 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 shadow-xl">
-        <p class="text-[10px] font-semibold text-[var(--text-primary)] mb-2">{{ t('pages.flowEditor.legend') }}</p>
-        <div class="space-y-1.5">
-          <div v-for="(color, type) in NODE_COLORS" :key="type" class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-sm" :style="{ background: color }" />
-            <span class="text-[10px] text-[var(--text-muted)]">{{ NODE_LABELS[type as NodeType] }}</span>
-          </div>
-          <hr class="border-[var(--border)] my-1" />
-          <div v-for="(color, type) in EDGE_COLORS" :key="type" class="flex items-center gap-2">
-            <div class="w-6 h-0.5" :style="{ background: color }" />
-            <span class="text-[10px] text-[var(--text-muted)]">{{ type }}</span>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <!-- Main area with canvas + inspector -->
+    <div class="flex-1 flex relative overflow-hidden">
 
-    <!-- Canvas -->
-    <div
-      ref="canvasRef"
-      class="flex-1 relative overflow-hidden bg-[var(--bg-base)] canvas-bg"
-      :class="{ 'cursor-grab': !isPanning, 'cursor-grabbing': isPanning }"
-      @mousedown="startPan"
-      @mousemove="onPanMove"
-      @mouseup="stopPan"
-      @mouseleave="stopPan"
-      @wheel.prevent="onWheel"
-      style="background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 30px 30px;"
-    >
-      <!-- Loading -->
-      <div v-if="loading" class="absolute inset-0 flex items-center justify-center z-10">
-        <div class="flex items-center gap-2">
-          <div class="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-          <span class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.loading') }}</span>
-        </div>
-      </div>
-
-      <!-- Transformed layer -->
+      <!-- Canvas area -->
       <div
-        v-if="!loading"
-        :style="{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: '0 0',
-        }"
-        class="absolute inset-0"
+        ref="canvasRef"
+        class="flex-1 relative overflow-hidden bg-[var(--bg-base)] canvas-bg"
+        :class="{ 'cursor-grab': !isPanning, 'cursor-grabbing': isPanning }"
+        @mousedown="startPan"
+        @mousemove="onPanMove"
+        @mouseup="stopPan"
+        @mouseleave="stopPan"
+        @wheel.prevent="onWheel"
+        style="background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 30px 30px;"
       >
-        <!-- Column headers -->
-        <div
-          v-for="(col, idx) in columnHeaders"
-          :key="idx"
-          class="absolute text-center"
-          :style="{ left: COL_X[idx] + 'px', top: '15px', width: NODE_W + 'px' }"
-        >
-          <span class="text-[10px] font-semibold uppercase tracking-wider" :style="{ color: col.color }">
-            {{ col.label }}
-          </span>
-          <span class="text-[9px] text-[var(--text-muted)] ml-1">({{ col.count }})</span>
+        <!-- Floating search field -->
+        <div class="absolute top-3 left-3 z-30 w-64">
+          <div class="relative">
+            <input
+              ref="searchInputRef"
+              v-model="searchQuery"
+              class="w-full px-3 py-1.5 pl-8 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/90 backdrop-blur-sm text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/40"
+              :placeholder="t('pages.flowEditor.searchPlaceholder')"
+              @focus="searchFocused = true"
+              @blur="setTimeout(() => searchFocused = false, 200)"
+              @keydown="onSearchKeydown"
+            />
+            <!-- Search icon -->
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </div>
+
+          <!-- Search dropdown -->
+          <Transition name="fade">
+            <div
+              v-if="searchFocused && searchQuery.trim() && searchResults.length > 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden z-40"
+            >
+              <div
+                v-for="(node, idx) in searchResults"
+                :key="node.id"
+                class="flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs transition-colors"
+                :class="idx === searchDropdownIndex ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--bg-raised)]'"
+                @mousedown.prevent="selectSearchResult(node)"
+              >
+                <div class="w-2 h-2 rounded-full shrink-0" :style="{ background: NODE_COLORS[node.type] }" />
+                <span class="text-[var(--text-primary)] truncate flex-1">{{ node.label }}</span>
+                <span class="text-[9px] text-[var(--text-muted)] shrink-0">{{ node.type }}</span>
+              </div>
+            </div>
+          </Transition>
+
+          <!-- No results -->
+          <Transition name="fade">
+            <div
+              v-if="searchFocused && searchQuery.trim() && searchResults.length === 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg shadow-xl px-3 py-2 z-40"
+            >
+              <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.noResults') }}</span>
+            </div>
+          </Transition>
         </div>
 
-        <!-- SVG Edges -->
-        <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1; overflow: visible;">
-          <defs>
-            <marker id="arrowhead-data" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.data" opacity="0.7" />
-            </marker>
-            <marker id="arrowhead-trigger" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.trigger" opacity="0.7" />
-            </marker>
-            <marker id="arrowhead-action" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.action" opacity="0.7" />
-            </marker>
-            <marker id="arrowhead-monitor" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.monitor" opacity="0.7" />
-            </marker>
-          </defs>
+        <!-- Filter bar -->
+        <div class="absolute top-3 left-[280px] z-30 flex items-center gap-1.5">
+          <!-- Type filter chips -->
+          <button
+            v-for="(active, type) in filterTypes"
+            :key="type"
+            class="px-2 py-1 rounded-full text-[10px] font-medium border transition-all duration-150"
+            :class="active
+              ? 'border-transparent text-white'
+              : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-surface)]/80 opacity-60'"
+            :style="active ? { background: NODE_COLORS[type as NodeType] + 'dd' } : {}"
+            @click="toggleFilterType(type as NodeType)"
+          >
+            {{ t(`pages.flowEditor.filter${(type as string).charAt(0).toUpperCase() + (type as string).slice(1)}s`) }}
+          </button>
 
-          <path
-            v-for="edge in visibleEdges"
-            :key="edge.id"
-            :d="getEdgePath(edge)"
-            :stroke="EDGE_COLORS[edge.type] || 'var(--border-hover)'"
-            :stroke-width="highlightedEdges.has(edge.id) ? 2.5 : 1.5"
-            :opacity="highlightedEdges.size > 0 ? (highlightedEdges.has(edge.id) ? 1 : 0.15) : 0.5"
-            fill="none"
-            :stroke-dasharray="edge.type === 'monitor' ? '4 3' : 'none'"
-            :marker-end="`url(#arrowhead-${edge.type})`"
-            class="transition-opacity duration-150"
-          />
-        </svg>
+          <span class="w-px h-4 bg-[var(--border)]" />
 
-        <!-- Nodes -->
+          <!-- Only active toggle -->
+          <button
+            class="px-2 py-1 rounded-full text-[10px] border transition-all duration-150"
+            :class="filterOnlyActive
+              ? 'border-green-500/50 text-green-400 bg-green-500/10'
+              : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-surface)]/80'"
+            @click="filterOnlyActive = !filterOnlyActive"
+          >
+            {{ t('pages.flowEditor.onlyActive') }}
+          </button>
+
+          <!-- Only offline toggle -->
+          <button
+            class="px-2 py-1 rounded-full text-[10px] border transition-all duration-150"
+            :class="filterOnlyOffline
+              ? 'border-red-500/50 text-red-400 bg-red-500/10'
+              : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-surface)]/80'"
+            @click="filterOnlyOffline = !filterOnlyOffline"
+          >
+            {{ t('pages.flowEditor.onlyOffline') }}
+          </button>
+
+          <!-- Path filter indicator -->
+          <button
+            v-if="filterPathNodeId"
+            class="px-2 py-1 rounded-full text-[10px] border border-amber-500/50 text-amber-400 bg-amber-500/10 flex items-center gap-1"
+            @click="clearPathFilter"
+          >
+            {{ t('pages.flowEditor.filterToPath') }}
+            <span class="text-[8px]">x</span>
+          </button>
+
+          <!-- Reset filters -->
+          <button
+            v-if="hasActiveFilters"
+            class="px-2 py-1 rounded-full text-[10px] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)]/80"
+            @click="resetFilters"
+          >
+            {{ t('pages.flowEditor.resetView') }}
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="absolute inset-0 flex items-center justify-center z-10">
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+            <span class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.loading') }}</span>
+          </div>
+        </div>
+
+        <!-- Legend overlay -->
+        <Transition name="fade">
+          <div v-if="showLegend" class="absolute top-14 right-4 z-50 bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 shadow-xl min-w-[180px]">
+            <p class="text-[10px] font-semibold text-[var(--text-primary)] mb-2">{{ t('pages.flowEditor.legendNodeTypes') }}</p>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-sm" :style="{ background: NODE_COLORS.device }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendDevice') }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-sm" :style="{ background: NODE_COLORS.variable }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendVariable') }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-sm" :style="{ background: NODE_COLORS.automation }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendAutomation') }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-sm" :style="{ background: NODE_COLORS.alert }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendAlert') }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-sm" :style="{ background: NODE_COLORS.webhook }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendWebhook') }}</span>
+              </div>
+            </div>
+            <hr class="border-[var(--border)] my-2" />
+            <p class="text-[10px] font-semibold text-[var(--text-primary)] mb-2">{{ t('pages.flowEditor.legendConnections') }}</p>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-0.5" :style="{ background: EDGE_COLORS.data }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendDataFlow') }}</span>
+                <span class="text-[8px] text-[var(--text-muted)] ml-auto">Device &#8594; Variable</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-0.5" :style="{ background: EDGE_COLORS.trigger }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendTrigger') }}</span>
+                <span class="text-[8px] text-[var(--text-muted)] ml-auto">Variable &#8594; Auto/Alert</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-0.5" :style="{ background: EDGE_COLORS.action }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendAction') }}</span>
+                <span class="text-[8px] text-[var(--text-muted)] ml-auto">Auto &#8594; Webhook/Var</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-0.5 border-t-2 border-dashed" :style="{ borderColor: EDGE_COLORS.monitor }" />
+                <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.legendMonitor') }}</span>
+                <span class="text-[8px] text-[var(--text-muted)] ml-auto">Alert &#8596; Variable</span>
+              </div>
+            </div>
+          </div>
+        </Transition>
+
+        <!-- Transformed layer -->
         <div
-          v-for="node in visibleNodes"
-          :key="node.id"
-          class="absolute rounded-lg border px-3 py-1.5 select-none transition-all duration-150"
-          :class="[
-            selectedNode?.id === node.id ? 'ring-2 ring-[var(--primary)]/60 shadow-lg' : 'shadow-sm',
-            node.enabled === false ? 'opacity-50' : '',
-            highlightedNodes.size > 0 && !highlightedNodes.has(node.id) ? 'opacity-20' : '',
-          ]"
+          v-if="!loading"
+          ref="transformLayerRef"
           :style="{
-            left: node.x + 'px',
-            top: node.y + 'px',
-            width: NODE_W + 'px',
-            height: getNodeHeight(node.type) + 'px',
-            borderColor: NODE_COLORS[node.type] + '60',
-            backgroundColor: NODE_BG[node.type],
-            zIndex: selectedNode?.id === node.id ? 10 : 2,
-            cursor: 'pointer',
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
           }"
-          @click.stop="selectNode(node)"
-          @dblclick.stop="navigateToNode(node)"
-          @mouseenter="hoveredNode = node.id"
-          @mouseleave="hoveredNode = null"
+          :class="{ 'flow-animate': isAnimating }"
+          class="absolute inset-0"
         >
-          <!-- Left color bar -->
+          <!-- Column headers -->
           <div
-            class="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
-            :style="{ background: NODE_COLORS[node.type] }"
-          />
+            v-for="(col, idx) in columnHeaders"
+            :key="idx"
+            class="absolute text-center"
+            :style="{ left: COL_X[idx] + 'px', top: '15px', width: NODE_W + 'px' }"
+          >
+            <span class="text-[10px] font-semibold uppercase tracking-wider" :style="{ color: col.color }">
+              {{ col.label }}
+            </span>
+            <span class="text-[9px] text-[var(--text-muted)] ml-1">({{ col.count }})</span>
+          </div>
 
-          <div class="flex items-center gap-1.5 ml-2 h-full">
-            <!-- Type icon dot -->
+          <!-- SVG Edges -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1; overflow: visible;">
+            <defs>
+              <marker id="arrowhead-data" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.data" opacity="0.7" />
+              </marker>
+              <marker id="arrowhead-trigger" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.trigger" opacity="0.7" />
+              </marker>
+              <marker id="arrowhead-action" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.action" opacity="0.7" />
+              </marker>
+              <marker id="arrowhead-monitor" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" :fill="EDGE_COLORS.monitor" opacity="0.7" />
+              </marker>
+            </defs>
+
+            <path
+              v-for="edge in visibleEdges"
+              :key="edge.id"
+              :d="getEdgePath(edge)"
+              :stroke="EDGE_COLORS[edge.type] || 'var(--border-hover)'"
+              :stroke-width="highlightedEdges.has(edge.id) ? 2.5 : 1.5"
+              :opacity="highlightedEdges.size > 0 ? (highlightedEdges.has(edge.id) ? 1 : 0.15) : 0.5"
+              fill="none"
+              :stroke-dasharray="edge.type === 'monitor' ? '4 3' : 'none'"
+              :marker-end="`url(#arrowhead-${edge.type})`"
+              class="transition-opacity duration-150"
+            />
+          </svg>
+
+          <!-- Nodes -->
+          <div
+            v-for="node in visibleNodes"
+            :key="node.id"
+            class="absolute rounded-lg border px-3 py-1.5 select-none transition-all duration-150"
+            :class="[
+              selectedNode?.id === node.id ? 'ring-2 ring-[var(--primary)]/60 shadow-lg' : 'shadow-sm',
+              node.enabled === false ? 'opacity-50' : '',
+              highlightedNodes.size > 0 && !highlightedNodes.has(node.id) ? 'opacity-20' : '',
+              pulsingNodeId === node.id ? 'node-pulse' : '',
+            ]"
+            :style="{
+              left: node.x + 'px',
+              top: node.y + 'px',
+              width: NODE_W + 'px',
+              height: getNodeHeight(node.type) + 'px',
+              borderColor: NODE_COLORS[node.type] + '60',
+              backgroundColor: NODE_BG[node.type],
+              zIndex: selectedNode?.id === node.id ? 10 : 2,
+              cursor: 'pointer',
+            }"
+            @click.stop="selectNode(node)"
+            @dblclick.stop="navigateToNode(node)"
+            @contextmenu="onNodeContextMenu($event, node)"
+            @mouseenter="hoveredNode = node.id"
+            @mouseleave="hoveredNode = null"
+          >
+            <!-- Left color bar -->
             <div
-              class="w-2 h-2 rounded-full shrink-0"
+              class="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
               :style="{ background: NODE_COLORS[node.type] }"
             />
-            <div class="min-w-0 flex-1">
-              <div class="text-[11px] font-medium text-[var(--text-primary)] truncate leading-tight">
-                {{ node.label }}
-              </div>
-              <div class="text-[9px] text-[var(--text-muted)] truncate leading-tight">
-                {{ node.sublabel }}
-              </div>
-            </div>
-            <!-- Enabled/disabled indicator -->
-            <div v-if="node.enabled !== undefined" class="shrink-0">
+
+            <div class="flex items-center gap-1.5 ml-2 h-full">
+              <!-- Type icon dot -->
               <div
-                class="w-1.5 h-1.5 rounded-full"
-                :style="{ background: node.enabled ? '#22c55e' : '#6b7280' }"
-                :title="node.enabled ? 'enabled' : 'disabled'"
+                class="w-2 h-2 rounded-full shrink-0"
+                :style="{ background: NODE_COLORS[node.type] }"
               />
+              <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-medium text-[var(--text-primary)] truncate leading-tight">
+                  {{ node.label }}
+                </div>
+                <div class="text-[9px] text-[var(--text-muted)] truncate leading-tight">
+                  {{ node.sublabel }}
+                </div>
+              </div>
+              <!-- Enabled/disabled indicator -->
+              <div v-if="node.enabled !== undefined" class="shrink-0">
+                <div
+                  class="w-1.5 h-1.5 rounded-full"
+                  :style="{ background: node.enabled ? '#22c55e' : '#6b7280' }"
+                  :title="node.enabled ? t('pages.flowEditor.active') : t('pages.flowEditor.inactive')"
+                />
+              </div>
             </div>
-          </div>
 
-          <!-- Connection ports -->
-          <div
-            v-if="node.column < 3"
-            class="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border"
-            :style="{ borderColor: NODE_COLORS[node.type], background: 'var(--bg-base)' }"
-          />
-          <div
-            v-if="node.column > 0"
-            class="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border"
-            :style="{ borderColor: NODE_COLORS[node.type], background: 'var(--bg-base)' }"
-          />
+            <!-- Connection ports -->
+            <div
+              v-if="node.column < 3"
+              class="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border"
+              :style="{ borderColor: NODE_COLORS[node.type], background: 'var(--bg-base)' }"
+            />
+            <div
+              v-if="node.column > 0"
+              class="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border"
+              :style="{ borderColor: NODE_COLORS[node.type], background: 'var(--bg-base)' }"
+            />
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-if="!loading && !nodes.length" class="absolute inset-0 flex items-center justify-center">
+          <div class="text-center">
+            <p class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.emptyCanvas') }}</p>
+            <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.flowEditor.emptyHint') }}</p>
+          </div>
         </div>
       </div>
 
-      <!-- Empty state -->
-      <div v-if="!loading && !nodes.length" class="absolute inset-0 flex items-center justify-center">
-        <div class="text-center">
-          <p class="text-sm text-[var(--text-muted)]">{{ t('pages.flowEditor.emptyCanvas') }}</p>
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.flowEditor.emptyHint') }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Inspector panel (bottom) -->
-    <Transition name="slide-up">
-      <div v-if="selectedNode" class="border-t border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2.5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-2.5 h-2.5 rounded-sm" :style="{ background: NODE_COLORS[selectedNode.type] }" />
-            <div>
-              <span class="text-xs font-semibold text-[var(--text-primary)]">{{ selectedNode.label }}</span>
-              <span class="text-[10px] text-[var(--text-muted)] ml-2">{{ NODE_LABELS[selectedNode.type] }}</span>
+      <!-- ── Detail Inspector Panel (right side, 300px) ─────────────────── -->
+      <Transition name="slide-right">
+        <div
+          v-if="inspectorOpen && selectedNode"
+          class="w-[300px] shrink-0 border-l border-[var(--border)] bg-[var(--bg-surface)] overflow-y-auto"
+        >
+          <!-- Panel header -->
+          <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+            <div class="flex items-center gap-2">
+              <div class="w-2.5 h-2.5 rounded-sm" :style="{ background: NODE_COLORS[selectedNode.type] }" />
+              <span class="text-xs font-semibold text-[var(--text-primary)]">{{ t('pages.flowEditor.inspector') }}</span>
             </div>
-            <span class="text-[10px] text-[var(--text-muted)]">{{ selectedNode.sublabel }}</span>
-          </div>
-          <div class="flex items-center gap-2">
             <button
-              v-if="selectedNode.route"
-              class="px-2 py-0.5 rounded text-[10px] font-medium text-[var(--primary)] border border-[var(--primary)]/30 hover:bg-[var(--primary)]/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
-            >{{ t('pages.flowEditor.openDetail') }}</button>
-            <button class="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)]" @click="selectedNode = null">
-              {{ t('common.close') }}
+              class="w-5 h-5 flex items-center justify-center rounded hover:bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              @click="inspectorOpen = false; selectedNode = null"
+            >
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
+
+          <!-- Node title -->
+          <div class="px-4 py-3 border-b border-[var(--border)]">
+            <div class="text-sm font-semibold text-[var(--text-primary)]">{{ selectedNode.label }}</div>
+            <div class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ selectedNode.sublabel }}</div>
+          </div>
+
+          <!-- ── Device details ──────────────────────────────────────────── -->
+          <div v-if="selectedNode.type === 'device'" class="px-4 py-3 space-y-2.5">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.deviceType') }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-medium border border-[var(--border)] text-[var(--text-primary)]">
+                {{ (selectedNode.meta?.category as string) || 'hardware' }}
+              </span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.deviceStatus') }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                :class="(selectedNode.meta?.status as string) === 'online'
+                  ? 'bg-green-500/10 text-green-400'
+                  : 'bg-red-500/10 text-red-400'"
+              >
+                {{ (selectedNode.meta?.status as string) === 'online' ? t('pages.flowEditor.online') : t('pages.flowEditor.offline') }}
+              </span>
+            </div>
+            <div v-if="selectedNode.meta?.last_seen" class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.lastSeen') }}</span>
+              <span class="text-[var(--text-primary)] text-[10px]">{{ selectedNode.meta?.last_seen }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.variableCount') }}</span>
+              <span class="text-[var(--text-primary)]">{{ getConnectedCount(selectedNode.id) }}</span>
+            </div>
+            <button
+              class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-[var(--primary)] border border-[var(--primary)]/30 hover:bg-[var(--primary)]/10 transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >&#8594; {{ t('pages.flowEditor.goToDevice') }}</button>
+          </div>
+
+          <!-- ── Variable details ────────────────────────────────────────── -->
+          <div v-if="selectedNode.type === 'variable'" class="px-4 py-3 space-y-2.5">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.variableKey') }}</span>
+              <span class="text-[var(--text-primary)] font-mono text-[10px]">{{ selectedNode.label }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.currentValue') }}</span>
+              <span class="text-[var(--text-primary)] font-mono text-[10px]">
+                {{ selectedNode.meta?.current_value !== undefined ? String(selectedNode.meta.current_value) : '—' }}
+                <span v-if="selectedNode.meta?.unit" class="text-[var(--text-muted)]">{{ selectedNode.meta.unit }}</span>
+              </span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.valueType') }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-medium border border-[var(--border)] text-[var(--text-primary)]">
+                {{ selectedNode.meta?.value_type || '—' }}
+              </span>
+            </div>
+            <div v-if="selectedNode.meta?.direction" class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.direction') }}</span>
+              <span class="text-[var(--text-primary)]">{{ selectedNode.meta.direction }}</span>
+            </div>
+            <!-- Sparkline placeholder (last 10 values) -->
+            <div class="mt-2">
+              <span class="text-[10px] text-[var(--text-muted)]">{{ t('pages.flowEditor.recentValues') }}</span>
+              <div class="mt-1 h-8 rounded bg-[var(--bg-raised)] flex items-end gap-px px-1">
+                <div
+                  v-for="i in 10"
+                  :key="i"
+                  class="flex-1 rounded-t"
+                  :style="{
+                    height: (20 + Math.random() * 60) + '%',
+                    background: NODE_COLORS.variable + '80',
+                  }"
+                />
+              </div>
+            </div>
+            <button
+              class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-teal-400 border border-teal-400/30 hover:bg-teal-400/10 transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >&#8594; {{ t('pages.flowEditor.goToVariable') }}</button>
+          </div>
+
+          <!-- ── Automation details ──────────────────────────────────────── -->
+          <div v-if="selectedNode.type === 'automation'" class="px-4 py-3 space-y-2.5">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.automationName') }}</span>
+              <span class="text-[var(--text-primary)]">{{ selectedNode.label }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.triggerType') }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-medium border border-[var(--border)] text-[var(--text-primary)]">
+                {{ (selectedNode.meta?.trigger_type as string || '').replace(/_/g, ' ') }}
+              </span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.actionType') }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-medium border border-[var(--border)] text-[var(--text-primary)]">
+                {{ (selectedNode.meta?.action_type as string || '').replace(/_/g, ' ') }}
+              </span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('common.status') }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                :class="selectedNode.enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-500/10 text-gray-400'"
+              >{{ selectedNode.enabled ? t('pages.flowEditor.active') : t('pages.flowEditor.inactive') }}</span>
+            </div>
+            <button
+              class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >&#8594; {{ t('pages.flowEditor.editAutomation') }}</button>
+          </div>
+
+          <!-- ── Alert Rule details ──────────────────────────────────────── -->
+          <div v-if="selectedNode.type === 'alert'" class="px-4 py-3 space-y-2.5">
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.alertCondition') }}</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-medium border border-[var(--border)] text-[var(--text-primary)]">
+                {{ (selectedNode.meta?.condition_type as string || '').replace(/_/g, ' ') }}
+              </span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.severity') }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                :class="{
+                  'bg-red-500/10 text-red-400': selectedNode.meta?.severity === 'critical',
+                  'bg-amber-500/10 text-amber-400': selectedNode.meta?.severity === 'warning',
+                  'bg-blue-500/10 text-blue-400': selectedNode.meta?.severity === 'info',
+                }"
+              >{{ selectedNode.meta?.severity || '—' }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.lastFired') }}</span>
+              <span class="text-[var(--text-primary)] text-[10px]">{{ selectedNode.meta?.last_fired_at || '—' }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.eventsToday') }}</span>
+              <span class="text-[var(--text-primary)]">{{ selectedNode.meta?.events_today ?? '—' }}</span>
+            </div>
+            <button
+              class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >&#8594; {{ t('pages.flowEditor.viewAlerts') }}</button>
+          </div>
+
+          <!-- ── Webhook details ─────────────────────────────────────────── -->
+          <div v-if="selectedNode.type === 'webhook'" class="px-4 py-3 space-y-2.5">
+            <div class="text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.webhookUrl') }}</span>
+              <div class="mt-0.5 text-[10px] font-mono text-[var(--text-primary)] break-all bg-[var(--bg-raised)] rounded px-2 py-1">
+                {{ selectedNode.meta?.url || selectedNode.label }}
+              </div>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.eventCount') }}</span>
+              <span class="text-[var(--text-primary)]">{{ selectedNode.meta?.delivery_count ?? '—' }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('pages.flowEditor.lastDelivery') }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                :class="(selectedNode.meta?.last_delivery_status as string) === 'success'
+                  ? 'bg-green-500/10 text-green-400'
+                  : 'bg-gray-500/10 text-gray-400'"
+              >{{ selectedNode.meta?.last_delivery_status || '—' }}</span>
+            </div>
+            <div class="flex justify-between text-[11px]">
+              <span class="text-[var(--text-muted)]">{{ t('common.status') }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                :class="selectedNode.enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-500/10 text-gray-400'"
+              >{{ selectedNode.enabled ? t('pages.flowEditor.active') : t('pages.flowEditor.inactive') }}</span>
+            </div>
+            <button
+              class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-purple-400 border border-purple-400/30 hover:bg-purple-400/10 transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >&#8594; {{ t('pages.flowEditor.viewWebhook') }}</button>
+          </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </div>
+
+    <!-- ── Context menu ─────────────────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="contextMenu"
+          class="fixed z-[100] min-w-[180px] bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden"
+          :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+          @click.stop
+        >
+          <button
+            class="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors text-left"
+            @click="ctxGoToDetail"
+          >
+            <span class="text-[var(--text-muted)]">&#8594;</span>
+            {{ t('pages.flowEditor.goToDetail') }}
+          </button>
+          <button
+            class="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors text-left"
+            @click="ctxHighlightConnections"
+          >
+            <span class="text-[var(--text-muted)]">&#9733;</span>
+            {{ t('pages.flowEditor.highlightConnections') }}
+          </button>
+          <hr class="border-[var(--border)]" />
+          <button
+            class="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors text-left"
+            @click="ctxFilterToPath"
+          >
+            <span class="text-[var(--text-muted)]">&#9881;</span>
+            {{ t('pages.flowEditor.filterToPath') }}
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -849,5 +1469,34 @@ const columnHeaders = computed(() => [
 .slide-up-leave-to {
   transform: translateY(8px);
   opacity: 0;
+}
+
+/* Inspector slide-in from right */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.2s ease;
+}
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* Animated camera fly-to transition */
+.flow-animate {
+  transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Pulsing glow on target node */
+@keyframes nodePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(245, 166, 35, 0.4);
+  }
+}
+.node-pulse {
+  animation: nodePulse 0.8s ease-in-out 3;
 }
 </style>

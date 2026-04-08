@@ -1,149 +1,362 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
+import {
+  listEndpoints,
+  createEndpoint,
+  updateEndpoint,
+  deleteEndpoint,
+  previewEndpoint,
+  testEndpoint,
+  regenerateKey,
+  type CustomEndpoint,
+  type EndpointCreate,
+  type EndpointUpdate,
+} from "../lib/custom-api";
 import UModal from "../components/ui/UModal.vue";
+import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import UCard from "../components/ui/UCard.vue";
+import UToggle from "../components/ui/UToggle.vue";
+import UInput from "../components/ui/UInput.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+const { t, tm, rt } = useI18n();
 const toast = useToastStore();
-const { t } = useI18n();
 
-type Endpoint = {
-  id: number;
-  name: string;
-  route_path: string;
-  method: string;
-  description: string | null;
-  response_mapping: Record<string, unknown>;
-  params_schema: Record<string, unknown> | null;
-  rate_limit_per_minute: number;
-  required_scope: string | null;
-  enabled: boolean;
-  request_count: number;
-  last_called_at: string | null;
-  created_at: string;
-};
-
-const endpoints = ref<Endpoint[]>([]);
+// ── State ────────────────────────────────────────────────────────────────────
+const endpoints = ref<CustomEndpoint[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const viewMode = ref<"cards" | "table">("cards");
 
-// Create/Edit
+// ── Detail panel ─────────────────────────────────────────────────────────────
+const detailEndpoint = ref<CustomEndpoint | null>(null);
+const detailOpen = ref(false);
+const detailTesting = ref(false);
+const detailTestResult = ref<string | null>(null);
+const detailKeyRegenLoading = ref(false);
+const codeTab = ref<"curl" | "python" | "javascript">("curl");
+
+// ── Create/Edit modal ────────────────────────────────────────────────────────
 const modalOpen = ref(false);
 const modalMode = ref<"create" | "edit">("create");
-const editId = ref<number | null>(null);
-const formName = ref("");
-const formRoute = ref("/custom/");
-const formMethod = ref("GET");
-const formDescription = ref("");
-const formMapping = ref("{}");
-const formRateLimit = ref(60);
-const formScope = ref("");
+const modalStep = ref(1);
 const saving = ref(false);
 
+// Step 1 — Basics
+const formName = ref("");
+const formPath = ref("");
+const formMethod = ref<"GET" | "POST">("GET");
+const formDescription = ref("");
+
+// Step 2 — Data Source (GET)
+const formSourceType = ref<"variables" | "devices" | "entities" | "alerts" | "events" | "status">("variables");
+const formVariableKeys = ref("");
+const formDeviceFilter = ref("");
+const formAggregation = ref<"none" | "avg" | "min" | "max" | "sum">("none");
+const formTimeRange = ref<"raw" | "1h" | "24h" | "7d" | "30d">("raw");
+const formGroupBy = ref<"none" | "hour" | "day" | "month">("none");
+const formFormat = ref<"json" | "csv">("json");
+
+// Step 2 — Data Source (POST)
+const formWriteEnabled = ref(false);
+const formTargetType = ref("set_variable");
+const formAllowedKeys = ref("");
+const formDeviceScope = ref("");
+
+// Step 3 — Security
+const formAuthType = ref<"api_key" | "bearer" | "none">("api_key");
+const formRateLimit = ref(100);
+
+// Step 4 — Preview
+const previewData = ref<string | null>(null);
+const previewLoading = ref(false);
+const editId = ref<number | null>(null);
+
+// ── Computed ─────────────────────────────────────────────────────────────────
+const totalSteps = computed(() => 4);
+
+const pathPrefix = "/api/v1/custom-api/call/";
+const fullPath = computed(() => pathPrefix + formPath.value);
+
+const canProceedStep1 = computed(() => formName.value.trim() && formPath.value.trim());
+
+const sourceConfig = computed(() => {
+  if (formMethod.value === "GET") {
+    return {
+      type: formSourceType.value,
+      variable_keys: formVariableKeys.value ? formVariableKeys.value.split(",").map(s => s.trim()).filter(Boolean) : [],
+      device_filter: formDeviceFilter.value || null,
+      aggregation: formAggregation.value !== "none" ? formAggregation.value : null,
+      time_range: formTimeRange.value !== "raw" ? formTimeRange.value : null,
+      group_by: formGroupBy.value !== "none" ? formGroupBy.value : null,
+      format: formFormat.value,
+    };
+  }
+  return {
+    type: "write",
+    target: formTargetType.value,
+    allowed_keys: formAllowedKeys.value ? formAllowedKeys.value.split(",").map(s => s.trim()).filter(Boolean) : [],
+    device_scope: formDeviceScope.value || null,
+  };
+});
+
+// ── Load ─────────────────────────────────────────────────────────────────────
 async function load() {
   loading.value = true;
   error.value = null;
   try {
-    endpoints.value = await apiFetch<Endpoint[]>("/api/v1/custom-endpoints");
+    endpoints.value = await listEndpoints();
   } catch {
-    error.value = "Failed to load endpoints";
+    error.value = t("customApi.loadError");
   } finally {
     loading.value = false;
   }
 }
 
+// ── Create/Edit ──────────────────────────────────────────────────────────────
 function openCreate() {
   modalMode.value = "create";
   editId.value = null;
+  modalStep.value = 1;
   formName.value = "";
-  formRoute.value = "/custom/";
+  formPath.value = "";
   formMethod.value = "GET";
   formDescription.value = "";
-  formMapping.value = '{\n  "source": "variables",\n  "filter": {"variable_key": "temperature"}\n}';
-  formRateLimit.value = 60;
-  formScope.value = "";
+  formSourceType.value = "variables";
+  formVariableKeys.value = "";
+  formDeviceFilter.value = "";
+  formAggregation.value = "none";
+  formTimeRange.value = "raw";
+  formGroupBy.value = "none";
+  formFormat.value = "json";
+  formWriteEnabled.value = false;
+  formTargetType.value = "set_variable";
+  formAllowedKeys.value = "";
+  formDeviceScope.value = "";
+  formAuthType.value = "api_key";
+  formRateLimit.value = 100;
+  previewData.value = null;
   modalOpen.value = true;
 }
 
-function openEdit(ep: Endpoint) {
+function openEdit(ep: CustomEndpoint) {
   modalMode.value = "edit";
   editId.value = ep.id;
+  modalStep.value = 1;
   formName.value = ep.name;
-  formRoute.value = ep.route_path;
+  formPath.value = ep.path;
   formMethod.value = ep.method;
   formDescription.value = ep.description || "";
-  formMapping.value = JSON.stringify(ep.response_mapping, null, 2);
-  formRateLimit.value = ep.rate_limit_per_minute;
-  formScope.value = ep.required_scope || "";
+
+  const cfg = ep.source_config || {};
+  if (ep.method === "GET") {
+    formSourceType.value = (cfg.type as string || "variables") as typeof formSourceType.value;
+    formVariableKeys.value = Array.isArray(cfg.variable_keys) ? (cfg.variable_keys as string[]).join(", ") : "";
+    formDeviceFilter.value = (cfg.device_filter as string) || "";
+    formAggregation.value = (cfg.aggregation as string || "none") as typeof formAggregation.value;
+    formTimeRange.value = (cfg.time_range as string || "raw") as typeof formTimeRange.value;
+    formGroupBy.value = (cfg.group_by as string || "none") as typeof formGroupBy.value;
+    formFormat.value = (cfg.format as string || "json") as typeof formFormat.value;
+  } else {
+    formWriteEnabled.value = ep.write_enabled;
+    formTargetType.value = (cfg.target as string) || "set_variable";
+    formAllowedKeys.value = Array.isArray(cfg.allowed_keys) ? (cfg.allowed_keys as string[]).join(", ") : "";
+    formDeviceScope.value = (cfg.device_scope as string) || "";
+  }
+
+  formAuthType.value = ep.auth_type;
+  formRateLimit.value = ep.rate_limit;
+  previewData.value = null;
   modalOpen.value = true;
 }
 
 async function handleSave() {
   saving.value = true;
   try {
-    let mapping: Record<string, unknown> = {};
-    try { mapping = JSON.parse(formMapping.value); } catch { /* keep empty */ }
-
     if (modalMode.value === "create") {
-      await apiFetch("/api/v1/custom-endpoints", {
-        method: "POST",
-        body: JSON.stringify({
-          name: formName.value.trim(),
-          route_path: formRoute.value.trim(),
-          method: formMethod.value,
-          description: formDescription.value || null,
-          response_mapping: mapping,
-          rate_limit_per_minute: formRateLimit.value,
-          required_scope: formScope.value || null,
-        }),
-      });
-      toast.addToast(t('toast.created', { item: 'Endpoint' }), "success");
-    } else {
-      await apiFetch(`/api/v1/custom-endpoints/${editId.value}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: formName.value.trim(),
-          description: formDescription.value || null,
-          response_mapping: mapping,
-          rate_limit_per_minute: formRateLimit.value,
-          required_scope: formScope.value || null,
-        }),
-      });
-      toast.addToast("Endpoint updated", "success");
+      const data: EndpointCreate = {
+        name: formName.value.trim(),
+        path: formPath.value.trim(),
+        method: formMethod.value,
+        description: formDescription.value || null,
+        source_config: sourceConfig.value,
+        auth_type: formAuthType.value,
+        rate_limit: formRateLimit.value,
+        write_enabled: formMethod.value === "POST" ? formWriteEnabled.value : false,
+      };
+      await createEndpoint(data);
+      toast.addToast(t("toast.created", { item: "Endpoint" }), "success");
+    } else if (editId.value) {
+      const data: EndpointUpdate = {
+        name: formName.value.trim(),
+        description: formDescription.value || null,
+        source_config: sourceConfig.value,
+        auth_type: formAuthType.value,
+        rate_limit: formRateLimit.value,
+        write_enabled: formMethod.value === "POST" ? formWriteEnabled.value : false,
+      };
+      await updateEndpoint(editId.value, data);
+      toast.addToast(t("toast.updated", { item: "Endpoint" }), "success");
     }
     modalOpen.value = false;
     await load();
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Save failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t("customApi.saveFailed"), "error");
   } finally {
     saving.value = false;
   }
 }
 
+// ── Delete ───────────────────────────────────────────────────────────────────
 async function handleDelete(id: number) {
-  if (!confirm("Delete this custom endpoint?")) return;
+  if (!confirm(t("customApi.deleteConfirm"))) return;
   try {
-    await apiFetch(`/api/v1/custom-endpoints/${id}`, { method: "DELETE" });
-    toast.addToast("Endpoint deleted", "success");
+    await deleteEndpoint(id);
+    toast.addToast(t("toast.deleted", { item: "Endpoint" }), "success");
+    if (detailEndpoint.value?.id === id) {
+      detailOpen.value = false;
+      detailEndpoint.value = null;
+    }
     await load();
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Delete failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t("customApi.deleteFailed"), "error");
   }
 }
 
-async function toggleEnabled(ep: Endpoint) {
+// ── Toggle enable ────────────────────────────────────────────────────────────
+async function toggleEnabled(ep: CustomEndpoint) {
   try {
-    await apiFetch(`/api/v1/custom-endpoints/${ep.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ enabled: !ep.enabled }),
-    });
+    await updateEndpoint(ep.id, { enabled: !ep.enabled });
     ep.enabled = !ep.enabled;
   } catch (err: unknown) {
     toast.addToast(err instanceof Error ? err.message : "Toggle failed", "error");
   }
+}
+
+// ── Detail panel ─────────────────────────────────────────────────────────────
+function openDetail(ep: CustomEndpoint) {
+  detailEndpoint.value = ep;
+  detailOpen.value = true;
+  detailTestResult.value = null;
+  codeTab.value = "curl";
+}
+
+async function handleTest() {
+  if (!detailEndpoint.value) return;
+  detailTesting.value = true;
+  detailTestResult.value = null;
+  try {
+    const result = await testEndpoint(detailEndpoint.value.id);
+    detailTestResult.value = JSON.stringify(result, null, 2);
+  } catch (err: unknown) {
+    detailTestResult.value = `Error: ${err instanceof Error ? err.message : "Test failed"}`;
+  } finally {
+    detailTesting.value = false;
+  }
+}
+
+async function handleRegenKey() {
+  if (!detailEndpoint.value) return;
+  detailKeyRegenLoading.value = true;
+  try {
+    const res = await regenerateKey(detailEndpoint.value.id);
+    detailEndpoint.value.api_key = res.api_key;
+    toast.addToast(t("customApi.keyRegenerated"), "success");
+  } catch {
+    toast.addToast(t("customApi.keyRegenFailed"), "error");
+  } finally {
+    detailKeyRegenLoading.value = false;
+  }
+}
+
+// ── Preview (step 4) ─────────────────────────────────────────────────────────
+async function loadPreview() {
+  if (!editId.value) {
+    previewData.value = JSON.stringify({ info: t("customApi.previewAfterSave") }, null, 2);
+    return;
+  }
+  previewLoading.value = true;
+  try {
+    const data = await previewEndpoint(editId.value);
+    previewData.value = JSON.stringify(data, null, 2);
+  } catch {
+    previewData.value = JSON.stringify({ error: t("customApi.previewFailed") }, null, 2);
+  } finally {
+    previewLoading.value = false;
+  }
+}
+
+watch(modalStep, (step) => {
+  if (step === 4) loadPreview();
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function relativeTime(ts: string | null): string {
+  if (!ts) return t("customApi.neverCalled");
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function getEndpointUrl(ep: CustomEndpoint): string {
+  return `${window.location.origin}/api/v1/custom-api/call/${ep.path}`;
+}
+
+function getCurlExample(ep: CustomEndpoint): string {
+  const url = getEndpointUrl(ep);
+  const authHeader = ep.auth_type === "api_key"
+    ? ` \\\n  -H "X-API-Key: ${ep.api_key || "<YOUR_API_KEY>"}"`
+    : ep.auth_type === "bearer"
+    ? ` \\\n  -H "Authorization: Bearer ${ep.api_key || "<YOUR_TOKEN>"}"`
+    : "";
+  if (ep.method === "POST") {
+    return `curl -X POST "${url}"${authHeader} \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "temperature", "value": 22.5}'`;
+  }
+  return `curl "${url}"${authHeader}`;
+}
+
+function getPythonExample(ep: CustomEndpoint): string {
+  const url = getEndpointUrl(ep);
+  const headers = ep.auth_type === "api_key"
+    ? `\n    "X-API-Key": "${ep.api_key || "<YOUR_API_KEY>"}",`
+    : ep.auth_type === "bearer"
+    ? `\n    "Authorization": "Bearer ${ep.api_key || "<YOUR_TOKEN>"}",`
+    : "";
+  if (ep.method === "POST") {
+    return `import requests\n\nresponse = requests.post(\n    "${url}",\n    headers={${headers}\n        "Content-Type": "application/json",\n    },\n    json={"key": "temperature", "value": 22.5}\n)\nprint(response.json())`;
+  }
+  return `import requests\n\nresponse = requests.get(\n    "${url}",\n    headers={${headers}}\n)\nprint(response.json())`;
+}
+
+function getJsExample(ep: CustomEndpoint): string {
+  const url = getEndpointUrl(ep);
+  const headers = ep.auth_type === "api_key"
+    ? `\n      "X-API-Key": "${ep.api_key || "<YOUR_API_KEY>"}",`
+    : ep.auth_type === "bearer"
+    ? `\n      "Authorization": "Bearer ${ep.api_key || "<YOUR_TOKEN>"}",`
+    : "";
+  if (ep.method === "POST") {
+    return `const response = await fetch("${url}", {\n  method: "POST",\n  headers: {${headers}\n    "Content-Type": "application/json",\n  },\n  body: JSON.stringify({ key: "temperature", value: 22.5 }),\n});\nconst data = await response.json();\nconsole.log(data);`;
+  }
+  return `const response = await fetch("${url}", {\n  headers: {${headers}}\n});\nconst data = await response.json();\nconsole.log(data);`;
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text);
+  toast.addToast(t("customApi.copied"), "success");
+}
+
+function getAuthLabel(type: string): string {
+  if (type === "api_key") return "API Key";
+  if (type === "bearer") return "Bearer";
+  return t("customApi.noAuth");
 }
 
 onMounted(load);
@@ -151,121 +364,592 @@ onMounted(load);
 
 <template>
   <div class="space-y-6">
+    <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.customApi.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('customApi.title') }}</h1>
+          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
-          {{ t('pages.customApi.subtitle') }}.
-          <router-link to="/developer" class="text-[var(--primary)] hover:underline ml-1">API Docs</router-link> ·
-          <router-link to="/variables" class="text-[var(--primary)] hover:underline">Variables</router-link>
+          {{ t('customApi.subtitle') }}
+          <router-link to="/developer" class="text-[var(--primary)] hover:underline ml-1">{{ t('customApi.apiDocsLink') }}</router-link> ·
+          <router-link to="/variables" class="text-[var(--primary)] hover:underline">{{ t('customApi.variablesLink') }}</router-link>
         </p>
       </div>
-      <button
-        class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"
-        @click="openCreate"
-      >+ New Endpoint</button>
+      <div class="flex gap-2">
+        <UButton size="sm" variant="secondary" @click="load">{{ t('common.refresh') }}</UButton>
+        <UButton size="sm" @click="openCreate">+ {{ t('customApi.newEndpoint') }}</UButton>
+      </div>
     </div>
 
-    <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+    <!-- View toggle -->
+    <div v-if="endpoints.length" class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)] w-fit">
+      <button
+        :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'cards' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+        @click="viewMode = 'cards'"
+      >{{ t('customApi.cardView') }}</button>
+      <button
+        :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'table' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+        @click="viewMode = 'table'"
+      >{{ t('customApi.tableView') }}</button>
+    </div>
 
+    <!-- Loading -->
+    <div v-if="loading" class="space-y-3">
+      <div v-for="i in 3" :key="i" class="h-20 rounded-xl bg-[var(--bg-surface)] animate-pulse" />
+    </div>
+
+    <!-- Error -->
     <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
       <p>{{ error }}</p>
-      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="load">Retry</button>
+      <UButton size="sm" variant="secondary" class="mt-2" @click="load">{{ t('common.refresh') }}</UButton>
     </div>
 
+    <!-- Empty -->
     <UEmpty v-else-if="!endpoints.length"
-      title="No custom endpoints"
-      description="Build custom API endpoints that serve HUBEX data in your own format. Great for dashboards, integrations, and reporting."
+      :title="t('customApi.emptyTitle')"
+      :description="t('customApi.emptyDesc')"
       icon="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
     >
-      <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">Create Endpoint</button>
+      <UButton size="sm" @click="openCreate">{{ t('customApi.createEndpoint') }}</UButton>
     </UEmpty>
 
-    <div v-else class="space-y-3">
-      <div v-for="ep in endpoints" :key="ep.id" class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4">
+    <!-- Card view -->
+    <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div
+        v-for="ep in endpoints"
+        :key="ep.id"
+        class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4 cursor-pointer transition-all hover:border-[var(--border-hover)] hover:shadow-[var(--shadow-glow-primary)]"
+        @click="openDetail(ep)"
+      >
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
-                :class="ep.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'">
-                {{ ep.method }}
-              </span>
-              <span class="text-sm font-medium text-[var(--text-primary)]">{{ ep.name }}</span>
-              <UBadge :status="ep.enabled ? 'ok' : 'neutral'" size="sm">{{ ep.enabled ? 'active' : 'disabled' }}</UBadge>
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                :class="ep.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
+              >{{ ep.method }}</span>
+              <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ ep.name }}</span>
             </div>
-            <p class="text-xs font-mono text-[var(--text-secondary)]">{{ ep.route_path }}</p>
-            <p v-if="ep.description" class="text-[10px] text-[var(--text-muted)] mt-1">{{ ep.description }}</p>
-            <div class="flex items-center gap-4 mt-2 text-[10px] text-[var(--text-muted)]">
-              <span>{{ ep.request_count }} requests</span>
-              <span>{{ ep.rate_limit_per_minute }} req/min</span>
-              <span v-if="ep.required_scope">scope: {{ ep.required_scope }}</span>
-            </div>
+            <p class="text-xs font-mono text-[var(--text-secondary)] truncate">/api/v1/custom-api/call/{{ ep.path }}</p>
+            <p v-if="ep.description" class="text-[10px] text-[var(--text-muted)] mt-1 line-clamp-2">{{ ep.description }}</p>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" title="Edit" @click="openEdit(ep)">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
-            </button>
-            <button
-              :class="['relative w-9 h-5 rounded-full transition-colors', ep.enabled ? 'bg-[var(--status-ok)]' : 'bg-[var(--bg-overlay)]']"
-              @click="toggleEnabled(ep)"
-            >
-              <span :class="['absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform', ep.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
-            </button>
-            <button class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10" title="Delete" @click="handleDelete(ep.id)">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-            </button>
+          <div class="flex flex-col items-end gap-1.5 shrink-0" @click.stop>
+            <UBadge :status="ep.enabled ? 'ok' : 'neutral'" size="sm">
+              {{ ep.enabled ? t('status.enabled') : t('status.disabled') }}
+            </UBadge>
+            <UBadge status="info" size="sm">{{ getAuthLabel(ep.auth_type) }}</UBadge>
           </div>
+        </div>
+        <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border)]">
+          <div class="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
+            <span>{{ ep.request_count }} {{ t('customApi.requests') }}</span>
+            <span>{{ ep.rate_limit }} {{ t('customApi.reqPerHour') }}</span>
+          </div>
+          <span class="text-[10px] text-[var(--text-muted)]">{{ relativeTime(ep.last_called_at) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Create/Edit Modal -->
-    <UModal :open="modalOpen" :title="modalMode === 'create' ? 'New Custom Endpoint' : 'Edit Endpoint'" size="lg" @close="modalOpen = false">
-      <div class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">Name *</label>
-            <input v-model="formName" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs" placeholder="Temperature Summary" />
+    <!-- Table view -->
+    <div v-else class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colMethod') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colPath') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colSource') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colAuth') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colRateLimit') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('common.status') }}</th>
+            <th class="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('common.actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="ep in endpoints"
+            :key="ep.id"
+            class="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--bg-raised)] cursor-pointer transition-colors"
+            @click="openDetail(ep)"
+          >
+            <td class="px-4 py-2.5">
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                :class="ep.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
+              >{{ ep.method }}</span>
+            </td>
+            <td class="px-4 py-2.5 font-mono text-[var(--text-secondary)]">/{{ ep.path }}</td>
+            <td class="px-4 py-2.5 text-[var(--text-muted)]">{{ (ep.source_config?.type as string) || '-' }}</td>
+            <td class="px-4 py-2.5">
+              <UBadge status="info" size="sm">{{ getAuthLabel(ep.auth_type) }}</UBadge>
+            </td>
+            <td class="px-4 py-2.5 text-[var(--text-muted)]">{{ ep.rate_limit }}/h</td>
+            <td class="px-4 py-2.5">
+              <UBadge :status="ep.enabled ? 'ok' : 'neutral'" size="sm">
+                {{ ep.enabled ? t('status.enabled') : t('status.disabled') }}
+              </UBadge>
+            </td>
+            <td class="px-4 py-2.5 text-right" @click.stop>
+              <div class="flex items-center justify-end gap-1">
+                <UButton size="sm" variant="ghost" @click="openEdit(ep)">{{ t('common.edit') }}</UButton>
+                <button
+                  :class="['relative w-8 h-4 rounded-full transition-colors', ep.enabled ? 'bg-[var(--status-ok)]' : 'bg-[var(--bg-overlay)]']"
+                  @click="toggleEnabled(ep)"
+                >
+                  <span :class="['absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform', ep.enabled ? 'translate-x-4' : 'translate-x-0.5']" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <!-- Create/Edit Modal (Stepper)                                          -->
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <UModal
+      :open="modalOpen"
+      :title="modalMode === 'create' ? t('customApi.newEndpoint') : t('customApi.editEndpoint')"
+      size="lg"
+      @close="modalOpen = false"
+    >
+      <!-- Step indicator -->
+      <div class="flex items-center gap-2 mb-5 pb-4 border-b border-[var(--border)]">
+        <template v-for="step in totalSteps" :key="step">
+          <div
+            :class="[
+              'flex items-center gap-1.5',
+              modalStep === step ? 'text-[var(--primary)]' : modalStep > step ? 'text-[var(--status-ok)]' : 'text-[var(--text-muted)]'
+            ]"
+          >
+            <span
+              :class="[
+                'w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center border',
+                modalStep === step ? 'border-[var(--primary)] bg-[var(--primary)]/10' : modalStep > step ? 'border-[var(--status-ok)] bg-[var(--status-ok)]/10' : 'border-[var(--border)] bg-[var(--bg-raised)]'
+              ]"
+            >
+              <svg v-if="modalStep > step" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+              <span v-else>{{ step }}</span>
+            </span>
+            <span class="text-xs font-medium hidden sm:inline">
+              {{ step === 1 ? t('customApi.stepBasics') : step === 2 ? t('customApi.stepDataSource') : step === 3 ? t('customApi.stepSecurity') : t('customApi.stepPreview') }}
+            </span>
           </div>
-          <div>
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">Method</label>
-            <select v-model="formMethod" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
+          <div v-if="step < totalSteps" class="flex-1 h-px bg-[var(--border)]" />
+        </template>
+      </div>
+
+      <!-- Step 1: Basics -->
+      <div v-if="modalStep === 1" class="space-y-4">
+        <UInput v-model="formName" :label="t('customApi.nameLabel')" :placeholder="t('customApi.namePlaceholder')" />
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.pathLabel') }}</label>
+          <div class="flex items-center gap-0">
+            <span class="px-3 py-2 text-xs font-mono bg-[var(--bg-raised)] border border-r-0 border-[var(--border)] rounded-l-lg text-[var(--text-muted)] whitespace-nowrap">{{ pathPrefix }}</span>
+            <input
+              v-model="formPath"
+              class="input w-full rounded-l-none"
+              :placeholder="t('customApi.pathPlaceholder')"
+            />
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.methodLabel') }}</label>
+          <div class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)] w-fit">
+            <button
+              :class="['px-4 py-1.5 text-xs font-bold rounded-md transition-colors font-mono', formMethod === 'GET' ? 'bg-green-500/20 text-green-400 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+              @click="formMethod = 'GET'"
+            >GET</button>
+            <button
+              :class="['px-4 py-1.5 text-xs font-bold rounded-md transition-colors font-mono', formMethod === 'POST' ? 'bg-amber-500/20 text-amber-400 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+              @click="formMethod = 'POST'"
+            >POST</button>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.descriptionLabel') }}</label>
+          <textarea
+            v-model="formDescription"
+            rows="2"
+            class="input w-full resize-none"
+            :placeholder="t('customApi.descriptionPlaceholder')"
+          />
+        </div>
+      </div>
+
+      <!-- Step 2: Data Source (GET) -->
+      <div v-if="modalStep === 2 && formMethod === 'GET'" class="space-y-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.sourceTypeLabel') }}</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              v-for="src in ['variables', 'devices', 'entities', 'alerts', 'events', 'status'] as const"
+              :key="src"
+              :class="[
+                'px-3 py-2 rounded-lg border text-xs font-medium transition-all text-center',
+                formSourceType === src
+                  ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                  : 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:border-[var(--border-hover)]'
+              ]"
+              @click="formSourceType = src"
+            >{{ t(`customApi.source.${src}`) }}</button>
+          </div>
+        </div>
+
+        <!-- Variable-specific options -->
+        <template v-if="formSourceType === 'variables'">
+          <UEntitySelect
+            v-model="formVariableKeys"
+            entity-type="variable"
+            :label="t('customApi.variableKeysLabel')"
+            :placeholder="t('customApi.variableKeysPlaceholder')"
+            optional
+          />
+          <UEntitySelect
+            v-model="formDeviceFilter"
+            entity-type="device"
+            :label="t('customApi.deviceFilterLabel')"
+            :placeholder="t('customApi.deviceFilterPlaceholder')"
+            optional
+          />
+        </template>
+
+        <!-- Device-specific options -->
+        <template v-if="formSourceType === 'devices'">
+          <UEntitySelect
+            v-model="formDeviceFilter"
+            entity-type="device"
+            :label="t('customApi.selectDevices')"
+            :placeholder="t('customApi.selectDevicesPlaceholder')"
+            optional
+          />
+        </template>
+
+        <!-- Entity-specific options -->
+        <template v-if="formSourceType === 'entities'">
+          <UEntitySelect
+            v-model="formDeviceFilter"
+            entity-type="entity"
+            :label="t('customApi.selectEntities')"
+            :placeholder="t('customApi.selectEntitiesPlaceholder')"
+            optional
+          />
+        </template>
+
+        <!-- Aggregation (variables only) -->
+        <div v-if="formSourceType === 'variables'" class="grid grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.aggregation') }}</label>
+            <select v-model="formAggregation" class="input w-full">
+              <option value="none">{{ t('common.none') }}</option>
+              <option value="avg">Average</option>
+              <option value="min">Min</option>
+              <option value="max">Max</option>
+              <option value="sum">Sum</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.timeRange') }}</label>
+            <select v-model="formTimeRange" class="input w-full">
+              <option value="raw">Raw</option>
+              <option value="1h">1h</option>
+              <option value="24h">24h</option>
+              <option value="7d">7d</option>
+              <option value="30d">30d</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.groupBy') }}</label>
+            <select v-model="formGroupBy" class="input w-full">
+              <option value="none">{{ t('common.none') }}</option>
+              <option value="hour">{{ t('customApi.groupHour') }}</option>
+              <option value="day">{{ t('customApi.groupDay') }}</option>
+              <option value="month">{{ t('customApi.groupMonth') }}</option>
             </select>
           </div>
         </div>
-        <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Route Path *</label>
-          <input v-model="formRoute" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono" placeholder="/custom/my-data" />
-        </div>
-        <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Description</label>
-          <input v-model="formDescription" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs" placeholder="Returns current temperature readings" />
-        </div>
-        <details class="border border-[var(--border)] rounded-lg p-3">
-          <summary class="text-[10px] font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]">
-            Response Mapping (JSON) — {{ formMapping.length > 5 ? 'configured' : 'not set' }}
-          </summary>
-          <textarea v-model="formMapping" rows="5" class="mt-2 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder='{"source": "variables", "filter": {"variable_key": "temperature"}}' />
-        </details>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">Rate Limit (req/min)</label>
-            <input v-model.number="formRateLimit" type="number" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs" />
-          </div>
-          <div>
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">Access Scope (leave empty for public)</label>
-            <input v-model="formScope" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono" placeholder="e.g. custom.read" />
+
+        <!-- Format toggle -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.formatLabel') }}</label>
+          <div class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)] w-fit">
+            <button
+              :class="['px-3 py-1 text-xs font-medium rounded-md transition-colors', formFormat === 'json' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]']"
+              @click="formFormat = 'json'"
+            >JSON</button>
+            <button
+              :class="['px-3 py-1 text-xs font-medium rounded-md transition-colors', formFormat === 'csv' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]']"
+              @click="formFormat = 'csv'"
+            >CSV</button>
           </div>
         </div>
       </div>
+
+      <!-- Step 2: Data Source (POST) -->
+      <div v-if="modalStep === 2 && formMethod === 'POST'" class="space-y-4">
+        <!-- Warning banner -->
+        <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300 flex items-start gap-2">
+          <svg class="h-4 w-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+          <span>{{ t('customApi.writeWarning') }}</span>
+        </div>
+
+        <UToggle v-model="formWriteEnabled" :label="t('customApi.writeEnabledLabel')" />
+
+        <div v-if="formWriteEnabled" class="space-y-4 pl-1 border-l-2 border-amber-500/30 ml-2">
+          <div class="flex flex-col gap-1 pl-3">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.targetType') }}</label>
+            <select v-model="formTargetType" class="input w-full">
+              <option value="set_variable">{{ t('customApi.targetSetVariable') }}</option>
+            </select>
+          </div>
+          <div class="pl-3">
+            <UEntitySelect
+              v-model="formAllowedKeys"
+              entity-type="variable"
+              :label="t('customApi.allowedKeysLabel')"
+              :placeholder="t('customApi.allowedKeysPlaceholder')"
+              optional
+            />
+          </div>
+          <div class="pl-3">
+            <UEntitySelect
+              v-model="formDeviceScope"
+              entity-type="device"
+              :label="t('customApi.deviceScopeLabel')"
+              :placeholder="t('customApi.deviceScopePlaceholder')"
+              optional
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Security -->
+      <div v-if="modalStep === 3" class="space-y-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.authTypeLabel') }}</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              v-for="auth in ['api_key', 'bearer', 'none'] as const"
+              :key="auth"
+              :class="[
+                'px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center',
+                formAuthType === auth
+                  ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                  : 'border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-secondary)] hover:border-[var(--border-hover)]'
+              ]"
+              @click="formAuthType = auth"
+            >
+              <span class="block font-semibold">{{ auth === 'api_key' ? 'API Key' : auth === 'bearer' ? 'Bearer Token' : t('customApi.publicNoAuth') }}</span>
+              <span class="block text-[10px] text-[var(--text-muted)] mt-0.5">{{ t(`customApi.authHint.${auth}`) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="formAuthType === 'none'" class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300 flex items-start gap-2">
+          <svg class="h-4 w-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+          <span>{{ t('customApi.publicWarning') }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.rateLimitLabel') }}</label>
+          <div class="flex items-center gap-3">
+            <input
+              v-model.number="formRateLimit"
+              type="range"
+              min="10"
+              max="10000"
+              step="10"
+              class="flex-1 h-1.5 accent-[var(--primary)]"
+            />
+            <div class="flex items-center gap-1">
+              <input
+                v-model.number="formRateLimit"
+                type="number"
+                min="10"
+                max="10000"
+                class="input w-20 text-center text-xs"
+              />
+              <span class="text-[10px] text-[var(--text-muted)]">{{ t('customApi.reqPerHour') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="modalMode === 'create'" class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] px-4 py-3 text-xs text-[var(--text-muted)]">
+          <svg class="h-4 w-4 inline-block mr-1 text-[var(--status-info)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+          {{ t('customApi.keyAutoGenerated') }}
+        </div>
+      </div>
+
+      <!-- Step 4: Preview & Save -->
+      <div v-if="modalStep === 4" class="space-y-4">
+        <!-- Summary -->
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-2">
+          <div class="flex items-center gap-2">
+            <span
+              class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+              :class="formMethod === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
+            >{{ formMethod }}</span>
+            <span class="text-xs font-mono text-[var(--text-primary)]">{{ fullPath }}</span>
+          </div>
+          <div class="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
+            <span>{{ t('customApi.colAuth') }}: {{ getAuthLabel(formAuthType) }}</span>
+            <span>{{ t('customApi.colRateLimit') }}: {{ formRateLimit }}/h</span>
+            <span v-if="formMethod === 'GET'">{{ t('customApi.colSource') }}: {{ formSourceType }}</span>
+          </div>
+        </div>
+
+        <!-- Preview data -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.previewTitle') }}</label>
+            <UButton v-if="editId" size="sm" variant="ghost" @click="loadPreview">{{ t('common.refresh') }}</UButton>
+          </div>
+          <div class="relative">
+            <pre class="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 text-xs font-mono text-[var(--text-secondary)] overflow-x-auto max-h-40 overflow-y-auto">{{ previewLoading ? t('common.loading') : (previewData || t('customApi.previewAfterSave')) }}</pre>
+            <button
+              v-if="previewData"
+              class="absolute top-2 right-2 p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+              @click="copyToClipboard(previewData!)"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- cURL example -->
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.curlExample') }}</label>
+          <div class="relative">
+            <pre class="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 text-xs font-mono text-[var(--text-secondary)] overflow-x-auto">{{ getCurlExample({ method: formMethod, path: formPath, auth_type: formAuthType, api_key: null } as CustomEndpoint) }}</pre>
+            <button
+              class="absolute top-2 right-2 p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+              @click="copyToClipboard(getCurlExample({ method: formMethod, path: formPath, auth_type: formAuthType, api_key: null } as CustomEndpoint))"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer with navigation -->
       <template #footer>
-        <div class="flex justify-end gap-2">
-          <button class="px-3 py-2 rounded-lg text-xs text-[var(--text-muted)]" @click="modalOpen = false">Cancel</button>
-          <button :disabled="saving || !formName.trim()" class="px-3 py-2 rounded-lg text-xs font-medium bg-[var(--primary)] text-black disabled:opacity-50" @click="handleSave">
-            {{ saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save' }}
+        <div class="flex justify-between w-full">
+          <div>
+            <UButton v-if="modalStep > 1" variant="ghost" @click="modalStep--">
+              {{ t('common.back') }}
+            </UButton>
+          </div>
+          <div class="flex gap-2">
+            <UButton variant="ghost" @click="modalOpen = false">{{ t('common.cancel') }}</UButton>
+            <UButton v-if="modalStep < totalSteps" :disabled="modalStep === 1 && !canProceedStep1" @click="modalStep++">
+              {{ t('common.next') }}
+            </UButton>
+            <UButton v-else :loading="saving" @click="handleSave">
+              {{ saving ? t('customApi.saving') : modalMode === 'create' ? t('common.create') : t('common.save') }}
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <!-- Detail Modal                                                          -->
+    <!-- ════════════════════════════════════════════════════════════════════════ -->
+    <UModal
+      :open="detailOpen"
+      :title="detailEndpoint?.name || ''"
+      size="lg"
+      @close="detailOpen = false"
+    >
+      <div v-if="detailEndpoint" class="space-y-5">
+        <!-- Header info -->
+        <div class="flex items-center gap-3">
+          <span
+            class="text-xs px-2 py-1 rounded font-mono font-bold"
+            :class="detailEndpoint.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
+          >{{ detailEndpoint.method }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-mono text-[var(--text-primary)] truncate">{{ getEndpointUrl(detailEndpoint) }}</p>
+          </div>
+          <button
+            class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+            @click="copyToClipboard(getEndpointUrl(detailEndpoint))"
+            :title="t('customApi.copyUrl')"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
           </button>
+        </div>
+
+        <!-- Stats row -->
+        <div class="flex items-center gap-4 text-xs">
+          <UBadge :status="detailEndpoint.enabled ? 'ok' : 'neutral'">
+            {{ detailEndpoint.enabled ? t('status.enabled') : t('status.disabled') }}
+          </UBadge>
+          <UBadge status="info">{{ getAuthLabel(detailEndpoint.auth_type) }}</UBadge>
+          <span class="text-[var(--text-muted)]">{{ detailEndpoint.request_count }} {{ t('customApi.requests') }}</span>
+          <span class="text-[var(--text-muted)]">{{ t('customApi.lastCalled') }}: {{ relativeTime(detailEndpoint.last_called_at) }}</span>
+        </div>
+
+        <!-- Description -->
+        <p v-if="detailEndpoint.description" class="text-xs text-[var(--text-secondary)]">{{ detailEndpoint.description }}</p>
+
+        <!-- API Key (if applicable) -->
+        <div v-if="detailEndpoint.auth_type !== 'none' && detailEndpoint.api_key" class="flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ detailEndpoint.auth_type === 'api_key' ? 'API Key' : 'Bearer Token' }}</label>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-secondary)] truncate">{{ detailEndpoint.api_key }}</code>
+            <UButton size="sm" variant="ghost" @click="copyToClipboard(detailEndpoint.api_key!)">{{ t('customApi.copy') }}</UButton>
+            <UButton size="sm" variant="ghost" :loading="detailKeyRegenLoading" @click="handleRegenKey">{{ t('customApi.regenerate') }}</UButton>
+          </div>
+        </div>
+
+        <!-- Code snippets -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.codeSnippets') }}</label>
+            <div class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)]">
+              <button
+                v-for="tab in ['curl', 'python', 'javascript'] as const"
+                :key="tab"
+                :class="['px-2 py-0.5 text-[10px] font-medium rounded transition-colors', codeTab === tab ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]']"
+                @click="codeTab = tab"
+              >{{ tab === 'curl' ? 'cURL' : tab === 'python' ? 'Python' : 'JavaScript' }}</button>
+            </div>
+          </div>
+          <div class="relative">
+            <pre class="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 text-xs font-mono text-[var(--text-secondary)] overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">{{ codeTab === 'curl' ? getCurlExample(detailEndpoint) : codeTab === 'python' ? getPythonExample(detailEndpoint) : getJsExample(detailEndpoint) }}</pre>
+            <button
+              class="absolute top-2 right-2 p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+              @click="copyToClipboard(codeTab === 'curl' ? getCurlExample(detailEndpoint) : codeTab === 'python' ? getPythonExample(detailEndpoint) : getJsExample(detailEndpoint))"
+            >
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Test endpoint -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.testEndpoint') }}</label>
+            <UButton size="sm" variant="secondary" :loading="detailTesting" @click="handleTest">
+              {{ t('customApi.runTest') }}
+            </UButton>
+          </div>
+          <pre v-if="detailTestResult" class="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 text-xs font-mono text-[var(--text-secondary)] overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap">{{ detailTestResult }}</pre>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-between w-full">
+          <UButton variant="danger" size="sm" @click="detailEndpoint && handleDelete(detailEndpoint.id)">
+            {{ t('common.delete') }}
+          </UButton>
+          <div class="flex gap-2">
+            <UButton variant="ghost" @click="detailOpen = false">{{ t('common.close') }}</UButton>
+            <UButton @click="detailEndpoint && openEdit(detailEndpoint); detailOpen = false">{{ t('common.edit') }}</UButton>
+          </div>
         </div>
       </template>
     </UModal>
