@@ -42,6 +42,7 @@ from .plugin import Plugin
 from .hardware import BoardProfile, ShieldProfile, PinConfiguration
 from .component import HardwareComponent
 from .device_profile import DeviceProfile
+from .custom_tour import CustomTour
 
 __all__ = [
     "User",
@@ -109,4 +110,5 @@ __all__ = [
     "PinConfiguration",
     "HardwareComponent",
     "DeviceProfile",
+    "CustomTour",
 ]
