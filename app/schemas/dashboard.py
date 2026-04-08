@@ -77,6 +77,9 @@ class DashboardOut(BaseModel):
     is_default: bool
     owner_id: int
     sharing_mode: str
+    public_token: Optional[str] = None
+    embed_config: Optional[dict] = None
+    kiosk_config: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
     widgets: list[DashboardWidgetOut] = []
@@ -100,3 +103,29 @@ class DashboardSummaryOut(BaseModel):
 class LayoutUpdate(BaseModel):
     """Bulk update widget positions."""
     widgets: list[dict]  # [{id, grid_col, grid_row, grid_span_w, grid_span_h, sort_order}]
+
+
+class DashboardCloneRequest(BaseModel):
+    """Clone a dashboard with optional new name and entity scope."""
+    name: Optional[str] = None
+    entity_id: Optional[str] = None  # scope all widgets to devices of this entity
+
+
+class DashboardEmbedConfig(BaseModel):
+    allowed_referers: list[str] = []
+    expires_at: Optional[datetime] = None
+    max_views: Optional[int] = None
+
+
+class DashboardKioskConfig(BaseModel):
+    auto_slide: bool = False
+    slide_interval: int = 30
+    slide_dashboards: list[int] = []
+    show_header: bool = True
+    show_clock: bool = True
+
+
+class DashboardGenerateSetRequest(BaseModel):
+    """Generate a set of dashboards from a template."""
+    entity_id: str
+    scope_by: str = "devices"  # "devices" or "children"

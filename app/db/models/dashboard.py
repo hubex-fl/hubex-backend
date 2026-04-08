@@ -21,6 +21,8 @@ class Dashboard(Base):
     )
     public_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     public_pin: Mapped[str | None] = mapped_column(String(8), nullable=True)  # 4-6 digit PIN
+    embed_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    kiosk_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

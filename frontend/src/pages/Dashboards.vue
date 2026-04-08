@@ -39,7 +39,7 @@
         @click="router.push(`/dashboards/${db.id}`)"
       >
         <div class="db-card-header">
-          <div class="db-card-icon">📊</div>
+          <div class="db-card-icon">&#128202;</div>
           <div class="db-card-badges">
             <UBadge v-if="db.is_default" color="amber" size="xs">Default</UBadge>
             <UBadge :color="sharingColor(db.sharing_mode)" size="xs">{{ db.sharing_mode }}</UBadge>
@@ -51,8 +51,77 @@
           <span class="db-widget-count">{{ db.widget_count }} widget{{ db.widget_count !== 1 ? 's' : '' }}</span>
           <span class="db-updated">{{ relativeTime(db.updated_at) }}</span>
         </div>
+        <div class="db-card-actions" @click.stop>
+          <button class="card-action-btn" @click="openCloneModal(db)" :title="t('dashboardEnhance.clone')">
+            &#128203;
+          </button>
+          <button v-if="db.widget_count > 0" class="card-action-btn" @click="openGenerateSetModal(db)" :title="t('dashboardEnhance.generateSet')">
+            &#9881;
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- Clone Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showCloneModal" class="modal-overlay" @click.self="showCloneModal = false">
+          <div class="modal-box">
+            <h2 class="modal-title">{{ t('dashboardEnhance.cloneDashboard') }}</h2>
+            <div class="form-fields">
+              <div class="field">
+                <label class="field-label">{{ t('dashboardEnhance.newName') }}</label>
+                <input
+                  v-model="cloneName"
+                  class="field-input"
+                  :placeholder="cloneSourceName + ' (Copy)'"
+                  autofocus
+                />
+              </div>
+              <div class="field">
+                <label class="field-label">{{ t('dashboardEnhance.scopeToEntity') }}</label>
+                <UEntitySelect v-model="cloneEntityId" entity-type="entity" :placeholder="t('dashboardEnhance.scopeToEntityPlaceholder')" :optional="true" />
+              </div>
+              <p v-if="cloneError" class="field-error">{{ cloneError }}</p>
+              <div class="modal-actions">
+                <UButton variant="ghost" @click="showCloneModal = false">{{ t('common.cancel') }}</UButton>
+                <UButton :loading="cloning" @click="submitClone">{{ t('dashboardEnhance.clone') }}</UButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Generate Set Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showGenerateSetModal" class="modal-overlay" @click.self="showGenerateSetModal = false">
+          <div class="modal-box">
+            <h2 class="modal-title">{{ t('dashboardEnhance.generateSetTitle') }}</h2>
+            <div class="form-fields">
+              <p class="modal-sub">{{ t('dashboardEnhance.generateSetDesc') }}</p>
+              <div class="field">
+                <label class="field-label">{{ t('dashboardEnhance.selectEntity') }}</label>
+                <UEntitySelect v-model="genEntityId" entity-type="entity" placeholder="Select entity/group..." />
+              </div>
+              <div class="field">
+                <label class="field-label">{{ t('dashboardEnhance.scopeBy') }}</label>
+                <select v-model="genScopeBy" class="field-input">
+                  <option value="devices">{{ t('dashboardEnhance.scopeByDevices') }}</option>
+                  <option value="children">{{ t('dashboardEnhance.scopeByChildren') }}</option>
+                </select>
+              </div>
+              <p v-if="genError" class="field-error">{{ genError }}</p>
+              <div class="modal-actions">
+                <UButton variant="ghost" @click="showGenerateSetModal = false">{{ t('common.cancel') }}</UButton>
+                <UButton :loading="generating" :disabled="!genEntityId" @click="submitGenerateSet">{{ t('dashboardEnhance.generate') }}</UButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Create Modal -->
     <Teleport to="body">
@@ -132,10 +201,13 @@ import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import {
   listDashboards,
   createDashboard,
   addWidget,
+  cloneDashboard,
+  generateDashboardSet,
   DASHBOARD_TEMPLATES,
   type DashboardSummary,
 } from "../lib/dashboards";
@@ -246,6 +318,77 @@ function relativeTime(ts: string): string {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
+
+// ── Clone ──────────────────────────────────────────────────────────────────
+const showCloneModal = ref(false);
+const cloneSourceId = ref(0);
+const cloneSourceName = ref("");
+const cloneName = ref("");
+const cloneEntityId = ref("");
+const cloning = ref(false);
+const cloneError = ref("");
+
+function openCloneModal(db: DashboardSummary) {
+  cloneSourceId.value = db.id;
+  cloneSourceName.value = db.name;
+  cloneName.value = "";
+  cloneEntityId.value = "";
+  cloneError.value = "";
+  showCloneModal.value = true;
+}
+
+async function submitClone() {
+  cloning.value = true;
+  cloneError.value = "";
+  try {
+    const result = await cloneDashboard(cloneSourceId.value, {
+      name: cloneName.value.trim() || undefined,
+      entity_id: cloneEntityId.value || undefined,
+    });
+    showCloneModal.value = false;
+    router.push(`/dashboards/${result.id}`);
+  } catch (e: unknown) {
+    const info = parseApiError(e);
+    cloneError.value = mapErrorToUserText(info, "Could not clone dashboard.");
+  } finally {
+    cloning.value = false;
+  }
+}
+
+// ── Generate Set ──────────────────────────────────────────────────────────
+const showGenerateSetModal = ref(false);
+const genSourceId = ref(0);
+const genEntityId = ref("");
+const genScopeBy = ref<"devices" | "children">("devices");
+const generating = ref(false);
+const genError = ref("");
+
+function openGenerateSetModal(db: DashboardSummary) {
+  genSourceId.value = db.id;
+  genEntityId.value = "";
+  genScopeBy.value = "devices";
+  genError.value = "";
+  showGenerateSetModal.value = true;
+}
+
+async function submitGenerateSet() {
+  if (!genEntityId.value) return;
+  generating.value = true;
+  genError.value = "";
+  try {
+    const result = await generateDashboardSet(genSourceId.value, {
+      entity_id: genEntityId.value,
+      scope_by: genScopeBy.value,
+    });
+    showGenerateSetModal.value = false;
+    await load();
+  } catch (e: unknown) {
+    const info = parseApiError(e);
+    genError.value = mapErrorToUserText(info, "Could not generate dashboard set.");
+  } finally {
+    generating.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -291,6 +434,26 @@ function relativeTime(ts: string): string {
 }
 .db-widget-count { font-weight: 500; }
 
+/* ── Card actions ─────────────────────────────────── */
+.db-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.card-action-btn {
+  padding: 3px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.card-action-btn:hover { border-color: var(--primary); color: var(--primary); }
+
 /* ── Modal ───────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;
@@ -308,6 +471,7 @@ function relativeTime(ts: string): string {
 }
 .modal-title { font-size: 18px; font-weight: 700; color: var(--text-base); margin-bottom: 16px; }
 .modal-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
 /* Templates */

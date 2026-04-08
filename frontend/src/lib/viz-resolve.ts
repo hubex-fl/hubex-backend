@@ -18,6 +18,7 @@ const HINT_MAP: Record<string, VizType> = {
   json:            "json",
   control_toggle:  "control_toggle",
   control_slider:  "control_slider",
+  html_template:   "html_template",
   auto:            "auto",
 };
 
@@ -69,6 +70,7 @@ export function vizTypeLabel(type: VizType): string {
     image:           "Image",
     control_toggle:  "Toggle Control",
     control_slider:  "Slider Control",
+    html_template:   "Custom HTML",
     auto:            "Auto",
   };
   return labels[type] ?? type;

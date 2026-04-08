@@ -1,9 +1,33 @@
 import { createRouter, createWebHistory } from "vue-router";
 
+function getHomepageDashboardId(): number | null {
+  try {
+    const raw = localStorage.getItem("hubex_user_prefs");
+    if (!raw) return null;
+    const prefs = JSON.parse(raw);
+    const id = prefs.homepage_dashboard_id;
+    return typeof id === "number" ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/",             component: () => import("./pages/DashboardPage.vue"), meta: { title: "Dashboard" } },
+    {
+      path: "/",
+      component: () => import("./pages/DashboardPage.vue"),
+      meta: { title: "Dashboard" },
+      beforeEnter: (_to, _from, next) => {
+        const dashId = getHomepageDashboardId();
+        if (dashId) {
+          next({ path: `/dashboards/${dashId}` });
+        } else {
+          next();
+        }
+      },
+    },
     { path: "/landing",      component: () => import("./pages/Landing.vue"),        meta: { layout: "public", title: "HUBEX — The Universal IoT Device Hub" } },
     { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In" } },
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
@@ -39,7 +63,9 @@ const router = createRouter({
     { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
+    { path: "/kiosk/slideshow", component: () => import("./pages/KioskSlideshow.vue"), meta: { title: "Kiosk Slideshow", layout: "kiosk" } },
     { path: "/kiosk/:id",     component: () => import("./pages/DashboardView.vue"),meta: { title: "Kiosk", layout: "kiosk" } },
+    { path: "/embed/:token",  component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Embedded Dashboard", layout: "embed" } },
     { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public" } },
   ],
 });

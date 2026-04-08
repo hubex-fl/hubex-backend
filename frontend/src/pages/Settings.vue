@@ -19,6 +19,7 @@ const toast = useToastStore();
 import SessionManager from "../components/SessionManager.vue";
 import MfaSetup from "../components/MfaSetup.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
+import { listDashboards, type DashboardSummary } from "../lib/dashboards";
 
 const router = useRouter();
 const { t, tm, rt } = useI18n();
@@ -142,6 +143,30 @@ function resetActionBars() {
   demoResult.value = `Reset ${keys.length} action bar preferences`;
 }
 
+// ── Homepage preference ──────────────────────────────────────────────────────
+const userDashboards = ref<DashboardSummary[]>([]);
+const dashboardsLoading = ref(false);
+const homepageDashboardId = ref<number | null>(null);
+
+async function loadDashboards() {
+  dashboardsLoading.value = true;
+  try {
+    userDashboards.value = await listDashboards();
+  } catch { /* ignore */ }
+  dashboardsLoading.value = false;
+}
+
+function initHomepagePref() {
+  const val = prefs.get<number | null>("homepage_dashboard_id", null);
+  homepageDashboardId.value = val;
+}
+
+async function setHomepageDashboard(id: number | null) {
+  homepageDashboardId.value = id;
+  await prefs.update("homepage_dashboard_id", id);
+  toast.addToast(t('settings.homepageSaved'), "success");
+}
+
 // ── Accordion sections ────────────────────────────────────────────────────────
 type SectionKey = "account" | "organization" | "developer" | "system";
 const expandedSection = ref<SectionKey | null>(null);
@@ -223,9 +248,12 @@ const tokenPresent = computed(() => !!getToken());
 const capList = computed(() => Array.from(caps.caps).sort());
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-onMounted(() => {
+onMounted(async () => {
   loadUser();
   loadOrgs();
+  loadDashboards();
+  await prefs.load();
+  initHomepagePref();
 });
 </script>
 
@@ -315,6 +343,33 @@ onMounted(() => {
               </UCard>
               <UCard>
                 <SessionManager />
+              </UCard>
+              <UCard>
+                <template #header>
+                  <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.homepage') }}</h3>
+                  <span class="text-xs text-[var(--text-muted)]">{{ t('settings.homepageDescription') }}</span>
+                </template>
+                <div class="space-y-3">
+                  <div v-if="dashboardsLoading" class="space-y-2">
+                    <USkeleton height="2.5rem" />
+                  </div>
+                  <div v-else>
+                    <select
+                      :value="homepageDashboardId ?? ''"
+                      class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]/50 transition-colors"
+                      @change="setHomepageDashboard(($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
+                    >
+                      <option value="">{{ t('settings.systemDashboard') }}</option>
+                      <option
+                        v-for="db in userDashboards"
+                        :key="db.id"
+                        :value="db.id"
+                      >
+                        {{ db.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
               </UCard>
             </template>
 

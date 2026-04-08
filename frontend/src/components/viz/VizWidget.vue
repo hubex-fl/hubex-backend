@@ -128,6 +128,18 @@
         />
       </div>
 
+      <!-- HTML Template -->
+      <VizHtmlTemplate
+        v-else-if="resolvedType === 'html_template'"
+        :html-template="(props.displayConfig?.html_template as string) || ''"
+        :current-value="currentValue"
+        :points="points"
+        :unit="unit"
+        :label="label"
+        :variable-key="variableKey"
+        :height="height"
+      />
+
       <!-- Fallback -->
       <div v-else class="widget-unknown">
         <code>{{ currentValue }}</code>
@@ -159,11 +171,13 @@ import VizMapView        from "./VizMapView.vue";
 import VizImageView      from "./VizImageView.vue";
 import VizControlToggle  from "./VizControlToggle.vue";
 import VizControlSlider  from "./VizControlSlider.vue";
+import VizHtmlTemplate   from "./VizHtmlTemplate.vue";
 
 // Extended props for control widgets
 interface VizWidgetExtProps extends VizWidgetProps {
   writable?: boolean;
   onControlChange?: (value: unknown) => void;
+  displayConfig?: Record<string, unknown> | null;
 }
 
 const props = withDefaults(defineProps<VizWidgetExtProps>(), {
@@ -221,6 +235,7 @@ const vizIcon = computed(() => {
     image:           "🖼",
     control_toggle:  "⏻",
     control_slider:  "⊟",
+    html_template:   "</>",
     auto:            "◈",
   };
   return icons[resolvedType.value] ?? "◈";

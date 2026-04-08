@@ -28,6 +28,9 @@ export interface Dashboard {
   is_default: boolean;
   owner_id: number;
   sharing_mode: "private" | "org" | "public";
+  public_token: string | null;
+  embed_config: EmbedConfig | null;
+  kiosk_config: KioskConfig | null;
   created_at: string;
   updated_at: string;
   widgets: DashboardWidget[];
@@ -136,6 +139,67 @@ export async function updateLayout(dashboardId: number, items: LayoutItem[]): Pr
   return apiFetch<Dashboard>(`${BASE}/${dashboardId}/layout`, {
     method: "PUT",
     body: JSON.stringify({ widgets: items }),
+  });
+}
+
+// ─── Clone & Generate ────────────────────────────────────────────────────────
+
+export interface CloneRequest {
+  name?: string;
+  entity_id?: string;
+}
+
+export async function cloneDashboard(id: number, data?: CloneRequest): Promise<Dashboard> {
+  return apiFetch<Dashboard>(`${BASE}/${id}/clone`, {
+    method: "POST",
+    body: JSON.stringify(data ?? {}),
+  });
+}
+
+export interface GenerateSetRequest {
+  entity_id: string;
+  scope_by: "devices" | "children";
+}
+
+export interface GenerateSetResult {
+  created: number[];
+  count: number;
+}
+
+export async function generateDashboardSet(id: number, data: GenerateSetRequest): Promise<GenerateSetResult> {
+  return apiFetch<GenerateSetResult>(`${BASE}/${id}/generate-set`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// ─── Embed & Kiosk Config ────────────────────────────────────────────────────
+
+export interface EmbedConfig {
+  allowed_referers: string[];
+  expires_at: string | null;
+  max_views: number | null;
+}
+
+export async function updateEmbedConfig(dashboardId: number, config: EmbedConfig): Promise<{ ok: boolean }> {
+  return apiFetch(`${BASE}/${dashboardId}/embed-config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+export interface KioskConfig {
+  auto_slide: boolean;
+  slide_interval: number;
+  slide_dashboards: number[];
+  show_header: boolean;
+  show_clock: boolean;
+}
+
+export async function updateKioskConfig(dashboardId: number, config: KioskConfig): Promise<{ ok: boolean }> {
+  return apiFetch(`${BASE}/${dashboardId}/kiosk-config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
   });
 }
 
