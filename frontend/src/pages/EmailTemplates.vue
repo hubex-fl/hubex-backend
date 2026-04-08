@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
@@ -51,6 +51,18 @@ const editSaving = ref(false);
 const previewOpen = ref(false);
 const previewSubject = ref("");
 const previewHtml = ref("");
+
+// Inline editor preview (live WYSIWYG)
+const editorView = ref<"code" | "preview" | "split">("split");
+const debouncedHtml = ref("");
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(editBodyHtml, (val) => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debouncedHtml.value = val;
+  }, 300);
+}, { immediate: true });
 
 const CATEGORY_LABELS: Record<string, string> = {
   alert: "Alert",
@@ -277,8 +289,50 @@ onMounted(loadTemplates);
           <input v-model="editSubject" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" placeholder="[HUBEX] Alert: {alert_name}" />
         </div>
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">HTML Body</label>
-          <textarea v-model="editBodyHtml" rows="6" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" placeholder="<h2>Alert</h2><p>{variable_key} = {value}</p>" />
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-[10px] font-medium text-[var(--text-muted)]">HTML Body</label>
+            <div class="flex rounded-lg border border-[var(--border)] overflow-hidden">
+              <button
+                v-for="view in (['code', 'split', 'preview'] as const)"
+                :key="view"
+                :class="[
+                  'px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  editorView === view
+                    ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+                ]"
+                @click="editorView = view"
+              >{{ t(`pages.emailTemplates.editorView.${view}`) }}</button>
+            </div>
+          </div>
+          <div :class="[
+            'gap-3',
+            editorView === 'split' ? 'grid grid-cols-1 md:grid-cols-2' : '',
+          ]">
+            <textarea
+              v-if="editorView !== 'preview'"
+              v-model="editBodyHtml"
+              rows="8"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono resize-y"
+              placeholder="<h2>Alert</h2><p>{variable_key} = {value}</p>"
+            />
+            <div
+              v-if="editorView !== 'code'"
+              class="rounded-lg border border-[var(--border)] bg-white overflow-hidden"
+              :class="editorView === 'preview' ? '' : ''"
+            >
+              <div class="px-2 py-1 bg-[var(--bg-raised)] border-b border-[var(--border)] text-[10px] text-[var(--text-muted)]">
+                {{ t('pages.emailTemplates.preview') }}
+              </div>
+              <iframe
+                :srcdoc="debouncedHtml || `<p style='color:#999;font-family:sans-serif;font-size:13px;padding:12px;'>${t('pages.emailTemplates.previewEmpty')}</p>`"
+                sandbox=""
+                class="w-full border-0"
+                :style="{ minHeight: editorView === 'preview' ? '200px' : '180px' }"
+                :title="t('pages.emailTemplates.preview')"
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label class="text-[10px] font-medium text-[var(--text-muted)]">Text Body (fallback)</label>

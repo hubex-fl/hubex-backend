@@ -268,43 +268,43 @@ onMounted(fetchTypes);
     <!-- Type Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       <UCard
-        v-for="t in filteredTypes"
-        :key="t.id"
+        v-for="st in filteredTypes"
+        :key="st.id"
         padding="md"
         class="relative group"
       >
         <!-- Icon + Name -->
         <div class="flex items-center gap-3 mb-3">
-          <span class="text-2xl leading-none">{{ t.icon || '📦' }}</span>
+          <span class="text-2xl leading-none">{{ st.icon || '📦' }}</span>
           <div class="min-w-0 flex-1">
-            <h3 class="font-semibold text-[var(--text-primary)] truncate">{{ t.display_name }}</h3>
-            <p class="text-xs text-[var(--text-muted)] truncate">{{ t.name }} &middot; {{ t.base_type }}</p>
+            <h3 class="font-semibold text-[var(--text-primary)] truncate">{{ st.display_name }}</h3>
+            <p class="text-xs text-[var(--text-muted)] truncate">{{ st.name }} &middot; {{ st.base_type }}</p>
           </div>
-          <UBadge v-if="t.is_builtin" status="info" class="shrink-0">Built-in</UBadge>
+          <UBadge v-if="st.is_builtin" status="info" class="shrink-0">Built-in</UBadge>
           <UBadge v-else status="neutral" class="shrink-0">Custom</UBadge>
         </div>
 
         <!-- Properties -->
         <div class="grid grid-cols-2 gap-2 text-sm">
-          <div v-if="t.unit">
+          <div v-if="st.unit">
             <span class="text-[var(--text-muted)]">Unit:</span>
-            <span class="text-[var(--text-primary)] ml-1">{{ t.unit_symbol || t.unit }}</span>
+            <span class="text-[var(--text-primary)] ml-1">{{ st.unit_symbol || st.unit }}</span>
           </div>
-          <div v-if="t.min_value != null || t.max_value != null">
+          <div v-if="st.min_value != null || st.max_value != null">
             <span class="text-[var(--text-muted)]">Range:</span>
             <span class="text-[var(--text-primary)] ml-1">
-              {{ t.min_value ?? '\u2212\u221E' }} \u2013 {{ t.max_value ?? '\u221E' }}
+              {{ st.min_value ?? '\u2212\u221E' }} \u2013 {{ st.max_value ?? '\u221E' }}
             </span>
           </div>
-          <div v-if="t.default_viz_type">
+          <div v-if="st.default_viz_type">
             <span class="text-[var(--text-muted)]">Viz:</span>
-            <span class="text-[var(--text-primary)] ml-1">{{ t.default_viz_type }}</span>
+            <span class="text-[var(--text-primary)] ml-1">{{ st.default_viz_type }}</span>
           </div>
-          <div v-if="t.color" class="flex items-center">
+          <div v-if="st.color" class="flex items-center">
             <span class="text-[var(--text-muted)]">Color:</span>
             <span
               class="inline-block w-3 h-3 rounded-full ml-1 border border-[var(--border)]"
-              :style="{ backgroundColor: t.color }"
+              :style="{ backgroundColor: st.color }"
             />
           </div>
         </div>
@@ -312,33 +312,33 @@ onMounted(fetchTypes);
         <!-- Trigger toggle + Edit/Delete -->
         <div class="mt-3 pt-3 border-t border-[var(--border)] flex items-center justify-between">
           <button
-            @click="toggleTriggers(t.id)"
+            @click="toggleTriggers(st.id)"
             class="text-xs text-[var(--primary)] hover:underline"
           >
-            {{ expandedType === t.id ? 'Hide' : 'Show' }} Triggers &amp; Conversions
+            {{ expandedType === st.id ? 'Hide' : 'Show' }} Triggers &amp; Conversions
           </button>
-          <div v-if="!t.is_builtin" class="flex gap-2">
+          <div v-if="!st.is_builtin" class="flex gap-2">
             <button
-              @click="openEdit(t)"
+              @click="openEdit(st)"
               class="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
             >Edit</button>
             <button
-              @click="confirmDelete(t)"
+              @click="confirmDelete(st)"
               class="text-xs text-[var(--text-muted)] hover:text-[var(--status-bad)] transition-colors"
             >Delete</button>
           </div>
         </div>
 
         <!-- Expanded: Triggers + Conversions -->
-        <div v-if="expandedType === t.id" class="mt-3 space-y-1">
+        <div v-if="expandedType === st.id" class="mt-3 space-y-1">
           <div
-            v-if="!typeTriggers[t.id]?.length && !typeConversions[t.id]?.length"
+            v-if="!typeTriggers[st.id]?.length && !typeConversions[st.id]?.length"
             class="text-xs text-[var(--text-muted)] italic"
           >
             No triggers or conversions defined.
           </div>
           <div
-            v-for="tr in typeTriggers[t.id]"
+            v-for="tr in typeTriggers[st.id]"
             :key="'tr-' + tr.id"
             class="flex items-center gap-2 text-sm px-2 py-1 rounded bg-[var(--bg-raised)]"
           >
@@ -347,7 +347,7 @@ onMounted(fetchTypes);
             <span class="text-[var(--text-muted)] text-xs ml-auto font-mono">{{ tr.trigger_name }}</span>
           </div>
           <div
-            v-for="c in typeConversions[t.id]"
+            v-for="c in typeConversions[st.id]"
             :key="'cv-' + c.id"
             class="flex items-center gap-2 text-sm px-2 py-1 rounded bg-[var(--bg-raised)]"
           >
@@ -369,7 +369,7 @@ onMounted(fetchTypes);
     </div>
 
     <!-- Create / Edit Modal -->
-    <UModal :open="modalOpen" title="editingType ? 'Edit Type: ' + editingType.display_name : 'Create Custom Type'" @close="modalOpen = false">
+    <UModal :open="modalOpen" :title="editingType ? 'Edit Type: ' + editingType.display_name : 'Create Custom Type'" @close="modalOpen = false">
       <template #header>
         <h2 class="text-base font-semibold text-[var(--text-primary)]">
           {{ editingType ? 'Edit Type' : 'Create Custom Type' }}

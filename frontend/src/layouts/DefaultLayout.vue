@@ -162,6 +162,26 @@ const visibleNavGroups = computed<NavGroup[]>(() =>
     .filter((g) => g.items.length > 0)
 );
 
+// Collect all nav paths for longest-match active detection
+const allNavPaths = computed(() =>
+  navGroups.value.flatMap((g) => g.items.map((i) => i.to))
+);
+
+function isNavActive(itemTo: string): boolean {
+  const p = route.path;
+  if (itemTo === "/") return p === "/";
+  // Exact match always wins
+  if (p === itemTo) return true;
+  // Prefix match (e.g. /devices matches /devices/123)
+  if (p.startsWith(itemTo + "/")) {
+    // Only highlight if no other nav item is a longer (more specific) match
+    return !allNavPaths.value.some(
+      (other) => other !== itemTo && other.length > itemTo.length && (p === other || p.startsWith(other + "/"))
+    );
+  }
+  return false;
+}
+
 function handleNavClick() {
   mobileOpen.value = false;
 }
@@ -289,7 +309,7 @@ function handleNavClick() {
               :title="item.label"
               :class="[
                 'flex items-center gap-2.5 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-lg text-sm transition-colors',
-                (item.to === '/' ? route.path === '/' : route.path.startsWith(item.to))
+                isNavActive(item.to)
                   ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
               ]"
@@ -367,7 +387,7 @@ function handleNavClick() {
                 :to="item.to"
                 :class="[
                   'flex items-center gap-3 px-4 py-3 mx-2 my-0.5 rounded-lg text-sm transition-colors',
-                  (item.to === '/' ? route.path === '/' : route.path.startsWith(item.to))
+                  isNavActive(item.to)
                     ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
                 ]"

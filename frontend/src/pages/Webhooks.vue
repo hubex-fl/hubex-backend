@@ -10,8 +10,9 @@ import UBadge from "../components/ui/UBadge.vue";
 import UModal from "../components/ui/UModal.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import UToggle from "../components/ui/UToggle.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { useToastStore } from "../stores/toast";
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const toast = useToastStore();
 
 type Webhook = {
@@ -132,7 +133,10 @@ onMounted(loadWebhooks);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.webhooks.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.webhooks.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.webhooks.title')" :items="tm('infoTooltips.webhooks.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.webhooks.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
@@ -211,9 +215,18 @@ onMounted(loadWebhooks);
     <!-- Create Modal -->
     <UModal :open="showCreate" title="New Webhook" @close="showCreate = false">
       <div class="space-y-3 p-2">
-        <UInput v-model="createUrl" label="Endpoint URL" placeholder="https://your-server.com/webhook" />
-        <UInput v-model="createSecret" label="Secret (for HMAC signature)" placeholder="my-webhook-secret" />
-        <UInput v-model="createEvents" label="Event Filter (comma-separated, empty = all)" placeholder="device.offline, variable.changed, alert.fired" />
+        <div>
+          <UInput v-model="createUrl" :label="t('pages.webhooks.urlLabel')" placeholder="https://your-server.com/webhook" />
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5 ml-0.5">{{ t('pages.webhooks.urlHint') }}</p>
+        </div>
+        <div>
+          <UInput v-model="createEvents" :label="t('pages.webhooks.eventsLabel')" placeholder="device.offline, variable.changed, alert.fired" />
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5 ml-0.5">{{ t('pages.webhooks.eventsHint') }}</p>
+        </div>
+        <div>
+          <UInput v-model="createSecret" :label="t('pages.webhooks.secretLabel')" placeholder="my-webhook-secret" />
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5 ml-0.5">{{ t('pages.webhooks.secretHint') }}</p>
+        </div>
         <div v-if="createError" class="text-xs text-[var(--status-bad)]">{{ createError }}</div>
       </div>
       <template #footer>
