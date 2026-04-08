@@ -39,8 +39,15 @@ class VariableDefinitionIn(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
+Direction = Literal["read_only", "write_only", "read_write"]
+
+
 class VariableDefinitionPatchIn(BaseModel):
     """Partial update for mutable definition fields."""
+    value_type: ValueType | None = Field(
+        default=None, validation_alias=AliasChoices("value_type", "valueType")
+    )
+    direction: Direction | None = None
     display_hint: str | None = Field(
         default=None, validation_alias=AliasChoices("display_hint", "displayHint")
     )

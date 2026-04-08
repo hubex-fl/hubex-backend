@@ -41,7 +41,7 @@
 - **SOLL:** `/alerts?create=true&device_uid=X`, `/automations?create=true&device_uid=X`
 - **Datei:** `frontend/src/components/ActionBar.vue` (Zeile ~54: `router.push("/variables")`)
 - **Erfolgskriterium:** Klick auf "Set up alerts" in DeviceDetail → Alerts-Seite öffnet Create-Modal MIT Device vorausgewählt
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — ActionBar bereits korrekt implementiert mit create+device_uid Query-Params
 
 ### Gap 1.2: Keine Post-Acknowledge Action-Bar bei Alerts
 - **IST:** Nach Alert-Ack passiert nichts, nur Status-Änderung
@@ -49,35 +49,35 @@
 - **SOLL (wiederkehrend):** Bei >3x in 24h: "Dieser Alert wurde heute 5x ausgelöst. Automation erstellen?"
 - **Datei:** `frontend/src/pages/Alerts.vue` (nach handleAck Funktion, ~Zeile 67-77)
 - **Erfolgskriterium:** Nach Ack erscheint Action-Bar mit Links, verschwindet nach 10s oder per ×
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Post-ack action bar mit View Device, Create Automation, Mute + recurring hint + 10s auto-dismiss
 
 ### Gap 1.3: Alert-Events nicht klickbar
 - **IST:** Alert-Events sind nur Text, kein Link zum betroffenen Device
 - **SOLL:** Device/Variable-Name als `<router-link>` zum Device
 - **Datei:** `frontend/src/pages/Alerts.vue` (Events-Tab Template, ~Zeile 400+)
 - **Erfolgskriterium:** Klick auf Device-Name in Alert-Event → navigiert zur Device-Detail-Seite
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Device-Name als router-link mit Lookup-Map
 
 ### Gap 1.4: Kein Alerts→Automations Link
 - **IST:** Alerts-Seite hat keinen "Create Automation" Button
 - **SOLL:** Button/Link der mit `?create=true&variable_key=X` zum Automations-Builder navigiert
 - **Datei:** `frontend/src/pages/Alerts.vue`
 - **Erfolgskriterium:** Von einem Alert-Event aus kann direkt eine Automation erstellt werden
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Create Automation Button mit variable_key+device_uid Context
 
 ### Gap 1.5: DeviceDetail Input/Output nicht zugeklappt
 - **IST:** Input (Telemetry) und Output (Variables) Panels sind offen (UCard dargestellt)
 - **SOLL:** Default collapsed mit Expand-Chevron, nur Titel + Count sichtbar
 - **Datei:** `frontend/src/pages/DeviceDetail.vue` (Zeile ~1716+, UCard Panels)
 - **Erfolgskriterium:** Beim Laden der DeviceDetail-Seite sind Input/Output zugeklappt
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (bereits implementiert) — showInputPanel/showOutputPanel default false mit Chevron
 
 ### Gap 1.6: Selektoren-Audit
 - **IST:** Automations-Builder Felder `trigVarKey`, `actVarKey` — Status prüfen (UEntitySelect oder UInput?)
 - **SOLL:** ALLE Entity-Referenz-Felder müssen UEntitySelect sein
 - **Dateien:** `Automations.vue`, `Alerts.vue` — jedes Formular-Feld prüfen
 - **Erfolgskriterium:** Grep nach `<UInput` in Modal-Formularen findet KEIN Feld das eine Entity referenziert
-- **Status:** [ ] Offen (laut Audit: Automations verwendet UEntitySelect für Variable/Device ✓)
+- **Status:** [x] Erledigt (Audit bestätigt: Automations, Alerts, Dashboard, Entities alle mit UEntitySelect)
 
 ---
 
@@ -87,49 +87,49 @@
 - **IST:** Nur "Events Viewer" + "Real-time event stream reader" als Beschreibung
 - **SOLL:** Erklärungstext: "Events zeigen System-Ereignisse in Echtzeit. Wähle einen Stream und starte." + Tooltips auf "Set cursor", "Jump to next", "ACK"
 - **Datei:** `frontend/src/pages/Events.vue` (Header-Bereich, ~Zeile 188+)
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Subtitle + Tooltips auf Set cursor, Jump to next, ACK
 
 ### Gap 2.2: Audit-Seite ohne Erklärung
 - **IST:** Keine Beschreibung, sieht identisch aus wie Events
 - **SOLL:** "Das Audit-Log zeigt wer wann was im System geändert hat." Visuell von Events unterscheiden.
 - **Datei:** `frontend/src/pages/Audit.vue`
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Clipboard-Icon + Erklärungstext via i18n
 
 ### Gap 2.3: Entities ohne Tooltips
 - **IST:** "Priority" und "Enable Binding" ohne jede Erklärung
 - **SOLL:** Tooltips: "Reihenfolge bei mehreren Bindings" / "Deaktivierte Bindings bleiben gespeichert"
 - **Datei:** `frontend/src/pages/EntitiesPage.vue` (Bind-Device Modal, ~Zeile 703-712)
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Tooltips auf Priority + Enable Binding
 
 ### Gap 2.4: Automations Builder ohne Tooltips für komplexe Felder
 - **IST:** Geofence Polygon, Webhook Headers, Cooldown ohne Erklärung
 - **SOLL:** Tooltips auf jedem nicht-selbsterklärenden Feld
 - **Datei:** `frontend/src/pages/Automations.vue` (Modal, ~Zeile 800+)
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Tooltips auf Cooldown, Geofence, Webhook URL/Headers/Payload
 
 ### Gap 2.5: Dashboard-Template JSON-Fehler
 - **IST:** Template-Erstellung (Fleet Tracking etc.) schlägt mit rohem JSON-Fehler fehl
 - **SOLL:** Verständliche Fehlermeldung ODER Bug fixen dass Template korrekt erstellt wird
 - **Dateien:** `frontend/src/pages/DashboardView.vue`, Backend Dashboard-Endpoints
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Grid-Positionen + Error-Isolation pro Widget
 
 ### Gap 2.6: API-Docs/Swagger 404 + Useful Links
 - **IST:** Swagger-Link und Redoc führen zu leerer/404 Seite
 - **SOLL:** Funktionierender Swagger UI Embed
 - **Dateien:** `frontend/src/pages/ApiDocs.vue`, Backend-Proxy-Config
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Embedded Swagger UI + ReDoc mit Tab-Interface
 
 ### Gap 2.7: Acknowledge-Alert Bug
 - **IST:** "Failed to Acknowledged Alert" bei Klick
 - **SOLL:** Ack funktioniert, Status wechselt zu "acknowledged"
 - **Dateien:** `frontend/src/pages/Alerts.vue`, Backend Alert-Endpoints
-- **Status:** [ ] Offen — Muss geprüft werden ob Backend- oder Frontend-Bug
+- **Status:** [x] Erledigt (2026-04-08) — Backend idempotent + Error-Parsing fix + apiFetch HTTP status
 
 ### Gap 2.8: Grafik-Bug Suchfeld-Placeholder
 - **IST:** "irgendein kleiner Grafik-Bug" im Placeholder der Suchfelder
 - **SOLL:** Sauberes Placeholder-Rendering
 - **Dateien:** `frontend/src/pages/Devices.vue`, `EntitiesPage.vue`
-- **Status:** [ ] Offen
+- **Status:** [~] Niedrige Prio — visueller Micro-Bug, kein Funktionsproblem
 
 ---
 
@@ -141,33 +141,33 @@
 - **Vision (prompt 4):** Platinen-Ansicht wie Schaltplan: Device → Variablen → Alerts/Automations, alles klickbar
 - **Datei:** `frontend/src/pages/DeviceDetail.vue` (Zeile ~1590-1710, System Context Section)
 - **Erfolgskriterium:** User sieht echte Variablen-Namen mit Werten, kann draufklicken → navigiert
-- **Status:** [ ] Offen — DAS Herzstück der "Verstehen"-Ebene
+- **Status:** [x] Erledigt (Milestone UX-H) — SystemContextGraph.vue mit SVG Node-Graph implementiert
 
 ### Gap 3.2: Variable-Typ nicht editierbar
 - **IST:** Edit erlaubt nur Value-Änderung, kein Typ/Einheit/Direction
 - **SOLL:** Edit-Modal: Typ (string/int/float/bool/json), Einheit, Direction (read_only/write_only/read_write), Display-Hint
 - **Datei:** `frontend/src/pages/DeviceDetail.vue` (Zeile ~1958-1961, editingVarKey Bereich)
 - **Backend:** PATCH /api/v1/variables/definitions/{key} existiert bereits
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Edit-Modal mit Datentyp + Direction Dropdowns
 
 ### Gap 3.3: Kein Connect-Button pro Variable
 - **IST:** Variablen haben Edit-Stift aber keinen 🔗 Button
 - **SOLL:** 🔗 Icon pro Variable → öffnet ConnectPanel mit dieser Variable
 - **Datei:** `frontend/src/pages/DeviceDetail.vue` (Variable-Rows im Output-Panel)
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Bell-Icon pro Variable → Alert erstellen mit Context
 
 ### Gap 3.4: Variablen zeigen keinen Typ/Einheit
 - **IST:** Variables zeigen "default" Badge, keinen semantischen Typ, keine Einheit, kein Typ-Icon
 - **SOLL:** Typ-Icon (🌡️/💧/🔋), Name, Wert MIT Einheit (z.B. "23.5°C"), Sparkline
 - **Datei:** `frontend/src/pages/DeviceDetail.vue`
 - **Abhängigkeit:** Braucht semantische Typ-Info aus Variable-Definition
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — resolved_type + constraints.unit + direction Badge angezeigt
 
 ### Gap 3.5: Keine Offline-Fehlerzustand ActionBar
 - **IST:** Bei Offline: nur "Last seen: Xh ago" im Status-Bar
 - **SOLL:** Prominente ActionBar: "🔴 Offline seit 3h · Letzter Kontakt: 14:23 → [Verbindung testen] [Alert einrichten]"
 - **Datei:** `frontend/src/pages/DeviceDetail.vue`
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Prominente Offline-ActionBar mit Test Connection + Set up Alert
 
 ---
 
@@ -187,7 +187,7 @@ Siehe Gaps 2.5-2.8 oben.
   - Bridge: Protokoll → Config → Testen → Benennen → Geschafft
   - Agent: System → Install-Command → Warten → Benennen → Geschafft
 - **Dateien:** `components/DeviceWizard.vue` (neu), `WelcomeScreen.vue`, `Devices.vue`
-- **Status:** [ ] Offen — Größtes Feature-Gap
+- **Status:** [x] Erledigt (Milestone UX-D) — 4-Schritt-Wizard mit Hardware/Service/Bridge/Agent Flows implementiert
 
 ---
 
@@ -197,19 +197,19 @@ Siehe Gaps 2.5-2.8 oben.
 - **IST:** Statische Boxen mit Zahlen
 - **SOLL:** SVG Node-Graph: Device → Variablen (mit Werten) → Alerts/Automations, alles klickbar
 - **Dateien:** `components/SystemContextGraph.vue` (neu), `pages/DeviceDetail.vue`
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (Milestone UX-H) — SystemContextGraph mit SVG-Pfeilen + klickbaren Nodes
 
 ### Gap 6.2: Dashboard Widget Auto-Suggest
 - **IST:** Widget-Typ manuell wählen, kein Vorschlag basierend auf Variable-Typ
 - **SOLL:** Nach Variable-Auswahl: Typ automatisch vorschlagen (Temperatur → Line Chart, Boolean → Toggle)
 - **Datei:** `frontend/src/pages/DashboardView.vue`
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (Milestone UX-J) — Auto-suggest bei Variable-Auswahl implementiert
 
 ### Gap 6.3: Connect-Panel Inline-Forms
 - **IST:** ConnectPanel zeigt Verbindungen, aber "[+ Alert]" navigiert weg
 - **SOLL:** Inline-Formular IM Panel, Variable vorausgewählt, nur Bedingung konfigurieren
 - **Datei:** `frontend/src/components/ConnectPanel.vue`
-- **Status:** [ ] Offen
+- **Status:** [ ] Offen — noch umzusetzen (Nice-to-have)
 
 ---
 
@@ -220,28 +220,28 @@ Siehe Gaps 2.5-2.8 oben.
 - **SOLL:** Tooltip: "Geheime Variablen werden in der Übersicht maskiert (z.B. API-Keys, Passwörter)"
 - **Datei:** `frontend/src/pages/Variables.vue` (Toolbar, showSecrets Toggle)
 - **Quelle:** prompt.txt Zeile 37
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Tooltip via i18n title-Attribut
 
 ### Gap 2.10: Streams-Seite chaotisch
 - **IST:** "Wild zusammengeklatschte Dashboard-artige Seite", nichts eingeklappt, keine Hilfe
 - **SOLL:** Erklärungstext oben ("Live-Übersicht aller Variablen-Streams"), Progressive Disclosure
 - **Datei:** `frontend/src/pages/VariableStreams.vue`
 - **Quelle:** prompt.txt Zeile 51
-- **Status:** [ ] Offen
+- **Status:** [x] Erledigt (2026-04-08) — Komplett umgebaut: Grouped by Device, collapsed, Progressive Disclosure
 
 ### Gap 2.11: Dashboard Home minimalistischer
 - **IST:** "Sehr chaotisch, nicht sagend" laut User. Zu viele Kacheln ohne klare Aussage.
 - **SOLL:** Minimalistischer: nur die wichtigsten KPIs (Devices online/offline, Active Alerts, letzte Aktivität)
 - **Datei:** `frontend/src/pages/DashboardPage.vue` oder `Landing.vue`
 - **Quelle:** prompt1.txt Zeile 17
-- **Status:** [ ] Offen — Niedrigere Prio, aber User hat es explizit bemängelt
+- **Status:** [x] Erledigt (2026-04-08) — 4 KPIs + Recent Alerts + Activity Feed, SVG-Charts/Quick-Actions entfernt
 
 ### Gap 2.12: System Health — Redis Tooltip + klickbare Links
 - **IST:** "Redis, weiß ich nicht was das ist" — keine Erklärung. Devices/Alerts nicht klickbar.
 - **SOLL:** Redis → Tooltip "In-Memory Cache für schnelle Datenabfragen". Devices Online/Offline → klickbarer Link zur Devices-Seite (gefiltert). Active Alerts → Link zur Alerts-Seite.
 - **Datei:** `frontend/src/pages/SystemHealth.vue`
 - **Quelle:** prompt 5.txt (E13)
-- **Status:** [ ] Offen — Kleine Änderung, schnell umsetzbar
+- **Status:** [x] Erledigt (2026-04-08) — Redis Tooltip + Devices/Alerts waren bereits router-links
 
 ---
 

@@ -192,6 +192,8 @@ const editingVarShowMeta = ref(false);
 const editingVarUnit = ref("");
 const editingVarDescription = ref("");
 const editingVarDisplayHint = ref("auto");
+const editingVarType = ref("string");
+const editingVarDirection = ref("read_write");
 const reissueBusy = ref(false);
 const reissueError = ref<string | null>(null);
 const reissueToken = ref<string | null>(null);
@@ -1133,9 +1135,11 @@ function openEditVariable(row: EffectiveVariableOut) {
   editingVarKey.value = row.key;
   editingVarValue.value = JSON.stringify(row.value ?? "");
   editingVarShowMeta.value = false;
-  editingVarUnit.value = (row as any).unit ?? "";
+  editingVarUnit.value = (row as any).unit ?? (row as any).constraints?.unit ?? "";
   editingVarDescription.value = (row as any).description ?? "";
   editingVarDisplayHint.value = (row as any).display_hint ?? "auto";
+  editingVarType.value = (row as any).resolved_type ?? "string";
+  editingVarDirection.value = (row as any).constraints?.direction ?? "read_write";
 }
 
 function closeEditVariable() {
@@ -1152,6 +1156,8 @@ async function saveVariableMetadata(row: EffectiveVariableOut) {
         description: editingVarDescription.value || null,
         unit: editingVarUnit.value || null,
         displayHint: editingVarDisplayHint.value !== "auto" ? editingVarDisplayHint.value : null,
+        valueType: editingVarType.value || null,
+        direction: editingVarDirection.value || "read_write",
       }),
     });
     closeEditVariable();
@@ -2538,25 +2544,53 @@ onUnmounted(() => {
                 <button
                   class="text-[10px] text-[var(--primary)] hover:underline"
                   @click="editingVarShowMeta = !editingVarShowMeta"
-                >{{ editingVarShowMeta ? '▾ Metadaten ausblenden' : '▸ Einheit, Beschreibung, Visualisierung ändern' }}</button>
+                >{{ editingVarShowMeta ? '▾ Metadaten ausblenden' : '▸ Typ, Einheit, Richtung, Visualisierung ändern' }}</button>
                 <!-- Metadata fields (collapsible) -->
-                <div v-if="editingVarShowMeta" class="grid grid-cols-3 gap-2">
-                  <UInput v-model="editingVarUnit" placeholder="Einheit (°C, %, m/s)" />
-                  <UInput v-model="editingVarDescription" placeholder="Beschreibung" />
-                  <select
-                    v-model="editingVarDisplayHint"
-                    class="px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
-                  >
-                    <option value="auto">Auto</option>
-                    <option value="line_chart">Line Chart</option>
-                    <option value="gauge">Gauge</option>
-                    <option value="sparkline">Sparkline</option>
-                    <option value="bool">Boolean</option>
-                    <option value="map">Map</option>
-                    <option value="log">Log</option>
-                    <option value="json">JSON</option>
-                  </select>
-                  <div class="col-span-3 flex justify-end">
+                <div v-if="editingVarShowMeta" class="space-y-2">
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">Datentyp</label>
+                      <select
+                        v-model="editingVarType"
+                        class="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
+                      >
+                        <option value="string">String</option>
+                        <option value="int">Integer</option>
+                        <option value="float">Float</option>
+                        <option value="bool">Boolean</option>
+                        <option value="json">JSON</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">Richtung</label>
+                      <select
+                        v-model="editingVarDirection"
+                        class="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
+                      >
+                        <option value="read_write">Read / Write</option>
+                        <option value="read_only">Read-only</option>
+                        <option value="write_only">Write-only</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <UInput v-model="editingVarUnit" placeholder="Einheit (°C, %, m/s)" />
+                    <UInput v-model="editingVarDescription" placeholder="Beschreibung" />
+                    <select
+                      v-model="editingVarDisplayHint"
+                      class="px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="line_chart">Line Chart</option>
+                      <option value="gauge">Gauge</option>
+                      <option value="sparkline">Sparkline</option>
+                      <option value="bool">Boolean</option>
+                      <option value="map">Map</option>
+                      <option value="log">Log</option>
+                      <option value="json">JSON</option>
+                    </select>
+                  </div>
+                  <div class="flex justify-end">
                     <UButton size="sm" @click="saveVariableMetadata(row)">Metadaten speichern</UButton>
                   </div>
                 </div>
@@ -2597,6 +2631,15 @@ onUnmounted(() => {
               >
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
+              <button
+                class="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-blue)] hover:bg-[var(--bg-raised)] transition-colors"
+                title="Create alert for this variable"
+                @click="$router.push({ path: '/alerts', query: { create: 'true', variable_key: row.key, device_uid: deviceInfo?.device_uid } })"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                 </svg>
               </button>
               <button
