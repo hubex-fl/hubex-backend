@@ -388,4 +388,102 @@ export default {
     copyNow: 'Kopieren Sie diesen Schlüssel jetzt — er wird nicht erneut angezeigt',
     noKeys: 'Noch keine API-Schlüssel',
   },
+  infoTooltips: {
+    events: {
+      title: 'Live-Event-Stream von deinen Geräten und dem System.',
+      items: [
+        'Wähle einen Stream aus dem Dropdown',
+        'Setze eine Cursor-Position, dann klicke Play um Events zu lesen',
+        'ACK markiert Events als verarbeitet',
+      ],
+    },
+    audit: {
+      title: 'Zeigt wer was wann geändert hat.',
+      items: [
+        'Jeder API-Aufruf und jede Benutzeraktion wird hier protokolliert',
+        'Nutze die Filter um bestimmte Änderungen zu finden',
+        'Export als CSV für externe Analyse',
+      ],
+    },
+    traceHub: {
+      title: 'Visuelle Zeitleiste von Request-Traces durch dein System.',
+      items: [
+        'Hilft bei Performance-Problemen und Datenfluss-Analyse',
+        'Traces verbinden Geräte, Automatisierungen und Alarme',
+        'Zwischen Events- und Effekte-Tabs wechseln',
+      ],
+    },
+    variables: {
+      title: 'Alle Variablen deiner Geräte.',
+      items: [
+        'Variablen speichern Sensordaten, Zustände und Konfiguration',
+        'Nach Gerät filtern, nach Name suchen',
+        'Secrets ein-/ausblenden um sensible Werte zu zeigen/verbergen',
+      ],
+    },
+    variableStreams: {
+      title: 'Live-Ansicht von Variablen-Wertänderungen.',
+      items: [
+        'Zeigt Echtzeit-Datenfluss durch dein System',
+        'Nach Gerät gruppiert — Klicke eine Gruppe zum Aufklappen',
+        'Klicke eine Stream-Zeile für Sparkline und Verlauf',
+      ],
+    },
+    devices: {
+      title: 'Alle verbundenen Geräte — Hardware, Services, Bridges und Agents.',
+      items: [
+        'Klicke ein Gerät für Details, Variablen und Verbindungen',
+        'Nutze den Wizard um neue Geräte hinzuzufügen',
+        'Nach Kategorie filtern oder nach Name/UID suchen',
+      ],
+    },
+    dashboards: {
+      title: 'Eigene Dashboards mit Widgets für Echtzeit-Visualisierung.',
+      items: [
+        'Dashboard erstellen, Widgets hinzufügen (Charts, Anzeigen, Schalter)',
+        'Widgets an Variablen binden für Live-Daten',
+        'Dashboards mit dem Team teilen oder öffentlich machen',
+      ],
+    },
+    automations: {
+      title: 'Wenn-dann-Regeln die auf deine Daten reagieren.',
+      items: [
+        'Trigger setzen (Variablen-Schwellwert, Zeitplan, Geräteereignis)',
+        'Aktion definieren (Alarm, Webhook, Variable setzen)',
+        'Cooldown nutzen um übermäßiges Auslösen zu verhindern',
+      ],
+    },
+    alerts: {
+      title: 'Alarmregeln überwachen Variablen und feuern Events wenn Bedingungen erfüllt sind.',
+      items: [
+        'Regeln mit Schweregrad erstellen (Info, Warnung, Kritisch)',
+        'Alarme bestätigen um Lösung zu verfolgen',
+        'Alarm-Events ansehen und zum auslösenden Gerät navigieren',
+      ],
+    },
+    flowEditor: {
+      title: 'Visuelles Flussdiagramm deiner Automatisierungen.',
+      items: [
+        'Zeigt wie Trigger, Bedingungen und Aktionen verbunden sind',
+        'Knoten per Drag&Drop anordnen',
+        'Automatisierungen auf der Automatisierungs-Seite bearbeiten',
+      ],
+    },
+    systemHealth: {
+      title: 'Systemstatus-Übersicht.',
+      items: [
+        'Zeigt Backend-, Datenbank- und Cache-Zustand',
+        'Geräte- und Alarm-Zahlen auf einen Blick',
+        'Aktualisiert sich automatisch alle 30 Sekunden',
+      ],
+    },
+    settings: {
+      title: 'Kontoeinstellungen, Organisationsverwaltung und Systemkonfiguration.',
+      items: [
+        'Profil, Passwort und 2FA verwalten',
+        'API-Schlüssel erstellen und verwalten',
+        'Branding und Sprache konfigurieren',
+      ],
+    },
+  },
 };

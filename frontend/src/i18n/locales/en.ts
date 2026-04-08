@@ -388,4 +388,102 @@ export default {
     copyNow: 'Copy this key now — it won\'t be shown again',
     noKeys: 'No API keys yet',
   },
+  infoTooltips: {
+    events: {
+      title: 'Live event stream from your devices and system.',
+      items: [
+        'Select a stream from the dropdown',
+        'Set a cursor position, then click play to start reading events',
+        'ACK marks events as processed',
+      ],
+    },
+    audit: {
+      title: 'Shows who changed what and when.',
+      items: [
+        'Every API call and user action is logged here',
+        'Use the filters to find specific changes',
+        'Export as CSV for external analysis',
+      ],
+    },
+    traceHub: {
+      title: 'Visual timeline of request traces across your system.',
+      items: [
+        'Helps debug performance issues and understand data flow',
+        'Traces span devices, automations, and alerts',
+        'Switch between Events and Effects tabs',
+      ],
+    },
+    variables: {
+      title: 'All variables across your devices.',
+      items: [
+        'Variables store sensor readings, states, and configuration',
+        'Filter by device, search by name',
+        'Toggle secrets visibility to show/hide sensitive values',
+      ],
+    },
+    variableStreams: {
+      title: 'Live view of variable value changes.',
+      items: [
+        'Shows real-time data flowing through your system',
+        'Grouped by device — click a group to expand',
+        'Click a stream row to see sparkline and history',
+      ],
+    },
+    devices: {
+      title: 'All connected devices — hardware, services, bridges, and agents.',
+      items: [
+        'Click a device to see details, variables, and connections',
+        'Use the wizard to add new devices',
+        'Filter by category or search by name/UID',
+      ],
+    },
+    dashboards: {
+      title: 'Custom dashboards with widgets for real-time visualization.',
+      items: [
+        'Create a dashboard, add widgets (charts, gauges, toggles)',
+        'Bind widgets to variables for live data',
+        'Share dashboards with your team or make them public',
+      ],
+    },
+    automations: {
+      title: 'If-then rules that react to your data.',
+      items: [
+        'Set a trigger (variable threshold, schedule, device event)',
+        'Define an action (alert, webhook, set variable)',
+        'Use cooldown to prevent excessive firing',
+      ],
+    },
+    alerts: {
+      title: 'Alert rules monitor your variables and fire events when conditions are met.',
+      items: [
+        'Create rules with severity levels (info, warning, critical)',
+        'Acknowledge alerts to track resolution',
+        'View alert events and link to the triggering device',
+      ],
+    },
+    flowEditor: {
+      title: 'Visual flow diagram of your automations.',
+      items: [
+        'Shows how triggers, conditions, and actions connect',
+        'Drag nodes to rearrange the layout',
+        'Edit automations on the Automations page',
+      ],
+    },
+    systemHealth: {
+      title: 'System status overview.',
+      items: [
+        'Shows backend, database, and cache health',
+        'Device and alert counts at a glance',
+        'Auto-refreshes every 30 seconds',
+      ],
+    },
+    settings: {
+      title: 'Account settings, organization management, and system configuration.',
+      items: [
+        'Manage your profile, password, and 2FA',
+        'Create and manage API keys',
+        'Configure branding and language',
+      ],
+    },
+  },
 };

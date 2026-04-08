@@ -35,7 +35,8 @@ interface MetricsResponse {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const health = ref<HealthResponse | null>(null);
 const readiness = ref<HealthResponse | null>(null);
@@ -147,7 +148,10 @@ function deviceHealthPercent(): number {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('health.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('health.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.systemHealth.title')" :items="tm('infoTooltips.systemHealth.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">Backend, database, and infrastructure status</p>
       </div>
 

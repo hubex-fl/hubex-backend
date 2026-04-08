@@ -54,13 +54,13 @@ watch(
         <!-- Panel -->
         <div
           :class="[
-            'relative w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-2xl animate-slide-in',
+            'relative w-full max-h-[80vh] flex flex-col bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-2xl animate-slide-in',
             maxWidths[size],
             size === 'fullscreen' && 'h-full rounded-none',
           ]"
         >
           <!-- Header -->
-          <div v-if="title || $slots.header" class="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <div v-if="title || $slots.header" class="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
             <slot name="header">
               <h2 class="text-base font-semibold text-[var(--text-primary)]">{{ title }}</h2>
             </slot>
@@ -75,11 +75,11 @@ watch(
             </button>
           </div>
           <!-- Body (scrollable) -->
-          <div class="p-5 max-h-[65vh] overflow-y-auto">
+          <div class="p-5 overflow-y-auto flex-1 min-h-0">
             <slot />
           </div>
           <!-- Footer -->
-          <div v-if="$slots.footer" class="px-5 pb-5">
+          <div v-if="$slots.footer" class="px-5 py-4 border-t border-[var(--border)] shrink-0">
             <slot name="footer" />
           </div>
         </div>

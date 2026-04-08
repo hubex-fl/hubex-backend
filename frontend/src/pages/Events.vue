@@ -12,6 +12,7 @@ import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 type EventItem = {
   cursor: number;
@@ -28,7 +29,7 @@ type EventsResponse = {
   items: EventItem[];
 };
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const { signal } = useAbortHandle();
 
@@ -191,7 +192,10 @@ onUnmounted(() => { stopPolling(); });
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
+        <div class="flex items-center">
+          <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
+          <UInfoTooltip :title="t('infoTooltips.events.title')" :items="tm('infoTooltips.events.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.description') }}</p>
       </div>
       <div class="flex gap-2">

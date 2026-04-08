@@ -24,6 +24,8 @@ const props = defineProps<{
   disabled?: boolean;
   /** Pre-loaded options (skip API fetch) */
   staticOptions?: EntityOption[];
+  /** When entityType is 'variable', filter to variables belonging to this device */
+  deviceUid?: string;
 }>();
 
 const emit = defineEmits<{
@@ -69,12 +71,22 @@ async function fetchOptions() {
         sublabel: `${d.device_type} · ${d.device_uid}`,
       }));
     } else if (props.entityType === "variable") {
-      const vars = await apiFetch<Array<{ key: string; scope: string; value_type: string; description?: string }>>("/api/v1/variables/definitions");
-      options.value = vars.map((v) => ({
-        value: v.key,
-        label: v.key,
-        sublabel: `${v.scope} · ${v.value_type}${v.description ? " · " + v.description : ""}`,
-      }));
+      if (props.deviceUid) {
+        // Fetch variables scoped to a specific device (globals + device-scoped)
+        const res = await apiFetch<{ device_uid: string; globals: Array<{ key: string; scope: string }>; device: Array<{ key: string; scope: string }> }>(`/api/v1/variables/device/${encodeURIComponent(props.deviceUid)}`);
+        const all = [
+          ...res.globals.map((v) => ({ value: v.key, label: v.key, sublabel: `global` })),
+          ...res.device.map((v) => ({ value: v.key, label: v.key, sublabel: `device · ${props.deviceUid}` })),
+        ];
+        options.value = all;
+      } else {
+        const vars = await apiFetch<Array<{ key: string; scope: string; value_type: string; description?: string }>>("/api/v1/variables/definitions");
+        options.value = vars.map((v) => ({
+          value: v.key,
+          label: v.key,
+          sublabel: `${v.scope} · ${v.value_type}${v.description ? " · " + v.description : ""}`,
+        }));
+      }
     } else if (props.entityType === "entity") {
       const entities = await apiFetch<Array<{ entity_id: string; name?: string; type?: string }>>("/api/v1/entities");
       options.value = entities.map((e) => ({
@@ -150,6 +162,7 @@ onUnmounted(() => {
 });
 
 watch(() => props.staticOptions, (v) => { if (v) options.value = v; });
+watch(() => props.deviceUid, () => { if (props.entityType === "variable") fetchOptions(); });
 </script>
 
 <template>

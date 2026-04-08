@@ -25,8 +25,9 @@ import UBadge  from "../components/ui/UBadge.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import VizWidget from "../components/viz/VizWidget.vue";
 import VizSparkline from "../components/viz/VizSparkline.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 // ── State ──────────────────────────────────────────────────────────────
 const definitions  = ref<VariableDefinition[]>([]);
@@ -294,6 +295,7 @@ onUnmounted(() => {
         <div class="header-title-row">
           <span class="streams-icon">◈</span>
           <h1 class="streams-title">{{ t('variables.streams') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.variableStreams.title')" :items="tm('infoTooltips.variableStreams.items').map((i: any) => rt(i))" />
           <span v-if="refreshing" class="refresh-dot" :title="t('variableStreams.refreshing')" />
         </div>
         <p class="streams-desc">{{ t('variableStreams.description') }}</p>

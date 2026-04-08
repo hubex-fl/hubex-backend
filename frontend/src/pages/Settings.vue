@@ -18,9 +18,10 @@ import { useToastStore } from "../stores/toast";
 const toast = useToastStore();
 import SessionManager from "../components/SessionManager.vue";
 import MfaSetup from "../components/MfaSetup.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const router = useRouter();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const currentLocale = ref(getCurrentLocale());
 function switchLocale(locale: 'en' | 'de') {
@@ -233,7 +234,10 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('settings.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('settings.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.settings.title')" :items="tm('infoTooltips.settings.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('settings.subtitle') }}</p>
       </div>
     </div>

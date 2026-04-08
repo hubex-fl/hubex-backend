@@ -34,11 +34,12 @@ import VizSparkline from "../components/viz/VizSparkline.vue";
 import VizWidget    from "../components/viz/VizWidget.vue";
 import ContextMenu from "../components/ContextMenu.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 import { useRouter } from "vue-router";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
@@ -571,6 +572,7 @@ onMounted(async () => {
     <div class="vars-header">
       <div class="vars-header-left">
         <h1 class="vars-title">{{ t('variables.title') }}</h1>
+        <UInfoTooltip :title="t('infoTooltips.variables.title')" :items="tm('infoTooltips.variables.items').map((i: any) => rt(i))" />
         <span class="vars-count">{{ filteredRows.length }}</span>
       </div>
       <UButton @click="openCreate" size="sm">

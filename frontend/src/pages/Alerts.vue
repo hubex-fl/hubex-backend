@@ -10,12 +10,13 @@ import { useToastStore } from "../stores/toast";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { relativeTime } from "../composables/useRecentAlerts";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { apiFetch } from "../lib/api";
 import type { Device } from "../composables/useDevices";
 
 const alertRoute = useRoute();
 const router = useRouter();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const toast = useToastStore();
 
@@ -417,7 +418,10 @@ const statusClass: Record<string, string> = {
       <!-- Page header -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('alerts.title') }}</h1>
+          <div class="flex items-center">
+            <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('alerts.title') }}</h1>
+            <UInfoTooltip :title="t('infoTooltips.alerts.title')" :items="tm('infoTooltips.alerts.items').map((i: any) => rt(i))" />
+          </div>
           <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('alerts.subtitle') }}</p>
         </div>
         <div class="flex items-center gap-2">
@@ -768,119 +772,125 @@ const statusClass: Record<string, string> = {
         <div class="absolute inset-0 bg-black/60" @click="closeModal" />
 
         <!-- Modal card -->
-        <div class="relative z-10 w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl p-6 space-y-4">
-          <h3 class="text-base font-semibold text-[var(--text-primary)]">
-            {{ modalMode === 'create' ? 'New Alert Rule' : 'Edit Alert Rule' }}
-          </h3>
-
-          <!-- Name -->
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-[var(--text-muted)]">Name <span class="text-red-400">*</span></label>
-            <input
-              v-model="form.name"
-              type="text"
-              placeholder="Rule name"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-            />
+        <div class="relative z-10 w-full max-w-md max-h-[80vh] rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl flex flex-col">
+          <!-- Header (fixed) -->
+          <div class="px-6 pt-6 pb-4 border-b border-[var(--border)] shrink-0">
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">
+              {{ modalMode === 'create' ? 'New Alert Rule' : 'Edit Alert Rule' }}
+            </h3>
           </div>
 
-          <!-- Condition Type -->
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-[var(--text-muted)]">Condition Type</label>
-            <select
-              v-model="form.condition_type"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-            >
-              <option value="device_offline">device_offline</option>
-              <option value="entity_health">entity_health</option>
-              <option value="effect_failure_rate">effect_failure_rate</option>
-              <option value="event_lag">event_lag</option>
-              <option value="variable_threshold">variable_threshold</option>
-            </select>
-            <p v-if="conditionTypeHints[form.condition_type]" class="text-xs text-[var(--text-muted)]">
-              {{ conditionTypeHints[form.condition_type] }}
-            </p>
-          </div>
-
-          <!-- Variable Threshold config (only when condition_type === variable_threshold) -->
-          <template v-if="form.condition_type === 'variable_threshold'">
-            <UEntitySelect v-model="vtKey" entity-type="variable" label="Variable Key" />
-            <div class="grid grid-cols-2 gap-3">
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
-                <select
-                  v-model="vtOperator"
-                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                >
-                  <option v-for="op in OPERATOR_OPTIONS" :key="op.value" :value="op.value">{{ op.label }}</option>
-                </select>
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-[var(--text-muted)]">Threshold Value</label>
-                <input
-                  v-model.number="vtValue"
-                  type="number"
-                  step="any"
-                  class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-                />
-              </div>
+          <!-- Body (scrollable) -->
+          <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+            <!-- Name -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Name <span class="text-red-400">*</span></label>
+              <input
+                v-model="form.name"
+                type="text"
+                placeholder="Rule name"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              />
             </div>
-            <UEntitySelect v-model="vtDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
-          </template>
 
-          <!-- Device UID (for non-threshold conditions too) -->
-          <UEntitySelect
-            v-if="form.condition_type !== 'variable_threshold'"
-            v-model="vtDeviceUid"
-            entity-type="device"
-            label="Device"
-            placeholder="Select device (optional)"
-            :optional="true"
-          />
+            <!-- Condition Type -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Condition Type</label>
+              <select
+                v-model="form.condition_type"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              >
+                <option value="device_offline">device_offline</option>
+                <option value="entity_health">entity_health</option>
+                <option value="effect_failure_rate">effect_failure_rate</option>
+                <option value="event_lag">event_lag</option>
+                <option value="variable_threshold">variable_threshold</option>
+              </select>
+              <p v-if="conditionTypeHints[form.condition_type]" class="text-xs text-[var(--text-muted)]">
+                {{ conditionTypeHints[form.condition_type] }}
+              </p>
+            </div>
 
-          <!-- Severity -->
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>
-            <select
-              v-model="form.severity"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
-            >
-              <option value="info">info</option>
-              <option value="warning">warning</option>
-              <option value="critical">critical</option>
-            </select>
-          </div>
+            <!-- Variable Threshold config (only when condition_type === variable_threshold) -->
+            <template v-if="form.condition_type === 'variable_threshold'">
+              <UEntitySelect v-model="vtKey" entity-type="variable" label="Variable Key" />
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
+                  <select
+                    v-model="vtOperator"
+                    class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                  >
+                    <option v-for="op in OPERATOR_OPTIONS" :key="op.value" :value="op.value">{{ op.label }}</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-medium text-[var(--text-muted)]">Threshold Value</label>
+                  <input
+                    v-model.number="vtValue"
+                    type="number"
+                    step="any"
+                    class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+                  />
+                </div>
+              </div>
+              <UEntitySelect v-model="vtDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
+            </template>
 
-          <!-- Entity ID -->
-          <UEntitySelect v-model="form.entity_id" entity-type="entity" label="Entity ID" :optional="true" />
-
-          <!-- Cooldown -->
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-[var(--text-muted)]">Cooldown (seconds)</label>
-            <input
-              v-model.number="form.cooldown_seconds"
-              type="number"
-              min="0"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+            <!-- Device UID (for non-threshold conditions too) -->
+            <UEntitySelect
+              v-if="form.condition_type !== 'variable_threshold'"
+              v-model="vtDeviceUid"
+              entity-type="device"
+              label="Device"
+              placeholder="Select device (optional)"
+              :optional="true"
             />
+
+            <!-- Severity -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>
+              <select
+                v-model="form.severity"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              >
+                <option value="info">info</option>
+                <option value="warning">warning</option>
+                <option value="critical">critical</option>
+              </select>
+            </div>
+
+            <!-- Entity ID -->
+            <UEntitySelect v-model="form.entity_id" entity-type="entity" label="Entity ID" :optional="true" />
+
+            <!-- Cooldown -->
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-[var(--text-muted)]">Cooldown (seconds)</label>
+              <input
+                v-model.number="form.cooldown_seconds"
+                type="number"
+                min="0"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              />
+            </div>
+
+            <!-- Enabled -->
+            <div class="flex items-center gap-2">
+              <input
+                id="modal-enabled"
+                v-model="form.enabled"
+                type="checkbox"
+                class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]"
+              />
+              <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
+            </div>
+
+            <!-- Inline error -->
+            <p v-if="modalError" class="text-xs text-red-400">{{ modalError }}</p>
           </div>
 
-          <!-- Enabled -->
-          <div class="flex items-center gap-2">
-            <input
-              id="modal-enabled"
-              v-model="form.enabled"
-              type="checkbox"
-              class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]"
-            />
-            <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
-          </div>
-
-          <!-- Inline error -->
-          <p v-if="modalError" class="text-xs text-red-400">{{ modalError }}</p>
-
-          <!-- Buttons -->
-          <div class="flex justify-end gap-2 pt-2">
+          <!-- Footer (fixed) -->
+          <div class="px-6 py-4 border-t border-[var(--border)] shrink-0 flex justify-end gap-2">
             <button
               class="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               @click="closeModal"

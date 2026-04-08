@@ -242,9 +242,12 @@
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showAddWidget" class="modal-overlay" @click.self="showAddWidget = false">
-          <div class="modal-box">
-            <h2 class="modal-title">{{ editingWidgetId ? 'Edit Widget' : 'Add Widget' }}</h2>
-            <div class="form-fields">
+          <div class="modal-box modal-flex">
+            <!-- Header (fixed) -->
+            <h2 class="modal-title modal-header-fixed">{{ editingWidgetId ? 'Edit Widget' : 'Add Widget' }}</h2>
+
+            <!-- Body (scrollable) -->
+            <div class="modal-body-scroll form-fields">
 
               <!-- Widget type -->
               <div class="field">
@@ -315,11 +318,12 @@
 
               <p v-if="addError" class="field-error">{{ addError }}</p>
 
-              <div class="modal-actions">
-                <UButton variant="ghost" @click="showAddWidget = false">{{ t('common.cancel') }}</UButton>
-                <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
-              </div>
+            </div>
 
+            <!-- Footer (fixed) -->
+            <div class="modal-footer-fixed">
+              <UButton variant="ghost" @click="showAddWidget = false">{{ t('common.cancel') }}</UButton>
+              <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
             </div>
           </div>
         </div>
@@ -1295,6 +1299,31 @@ function openAddWidget() {
   width: min(480px, calc(100vw - 32px));
   max-height: 85vh;
   overflow-y: auto;
+}
+.modal-box.modal-flex {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.modal-header-fixed {
+  padding: 24px 24px 0;
+  margin-bottom: 0;
+  shrink: 0;
+}
+.modal-body-scroll {
+  padding: 16px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.modal-footer-fixed {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .modal-small { width: min(360px, calc(100vw - 32px)); }
 .modal-title { font-size: 17px; font-weight: 700; color: var(--text-base); margin-bottom: 16px; }

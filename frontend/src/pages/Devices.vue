@@ -18,10 +18,11 @@ import UModal from "../components/ui/UModal.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import ContextMenu from "../components/ContextMenu.vue";
 import DeviceWizard from "../components/DeviceWizard.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 import type { ContextMenuItem } from "../components/ContextMenu.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const { open: openConnectPanel } = useConnectPanel();
 
 // ── Device Wizard ──────────────────────────────────────────────────────────────
@@ -663,7 +664,10 @@ onUnmounted(() => {
     <!-- ── 1. Page Header ──────────────────────────────────────────────────── -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('devices.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('devices.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.devices.title')" :items="tm('infoTooltips.devices.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
           <span v-if="refreshing" class="text-[var(--text-muted)]">{{ t('common.loading') }}</span>
           <span v-else>

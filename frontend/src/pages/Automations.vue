@@ -16,9 +16,10 @@ import {
 import { useToastStore } from "../stores/toast";
 import { parseApiError, mapErrorToUserText } from "../lib/errors";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const route = useRoute();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const toast = useToastStore();
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -640,7 +641,10 @@ function toggleRuleExpand(id: number) {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('automations.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('automations.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.automations.title')" :items="tm('infoTooltips.automations.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('automations.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
@@ -883,10 +887,16 @@ function toggleRuleExpand(id: number) {
         <div class="fixed inset-0 bg-black/60" @click="closeModal" />
 
         <!-- Modal card -->
-        <div class="relative z-10 w-full max-w-lg my-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl p-6 space-y-5">
-          <h3 class="text-base font-semibold text-[var(--text-primary)]">
-            {{ modalMode === "create" ? "New Automation Rule" : "Edit Automation Rule" }}
-          </h3>
+        <div class="relative z-10 w-full max-w-lg my-8 max-h-[80vh] rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl flex flex-col">
+          <!-- Header (fixed) -->
+          <div class="px-6 pt-6 pb-4 border-b border-[var(--border)] shrink-0">
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">
+              {{ modalMode === "create" ? "New Automation Rule" : "Edit Automation Rule" }}
+            </h3>
+          </div>
+
+          <!-- Body (scrollable) -->
+          <div class="px-6 py-4 overflow-y-auto flex-1 space-y-5">
 
           <!-- Name & Description -->
           <div class="space-y-3">
@@ -932,7 +942,8 @@ function toggleRuleExpand(id: number) {
 
             <!-- Variable Threshold config -->
             <template v-if="formTriggerType === 'variable_threshold'">
-              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device" placeholder="Select device first (or leave empty for global)" :optional="true" />
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">Operator</label>
@@ -945,7 +956,6 @@ function toggleRuleExpand(id: number) {
                   <input v-model.number="trigValue" type="number" step="any" :class="inputClass" />
                 </div>
               </div>
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
             </template>
 
             <!-- Variable Geofence config -->
@@ -953,8 +963,8 @@ function toggleRuleExpand(id: number) {
               <p class="text-[10px] text-[var(--text-muted)] bg-[var(--bg-raised)] rounded px-2 py-1" :title="t('automations.geofenceTooltip')">
                 GPS variable should contain <code class="font-mono">{{"{"}}lat: number, lng: number{{"}"}}</code>
               </p>
-              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" />
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device" placeholder="Select device first (or leave empty for any)" :optional="true" />
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">Geofence Type</label>
@@ -1168,9 +1178,10 @@ function toggleRuleExpand(id: number) {
 
           <!-- Inline error -->
           <p v-if="modalError" class="text-xs text-red-400">{{ modalError }}</p>
+          </div>
 
-          <!-- Buttons -->
-          <div class="flex justify-end gap-2 pt-1">
+          <!-- Footer (fixed) -->
+          <div class="px-6 py-4 border-t border-[var(--border)] shrink-0 flex justify-end gap-2">
             <button
               class="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               @click="closeModal"

@@ -3,7 +3,8 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import Events from "./Events.vue";
 import Effects from "./Effects.vue";
 
@@ -24,7 +25,10 @@ function capsStatusMessage(): string {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>{{ t('pages.traceHub.title') }}</h2>
+      <div class="flex items-center">
+        <h2>{{ t('pages.traceHub.title') }}</h2>
+        <UInfoTooltip :title="t('infoTooltips.traceHub.title')" :items="tm('infoTooltips.traceHub.items').map((i: any) => rt(i))" />
+      </div>
     </div>
 
     <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>

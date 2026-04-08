@@ -3,8 +3,9 @@ import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -196,6 +197,7 @@ onMounted(loadSystemGraph);
     <div class="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-surface)]">
       <div class="flex items-center gap-2">
         <h1 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.flowEditor.title') }}</h1>
+        <UInfoTooltip :title="t('infoTooltips.flowEditor.title')" :items="tm('infoTooltips.flowEditor.items').map((i: any) => rt(i))" />
         <span class="text-[10px] text-[var(--text-muted)]">{{ nodes.length }} nodes, {{ edges.length }} edges</span>
         <input v-model="searchQuery" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] w-28 text-[var(--text-primary)]" placeholder="Search nodes..." />
         <router-link to="/automations" class="text-[10px] text-[var(--primary)] hover:underline">Automations</router-link>

@@ -104,7 +104,7 @@ function eventIconColor(eventType: string): string {
           <span class="text-[10px] font-medium">{{ t('dashboard.seeData') }}</span>
         </button>
         <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors text-center"
-          @click="router.push('/alerts')">
+          @click="router.push('/alerts?create=true')">
           <span class="text-lg">3</span>
           <span class="text-[10px] font-medium">{{ t('dashboard.setAlert') }}</span>
         </button>
@@ -114,7 +114,7 @@ function eventIconColor(eventType: string): string {
           <span class="text-[10px] font-medium">{{ t('dashboard.buildDashboard') }}</span>
         </button>
         <button class="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors text-center"
-          @click="router.push('/automations')">
+          @click="router.push('/automations?create=true')">
           <span class="text-lg">5</span>
           <span class="text-[10px] font-medium">{{ t('dashboard.automate') }}</span>
         </button>

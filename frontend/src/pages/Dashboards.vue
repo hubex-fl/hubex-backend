@@ -4,7 +4,10 @@
     <!-- Header -->
     <div class="page-header">
       <div>
-        <h1 class="page-title">{{ t('nav.dashboards') }}</h1>
+        <div class="flex items-center">
+          <h1 class="page-title">{{ t('nav.dashboards') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.dashboards.title')" :items="tm('infoTooltips.dashboards.items').map((i: any) => rt(i))" />
+        </div>
         <p class="page-sub">Visualize and control your devices</p>
       </div>
       <UButton icon="M12 4.5v15m7.5-7.5h-15" @click="showCreateModal = true">
@@ -128,6 +131,7 @@ import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import {
   listDashboards,
   createDashboard,
@@ -137,7 +141,7 @@ import {
 } from "../lib/dashboards";
 
 const router = useRouter();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 const dashboards = ref<DashboardSummary[]>([]);
 const loading = ref(true);
