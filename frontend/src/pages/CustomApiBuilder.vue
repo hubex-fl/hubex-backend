@@ -234,7 +234,7 @@ async function toggleEnabled(ep: CustomEndpoint) {
     await updateEndpoint(ep.id, { enabled: !ep.enabled });
     ep.enabled = !ep.enabled;
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Toggle failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t("customApi.toggleFailed"), "error");
   }
 }
 
@@ -354,8 +354,8 @@ function copyToClipboard(text: string) {
 }
 
 function getAuthLabel(type: string): string {
-  if (type === "api_key") return "API Key";
-  if (type === "bearer") return "Bearer";
+  if (type === "api_key") return t("customApi.authApiKey");
+  if (type === "bearer") return t("customApi.authBearer");
   return t("customApi.noAuth");
 }
 
@@ -644,20 +644,20 @@ onMounted(load);
             <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.aggregation') }}</label>
             <select v-model="formAggregation" class="input w-full">
               <option value="none">{{ t('common.none') }}</option>
-              <option value="avg">Average</option>
-              <option value="min">Min</option>
-              <option value="max">Max</option>
-              <option value="sum">Sum</option>
+              <option value="avg">{{ t('customApi.aggAvg') }}</option>
+              <option value="min">{{ t('customApi.aggMin') }}</option>
+              <option value="max">{{ t('customApi.aggMax') }}</option>
+              <option value="sum">{{ t('customApi.aggSum') }}</option>
             </select>
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.timeRange') }}</label>
             <select v-model="formTimeRange" class="input w-full">
-              <option value="raw">Raw</option>
-              <option value="1h">1h</option>
-              <option value="24h">24h</option>
-              <option value="7d">7d</option>
-              <option value="30d">30d</option>
+              <option value="raw">{{ t('customApi.timeRaw') }}</option>
+              <option value="1h">{{ t('customApi.time1h') }}</option>
+              <option value="24h">{{ t('customApi.time24h') }}</option>
+              <option value="7d">{{ t('customApi.time7d') }}</option>
+              <option value="30d">{{ t('customApi.time30d') }}</option>
             </select>
           </div>
           <div class="flex flex-col gap-1">
@@ -741,7 +741,7 @@ onMounted(load);
               ]"
               @click="formAuthType = auth"
             >
-              <span class="block font-semibold">{{ auth === 'api_key' ? 'API Key' : auth === 'bearer' ? 'Bearer Token' : t('customApi.publicNoAuth') }}</span>
+              <span class="block font-semibold">{{ auth === 'api_key' ? t('customApi.authApiKey') : auth === 'bearer' ? t('customApi.authBearerToken') : t('customApi.publicNoAuth') }}</span>
               <span class="block text-[10px] text-[var(--text-muted)] mt-0.5">{{ t(`customApi.authHint.${auth}`) }}</span>
             </button>
           </div>
@@ -897,7 +897,7 @@ onMounted(load);
 
         <!-- API Key (if applicable) -->
         <div v-if="detailEndpoint.auth_type !== 'none' && detailEndpoint.api_key" class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ detailEndpoint.auth_type === 'api_key' ? 'API Key' : 'Bearer Token' }}</label>
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ detailEndpoint.auth_type === 'api_key' ? t('customApi.authApiKey') : t('customApi.authBearerToken') }}</label>
           <div class="flex items-center gap-2">
             <code class="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-secondary)] truncate">{{ detailEndpoint.api_key }}</code>
             <UButton size="sm" variant="ghost" @click="copyToClipboard(detailEndpoint.api_key!)">{{ t('customApi.copy') }}</UButton>

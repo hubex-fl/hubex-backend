@@ -53,9 +53,9 @@ function mapError(err: unknown): string {
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('caps.loading');
+  if (caps.status === "error") return `${t('caps.error')}: ${caps.error ?? t('common.unknown')}`;
+  return t('caps.unavailable');
 }
 
 function buildListUrl(): string {
@@ -69,7 +69,7 @@ function buildListUrl(): string {
 async function refreshList() {
   if (inflightList) return;
   if (!capsReady.value) { listError.value = capsStatusMessage(); return; }
-  if (!canReadAudit.value) { listError.value = "Missing capability: audit.read"; return; }
+  if (!canReadAudit.value) { listError.value = t('caps.missing', { cap: 'audit.read' }); return; }
   inflightList = true;
   loadingList.value = true;
   try {
@@ -86,7 +86,7 @@ async function refreshList() {
 async function refreshDetail(id: number) {
   if (inflightDetail) return;
   if (!capsReady.value) { detailError.value = capsStatusMessage(); return; }
-  if (!canReadAudit.value) { detailError.value = "Missing capability: audit.read"; return; }
+  if (!canReadAudit.value) { detailError.value = t('caps.missing', { cap: 'audit.read' }); return; }
   inflightDetail = true;
   loadingDetail.value = true;
   try {
@@ -102,7 +102,7 @@ async function refreshDetail(id: number) {
 
 function retryList() {
   if (!capsReady.value) { listError.value = capsStatusMessage(); return; }
-  if (!canReadAudit.value) { listError.value = "Missing capability: audit.read"; return; }
+  if (!canReadAudit.value) { listError.value = t('caps.missing', { cap: 'audit.read' }); return; }
   listError.value = null;
   refreshList().catch(() => undefined);
 }
@@ -131,17 +131,17 @@ onUnmounted(() => { selectedId.value = null; });
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.audit.description') }}</p>
       </div>
       <div class="flex gap-2">
-        <a href="/api/v1/audit/export/download?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
+        <a href="/api/v1/audit/export/download?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">{{ t('audit.exportCsv') }}</a>
         <UButton variant="secondary" size="sm" @click="retryList">{{ t('common.refresh') }}</UButton>
       </div>
     </div>
 
     <!-- Caps unavailable -->
     <UCard v-if="caps.status !== 'ready' || !canReadAudit" padding="md">
-      <p v-if="caps.status === 'unavailable'" class="text-sm text-[var(--text-muted)]">Capabilities unavailable</p>
-      <p v-else-if="caps.status === 'loading'" class="text-sm text-[var(--text-muted)]">Loading capabilities…</p>
-      <p v-else-if="caps.status === 'error'" class="text-sm text-[var(--status-bad)]">Capabilities error: {{ caps.error }}</p>
-      <p v-else class="text-sm text-[var(--text-muted)]">Missing capability: audit.read</p>
+      <p v-if="caps.status === 'unavailable'" class="text-sm text-[var(--text-muted)]">{{ t('caps.unavailable') }}</p>
+      <p v-else-if="caps.status === 'loading'" class="text-sm text-[var(--text-muted)]">{{ t('caps.loading') }}</p>
+      <p v-else-if="caps.status === 'error'" class="text-sm text-[var(--status-bad)]">{{ t('caps.error') }}: {{ caps.error }}</p>
+      <p v-else class="text-sm text-[var(--text-muted)]">{{ t('caps.missing', { cap: 'audit.read' }) }}</p>
     </UCard>
 
     <template v-else>
@@ -149,19 +149,19 @@ onUnmounted(() => { selectedId.value = null; });
       <UCard padding="md">
         <div class="flex flex-col sm:flex-row gap-3 items-end">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Actor</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('audit.actor') }}</label>
             <UInput v-model="actorFilter" placeholder="user-123" class="w-full" />
           </div>
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Action</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('audit.action') }}</label>
             <UInput v-model="actionFilter" placeholder="token.revoked" class="w-full" />
           </div>
           <div class="w-full sm:w-24">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Limit</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('audit.limit') }}</label>
             <UInput v-model.number="limit" type="number" min="1" max="500" class="w-full" />
           </div>
           <div>
-            <UButton @click="retryList" class="w-full sm:w-auto">Apply</UButton>
+            <UButton @click="retryList" class="w-full sm:w-auto">{{ t('audit.apply') }}</UButton>
           </div>
         </div>
       </UCard>
@@ -175,7 +175,7 @@ onUnmounted(() => { selectedId.value = null; });
       <UCard v-else padding="none">
         <template #header>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-            Entries
+            {{ t('audit.entries') }}
             <span v-if="entries.length" class="ml-1.5 text-xs font-normal text-[var(--text-muted)]">({{ entries.length }})</span>
           </h3>
         </template>
@@ -193,8 +193,8 @@ onUnmounted(() => { selectedId.value = null; });
         <!-- Empty -->
         <UEmpty
           v-else-if="entries.length === 0"
-          title="No audit entries"
-          description="Every API action is logged here for traceability. Audit entries will appear as you use the platform."
+          :title="t('audit.noEntries')"
+          :description="t('audit.noEntriesDesc')"
           icon="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
         />
 
@@ -204,10 +204,10 @@ onUnmounted(() => { selectedId.value = null; });
             <thead>
               <tr class="border-b border-[var(--border)]">
                 <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">ID</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden sm:table-cell">Time</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Actor</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Action</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium hidden md:table-cell">Resource</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden sm:table-cell">{{ t('audit.colTime') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('audit.actor') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('audit.action') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium hidden md:table-cell">{{ t('audit.resource') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border)]">

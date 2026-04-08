@@ -59,9 +59,9 @@ const overallStatus = computed<"healthy" | "degraded" | "error">(() => {
 
 const overallLabel = computed(() => {
   switch (overallStatus.value) {
-    case "healthy": return "All Systems Operational";
-    case "degraded": return "Degraded — Some Issues Detected";
-    case "error": return "System Error";
+    case "healthy": return t('health.allOperational');
+    case "degraded": return t('health.degradedIssues');
+    case "error": return t('health.systemError');
   }
 });
 
@@ -101,7 +101,7 @@ async function fetchAll() {
     metrics.value = m.status === "fulfilled" ? m.value : null;
 
     if (h.status === "rejected" && r.status === "rejected") {
-      error.value = "Unable to reach backend server";
+      error.value = t('health.unreachable');
     }
     lastChecked.value = new Date();
   } catch (err) {
@@ -152,13 +152,13 @@ function deviceHealthPercent(): number {
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('health.title') }}</h1>
           <UInfoTooltip :title="t('infoTooltips.systemHealth.title')" :items="tm('infoTooltips.systemHealth.items').map((i: any) => rt(i))" />
         </div>
-        <p class="text-sm text-[var(--text-muted)] mt-1">Backend, database, and infrastructure status</p>
+        <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('health.subtitle') }}</p>
       </div>
 
       <div class="flex items-center gap-3">
-        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">refreshing…</span>
+        <span v-if="refreshing" class="text-xs text-[var(--text-muted)] animate-pulse">{{ t('health.refreshing') }}</span>
         <span class="text-xs text-[var(--text-muted)]">
-          Last checked: <span class="text-[var(--text-primary)]">{{ lastCheckedLabel }}</span>
+          {{ t('health.lastChecked') }}: <span class="text-[var(--text-primary)]">{{ lastCheckedLabel }}</span>
         </span>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-hover)] bg-[var(--bg-raised)] transition-colors"
@@ -206,11 +206,11 @@ function deviceHealthPercent(): number {
             {{ overallLabel }}
           </p>
           <p class="text-xs text-[var(--text-muted)] mt-0.5">
-            Auto-refreshes every 30 seconds
+            {{ t('health.autoRefresh') }}
           </p>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs text-[var(--text-muted)]">Version</p>
+          <p class="text-xs text-[var(--text-muted)]">{{ t('health.version') }}</p>
           <p class="text-sm font-mono text-[var(--text-primary)]">{{ health?.version ?? "–" }}</p>
         </div>
       </div>
@@ -228,35 +228,35 @@ function deviceHealthPercent(): number {
         <!-- Backend -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Backend API</span>
+            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">{{ t('health.backendApi') }}</span>
             <div :class="['h-2 w-2 rounded-full', health ? statusDot(health.status) : 'bg-red-400']" />
           </div>
           <p :class="['text-sm font-semibold', health ? statusColor(health.status) : 'text-red-400']">
             {{ health?.status ?? "unreachable" }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">Liveness probe</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.livenessProbe') }}</p>
         </div>
 
         <!-- Database -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Database</span>
+            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">{{ t('health.database') }}</span>
             <div :class="['h-2 w-2 rounded-full', statusDot(dbStatus)]" />
           </div>
           <p :class="['text-sm font-semibold', statusColor(dbStatus)]">{{ dbStatus }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">PostgreSQL connectivity</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.postgresConnectivity') }}</p>
         </div>
 
         <!-- Redis -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Redis</span>
+            <span class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">{{ t('health.redis') }}</span>
             <div :class="['h-2 w-2 rounded-full', redisStatus === 'disabled' ? 'bg-[var(--text-muted)]' : statusDot(redisStatus)]" />
           </div>
           <p :class="['text-sm font-semibold', redisStatus === 'disabled' ? 'text-[var(--text-muted)]' : statusColor(redisStatus)]">
             {{ redisStatus }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1" :title="t('health.redisTooltip')">Cache / Pub-Sub</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1" :title="t('health.redisTooltip')">{{ t('health.cachePubSub') }}</p>
         </div>
       </div>
 
@@ -264,43 +264,43 @@ function deviceHealthPercent(): number {
       <div v-if="metrics" class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <!-- Devices Online (clickable) -->
         <router-link to="/devices?filter=online" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-[var(--primary)]/40 transition-colors">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Devices Online</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.devicesOnline') }}</p>
           <p class="text-2xl font-bold text-[var(--text-primary)]">{{ metrics.devices.online }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">of {{ metrics.devices.total }} total</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.ofTotal', { count: metrics.devices.total }) }}</p>
           <div class="mt-2 h-1 rounded-full bg-[var(--bg-raised)] overflow-hidden">
             <div
               class="h-full rounded-full bg-green-400 transition-all"
               :style="{ width: deviceHealthPercent() + '%' }"
             />
           </div>
-          <p class="text-xs text-[var(--text-muted)] mt-1">{{ deviceHealthPercent() }}% healthy</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ deviceHealthPercent() }}% {{ t('health.healthyLabel') }}</p>
         </router-link>
 
         <!-- Stale / Offline (clickable) -->
         <router-link to="/devices?filter=offline" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-red-400/40 transition-colors">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Stale / Offline</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.staleOffline') }}</p>
           <p class="text-2xl font-bold" :class="metrics.devices.offline > 0 ? 'text-red-400' : 'text-[var(--text-primary)]'">
             {{ metrics.devices.offline }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">offline</p>
-          <p class="text-xs text-yellow-400 mt-1">{{ metrics.devices.stale }} stale</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('status.offline').toLowerCase() }}</p>
+          <p class="text-xs text-yellow-400 mt-1">{{ metrics.devices.stale }} {{ t('status.stale').toLowerCase() }}</p>
         </router-link>
 
         <!-- Active Alerts (clickable) -->
         <router-link to="/alerts" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 block hover:border-red-400/40 transition-colors">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Active Alerts</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.activeAlerts') }}</p>
           <p class="text-2xl font-bold" :class="metrics.alerts.firing > 0 ? 'text-red-400 animate-pulse' : 'text-[var(--text-primary)]'">
             {{ metrics.alerts.firing }}
           </p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">firing</p>
-          <p class="text-xs text-yellow-400 mt-1">{{ metrics.alerts.acknowledged }} acknowledged</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('status.firing').toLowerCase() }}</p>
+          <p class="text-xs text-yellow-400 mt-1">{{ metrics.alerts.acknowledged }} {{ t('status.acknowledged').toLowerCase() }}</p>
         </router-link>
 
         <!-- Events 24h -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Events (24h)</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.events24h') }}</p>
           <p class="text-2xl font-bold text-[var(--text-primary)]">{{ metrics.events_24h.toLocaleString() }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">system events</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.systemEvents') }}</p>
         </div>
       </div>
 
@@ -308,23 +308,23 @@ function deviceHealthPercent(): number {
       <div v-if="metrics" class="grid grid-cols-2 md:grid-cols-3 gap-3">
         <!-- Uptime -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Uptime</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.uptime') }}</p>
           <p class="text-xl font-bold font-mono text-green-400">{{ uptimeFormatted }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">since last restart</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.sinceRestart') }}</p>
         </div>
 
         <!-- Entities -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Entities</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.entities') }}</p>
           <p class="text-2xl font-bold text-[var(--text-primary)]">{{ metrics.entities_total }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">registered entities</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.registeredEntities') }}</p>
         </div>
 
         <!-- Webhooks -->
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4">
-          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Active Webhooks</p>
+          <p class="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">{{ t('health.activeWebhooks') }}</p>
           <p class="text-2xl font-bold text-[var(--text-primary)]">{{ metrics.webhooks_active }}</p>
-          <p class="text-xs text-[var(--text-muted)] mt-1">subscriptions</p>
+          <p class="text-xs text-[var(--text-muted)] mt-1">{{ t('health.subscriptions') }}</p>
         </div>
       </div>
     </template>

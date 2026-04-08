@@ -351,7 +351,7 @@ async function loadLinkedRules() {
   } catch { linkedAlerts.value = []; }
 }
 
-// ── Send Task (PR-1) ────────────────────────────────────────────────────────
+// ── {{ t('devices.sendTask') }} (PR-1) ────────────────────────────────────────────────────────
 const showSendTask = ref(false);
 const sendTaskType = ref("custom");
 const sendTaskName = ref("");
@@ -484,9 +484,9 @@ const heroStatusClass = computed(() => {
 });
 const connectionLabel = computed(() => {
   const h = deviceInfo.value?.health;
-  if (h === "ok") return "Stabil";
-  if (h === "stale") return "Unterbrochen";
-  return "Offline";
+  if (h === "ok") return t('devices.connectionStable');
+  if (h === "stale") return t('devices.connectionInterrupted');
+  return t('devices.offline');
 });
 const offlineLastContactTime = computed(() => {
   const info = deviceInfo.value;
@@ -1704,8 +1704,8 @@ onUnmounted(() => {
       <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
       </svg>
-      Device is unclaimed.
-      <span v-if="restrictUnclaimed" class="ml-1 text-[var(--text-muted)]">Claim to view full details.</span>
+      {{ t('devices.unclaimed') }}
+      <span v-if="restrictUnclaimed" class="ml-1 text-[var(--text-muted)]">{{ t('devices.unclaimedHint') }}</span>
     </div>
 
     <!-- Offline ActionBar — prominent when device is offline -->
@@ -1830,11 +1830,11 @@ onUnmounted(() => {
             </p>
             <p class="text-xs text-[var(--text-muted)] mt-0.5">
               <template v-if="heroRingOnline">
-                Connected &middot; Last update:
+                {{ t('devices.connectedLabel') }} &middot; {{ t('devices.lastUpdate') }}
                 <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
               </template>
               <template v-else>
-                Last seen:
+                {{ t('devices.lastSeenLabel') }}
                 <strong class="text-[var(--text-secondary)]">{{ fmtDeviceLastSeen(deviceInfo) }}</strong>
               </template>
             </p>
@@ -1850,10 +1850,10 @@ onUnmounted(() => {
             {{ t('common.refresh') }}
           </UButton>
           <UButton variant="secondary" size="sm" :disabled="!deviceInfo?.device_uid" @click="copyUid">
-            Copy UID
+            {{ t('devices.copyUid') }}
           </UButton>
           <UButton v-if="deviceInfo?.state === 'pairing_active'" variant="secondary" size="sm" @click="openPairingPanel">
-            Pairing Panel
+            {{ t('devices.pairingPanel') }}
           </UButton>
           <UButton
             v-if="!heroRingOnline && deviceInfo?.device_uid"
@@ -1873,7 +1873,7 @@ onUnmounted(() => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
           </svg>
           <div>
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Signal</p>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.signal') }}</p>
             <p class="text-xs font-semibold text-[var(--text-primary)]">{{ telemetrySignal }}</p>
           </div>
         </div>
@@ -1884,7 +1884,7 @@ onUnmounted(() => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M4.5 10.5H18V15H4.5v-4.5zM3.75 18h15A2.25 2.25 0 0021 15.75v-1.5a2.25 2.25 0 00-2.25-2.25h-15A2.25 2.25 0 001.5 14.25v1.5A2.25 2.25 0 003.75 18z" />
           </svg>
           <div>
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Batterie</p>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.battery') }}</p>
             <p class="text-xs font-semibold text-[var(--text-primary)]">{{ telemetryBattery }}</p>
           </div>
         </div>
@@ -1895,7 +1895,7 @@ onUnmounted(() => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
           </svg>
           <div>
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Task</p>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.task') }}</p>
             <p class="text-xs font-semibold text-[var(--text-primary)]">
               {{ currentTask?.has_active_lease && !isLeaseExpiredLocally
                   ? (currentTask?.task_name ?? currentTask?.task_status ?? 'active')
@@ -1910,7 +1910,7 @@ onUnmounted(() => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Lease</p>
+            <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.lease') }}</p>
             <p class="text-xs font-semibold text-[var(--text-primary)]">{{ fmtRemaining(leaseSecondsRemaining) }}</p>
           </div>
         </div>
@@ -1918,7 +1918,7 @@ onUnmounted(() => {
         <!-- Live telemetry indicator / offline notice -->
         <div v-if="heroRingOnline && latestPayloadFields.length" class="flex items-center gap-1.5 ml-auto">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse shrink-0" />
-          <span class="text-xs text-[var(--text-muted)]">{{ latestPayloadFields.length }} live fields</span>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('devices.liveFields', { count: latestPayloadFields.length }) }}</span>
         </div>
         <!-- Offline "Last seen" removed — shown in Offline ActionBar above -->
       </div>
@@ -1936,23 +1936,23 @@ onUnmounted(() => {
       >
         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
       </svg>
-      <span class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Technical Details</span>
-      <span class="text-[10px] text-[var(--text-muted)]">UID, Firmware, RSSI, raw I/O</span>
+      <span class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.technicalDetails') }}</span>
+      <span class="text-[10px] text-[var(--text-muted)]">{{ t('devices.technicalDetailsHint') }}</span>
     </button>
 
     <!-- Technical Details Content (collapsible) -->
     <div v-if="showTechnical && deviceInfo" class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-5 py-4 space-y-3">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
         <div>
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Device UID</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.deviceUidLabel') }}</p>
           <p class="font-mono text-[var(--text-primary)]">{{ deviceInfo?.device_uid }}</p>
         </div>
         <div>
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Type</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.typeLabel') }}</p>
           <p class="text-[var(--text-primary)]">{{ deviceInfo?.device_type || 'unknown' }}</p>
         </div>
         <div v-if="deviceInfo?.firmware_version">
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Firmware</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.firmware') }}</p>
           <p class="font-mono text-[var(--text-primary)]">{{ deviceInfo.firmware_version }}</p>
         </div>
         <div>
@@ -1960,11 +1960,11 @@ onUnmounted(() => {
           <p :class="deviceInfo?.health === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">{{ deviceInfo?.health }}</p>
         </div>
         <div v-if="deviceInfo?.last_seen_at">
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Last Seen (raw)</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.lastSeenRaw') }}</p>
           <p class="font-mono text-[var(--text-muted)]">{{ deviceInfo.last_seen_at }}</p>
         </div>
         <div v-if="deviceInfo?.state">
-          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">State</p>
+          <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.stateLabel') }}</p>
           <p class="text-[var(--text-primary)]">{{ deviceInfo.state }}</p>
         </div>
       </div>
@@ -1975,7 +1975,7 @@ onUnmounted(() => {
       <template #header>
         <div class="flex items-center justify-between">
           <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
-            {{ deviceInfo.category === 'service' ? 'API Configuration' : deviceInfo.category === 'bridge' ? 'Bridge Configuration' : 'Agent Configuration' }}
+            {{ deviceInfo.category === 'service' ? t('devices.apiConfig') : deviceInfo.category === 'bridge' ? t('devices.bridgeConfig') : t('devices.agentConfig') }}
           </h3>
           <div class="flex items-center gap-2">
             <UButton v-if="!configEditing" size="sm" variant="ghost" @click="startConfigEdit">{{ t('common.edit') }}</UButton>
@@ -1991,12 +1991,12 @@ onUnmounted(() => {
       <div v-if="deviceInfo.category === 'service'" class="space-y-3">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Endpoint URL</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.endpointUrl') }}</label>
             <UInput v-if="configEditing" v-model="configDraft.endpoint_url" placeholder="https://api.example.com/data" class="mt-1" />
             <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.endpoint_url || '—' }}</p>
           </div>
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Method</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.method') }}</label>
             <USelect v-if="configEditing" v-model="configDraft.method" class="mt-1">
               <option value="GET">GET</option>
               <option value="POST">POST</option>
@@ -2006,7 +2006,7 @@ onUnmounted(() => {
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Auth Type</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.authType') }}</label>
             <USelect v-if="configEditing" v-model="configDraft.auth_type" class="mt-1">
               <option value="none">None</option>
               <option value="api_key">API Key</option>
@@ -2016,13 +2016,13 @@ onUnmounted(() => {
             <p v-else class="text-xs text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.auth_type || 'none' }}</p>
           </div>
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Poll Interval</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.pollInterval') }}</label>
             <UInput v-if="configEditing" v-model="configDraft.poll_interval_seconds" type="number" placeholder="30" class="mt-1" />
             <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.poll_interval_seconds || 30 }}s</p>
           </div>
         </div>
         <div v-if="configEditing && configDraft.auth_type !== 'none'">
-          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Auth Credentials</label>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.authCredentials') }}</label>
           <UInput v-model="configDraft.auth_credentials" placeholder="API key or token" class="mt-1" />
         </div>
         <div v-if="configTestResult" class="text-xs px-3 py-2 rounded-lg" :class="configTestResult.ok ? 'bg-[var(--status-ok)]/10 text-[var(--status-ok)]' : 'bg-[var(--status-bad)]/10 text-[var(--status-bad)]'">
@@ -2037,19 +2037,19 @@ onUnmounted(() => {
       <div v-else-if="deviceInfo.category === 'bridge'" class="space-y-3">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Broker URL</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.brokerUrl') }}</label>
             <UInput v-if="configEditing" v-model="configDraft.broker_url" placeholder="mqtt://broker.example.com:1883" class="mt-1" />
             <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.broker_url || '—' }}</p>
           </div>
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Topic</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.topic') }}</label>
             <UInput v-if="configEditing" v-model="configDraft.topic" placeholder="sensors/#" class="mt-1" />
             <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.topic || '—' }}</p>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Protocol</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.protocol') }}</label>
             <USelect v-if="configEditing" v-model="configDraft.protocol" class="mt-1">
               <option value="mqtt">MQTT</option>
               <option value="mqtts">MQTTS (TLS)</option>
@@ -2058,7 +2058,7 @@ onUnmounted(() => {
             <p v-else class="text-xs text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.protocol || 'mqtt' }}</p>
           </div>
           <div>
-            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Port</label>
+            <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.port') }}</label>
             <UInput v-if="configEditing" v-model="configDraft.port" type="number" placeholder="1883" class="mt-1" />
             <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.port || 1883 }}</p>
           </div>
@@ -2068,12 +2068,12 @@ onUnmounted(() => {
       <!-- Agent Config -->
       <div v-else-if="deviceInfo.category === 'agent'" class="space-y-3">
         <div>
-          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Report Interval</label>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.reportInterval') }}</label>
           <UInput v-if="configEditing" v-model="configDraft.report_interval_seconds" type="number" placeholder="10" class="mt-1" />
           <p v-else class="text-xs font-mono text-[var(--text-primary)] mt-1">{{ deviceInfo.config?.report_interval_seconds || 10 }}s</p>
         </div>
         <div>
-          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Install Command</label>
+          <label class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.installCommand') }}</label>
           <p class="text-xs font-mono text-[var(--text-muted)] mt-1 bg-[var(--bg-raised)] px-3 py-2 rounded">
             {{ deviceInfo.config?.install_command || 'python scripts/sim_agent.py --server http://localhost:8000' }}
           </p>
@@ -2088,7 +2088,7 @@ onUnmounted(() => {
       <!-- Section header -->
       <div class="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-raised)] flex items-center justify-between">
         <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('common.status') }}</h3>
-        <span class="text-[10px] text-[var(--text-muted)]">Where this device fits in your infrastructure</span>
+        <span class="text-[10px] text-[var(--text-muted)]">{{ t('devices.infraContext') }}</span>
       </div>
 
       <!-- Data Flow — Node Graph (Device → Variables → Actions) -->
@@ -2136,7 +2136,7 @@ onUnmounted(() => {
           <!-- CENTER: Variables (echte Elemente, klickbar) -->
           <div class="space-y-1.5">
             <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-2">Variables ({{ variablesSorted.length }})</p>
-            <div v-if="!variables.length" class="text-xs text-[var(--text-muted)] italic py-2">No variables detected yet</div>
+            <div v-if="!variables.length" class="text-xs text-[var(--text-muted)] italic py-2">{{ t('devices.noVariablesYet') }}</div>
             <router-link
               v-for="v in variablesSorted.slice(0, 8)"
               :key="v.key"
@@ -2161,7 +2161,7 @@ onUnmounted(() => {
           <div class="space-y-3">
             <!-- Entity memberships -->
             <div v-if="entityMemberships.length">
-              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">Groups</p>
+              <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">{{ t('devices.groups') }}</p>
               <router-link
                 v-for="em in entityMemberships"
                 :key="em.entity_id"
@@ -2203,18 +2203,18 @@ onUnmounted(() => {
                 </router-link>
               </div>
 
-              <div v-if="!linkedAutomations.length && !linkedAlerts.length" class="text-[10px] text-[var(--text-muted)] italic mb-2">No automations or alerts linked</div>
+              <div v-if="!linkedAutomations.length && !linkedAlerts.length" class="text-[10px] text-[var(--text-muted)] italic mb-2">{{ t('devices.noLinked') }}</div>
 
               <!-- Quick actions -->
               <div class="flex flex-wrap gap-1.5">
                 <button
                   class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
                   @click="$router.push({ path: '/alerts', query: { create: 'true', device_uid: deviceInfo?.device_uid } })"
-                >+ Alert</button>
+                >{{ t('devices.addAlert') }}</button>
                 <button
                   class="px-2.5 py-1 rounded-lg text-[10px] font-medium border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]/40 transition-colors"
                   @click="$router.push({ path: '/automations', query: { create: 'true', device_uid: deviceInfo?.device_uid } })"
-                >+ Automation</button>
+                >{{ t('devices.addAutomation') }}</button>
               </div>
             </div>
           </div>
@@ -2229,7 +2229,7 @@ onUnmounted(() => {
           <USkeleton width="5rem" height="1.25rem" rounded="full" />
         </div>
         <div v-else-if="entityMemberships.length" class="flex items-center gap-2 flex-wrap">
-          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mr-1">Entities:</span>
+          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mr-1">{{ t('devices.entities') }}</span>
           <router-link
             v-for="em in entityMemberships"
             :key="em.entity_id"
@@ -2249,9 +2249,9 @@ onUnmounted(() => {
           @click="showAddGroup = true"
         >
           <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Add to Group
+          {{ t('devices.addToGroup') }}
         </button>
-        <span v-if="!entityMemberships.length" class="text-[10px] text-[var(--text-muted)]">No groups yet</span>
+        <span v-if="!entityMemberships.length" class="text-[10px] text-[var(--text-muted)]">{{ t('devices.noGroups') }}</span>
 
         <!-- Quick remove: × button on each membership chip -->
         <button
@@ -2263,7 +2263,7 @@ onUnmounted(() => {
         >×</button>
 
         <!-- Add to Group Modal -->
-        <UModal :open="showAddGroup" title="Add to Group" size="sm" @close="showAddGroup = false; quickCreateMode = false">
+        <UModal :open="showAddGroup" :title="t('devices.addToGroup')" size="sm" @close="showAddGroup = false; quickCreateMode = false">
           <div class="space-y-3 p-2">
             <!-- Toggle: Existing vs Create New -->
             <div class="flex gap-2 mb-2">
@@ -2271,12 +2271,12 @@ onUnmounted(() => {
                 class="text-xs px-3 py-1.5 rounded-lg transition-colors"
                 :class="!quickCreateMode ? 'bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]'"
                 @click="quickCreateMode = false"
-              >Existing Group</button>
+              >{{ t('devices.existingGroup') }}</button>
               <button
                 class="text-xs px-3 py-1.5 rounded-lg transition-colors"
                 :class="quickCreateMode ? 'bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30' : 'text-[var(--text-muted)] border border-[var(--border)]'"
                 @click="quickCreateMode = true"
-              >+ Create New</button>
+              >{{ t('devices.createNewGroup') }}</button>
             </div>
 
             <!-- Existing group selector -->
@@ -2309,7 +2309,7 @@ onUnmounted(() => {
 
         <!-- Capabilities summary -->
         <div v-if="deviceCapsList.length" class="flex items-center gap-2 ml-auto">
-          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Caps:</span>
+          <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.capsLabel') }}</span>
           <span
             v-for="cap in deviceCapsList.slice(0, 5)"
             :key="cap.key"
@@ -2339,7 +2339,7 @@ onUnmounted(() => {
             />
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">
               <span class="text-[var(--primary)] mr-1">📡</span>{{ t('nav.devices') }}
-              <span class="text-[var(--text-muted)] font-normal ml-1">· Sensor Data</span>
+              <span class="text-[var(--text-muted)] font-normal ml-1">&middot; {{ t('devices.sensorData') }}</span>
               <span v-if="!showInputPanel && telemetry.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ telemetry.length }})</span>
             </h3>
             <span v-if="latestTelemetry" class="text-xs text-[var(--text-muted)]">
@@ -2360,7 +2360,7 @@ onUnmounted(() => {
         <div v-show="showInputPanel">
         <!-- Caps error -->
         <div v-if="!canReadTelemetry" class="p-4 text-xs text-[var(--text-muted)]">
-          Missing capability: telemetry.read
+          {{ t('devices.missingTelemetryCap') }}
         </div>
         <div v-else-if="telemetryError" class="p-4 text-xs text-[var(--status-bad)]">
           {{ telemetryError }}
@@ -2389,7 +2389,7 @@ onUnmounted(() => {
             class="col-span-2 text-xs text-[var(--primary)] hover:underline py-1"
             @click="showAllTelemetry = !showAllTelemetry"
           >
-            {{ showAllTelemetry ? 'Show less' : `Show ${latestPayloadFields.length - MAX_TILES} more` }}
+            {{ showAllTelemetry ? t('devices.showLess') : t('devices.showMore', { count: latestPayloadFields.length - MAX_TILES }) }}
           </button>
         </div>
 
@@ -2405,19 +2405,19 @@ onUnmounted(() => {
             </thead>
             <tbody class="divide-y divide-[var(--border)]">
               <tr
-                v-for="t in telemetry"
-                :key="t.id"
-                v-memo="[t.__sig, isTelemetryExpanded(t.id) ? 1 : 0]"
+                v-for="tel in telemetry"
+                :key="tel.id"
+                v-memo="[tel.__sig, isTelemetryExpanded(tel.id) ? 1 : 0]"
                 class="hover:bg-[var(--bg-raised)] transition-colors"
               >
                 <td class="px-4 py-2 font-mono text-[var(--text-muted)] whitespace-nowrap">
-                  {{ fmtRelative(t.received_at || t.created_at) }}
+                  {{ fmtRelative(tel.received_at || tel.created_at) }}
                 </td>
-                <td class="px-4 py-2 text-[var(--text-secondary)] whitespace-nowrap">{{ t.event_type || "—" }}</td>
+                <td class="px-4 py-2 text-[var(--text-secondary)] whitespace-nowrap">{{ tel.event_type || "\u2014" }}</td>
                 <td class="px-4 py-2">
-                  <span class="font-mono text-[var(--text-muted)] break-all">{{ payloadPreview(t.payload, isTelemetryExpanded(t.id)) }}</span>
-                  <button class="ml-2 text-[var(--primary)] hover:underline text-xs" @click="toggleTelemetry(t.id)">
-                    {{ isTelemetryExpanded(t.id) ? 'less' : 'more' }}
+                  <span class="font-mono text-[var(--text-muted)] break-all">{{ payloadPreview(tel.payload, isTelemetryExpanded(tel.id)) }}</span>
+                  <button class="ml-2 text-[var(--primary)] hover:underline text-xs" @click="toggleTelemetry(tel.id)">
+                    {{ isTelemetryExpanded(tel.id) ? t('devices.less') : t('devices.more') }}
                   </button>
                 </td>
               </tr>
@@ -2428,8 +2428,8 @@ onUnmounted(() => {
         <!-- Empty -->
         <UEmpty
           v-else
-          title="No telemetry yet"
-          description="Device must POST /api/v1/telemetry to send data."
+          :title="t('devices.noTelemetry')"
+          :description="t('devices.noTelemetryDesc')"
           icon="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z"
         />
         </div>
@@ -2447,7 +2447,7 @@ onUnmounted(() => {
             </svg>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
             <span class="text-[var(--accent-lime)] mr-1">⚡</span>State
-            <span class="text-[var(--text-muted)] font-normal ml-1">· Variables</span>
+            <span class="text-[var(--text-muted)] font-normal ml-1">&middot; {{ t('devices.variables') }}</span>
             <span v-if="!showOutputPanel && variables.length" class="text-[10px] text-[var(--text-muted)] font-normal ml-1">({{ variables.length }})</span>
           </h3>
           </div>
@@ -2462,7 +2462,7 @@ onUnmounted(() => {
               :disabled="overrideDisabled || !deviceInfo?.device_uid"
               @click="openAddOverride"
             >
-              + Override
+              {{ t('devices.override') }}
             </UButton>
           </div>
         </template>
@@ -2473,7 +2473,7 @@ onUnmounted(() => {
           v-if="deviceInfo?.busy"
           class="mx-3 mt-3 px-3 py-2 rounded-lg border border-[var(--status-warn)]/30 bg-[var(--status-warn-bg)] text-xs text-[var(--status-warn)]"
         >
-          Device busy — changes may apply later
+          {{ t('devices.deviceBusy') }}
         </div>
 
         <!-- Error -->
@@ -2490,7 +2490,7 @@ onUnmounted(() => {
             <UInput v-model="addOverrideValue" placeholder="value" class="flex-1" />
           </div>
           <p v-if="addOverrideError" class="text-xs text-[var(--status-bad)]">{{ addOverrideError }}</p>
-          <p v-if="overrideKeyOptions.length === 0" class="text-xs text-[var(--text-muted)]">No variables available for override.</p>
+          <p v-if="overrideKeyOptions.length === 0" class="text-xs text-[var(--text-muted)]">{{ t('devices.noVariablesDesc') }}</p>
           <div class="flex gap-2">
             <UButton size="sm" :disabled="overrideDisabled || !addOverrideKey" @click="saveNewOverride">Save</UButton>
             <UButton size="sm" variant="secondary" @click="closeAddOverride">Cancel</UButton>
@@ -2508,8 +2508,8 @@ onUnmounted(() => {
         <!-- Empty -->
         <UEmpty
           v-else-if="!variablesLoading && variables.length === 0"
-          title="No variables"
-          description="No variables configured for this device."
+          :title="t('devices.noVariables')"
+          :description="t('devices.noVariablesDesc')"
           icon="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"
         />
 
@@ -2537,19 +2537,19 @@ onUnmounted(() => {
                 <!-- Value edit row -->
                 <div class="flex gap-2">
                   <UInput v-model="editingVarValue" placeholder="Value" class="flex-1" />
-                  <UButton size="sm" @click="saveVariableOverride(row)">Save Value</UButton>
+                  <UButton size="sm" @click="saveVariableOverride(row)">{{ t('devices.saveValue') }}</UButton>
                   <UButton size="sm" variant="secondary" @click="closeEditVariable">✕</UButton>
                 </div>
                 <!-- Metadata toggle -->
                 <button
                   class="text-[10px] text-[var(--primary)] hover:underline"
                   @click="editingVarShowMeta = !editingVarShowMeta"
-                >{{ editingVarShowMeta ? '▾ Metadaten ausblenden' : '▸ Typ, Einheit, Richtung, Visualisierung ändern' }}</button>
+                >{{ editingVarShowMeta ? '\u25be ' + t('devices.editMetaHide') : '\u25b8 ' + t('devices.editMetaShow') }}</button>
                 <!-- Metadata fields (collapsible) -->
                 <div v-if="editingVarShowMeta" class="space-y-2">
                   <div class="grid grid-cols-2 gap-2">
                     <div>
-                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">Datentyp</label>
+                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">{{ t('devices.dataTypeLabel') }}</label>
                       <select
                         v-model="editingVarType"
                         class="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
@@ -2562,7 +2562,7 @@ onUnmounted(() => {
                       </select>
                     </div>
                     <div>
-                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">Richtung</label>
+                      <label class="text-[10px] text-[var(--text-muted)] mb-0.5 block">{{ t('devices.directionLabel') }}</label>
                       <select
                         v-model="editingVarDirection"
                         class="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
@@ -2574,8 +2574,8 @@ onUnmounted(() => {
                     </div>
                   </div>
                   <div class="grid grid-cols-3 gap-2">
-                    <UInput v-model="editingVarUnit" placeholder="Einheit (°C, %, m/s)" />
-                    <UInput v-model="editingVarDescription" placeholder="Beschreibung" />
+                    <UInput v-model="editingVarUnit" :placeholder="t('devices.unitPlaceholder')" />
+                    <UInput v-model="editingVarDescription" :placeholder="t('devices.descriptionPlaceholder')" />
                     <select
                       v-model="editingVarDisplayHint"
                       class="px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
@@ -2591,7 +2591,7 @@ onUnmounted(() => {
                     </select>
                   </div>
                   <div class="flex justify-end">
-                    <UButton size="sm" @click="saveVariableMetadata(row)">Metadaten speichern</UButton>
+                    <UButton size="sm" @click="saveVariableMetadata(row)">{{ t('devices.saveMetadata') }}</UButton>
                   </div>
                 </div>
               </div>
@@ -2671,14 +2671,14 @@ onUnmounted(() => {
         <!-- Footer: snapshot info + View in Streams link (M8d Step 2) -->
         <div class="px-4 py-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
           <p class="text-[10px] text-[var(--text-muted)]">
-            <span v-if="variablesAppliedSummary">Last apply: {{ variablesAppliedSummary }}</span>
+            <span v-if="variablesAppliedSummary">{{ t('devices.lastApply', { summary: variablesAppliedSummary }) }}</span>
           </p>
           <RouterLink
             v-if="variables.length"
             :to="`/variables/streams`"
             class="text-[10px] text-[var(--accent-blue)] hover:underline shrink-0"
           >
-            View in Streams →
+            {{ t('devices.viewInStreams') }}
           </RouterLink>
         </div>
         </div>
@@ -2698,7 +2698,7 @@ onUnmounted(() => {
           </span>
         </div>
         <UButton v-if="deviceInfo" size="sm" variant="secondary" @click="showSendTask = true">
-          Send Task
+          {{ t('devices.sendTask') }}
         </UButton>
       </template>
 
@@ -2707,8 +2707,8 @@ onUnmounted(() => {
 
       <UEmpty
         v-if="taskHistory.length === 0 && !taskHistoryError"
-        title="No recent tasks"
-        description="Tasks run on this device will appear here."
+        :title="t('devices.noRecentTasks')"
+        :description="t('devices.noRecentTasksDesc')"
         icon="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
       />
 
@@ -2750,15 +2750,15 @@ onUnmounted(() => {
     <UCard v-if="!restrictUnclaimed" padding="md">
       <template #header>
         <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('common.actions') }}</h3>
-        <router-link to="/audit" class="text-xs text-[var(--primary)] hover:underline">Audit log</router-link>
+        <router-link to="/audit" class="text-xs text-[var(--primary)] hover:underline">{{ t('devices.auditLog') }}</router-link>
       </template>
 
-      <div v-if="capsUnavailable" class="text-xs text-[var(--text-muted)]">Capabilities unavailable.</div>
-      <div v-else-if="!canReissueToken" class="text-xs text-[var(--text-muted)]">Missing cap: devices.token.reissue</div>
+      <div v-if="capsUnavailable" class="text-xs text-[var(--text-muted)]">{{ t('devices.capsUnavailable') }}</div>
+      <div v-else-if="!canReissueToken" class="text-xs text-[var(--text-muted)]">{{ t('devices.missingCap') }}</div>
       <div v-else class="space-y-3">
         <div class="flex flex-wrap items-center gap-3">
           <UButton variant="secondary" size="sm" :disabled="reissueBusy" @click="handleReissueToken">
-            {{ reissueBusy ? "Reissuing…" : "Reissue Device Token" }}
+            {{ reissueBusy ? t('devices.reissuing') : t('devices.reissueToken') }}
           </UButton>
           <p v-if="reissueError" class="text-xs text-[var(--status-bad)]">{{ reissueError }}</p>
         </div>
@@ -2768,31 +2768,31 @@ onUnmounted(() => {
           v-if="reissueToken"
           class="rounded-lg border border-[var(--status-warn)]/30 bg-[var(--status-warn-bg)] p-4 space-y-3"
         >
-          <p class="text-xs font-semibold text-[var(--status-warn)]">New token issued — copy now, shown once.</p>
+          <p class="text-xs font-semibold text-[var(--status-warn)]">{{ t('devices.newTokenIssued') }}</p>
           <div class="flex items-center gap-2">
             <code class="flex-1 text-xs font-mono bg-[var(--bg-raised)] px-3 py-2 rounded border border-[var(--border)] break-all">{{ reissueToken }}</code>
             <UButton size="sm" variant="secondary" @click="copyReissueToken">
               {{ reissueCopied ? "Copied!" : "Copy" }}
             </UButton>
           </div>
-          <p class="text-xs text-[var(--text-muted)]">Revoked tokens: {{ reissueRevokedCount ?? 0 }}</p>
+          <p class="text-xs text-[var(--text-muted)]">{{ t('devices.revokedTokens', { count: reissueRevokedCount ?? 0 }) }}</p>
           <div class="text-xs text-[var(--text-secondary)] space-y-0.5">
-            <p class="font-semibold">To apply this token to the device:</p>
-            <p>1. Wait for "auth failed" or power-cycle the device.</p>
-            <p>2. Connect to <strong>HUBEX-SETUP</strong> Wi-Fi AP.</p>
-            <p>3. Open <strong>http://192.168.4.1/portal</strong>.</p>
-            <p>4. Paste in <em>Set Device Token</em> and save.</p>
+            <p class="font-semibold">{{ t('devices.applyTokenTitle') }}</p>
+            <p>{{ t('devices.applyTokenStep1') }}</p>
+            <p>{{ t('devices.applyTokenStep2') }}</p>
+            <p>{{ t('devices.applyTokenStep3') }}</p>
+            <p>{{ t('devices.applyTokenStep4') }}</p>
           </div>
-          <UButton size="sm" variant="ghost" @click="clearReissueToken">Dismiss</UButton>
+          <UButton size="sm" variant="ghost" @click="clearReissueToken">{{ t('devices.dismiss') }}</UButton>
         </div>
 
         <!-- Audit entries -->
         <div v-if="canReadAudit && !auditError">
-          <p class="text-xs text-[var(--text-muted)] mb-2">Recent reissue audit</p>
+          <p class="text-xs text-[var(--text-muted)] mb-2">{{ t('devices.recentReissueAudit') }}</p>
           <div v-if="auditLoading" class="space-y-1">
             <USkeleton v-for="i in 2" :key="i" height="1rem" />
           </div>
-          <div v-else-if="!auditEntries.length" class="text-xs text-[var(--text-muted)]">No recent entries.</div>
+          <div v-else-if="!auditEntries.length" class="text-xs text-[var(--text-muted)]">{{ t('devices.noRecentEntries') }}</div>
           <ul v-else class="space-y-1">
             <li v-for="entry in auditEntries" :key="entry.id" class="text-xs text-[var(--text-muted)]">
               {{ fmtRelative(entry.ts) }} · {{ entry.actor_id }} · revoked {{ entry.metadata?.revoked_count ?? 0 }}
@@ -2810,7 +2810,7 @@ onUnmounted(() => {
       </template>
 
       <p class="text-xs text-[var(--text-muted)] mb-3">
-        Unclaiming detaches ownership and revokes all device tokens.
+        {{ t('devices.unclaimWarning') }}
       </p>
       <div class="flex flex-wrap gap-2 items-center">
         <UButton
@@ -2821,7 +2821,7 @@ onUnmounted(() => {
           class="border-[var(--status-bad)]/40 text-[var(--status-bad)] hover:bg-[var(--status-bad)]/10"
           @click="startUnclaimConfirm"
         >
-          Unclaim Device
+          {{ t('devices.unclaimDevice') }}
         </UButton>
         <template v-else>
           <UButton
@@ -2831,10 +2831,10 @@ onUnmounted(() => {
             class="border-[var(--status-bad)]/40 text-[var(--status-bad)]"
             @click="confirmUnclaim"
           >
-            {{ unclaimBusy ? "Unclaiming…" : "Confirm Unclaim" }}
+            {{ unclaimBusy ? "\u2026" : t('devices.confirmUnclaim') }}
           </UButton>
           <UButton variant="ghost" size="sm" :disabled="unclaimBusy" @click="cancelUnclaimConfirm">
-            Cancel
+            {{ t('common.cancel') }}
           </UButton>
         </template>
         <p v-if="unclaimError" class="text-xs text-[var(--status-bad)]">{{ unclaimError }}</p>
@@ -2843,7 +2843,7 @@ onUnmounted(() => {
     </UCard>
 
     <!-- Send Task Modal -->
-    <UModal :open="showSendTask" title="Send Task to Device" size="sm" @close="showSendTask = false">
+    <UModal :open="showSendTask" :title="t('devices.sendTask')" size="sm" @close="showSendTask = false">
       <div class="space-y-3 p-2">
         <USelect v-model="sendTaskType" label="Task Type">
           <option value="custom">Custom</option>
@@ -2860,8 +2860,8 @@ onUnmounted(() => {
         <div v-if="sendTaskError" class="text-xs text-[var(--status-bad)]">{{ sendTaskError }}</div>
       </div>
       <template #footer>
-        <UButton variant="ghost" @click="showSendTask = false">Cancel</UButton>
-        <UButton :loading="sendTaskSaving" @click="submitSendTask">Send Task</UButton>
+        <UButton variant="ghost" @click="showSendTask = false">{{ t('common.cancel') }}</UButton>
+        <UButton :loading="sendTaskSaving" @click="submitSendTask">{{ t('devices.sendTask') }}</UButton>
       </template>
     </UModal>
 

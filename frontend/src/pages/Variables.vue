@@ -66,12 +66,12 @@ const highlightKey = ref<string | null>(null);
 function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
   return [
     {
-      label: "Edit Definition",
+      label: t('variables.editDefinition'),
       icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z",
       action: () => openEditDef(def),
     },
     {
-      label: "Connections",
+      label: t('variables.connections'),
       icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
       action: () =>
         openConnectPanel({
@@ -83,18 +83,18 @@ function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
     },
     { label: "", icon: "", action: () => {}, divider: true },
     {
-      label: "Create Alert",
+      label: t('variables.createAlert'),
       icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0",
       action: () => router.push({ path: "/alerts", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     {
-      label: "Create Automation",
+      label: t('variables.createAutomation'),
       icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
       action: () => router.push({ path: "/automations", query: { create: "true", variable_key: def.key, ...(deviceUid.value.trim() ? { device_uid: deviceUid.value.trim() } : {}) } }),
     },
     { label: "", icon: "", action: () => {}, divider: true },
     {
-      label: "Delete",
+      label: t('common.delete'),
       icon: "M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0",
       action: () => openDeleteDef(def),
       destructive: true,
@@ -430,7 +430,7 @@ async function handleControlChange(def: VariableDefinition, val: unknown) {
 
 // ── Delete definition ─────────────────────────────────────────────────────────
 async function handleDeleteDef(def: VariableDefinition) {
-  if (!confirm(`Delete definition "${def.key}" and all its history? This cannot be undone.`)) return;
+  if (!confirm(t('variables.deleteConfirmMessage', { key: def.key }))) return;
   try {
     await deleteDefinition(def.key);
     definitions.value = definitions.value.filter((d) => d.key !== def.key);
@@ -507,9 +507,9 @@ const groupedRows = computed<VarGroup[]>(() => {
     }
   }
   const groups: VarGroup[] = [];
-  if (globals.length) groups.push({ deviceUid: null, label: "Global Variables", defs: globals });
+  if (globals.length) groups.push({ deviceUid: null, label: t('variables.globalVariables'), defs: globals });
   for (const [uid, defs] of byDevice) {
-    const label = uid === "device-scoped" ? "Device Variables" : uid;
+    const label = uid === "device-scoped" ? t('variables.deviceVariables') : uid;
     groups.push({ deviceUid: uid === "device-scoped" ? null : uid, label, defs });
   }
   return groups;
@@ -577,26 +577,26 @@ onMounted(async () => {
       </div>
       <UButton @click="openCreate" size="sm">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New Variable
+        {{ t('variables.newVariable') }}
       </UButton>
     </div>
 
     <!-- ── Toolbar ────────────────────────────────────────────────── -->
     <div class="vars-toolbar">
-      <UInput v-model="search" placeholder="Search key, category, description…" class="toolbar-search" />
+      <UInput v-model="search" :placeholder="t('variables.searchPlaceholder')" class="toolbar-search" />
       <USelect v-model="scopeFilter" class="toolbar-scope">
-        <option value="all">All scopes</option>
-        <option value="global">Global</option>
-        <option value="device">Device</option>
+        <option value="all">{{ t('variables.allScopes') }}</option>
+        <option value="global">{{ t('variables.global') }}</option>
+        <option value="device">{{ t('variables.device') }}</option>
       </USelect>
-      <UEntitySelect v-model="deviceUid" entity-type="device" placeholder="Filter by device..." :optional="true" class="toolbar-device" />
-      <label v-if="deviceUid.trim()" class="toolbar-toggle" title="Variablen ohne Wert für dieses Device ausblenden">
+      <UEntitySelect v-model="deviceUid" entity-type="device" :placeholder="t('variables.filterByDevice')" :optional="true" class="toolbar-device" />
+      <label v-if="deviceUid.trim()" class="toolbar-toggle" :title="t('variables.hideUnrelatedTooltip')">
         <UToggle v-model="hideUnrelated" size="sm" />
-        <span>Only assigned</span>
+        <span>{{ t('variables.onlyAssigned') }}</span>
       </label>
       <label class="toolbar-toggle" :title="t('variables.secretsTooltip')">
         <UToggle v-model="showSecrets" size="sm" />
-        <span>Secrets</span>
+        <span>{{ t('variables.secrets') }}</span>
       </label>
     </div>
 
@@ -616,18 +616,18 @@ onMounted(async () => {
         </svg>
       </div>
       <div class="vars-empty-text">
-        <h3>No variables yet</h3>
-        <p>Variables appear automatically when devices send telemetry. Or create one manually.</p>
+        <h3>{{ t('variables.noVariablesYet') }}</h3>
+        <p>{{ t('variables.noVariablesDesc') }}</p>
       </div>
       <div class="vars-empty-actions">
         <UButton size="sm" @click="openCreate">
           <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Create variable
+          {{ t('variables.createVariable') }}
         </UButton>
-        <span class="vars-empty-hint">or connect a device to auto-discover →</span>
-        <a href="/devices" class="vars-empty-link">Devices →</a>
+        <span class="vars-empty-hint">{{ t('variables.autoDiscoverHint') }}</span>
+        <a href="/devices" class="vars-empty-link">{{ t('variables.devicesLink') }}</a>
       </div>
     </div>
 
@@ -637,14 +637,14 @@ onMounted(async () => {
         <thead>
           <tr>
             <th class="col-expand"></th>
-            <th>Key</th>
-            <th>Scope</th>
-            <th>Type</th>
-            <th>Value</th>
-            <th class="col-spark">Trend</th>
-            <th>Hint</th>
-            <th>Updated</th>
-            <th class="col-actions">Actions</th>
+            <th>{{ t('variables.colKey') }}</th>
+            <th>{{ t('variables.colScope') }}</th>
+            <th>{{ t('variables.colType') }}</th>
+            <th>{{ t('variables.colValue') }}</th>
+            <th class="col-spark">{{ t('variables.colTrend') }}</th>
+            <th>{{ t('variables.colHint') }}</th>
+            <th>{{ t('variables.colUpdated') }}</th>
+            <th class="col-actions">{{ t('variables.colActions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -717,7 +717,7 @@ onMounted(async () => {
                   class="reveal-btn"
                   @click.stop="revealKeys = new Set(revealKeys.has(def.key) ? [...revealKeys].filter(k => k !== def.key) : [...revealKeys, def.key])"
                 >
-                  {{ revealKeys.has(def.key) ? "hide" : "show" }}
+                  {{ revealKeys.has(def.key) ? t('variables.hide') : t('variables.show') }}
                 </button>
               </td>
 
@@ -745,7 +745,7 @@ onMounted(async () => {
               <!-- Actions -->
               <td class="col-actions" @click.stop>
                 <div class="row-actions">
-                  <UButton v-if="!def.is_readonly" size="sm" variant="ghost" @click.stop="openSetValue(def)" title="Set value">
+                  <UButton v-if="!def.is_readonly" size="sm" variant="ghost" @click.stop="openSetValue(def)" :title="t('variables.setValue')">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </UButton>
                   <span v-else class="text-[9px] text-[var(--text-muted)] px-1" title="Read-only variable">🔒</span>
@@ -754,7 +754,7 @@ onMounted(async () => {
                     <UButton
                       size="sm"
                       variant="ghost"
-                      title="More actions"
+                      :title="t('variables.moreActions')"
                       @click.stop="varMenuOpenKey = varMenuOpenKey === def.key ? null : def.key"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -778,27 +778,27 @@ onMounted(async () => {
                 <div class="detail-panel">
                   <div class="detail-meta">
                     <div class="meta-item">
-                      <span class="meta-label">Key</span>
+                      <span class="meta-label">{{ t('variables.metaKey') }}</span>
                       <code class="meta-val">{{ def.key }}</code>
                     </div>
                     <div class="meta-item">
-                      <span class="meta-label">Type</span>
+                      <span class="meta-label">{{ t('variables.metaType') }}</span>
                       <code class="meta-val">{{ def.value_type }}</code>
                     </div>
                     <div v-if="def.unit" class="meta-item">
-                      <span class="meta-label">Unit</span>
+                      <span class="meta-label">{{ t('variables.metaUnit') }}</span>
                       <code class="meta-val">{{ def.unit }}</code>
                     </div>
                     <div v-if="def.display_hint" class="meta-item">
-                      <span class="meta-label">Viz</span>
+                      <span class="meta-label">{{ t('variables.metaViz') }}</span>
                       <code class="meta-val">{{ def.display_hint }}</code>
                     </div>
                     <div v-if="def.min_value != null || def.max_value != null" class="meta-item">
-                      <span class="meta-label">Range</span>
+                      <span class="meta-label">{{ t('variables.metaRange') }}</span>
                       <code class="meta-val">{{ def.min_value ?? "–" }} … {{ def.max_value ?? "–" }}</code>
                     </div>
                     <div v-if="def.description" class="meta-item wide">
-                      <span class="meta-label">Description</span>
+                      <span class="meta-label">{{ t('variables.metaDescription') }}</span>
                       <span class="meta-val">{{ def.description }}</span>
                     </div>
                   </div>
@@ -831,26 +831,26 @@ onMounted(async () => {
     </div>
 
     <!-- ── Create Variable Modal ──────────────────────────────────── -->
-    <UModal :open="createOpen" title="New Variable" @close="createOpen = false">
+    <UModal :open="createOpen" :title="t('variables.newVariableTitle')" @close="createOpen = false">
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-field">
-            <label>Key *</label>
-            <UInput v-model="crKey" placeholder="e.g. sensor.temperature" />
+            <label>{{ t('variables.keyRequired') }}</label>
+            <UInput v-model="crKey" :placeholder="t('variables.keyPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Scope</label>
+            <label>{{ t('variables.scopeLabel') }}</label>
             <USelect v-model="crScope">
-              <option value="global">Global</option>
-              <option value="device">Device</option>
+              <option value="global">{{ t('variables.global') }}</option>
+              <option value="device">{{ t('variables.device') }}</option>
             </USelect>
           </div>
           <div v-if="crScope === 'device'" class="form-field">
-            <label>Device UID</label>
-            <UEntitySelect v-model="crDeviceUid" entity-type="device" placeholder="Select device..." :optional="true" />
+            <label>{{ t('variables.deviceUidLabel') }}</label>
+            <UEntitySelect v-model="crDeviceUid" entity-type="device" :placeholder="t('variables.selectDevicePlaceholder')" :optional="true" />
           </div>
           <div class="form-field">
-            <label>Value type</label>
+            <label>{{ t('variables.valueTypeLabel') }}</label>
             <USelect v-model="crValueType">
               <option value="string">string</option>
               <option value="int">int</option>
@@ -860,116 +860,116 @@ onMounted(async () => {
             </USelect>
           </div>
           <div class="form-field">
-            <label>Default value</label>
+            <label>{{ t('variables.defaultValueLabel') }}</label>
             <UInput v-model="crDefaultValue" :placeholder="crValueType === 'json' ? '{…}' : 'optional'" />
           </div>
           <div class="form-field">
-            <label>Initial value</label>
-            <UInput v-model="crValue" placeholder="Set immediately (optional)" />
+            <label>{{ t('variables.initialValueLabel') }}</label>
+            <UInput v-model="crValue" :placeholder="t('variables.initialValuePlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Description</label>
-            <UInput v-model="crDescription" placeholder="Human-readable description" />
+            <label>{{ t('variables.descriptionLabel') }}</label>
+            <UInput v-model="crDescription" :placeholder="t('variables.descriptionPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Category</label>
-            <UInput v-model="crCategory" placeholder="e.g. sensor.temperature, gps, config" />
+            <label>{{ t('variables.categoryLabel') }}</label>
+            <UInput v-model="crCategory" :placeholder="t('variables.categoryPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Unit</label>
-            <UInput v-model="crUnit" placeholder="°C, %, m/s, …" />
+            <label>{{ t('variables.unitLabel') }}</label>
+            <UInput v-model="crUnit" :placeholder="t('variables.unitPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Visualization</label>
+            <label>{{ t('variables.vizLabel') }}</label>
             <USelect v-model="crDisplayHint">
               <option v-for="opt in DISPLAY_HINT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </USelect>
           </div>
           <div class="form-field" v-if="crValueType === 'int' || crValueType === 'float'">
-            <label>Min value</label>
+            <label>{{ t('variables.minValueLabel') }}</label>
             <UInput v-model="crMin" type="number" placeholder="0" />
           </div>
           <div class="form-field" v-if="crValueType === 'int' || crValueType === 'float'">
-            <label>Max value</label>
+            <label>{{ t('variables.maxValueLabel') }}</label>
             <UInput v-model="crMax" type="number" placeholder="100" />
           </div>
         </div>
         <div class="form-toggles">
           <label class="toggle-row">
             <UToggle v-model="crIsSecret" size="sm" />
-            <span>Secret <span class="toggle-hint">— value masked in lists</span></span>
+            <span>{{ t('variables.secretToggle') }} <span class="toggle-hint">{{ t('variables.secretHint') }}</span></span>
           </label>
           <label class="toggle-row">
             <UToggle v-model="crIsReadonly" size="sm" />
-            <span>Read-only <span class="toggle-hint">— devices cannot overwrite</span></span>
+            <span>{{ t('variables.readonlyToggle') }} <span class="toggle-hint">{{ t('variables.readonlyHint') }}</span></span>
           </label>
         </div>
         <div v-if="crError" class="modal-error">{{ crError }}</div>
       </div>
       <template #footer>
-        <UButton variant="ghost" @click="createOpen = false">Cancel</UButton>
-        <UButton @click="handleCreate" :loading="crSaving">Create</UButton>
+        <UButton variant="ghost" @click="createOpen = false">{{ t('common.cancel') }}</UButton>
+        <UButton @click="handleCreate" :loading="crSaving">{{ t('common.create') }}</UButton>
       </template>
     </UModal>
 
     <!-- ── Edit Definition Modal ──────────────────────────────────── -->
-    <UModal :open="editOpen" :title="`Edit — ${editDef?.key ?? ''}`" @close="editOpen = false">
+    <UModal :open="editOpen" :title="t('variables.editTitle', { key: editDef?.key ?? '' })" @close="editOpen = false">
       <div class="modal-body" v-if="editDef">
         <div class="edit-readonly-info">
           <UBadge :status="scopeStatus(editDef.scope)" size="sm">{{ editDef.scope }}</UBadge>
           <UBadge :status="typeStatus(editDef.value_type)" size="sm">{{ editDef.value_type }}</UBadge>
-          <span class="edit-readonly-note">Key and type cannot be changed</span>
+          <span class="edit-readonly-note">{{ t('variables.keyTypeReadonly') }}</span>
         </div>
         <div class="form-grid">
           <div class="form-field wide">
-            <label>Description</label>
-            <UInput v-model="editDescription" placeholder="Human-readable description" />
+            <label>{{ t('variables.descriptionLabel') }}</label>
+            <UInput v-model="editDescription" :placeholder="t('variables.descriptionPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Category</label>
-            <UInput v-model="editCategory" placeholder="e.g. sensor.temperature" />
+            <label>{{ t('variables.categoryLabel') }}</label>
+            <UInput v-model="editCategory" :placeholder="t('variables.categoryPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Unit</label>
-            <UInput v-model="editUnit" placeholder="°C, %, m/s, …" />
+            <label>{{ t('variables.unitLabel') }}</label>
+            <UInput v-model="editUnit" :placeholder="t('variables.unitPlaceholder')" />
           </div>
           <div class="form-field">
-            <label>Visualization hint</label>
+            <label>{{ t('variables.vizHintLabel') }}</label>
             <USelect v-model="editDisplayHint">
               <option v-for="opt in DISPLAY_HINT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </USelect>
           </div>
           <div class="form-field" v-if="editDef.value_type === 'int' || editDef.value_type === 'float'">
-            <label>Min value</label>
+            <label>{{ t('variables.minValueLabel') }}</label>
             <UInput v-model="editMin" type="number" />
           </div>
           <div class="form-field" v-if="editDef.value_type === 'int' || editDef.value_type === 'float'">
-            <label>Max value</label>
+            <label>{{ t('variables.maxValueLabel') }}</label>
             <UInput v-model="editMax" type="number" />
           </div>
         </div>
         <div v-if="editError" class="modal-error">{{ editError }}</div>
       </div>
       <template #footer>
-        <UButton variant="ghost" @click="editOpen = false">Cancel</UButton>
-        <UButton @click="handleEditSave" :loading="editSaving">Save changes</UButton>
+        <UButton variant="ghost" @click="editOpen = false">{{ t('common.cancel') }}</UButton>
+        <UButton @click="handleEditSave" :loading="editSaving">{{ t('variables.saveChanges') }}</UButton>
       </template>
     </UModal>
 
     <!-- ── Set Value Modal ────────────────────────────────────────── -->
-    <UModal :open="setValueOpen" :title="`Set value — ${setValueDef?.key ?? ''}`" @close="setValueOpen = false">
+    <UModal :open="setValueOpen" :title="t('variables.setValueTitle', { key: setValueDef?.key ?? '' })" @close="setValueOpen = false">
       <div class="modal-body" v-if="setValueDef">
         <div class="edit-readonly-info">
           <UBadge :status="typeStatus(setValueDef.value_type)" size="sm">{{ setValueDef.value_type }}</UBadge>
           <UBadge :status="scopeStatus(setValueDef.scope)" size="sm">{{ setValueDef.scope }}</UBadge>
         </div>
         <div class="form-field">
-          <label>Value</label>
+          <label>{{ t('variables.valueLabel') }}</label>
           <!-- GPS/Map: friendly lat/lng inputs -->
           <div v-if="setValueDef.display_hint === 'map' && setValueDef.value_type === 'json'" class="gps-edit">
             <div class="gps-fields">
               <div class="gps-field">
-                <label class="gps-label">Latitude</label>
+                <label class="gps-label">{{ t('variables.latitude') }}</label>
                 <input
                   type="number"
                   step="0.000001"
@@ -980,7 +980,7 @@ onMounted(async () => {
                 />
               </div>
               <div class="gps-field">
-                <label class="gps-label">Longitude</label>
+                <label class="gps-label">{{ t('variables.longitude') }}</label>
                 <input
                   type="number"
                   step="0.000001"
@@ -991,13 +991,13 @@ onMounted(async () => {
                 />
               </div>
             </div>
-            <p class="gps-hint">Enter decimal coordinates (WGS84)</p>
+            <p class="gps-hint">{{ t('variables.gpsHint') }}</p>
           </div>
           <!-- Bool: toggle switch -->
           <div v-else-if="setValueDef.value_type === 'bool'" class="bool-edit">
             <label class="bool-toggle">
               <input type="checkbox" :checked="setValueStr === 'true'" @change="setValueStr = ($event.target as HTMLInputElement).checked ? 'true' : 'false'" />
-              <span class="bool-label">{{ setValueStr === 'true' ? 'ON (true)' : 'OFF (false)' }}</span>
+              <span class="bool-label">{{ setValueStr === 'true' ? t('variables.onTrue') : t('variables.offFalse') }}</span>
             </label>
           </div>
           <!-- Default: textarea -->
@@ -1013,15 +1013,15 @@ onMounted(async () => {
         <div v-if="conflictKey === setValueDef.key" class="conflict-banner">
           <span>⚠ {{ conflictMessage }}</span>
           <div class="conflict-actions">
-            <UButton size="sm" variant="ghost" @click="reloadAndRetry">Reload &amp; retry</UButton>
-            <UButton size="sm" variant="ghost" @click="clearConflict">Cancel</UButton>
+            <UButton size="sm" variant="ghost" @click="reloadAndRetry">{{ t('variables.reloadRetry') }}</UButton>
+            <UButton size="sm" variant="ghost" @click="clearConflict">{{ t('common.cancel') }}</UButton>
           </div>
         </div>
         <div v-if="setValueError" class="modal-error">{{ setValueError }}</div>
       </div>
       <template #footer>
-        <UButton variant="ghost" @click="setValueOpen = false">Cancel</UButton>
-        <UButton @click="handleSetValue" :loading="setValueSaving">Set value</UButton>
+        <UButton variant="ghost" @click="setValueOpen = false">{{ t('common.cancel') }}</UButton>
+        <UButton @click="handleSetValue" :loading="setValueSaving">{{ t('variables.setValueButton') }}</UButton>
       </template>
     </UModal>
   </div>

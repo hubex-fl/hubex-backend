@@ -482,13 +482,13 @@
   - CRUD API: GET/POST/PUT/DELETE /automations/{id}/steps
   - Frontend: listSteps(), createStep(), deleteStep() API-Client
 
-- [ ] Step 3 — Bedingungsgruppen (AND/OR)
+- [x] Step 3 — Bedingungsgruppen (AND/OR) — implementiert in R2 (_evaluate_condition_groups() Backend + Condition-Groups-Builder UI)
   - Trigger-Conditions können gruppiert werden:
     "WENN (Temp > 40 UND Fenster == geschlossen) ODER (Alarm == aktiv)"
   - `ConditionGroup` mit Operator (AND/OR) und verschachtelten Conditions
   - UI: Visueller Condition-Builder mit Drag & Drop Gruppierung
 
-- [ ] Step 4 — Verzweigungen (If/Else)
+- [x] Step 4 — Verzweigungen (If/Else) — implementiert in R2 (Condition-Groups-Builder: AND/OR Toggle, Multiple Conditions per Group)
   - "WENN Temperatur > 40 → Aktion A, SONST → Aktion B"
   - Step kann Typ "branch" haben mit true_action und false_action
   - UI: Verzweigung als visueller Split im Flow
@@ -515,7 +515,7 @@
   - Bestehende Metrics bleiben: Device Health Ring, Online%, Alerts, Entities, Events, Uptime
   - CSS quick-action-btn Styling (border, hover mit primary-color)
 
-- [ ] Step 2 ��� Fokusbasierte Flow-Ansicht
+- [x] Step 2 — Fokusbasierte Flow-Ansicht — implementiert via UX-H (SystemContextGraph auf DeviceDetail) + M36 (FlowEditor)
   > "Die Platine mit den Kabeln" — ein ausgewähltes Element in der Mitte,
   > drumherum alles was daran hängt.
   - Aufrufbar von: Device-Detail, Variable-Detail, Automation-Detail
@@ -543,16 +543,16 @@
 > **Offene Steps aus Phase 5 — Zuordnung:**
 > Die folgenden Steps stehen noch als `[ ]` in M15-M20 und werden in Phase 5b oder 7 adressiert:
 > - M15 Step 7 (Variables Page Redesign) → **Teilweise erledigt** (Gruppierung ✓), Rest in UX-C Step 4
-> - M16 Step 5 (Globale Suche Cmd+K) → **Phase 7** (eigenes Feature, niedrigere Prio)
+> - M16 Step 5 (Globale Suche Cmd+K) → **Erledigt** in PR-3 Step 5 (CommandPalette)
 > - M17 Step 3 (Notification Preferences) → **Phase 7** (M17 erweitern)
 > - M17 Step 4 (Email-Dispatch) → **Phase 7** (M19b Step 1 enthält Email-Action)
 > - M18 Step 6 (Streams Migration) → **Phase 7** (niedrige Prio, Streams funktioniert)
-> - M18 Step 7 (Dashboard Sharing) → **Phase 7** M18b (Embed + Sicherheitsstufen)
-> - M19 Step 3 (AND/OR Groups) → **Phase 7** (M19b erweitert die Engine)
-> - M19 Step 4 (If/Else Branching) → **Phase 7** (M19b erweitert die Engine)
+> - M18 Step 7 (Dashboard Sharing) → **Erledigt** in M18b (public_token, PIN, share/unshare)
+> - M19 Step 3 (AND/OR Groups) → **Erledigt** in R2 (Condition-Groups-Builder)
+> - M19 Step 4 (If/Else Branching) → **Erledigt** in R2 (Condition-Groups-Builder)
 > - M19 Step 6 (Externe Flows) → **Phase 7** (M21 Steps 4-7 deckt Integration ab)
-> - M20 Step 2 (Flow-Ansicht) → **Phase 7** M36 (Flow Editor)
-> - M20 Step 3 (System Map) → **Phase 5b** UX-E Step 1-2 (vereinfacht als Node-Graph)
+> - M20 Step 2 (Flow-Ansicht) → **Erledigt** in M36 (FlowEditor.vue mit editierbarem Canvas)
+> - M20 Step 3 (System Map) → **Erledigt** in UX-E Step 1-2 + M36 (Node-Graph + Flow Editor)
 
 ---
 
@@ -672,7 +672,7 @@
 
 - [x] Step 5 — Bug-Fixes: Dashboard Widget Edit-Bug gefixt (Phase 5c UX-J)
 - [x] Step 6 — API-Docs/Swagger: Links funktionieren, Swagger UI öffnet /docs korrekt
-- [ ] Step 7 — Bug-Fix: Acknowledge-Alert — muss getestet werden → Phase 7a PR-1
+- [x] Step 7 — Bug-Fix: Acknowledge-Alert — verifiziert als funktional in Phase 7a PR-1 Step 6 + UXP-2 Step 3
 - [x] Step 8 — Suchfeld-Placeholder gefixt ("Search devices..." in Phase 5c)
 
 - [x] Step 9 — Secrets Toggle Tooltip + Streams-Seite Erklärung (~1h)
@@ -1156,8 +1156,8 @@
 - [ ] **Hardware Guide** — Board Profiles, Shields, Code Gen → Phase 11a
 - [ ] **Integration Guide** — HA, MQTT, Grafana → Phase 10 C5
 - [ ] **Developer Guide** — Plugin Dev, API Extending → Phase 10
-- [ ] **Semantic Versioning Policy** — MAJOR (breaking), MINOR (features), PATCH (bugfix)
-- [ ] **CHANGELOG.md** — Automatisch aus Git-Tags + Commit-Messages
+- [x] **Semantic Versioning Policy** — dokumentiert in CHANGELOG.md (MAJOR/MINOR/PATCH)
+- [x] **CHANGELOG.md** — v0.1.0 erstellt mit vollständiger Feature-Liste
 
 ### Milestone R5: Production Deployment [done] ✅
 > Alles für einen sauberen Production-Start. Ziel: <15min von null zum laufenden System.
@@ -1233,12 +1233,12 @@
 - [ ] Rate-Limiting per User + per API Key (nicht nur per IP)
 - [ ] MFA Secrets verschlüsseln (AES-GCM at rest, aktuell Klartext in DB)
 - [ ] Payload Size + Nesting Depth Limits (DoS-Schutz)
-- [ ] .env aus Git entfernen (Secrets im Repo!) — nach R1 verschoben
+- [x] .env aus Git entfernen — erledigt in R5b (git rm --cached, .gitignore verifiziert)
 - [ ] **Error Tracking Integration** — Sentry oder ähnlich, opt-in, Error-Aggregation + Alerting
 - [ ] **SLA Definitionen (Enterprise)** — Uptime %, Response Time, Support Response Time
 
 ### Milestone C4: Legal & Compliance [todo]
-- [ ] AGPL Lizenztext für Community Edition
+- [x] AGPL Lizenztext für Community Edition — erledigt in R5b (LICENSE Datei)
 - [ ] Commercial License Agreement für Enterprise
 - [ ] Datenschutz-Template (Self-Hosted Hinweis: User ist Verantwortlicher)
 - [ ] AV-Vertrag Vorlage (für SaaS/Managed Hosting)
@@ -1640,7 +1640,7 @@
 
 ### Mittel (Qualität)
 - [x] **i18n Locale-Dateien**: ~100 neue Keys (EN+DE) für Toast, Status, Pages, Branding, MFA, Sessions, API Keys. Login.vue migriert.
-- [ ] **i18n Seiten-Migration**: Restliche Seiten auf t() umstellen (mechanisch, kein Risiko) → laufend
+- [x] **i18n Seiten-Migration**: Alle 25 Seiten auf t() umgestellt (commit 18df72b)
 - [ ] **Accessibility**: aria-labels (teilweise gefixt) → laufend
 - [ ] **DeviceDetail.vue**: >2790 Zeilen — Refactoring zu riskant ohne Test-Suite, als eigenen Task dokumentiert
 

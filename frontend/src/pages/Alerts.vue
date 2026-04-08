@@ -214,7 +214,7 @@ async function handleDeleteRule(id: number) {
   deletingConfirmId.value = null;
   try {
     await deleteRule(id);
-    toast.addToast("Rule deleted", "success");
+    toast.addToast(t('alerts.ruleDeleted'), "success");
   } catch (err) {
     const info = parseApiError(err);
     toast.addToast(mapErrorToUserText(info, "Failed to delete rule"), "error");
@@ -250,13 +250,13 @@ const emptyForm = (): RuleFormData => ({
 
 const form = ref<RuleFormData>(emptyForm());
 
-const conditionTypeHints: Record<string, string> = {
-  device_offline: "Triggers when a device hasn't sent a heartbeat",
-  entity_health: "Triggers based on entity health status",
-  effect_failure_rate: "Triggers when effect failure rate exceeds threshold",
-  event_lag: "Triggers when event processing lag is too high",
-  variable_threshold: "Triggers when a variable value crosses a threshold",
-};
+const conditionTypeHints = computed(() => ({
+  device_offline: t('alerts.conditionHints.device_offline'),
+  entity_health: t('alerts.conditionHints.entity_health'),
+  effect_failure_rate: t('alerts.conditionHints.effect_failure_rate'),
+  event_lag: t('alerts.conditionHints.event_lag'),
+  variable_threshold: t('alerts.conditionHints.variable_threshold'),
+}));
 
 // ── Variable Threshold fields ─────────────────────────────────────────────
 const vtKey = ref("");
@@ -347,7 +347,7 @@ function onModalKeydown(e: KeyboardEvent) {
 
 async function handleSaveRule() {
   if (!form.value.name.trim()) {
-    modalError.value = "Name is required.";
+    modalError.value = t('alerts.nameRequired');
     return;
   }
   modalSaving.value = true;
@@ -355,7 +355,7 @@ async function handleSaveRule() {
   // Build condition_config based on condition_type
   let condCfg: Record<string, unknown> = {};
   if (form.value.condition_type === "variable_threshold") {
-    if (!vtKey.value.trim()) { modalError.value = "Variable key is required."; modalSaving.value = false; return; }
+    if (!vtKey.value.trim()) { modalError.value = t('alerts.variableKeyRequired'); modalSaving.value = false; return; }
     condCfg = {
       variable_key: vtKey.value.trim(),
       threshold_operator: vtOperator.value,
@@ -376,10 +376,10 @@ async function handleSaveRule() {
   try {
     if (modalMode.value === "create") {
       await createRule(payload);
-      toast.addToast("Rule created", "success");
+      toast.addToast(t('alerts.ruleCreated'), "success");
     } else if (editingRule.value) {
       await updateRule(editingRule.value.id, payload);
-      toast.addToast("Rule updated", "success");
+      toast.addToast(t('alerts.ruleUpdated'), "success");
     }
     closeModal();
   } catch (err) {
@@ -411,7 +411,7 @@ const statusClass: Record<string, string> = {
       v-if="caps.status === 'ready' && !hasCap('alerts.read')"
       class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-8 text-center"
     >
-      <p class="text-[var(--text-muted)]">You don't have permission to view alerts.</p>
+      <p class="text-[var(--text-muted)]">{{ t('alerts.noPermission') }}</p>
     </div>
 
     <template v-else>
@@ -646,7 +646,7 @@ const statusClass: Record<string, string> = {
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            New Rule
+            {{ t('alerts.newRule') }}
           </button>
         </div>
 
@@ -662,8 +662,8 @@ const statusClass: Record<string, string> = {
               </svg>
             </div>
             <div class="space-y-1 max-w-sm">
-              <h3 class="text-base font-semibold text-[var(--text-primary)]">Get notified when something happens</h3>
-              <p class="text-sm text-[var(--text-muted)]">Alert rules fire when devices go offline, variables cross thresholds, or automation errors occur.</p>
+              <h3 class="text-base font-semibold text-[var(--text-primary)]">{{ t('alerts.emptyTitle') }}</h3>
+              <p class="text-sm text-[var(--text-muted)]">{{ t('alerts.emptyDesc') }}</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-2.5 items-center">
               <button
@@ -673,9 +673,9 @@ const statusClass: Record<string, string> = {
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                Create Alert Rule
+                {{ t('alerts.createAlertRule') }}
               </button>
-              <span class="text-xs text-[var(--text-muted)]">or go to a variable / device to create a rule in context</span>
+              <span class="text-xs text-[var(--text-muted)]">{{ t('alerts.emptyHint') }}</span>
             </div>
           </div>
         </div>
@@ -700,12 +700,12 @@ const statusClass: Record<string, string> = {
               <p v-if="rule.condition_type === 'variable_threshold' && rule.condition_config" class="text-xs text-[var(--primary)] font-mono">
                 {{ formatVarThreshold(rule.condition_config) }}
               </p>
-              <p class="text-xs text-[var(--text-muted)]">Cooldown: {{ rule.cooldown_seconds }}s</p>
+              <p class="text-xs text-[var(--text-muted)]">{{ t('alerts.cooldownText') }} {{ rule.cooldown_seconds }}s</p>
             </div>
 
             <!-- Toggle -->
             <button
-              :title="rule.enabled ? 'Disable rule' : 'Enable rule'"
+              :title="rule.enabled ? t('alerts.disableRule') : t('alerts.enableRule')"
               :disabled="togglingId === rule.id"
               :class="[
                 'relative shrink-0 h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
@@ -724,7 +724,7 @@ const statusClass: Record<string, string> = {
             <!-- Edit -->
             <button
               class="shrink-0 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="Edit rule"
+              :title="t('alerts.editRule')"
               @click="openEdit(rule)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -735,7 +735,7 @@ const statusClass: Record<string, string> = {
             <!-- Duplicate -->
             <button
               class="shrink-0 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="Duplicate rule"
+              :title="t('alerts.duplicateRule')"
               @click="duplicateRule(rule)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -754,7 +754,7 @@ const statusClass: Record<string, string> = {
               ]"
               @click="handleDeleteRule(rule.id)"
             >
-              {{ deletingId === rule.id ? '…' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
+              {{ deletingId === rule.id ? '\u2026' : deletingConfirmId === rule.id ? t('alerts.confirmDelete') : t('alerts.deleteBtn') }}
             </button>
           </div>
         </div>
@@ -776,7 +776,7 @@ const statusClass: Record<string, string> = {
           <!-- Header (fixed) -->
           <div class="px-6 pt-6 pb-4 border-b border-[var(--border)] shrink-0">
             <h3 class="text-base font-semibold text-[var(--text-primary)]">
-              {{ modalMode === 'create' ? 'New Alert Rule' : 'Edit Alert Rule' }}
+              {{ modalMode === 'create' ? t('alerts.newAlertRule') : t('alerts.editAlertRule') }}
             </h3>
           </div>
 
@@ -784,7 +784,7 @@ const statusClass: Record<string, string> = {
           <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
             <!-- Name -->
             <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Name <span class="text-red-400">*</span></label>
+              <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.nameLabel') }} <span class="text-red-400">*</span></label>
               <input
                 v-model="form.name"
                 type="text"
@@ -795,7 +795,7 @@ const statusClass: Record<string, string> = {
 
             <!-- Condition Type -->
             <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Condition Type</label>
+              <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.conditionType') }}</label>
               <select
                 v-model="form.condition_type"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
@@ -806,8 +806,8 @@ const statusClass: Record<string, string> = {
                 <option value="event_lag">event_lag</option>
                 <option value="variable_threshold">variable_threshold</option>
               </select>
-              <p v-if="conditionTypeHints[form.condition_type]" class="text-xs text-[var(--text-muted)]">
-                {{ conditionTypeHints[form.condition_type] }}
+              <p v-if="conditionTypeHints[form.condition_type as keyof typeof conditionTypeHints]" class="text-xs text-[var(--text-muted)]">
+                {{ conditionTypeHints[form.condition_type as keyof typeof conditionTypeHints] }}
               </p>
             </div>
 
@@ -816,7 +816,7 @@ const statusClass: Record<string, string> = {
               <UEntitySelect v-model="vtKey" entity-type="variable" label="Variable Key" />
               <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[var(--text-muted)]">Operator</label>
+                  <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.operator') }}</label>
                   <select
                     v-model="vtOperator"
                     class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
@@ -825,7 +825,7 @@ const statusClass: Record<string, string> = {
                   </select>
                 </div>
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-[var(--text-muted)]">Threshold Value</label>
+                  <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.thresholdValue') }}</label>
                   <input
                     v-model.number="vtValue"
                     type="number"
@@ -849,7 +849,7 @@ const statusClass: Record<string, string> = {
 
             <!-- Severity -->
             <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Severity</label>
+              <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.severityLabel') }}</label>
               <select
                 v-model="form.severity"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
@@ -865,7 +865,7 @@ const statusClass: Record<string, string> = {
 
             <!-- Cooldown -->
             <div class="space-y-1">
-              <label class="text-xs font-medium text-[var(--text-muted)]">Cooldown (seconds)</label>
+              <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.cooldownLabel') }}</label>
               <input
                 v-model.number="form.cooldown_seconds"
                 type="number"
@@ -882,7 +882,7 @@ const statusClass: Record<string, string> = {
                 type="checkbox"
                 class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]"
               />
-              <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
+              <label for="modal-enabled" class="text-sm text-[var(--text-primary)]">{{ t('alerts.enabledLabel') }}</label>
             </div>
 
             <!-- Inline error -->
@@ -895,14 +895,14 @@ const statusClass: Record<string, string> = {
               class="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               @click="closeModal"
             >
-              Cancel
+              {{ t('alerts.cancelBtn') }}
             </button>
             <button
               :disabled="modalSaving"
               class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 disabled:opacity-50 transition-colors"
               @click="handleSaveRule"
             >
-              {{ modalSaving ? 'Saving…' : 'Save' }}
+              {{ modalSaving ? t('alerts.saving') : t('alerts.saveBtn') }}
             </button>
           </div>
         </div>

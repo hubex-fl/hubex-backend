@@ -32,6 +32,7 @@ from app.db.models.events import EventV1
 from app.core.system_events import emit_system_event
 
 from app.core.config import settings as _settings
+from app.core.notifications import notify_automation_error
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -534,6 +535,17 @@ async def _process_new_events(db: AsyncSession, last_event_id: int) -> int:
                     success = False
                     error_msg = str(exc)
                     logger.error("automation_engine: action error rule_id=%d: %s", rule.id, exc)
+                    # Send email notification for automation errors
+                    try:
+                        await notify_automation_error(
+                            db,
+                            rule_name=rule.name,
+                            rule_id=rule.id,
+                            error_message=error_msg,
+                            org_id=getattr(rule, "org_id", None),
+                        )
+                    except Exception:
+                        logger.debug("automation_engine: email notification failed rule_id=%d", rule.id)
 
                 # Update rule stats
                 rule.last_fired_at = now

@@ -117,9 +117,9 @@ async function handleTest(id: number) {
   try {
     const result = await testAutomation(id);
     if (result.success) {
-      toast.addToast("Test fire successful", "success");
+      toast.addToast(t('automations.testSuccess'), "success");
     } else {
-      toast.addToast(`Test fire failed: ${result.message}`, "error");
+      toast.addToast(t('automations.testFailed', { message: result.message }), "error");
     }
   } catch (err) {
     const info = parseApiError(err);
@@ -279,7 +279,7 @@ function actionSummary(rule: AutomationRuleOut): string {
 }
 
 function relativeTime(dt: string | null): string {
-  if (!dt) return "never";
+  if (!dt) return t('automations.never');
   const diff = Date.now() - new Date(dt).getTime();
   const s = Math.floor(diff / 1000);
   if (s < 60) return `${s}s ago`;
@@ -573,7 +573,7 @@ function buildActionConfig(): Record<string, unknown> {
 
 async function handleSave() {
   if (!formName.value.trim()) {
-    modalError.value = "Name is required.";
+    modalError.value = t('automations.nameRequired');
     return;
   }
   if (formTriggerType.value === "variable_threshold" && !trigVarKey.value.trim()) {
@@ -607,12 +607,12 @@ async function handleSave() {
     if (modalMode.value === "create") {
       const created = await createAutomation(payload);
       rules.value.unshift(created);
-      toast.addToast("Automation rule created", "success");
+      toast.addToast(t('automations.ruleCreated'), "success");
     } else if (editingId.value !== null) {
       const updated = await updateAutomation(editingId.value, payload);
       const idx = rules.value.findIndex((r) => r.id === editingId.value);
       if (idx !== -1) rules.value[idx] = updated;
-      toast.addToast("Automation rule updated", "success");
+      toast.addToast(t('automations.ruleUpdated'), "success");
     }
     closeModal();
   } catch (err) {
@@ -656,7 +656,7 @@ function toggleRuleExpand(id: number) {
           <svg class="h-3.5 w-3.5" :class="refreshing ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Refresh
+          {{ t('automations.refresh') }}
         </button>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
@@ -665,7 +665,7 @@ function toggleRuleExpand(id: number) {
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          New Rule
+          {{ t('automations.newRule') }}
         </button>
       </div>
     </div>
@@ -690,8 +690,8 @@ function toggleRuleExpand(id: number) {
             </svg>
           </div>
           <div class="space-y-1.5 max-w-sm">
-            <h3 class="text-base font-semibold text-[var(--text-primary)]">Automate device behavior</h3>
-            <p class="text-sm text-[var(--text-muted)]">React automatically to device events, variable changes and sensor thresholds.</p>
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">{{ t('automations.emptyTitle') }}</h3>
+            <p class="text-sm text-[var(--text-muted)]">{{ t('automations.emptyDesc') }}</p>
           </div>
         </div>
 
@@ -726,7 +726,7 @@ function toggleRuleExpand(id: number) {
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Start from scratch
+            {{ t('automations.startFromScratch') }}
           </button>
         </div>
       </div>
@@ -776,7 +776,7 @@ function toggleRuleExpand(id: number) {
 
             <!-- Toggle (stop propagation to prevent expand) -->
             <button
-              :title="rule.enabled ? 'Disable rule' : 'Enable rule'"
+              :title="rule.enabled ? t('automations.disableRule') : t('automations.enableRule')"
               :disabled="togglingId === rule.id"
               :class="[
                 'relative h-5 w-9 rounded-full transition-colors focus:outline-none disabled:opacity-50',
@@ -811,16 +811,16 @@ function toggleRuleExpand(id: number) {
 
           <!-- Stats -->
           <div class="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)]">
-            <span>Fired: <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
-            <span>Last: <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
-            <span>Cooldown: <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
+            <span>{{ t('automations.firedLabel') }} <span class="text-[var(--text-primary)]">{{ rule.fire_count }}</span></span>
+            <span>{{ t('automations.lastLabel') }} <span class="text-[var(--text-primary)]">{{ relativeTime(rule.last_fired_at) }}</span></span>
+            <span>{{ t('automations.cooldownLabel') }} <span class="text-[var(--text-primary)]">{{ rule.cooldown_seconds }}s</span></span>
           </div>
 
           <!-- Action buttons -->
           <div class="mt-3 flex items-center gap-1.5">
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="View history"
+              :title="t('automations.viewHistory')"
               @click="openHistory(rule)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -829,7 +829,7 @@ function toggleRuleExpand(id: number) {
             </button>
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="Edit rule"
+              :title="t('automations.editRule')"
               @click="openEdit(rule)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -838,7 +838,7 @@ function toggleRuleExpand(id: number) {
             </button>
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="Duplicate rule"
+              :title="t('automations.duplicateRule')"
               @click="duplicateRule(rule)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -853,10 +853,10 @@ function toggleRuleExpand(id: number) {
                   ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                   : 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10',
               ]"
-              title="Test fire rule"
+              :title="t('automations.testFireRule')"
               @click="handleTest(rule.id)"
             >
-              {{ testingId === rule.id ? '...' : testConfirmId === rule.id ? 'Confirm?' : 'Test' }}
+              {{ testingId === rule.id ? '...' : testConfirmId === rule.id ? t('automations.testConfirm') : t('automations.testBtn') }}
             </button>
             <button
               :disabled="deletingId === rule.id"
@@ -866,10 +866,10 @@ function toggleRuleExpand(id: number) {
                   ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                   : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10',
               ]"
-              title="Delete rule"
+              :title="t('automations.deleteRule')"
               @click="handleDelete(rule.id)"
             >
-              {{ deletingId === rule.id ? '...' : deletingConfirmId === rule.id ? 'Confirm?' : 'Delete' }}
+              {{ deletingId === rule.id ? '...' : deletingConfirmId === rule.id ? t('automations.deleteConfirm') : t('automations.deleteBtn') }}
             </button>
           </div>
         </div>
@@ -891,7 +891,7 @@ function toggleRuleExpand(id: number) {
           <!-- Header (fixed) -->
           <div class="px-6 pt-6 pb-4 border-b border-[var(--border)] shrink-0">
             <h3 class="text-base font-semibold text-[var(--text-primary)]">
-              {{ modalMode === "create" ? "New Automation Rule" : "Edit Automation Rule" }}
+              {{ modalMode === "create" ? t('automations.newAutomationRule') : t('automations.editAutomationRule') }}
             </h3>
           </div>
 
@@ -901,11 +901,11 @@ function toggleRuleExpand(id: number) {
           <!-- Name & Description -->
           <div class="space-y-3">
             <div class="space-y-1">
-              <label :class="labelClass">Name <span class="text-red-400">*</span></label>
+              <label :class="labelClass">{{ t('automations.nameLabel') }} <span class="text-red-400">*</span></label>
               <input v-model="formName" type="text" placeholder="e.g. High temperature alert" :class="inputClass" />
             </div>
             <div class="space-y-1">
-              <label :class="labelClass">Description <span class="text-[var(--text-muted)]">(optional)</span></label>
+              <label :class="labelClass">{{ t('automations.descriptionLabel') }} <span class="text-[var(--text-muted)]">{{ t('automations.descriptionOptional') }}</span></label>
               <input v-model="formDescription" type="text" placeholder="What does this rule do?" :class="inputClass" />
             </div>
           </div>
@@ -915,7 +915,7 @@ function toggleRuleExpand(id: number) {
 
           <!-- Trigger Section -->
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">IF (Trigger)</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.ifTrigger') }}</h4>
 
             <!-- Trigger type selector -->
             <div class="grid grid-cols-2 gap-2">
@@ -946,13 +946,13 @@ function toggleRuleExpand(id: number) {
               <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
-                  <label :class="labelClass">Operator</label>
+                  <label :class="labelClass">{{ t('automations.operatorLabel') }}</label>
                   <select v-model="trigOperator" :class="inputClass">
                     <option v-for="op in OPERATOR_OPTIONS" :key="op.value" :value="op.value">{{ op.label }}</option>
                   </select>
                 </div>
                 <div class="space-y-1">
-                  <label :class="labelClass">Threshold Value</label>
+                  <label :class="labelClass">{{ t('automations.thresholdValue') }}</label>
                   <input v-model.number="trigValue" type="number" step="any" :class="inputClass" />
                 </div>
               </div>
@@ -967,28 +967,28 @@ function toggleRuleExpand(id: number) {
               <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
-                  <label :class="labelClass">Geofence Type</label>
+                  <label :class="labelClass">{{ t('automations.geofenceType') }}</label>
                   <select v-model="trigGeoType" :class="inputClass">
-                    <option value="circle">Circle</option>
-                    <option value="polygon">Polygon</option>
+                    <option value="circle">{{ t('automations.circle') }}</option>
+                    <option value="polygon">{{ t('automations.polygon') }}</option>
                   </select>
                 </div>
                 <div class="space-y-1">
-                  <label :class="labelClass">Trigger When</label>
+                  <label :class="labelClass">{{ t('automations.triggerWhen') }}</label>
                   <select v-model="trigGeoExitEnter" :class="inputClass">
-                    <option value="exit">Exits zone</option>
-                    <option value="enter">Enters zone</option>
+                    <option value="exit">{{ t('automations.exitsZone') }}</option>
+                    <option value="enter">{{ t('automations.entersZone') }}</option>
                   </select>
                 </div>
               </div>
               <template v-if="trigGeoType === 'circle'">
                 <div class="grid grid-cols-2 gap-2">
                   <div class="space-y-1">
-                    <label :class="labelClass">Center Lat</label>
+                    <label :class="labelClass">{{ t('automations.centerLat') }}</label>
                     <input v-model.number="trigGeoLat" type="number" step="any" placeholder="48.137" :class="inputClass" />
                   </div>
                   <div class="space-y-1">
-                    <label :class="labelClass">Center Lng</label>
+                    <label :class="labelClass">{{ t('automations.centerLng') }}</label>
                     <input v-model.number="trigGeoLng" type="number" step="any" placeholder="11.576" :class="inputClass" />
                   </div>
                 </div>
@@ -1000,7 +1000,7 @@ function toggleRuleExpand(id: number) {
               </template>
               <template v-else>
                 <div class="space-y-1">
-                  <label :class="labelClass">Polygon (JSON array of [lat, lng] pairs)</label>
+                  <label :class="labelClass">{{ t('automations.polygonLabel') }}</label>
                   <textarea v-model="trigGeoPolygon" rows="3" placeholder='[[48.137, 11.576], [48.140, 11.580], ...]' :class="[inputClass, 'font-mono text-[10px]']" />
                 </div>
               </template>
@@ -1015,7 +1015,7 @@ function toggleRuleExpand(id: number) {
             <template v-else-if="formTriggerType === 'telemetry_received'">
               <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
               <div class="space-y-1">
-                <label :class="labelClass">Event Type <span class="text-[var(--text-muted)]">(optional)</span></label>
+                <label :class="labelClass">{{ t('automations.eventTypeLabel') }} <span class="text-[var(--text-muted)]">{{ t('automations.eventTypeOptional') }}</span></label>
                 <input v-model="trigEventType" type="text" placeholder="e.g. sensor.reading" :class="inputClass" />
               </div>
             </template>
@@ -1024,19 +1024,19 @@ function toggleRuleExpand(id: number) {
           <!-- Additional Conditions (AND/OR) -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Additional Conditions</h4>
-              <button class="text-[10px] text-[var(--primary)] hover:underline" @click="addConditionGroup">+ Add Condition Group</button>
+              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.additionalConditions') }}</h4>
+              <button class="text-[10px] text-[var(--primary)] hover:underline" @click="addConditionGroup">{{ t('automations.addConditionGroup') }}</button>
             </div>
             <div v-for="(group, gi) in conditionGroups" :key="gi" class="border border-[var(--border)] rounded-lg p-3 space-y-2 bg-[var(--bg-raised)]">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-[var(--text-muted)]">Match</span>
+                  <span class="text-[10px] text-[var(--text-muted)]">{{ t('automations.matchLabel') }}</span>
                   <select v-model="group.operator" class="px-2 py-0.5 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
-                    <option value="and">ALL conditions (AND)</option>
-                    <option value="or">ANY condition (OR)</option>
+                    <option value="and">{{ t('automations.allConditionsAnd') }}</option>
+                    <option value="or">{{ t('automations.anyConditionOr') }}</option>
                   </select>
                 </div>
-                <button class="text-[10px] text-red-400 hover:underline" @click="removeConditionGroup(gi)">Remove Group</button>
+                <button class="text-[10px] text-red-400 hover:underline" @click="removeConditionGroup(gi)">{{ t('automations.removeGroup') }}</button>
               </div>
               <div v-for="(cond, ci) in group.conditions" :key="ci" class="flex items-center gap-2">
                 <input v-model="cond.field" class="flex-1 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="variable_key" />
@@ -1051,7 +1051,7 @@ function toggleRuleExpand(id: number) {
                 <input v-model="cond.value" class="w-20 px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs font-mono text-[var(--text-primary)]" placeholder="value" />
                 <button class="text-[10px] text-red-400" @click="removeCondition(gi, ci)">×</button>
               </div>
-              <button class="text-[10px] text-[var(--accent)] hover:underline" @click="addCondition(gi)">+ Add Condition</button>
+              <button class="text-[10px] text-[var(--accent)] hover:underline" @click="addCondition(gi)">{{ t('automations.addCondition') }}</button>
             </div>
           </div>
 
@@ -1060,7 +1060,7 @@ function toggleRuleExpand(id: number) {
 
           <!-- Action Section -->
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">THEN (Action)</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.thenAction') }}</h4>
 
             <!-- Action type selector -->
             <div class="grid grid-cols-2 gap-2">
@@ -1089,12 +1089,12 @@ function toggleRuleExpand(id: number) {
             <template v-if="formActionType === 'set_variable'">
               <UEntitySelect v-model="actVarKey" entity-type="variable" label="Variable Key" />
               <div class="space-y-1">
-                <label :class="labelClass">Value (JSON)</label>
+                <label :class="labelClass">{{ t('automations.valueJson') }}</label>
                 <input v-model="actVarValue" type="text" placeholder='"alert"' :class="[inputClass, 'font-mono']" />
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
-                  <label :class="labelClass">Scope</label>
+                  <label :class="labelClass">{{ t('automations.scopeLabel') }}</label>
                   <select v-model="actVarScope" :class="inputClass">
                     <option value="global">global</option>
                     <option value="device">device</option>
@@ -1111,7 +1111,7 @@ function toggleRuleExpand(id: number) {
                 <input v-model="actWebhookUrl" type="url" placeholder="https://hooks.example.com/..." :class="inputClass" />
               </div>
               <div class="space-y-1">
-                <label :class="labelClass">Method</label>
+                <label :class="labelClass">{{ t('automations.methodLabel') }}</label>
                 <select v-model="actWebhookMethod" :class="inputClass">
                   <option value="POST">POST</option>
                   <option value="GET">GET</option>
@@ -1131,7 +1131,7 @@ function toggleRuleExpand(id: number) {
             <!-- Create Alert config -->
             <template v-else-if="formActionType === 'create_alert_event'">
               <div class="space-y-1">
-                <label :class="labelClass">Severity</label>
+                <label :class="labelClass">{{ t('automations.severityLabel') }}</label>
                 <select v-model="actAlertSeverity" :class="inputClass">
                   <option value="low">low</option>
                   <option value="medium">medium</option>
@@ -1141,7 +1141,7 @@ function toggleRuleExpand(id: number) {
                 </select>
               </div>
               <div class="space-y-1">
-                <label :class="labelClass">Message Template</label>
+                <label :class="labelClass">{{ t('automations.messageTemplate') }}</label>
                 <textarea v-model="actAlertMessage" rows="2" placeholder="Alert: automation rule fired" :class="inputClass" />
               </div>
             </template>
@@ -1149,11 +1149,11 @@ function toggleRuleExpand(id: number) {
             <!-- Emit System Event config -->
             <template v-else-if="formActionType === 'emit_system_event'">
               <div class="space-y-1">
-                <label :class="labelClass">Event Type</label>
+                <label :class="labelClass">{{ t('automations.eventType') }}</label>
                 <input v-model="actEventType" type="text" placeholder="e.g. automation.alert" :class="inputClass" />
               </div>
               <div class="space-y-1">
-                <label :class="labelClass">Extra Payload (JSON)</label>
+                <label :class="labelClass">{{ t('automations.extraPayloadJson') }}</label>
                 <textarea v-model="actEventPayload" rows="2" placeholder='{"key": "value"}' :class="[inputClass, 'font-mono text-[10px]']" />
               </div>
             </template>
@@ -1164,15 +1164,15 @@ function toggleRuleExpand(id: number) {
 
           <!-- Settings -->
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Settings</h4>
+            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.settingsLabel') }}</h4>
             <div class="space-y-1">
               <label :class="labelClass" :title="t('automations.cooldownTooltip')">Cooldown: {{ formCooldown }}s</label>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
-              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>0s (kein Cooldown)</span><span>1h</span></div>
+              <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>{{ t('automations.noCooldown') }}</span><span>{{ t('automations.oneHour') }}</span></div>
             </div>
             <div class="flex items-center gap-2">
               <input id="form-enabled" v-model="formEnabled" type="checkbox" class="h-4 w-4 rounded border-[var(--border)] accent-[var(--primary)]" />
-              <label for="form-enabled" class="text-sm text-[var(--text-primary)]">Enabled</label>
+              <label for="form-enabled" class="text-sm text-[var(--text-primary)]">{{ t('automations.enabledLabel') }}</label>
             </div>
           </div>
 
@@ -1186,14 +1186,14 @@ function toggleRuleExpand(id: number) {
               class="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               @click="closeModal"
             >
-              Cancel
+              {{ t('automations.cancelBtn') }}
             </button>
             <button
               :disabled="modalSaving"
               class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 disabled:opacity-50 transition-colors"
               @click="handleSave"
             >
-              {{ modalSaving ? "Saving…" : "Save Rule" }}
+              {{ modalSaving ? t('automations.saving') : t('automations.saveRule') }}
             </button>
           </div>
         </div>
@@ -1210,7 +1210,7 @@ function toggleRuleExpand(id: number) {
         <div class="fixed inset-0 bg-black/60" @click="closeHistory" />
         <div class="relative z-10 w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-[var(--text-primary)]">Fire History — {{ historyRuleName }}</h3>
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">{{ t('automations.fireHistoryTitle', { name: historyRuleName }) }}</h3>
             <button class="text-[var(--text-muted)] hover:text-[var(--text-primary)]" @click="closeHistory">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1222,7 +1222,7 @@ function toggleRuleExpand(id: number) {
             <div v-for="i in 3" :key="i" class="h-12 rounded-lg bg-[var(--bg-raised)] animate-pulse" />
           </div>
           <p v-else-if="historyEntries.length === 0" class="text-sm text-[var(--text-muted)] text-center py-8">
-            No fire history yet.
+            {{ t('automations.noFireHistory') }}
           </p>
           <div v-else class="space-y-2 max-h-96 overflow-y-auto">
             <div
@@ -1234,7 +1234,7 @@ function toggleRuleExpand(id: number) {
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
                   <span :class="['text-xs font-medium', entry.success ? 'text-green-400' : 'text-red-400']">
-                    {{ entry.success ? "Success" : "Failed" }}
+                    {{ entry.success ? t('automations.success') : t('automations.failed') }}
                   </span>
                   <span class="text-[10px] text-[var(--text-muted)]">{{ relativeTime(entry.fired_at) }}</span>
                 </div>

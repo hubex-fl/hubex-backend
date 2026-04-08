@@ -8,10 +8,10 @@
           <h1 class="page-title">{{ t('nav.dashboards') }}</h1>
           <UInfoTooltip :title="t('infoTooltips.dashboards.title')" :items="tm('infoTooltips.dashboards.items').map((i: any) => rt(i))" />
         </div>
-        <p class="page-sub">Visualize and control your devices</p>
+        <p class="page-sub">{{ t('dashboardsList.subtitle') }}</p>
       </div>
       <UButton icon="M12 4.5v15m7.5-7.5h-15" @click="showCreateModal = true">
-        New Dashboard
+        {{ t('dashboardsList.newDashboard') }}
       </UButton>
     </div>
 
@@ -23,11 +23,11 @@
     <!-- Empty state -->
     <UEmpty
       v-else-if="!dashboards.length"
-      title="No dashboards yet"
-      description="Create your first dashboard to start visualizing your devices"
+      :title="t('dashboardsList.noDashboards')"
+      :description="t('dashboardsList.noDashboardsDesc')"
       icon="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z"
     >
-      <UButton @click="showCreateModal = true">Create Dashboard</UButton>
+      <UButton @click="showCreateModal = true">{{ t('dashboardsList.createDashboard') }}</UButton>
     </UEmpty>
 
     <!-- Dashboard grid -->
@@ -41,14 +41,14 @@
         <div class="db-card-header">
           <div class="db-card-icon">&#128202;</div>
           <div class="db-card-badges">
-            <UBadge v-if="db.is_default" color="amber" size="xs">Default</UBadge>
+            <UBadge v-if="db.is_default" color="amber" size="xs">{{ t('dashboardsList.defaultBadge') }}</UBadge>
             <UBadge :color="sharingColor(db.sharing_mode)" size="xs">{{ db.sharing_mode }}</UBadge>
           </div>
         </div>
         <h3 class="db-card-name">{{ db.name }}</h3>
         <p v-if="db.description" class="db-card-desc">{{ db.description }}</p>
         <div class="db-card-footer">
-          <span class="db-widget-count">{{ db.widget_count }} widget{{ db.widget_count !== 1 ? 's' : '' }}</span>
+          <span class="db-widget-count">{{ t('dashboardsList.widgetCount', { count: db.widget_count }, db.widget_count) }}</span>
           <span class="db-updated">{{ relativeTime(db.updated_at) }}</span>
         </div>
         <div class="db-card-actions" @click.stop>
@@ -128,11 +128,11 @@
       <Transition name="modal">
         <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
           <div class="modal-box">
-            <h2 class="modal-title">New Dashboard</h2>
+            <h2 class="modal-title">{{ t('dashboardsList.newDashboardTitle') }}</h2>
 
             <!-- Step 1: Template selection -->
             <div v-if="createStep === 1">
-              <p class="modal-label">Choose a template</p>
+              <p class="modal-label">{{ t('dashboardsList.chooseTemplate') }}</p>
               <div class="template-grid">
                 <div
                   v-for="tpl in DASHBOARD_TEMPLATES"
@@ -155,23 +155,23 @@
             <!-- Step 2: Name + options -->
             <div v-else-if="createStep === 2" class="form-fields">
               <div class="field">
-                <label class="field-label">Name *</label>
+                <label class="field-label">{{ t('dashboardsList.nameRequired') }}</label>
                 <input
                   v-model="newName"
                   class="field-input"
-                  placeholder="My Dashboard"
+                  :placeholder="t('dashboardsList.namePlaceholder')"
                   @keydown.enter="submitCreate"
                   autofocus
                 />
               </div>
               <div class="field">
-                <label class="field-label">Description</label>
-                <input v-model="newDesc" class="field-input" placeholder="Optional description" />
+                <label class="field-label">{{ t('dashboardsList.descriptionLabel') }}</label>
+                <input v-model="newDesc" class="field-input" :placeholder="t('dashboardsList.optionalDescription')" />
               </div>
               <div class="field-row">
                 <label class="check-label">
                   <input type="checkbox" v-model="newIsDefault" class="check-input" />
-                  Set as default dashboard
+                  {{ t('dashboardsList.setAsDefault') }}
                 </label>
               </div>
               <p v-if="createError" class="field-error">{{ createError }}</p>

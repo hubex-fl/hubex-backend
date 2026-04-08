@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.system_events import emit_system_event
 from app.core.notification_service import create_notification_all_users
+from app.core.notifications import notify_alert_fired, notify_device_offline
 from app.db.models.alerts import AlertEvent, AlertRule
 from app.db.models.device import Device
 from app.db.models.effects import EffectV1
@@ -281,6 +282,32 @@ async def run_alert_cycle(db: AsyncSession, now: datetime) -> None:
                 )
             except Exception:
                 logger.exception("alert_worker: failed to create notification rule_id=%d", rule.id)
+
+            # Send email notification (checks per-user preferences)
+            try:
+                variable_key = (rule.condition_config or {}).get("variable_key") if rule.condition_type == "variable_threshold" else None
+                device_name = None
+                if rule.condition_type == "device_offline":
+                    device_ids = (rule.condition_config or {}).get("device_ids")
+                    if device_ids and len(device_ids) == 1:
+                        dev_res = await db.execute(select(Device).where(Device.id == device_ids[0]))
+                        dev = dev_res.scalar_one_or_none()
+                        if dev:
+                            device_name = dev.name or dev.uid
+
+                await notify_alert_fired(
+                    db,
+                    rule_name=rule.name,
+                    severity=rule.severity,
+                    message=message,
+                    rule_id=rule.id,
+                    alert_event_id=event.id,
+                    org_id=rule.org_id,
+                    variable_key=variable_key,
+                    device_name=device_name,
+                )
+            except Exception:
+                logger.exception("alert_worker: failed to send email notification rule_id=%d", rule.id)
         else:
             # Condition cleared — auto-resolve open events
             for ev in open_events:

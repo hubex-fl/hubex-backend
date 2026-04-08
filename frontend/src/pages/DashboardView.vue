@@ -32,14 +32,14 @@
             @click="currentRange = r"
           >{{ r }}</button>
         </div>
-        <button v-if="!isKiosk" class="share-btn" @click="showSharePanel = !showSharePanel" title="Share">
+        <button v-if="!isKiosk" class="share-btn" @click="showSharePanel = !showSharePanel" :title="t('dashboardEnhance.share')">
           &#128279;
         </button>
-        <button v-if="!isKiosk" class="settings-btn" @click="showSettingsPanel = !showSettingsPanel" title="Settings">
+        <button v-if="!isKiosk" class="settings-btn" @click="showSettingsPanel = !showSettingsPanel" :title="t('dashboardEnhance.settingsTitle')">
           &#9881;
         </button>
         <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
-          {{ editMode ? '&#10003; Done' : '&#9998; Edit' }}
+          {{ editMode ? '&#10003; ' + t('dashboardEnhance.doneMode') : '&#9998; ' + t('dashboardEnhance.editMode') }}
         </button>
         <button class="refresh-btn" @click="loadDashboard" :title="t('common.refresh')">&#8634;</button>
       </div>
@@ -76,7 +76,7 @@
                   <label class="field-label">{{ t('dashboardEnhance.publicUrl') }}</label>
                   <div class="share-url-row">
                     <input readonly :value="shareUrl" class="field-input share-url-input" />
-                    <button class="copy-btn" @click="copyShareUrl" :title="copied ? 'Copied!' : 'Copy'">
+                    <button class="copy-btn" @click="copyShareUrl" :title="copied ? t('dashboardEnhance.copied') : t('dashboardEnhance.copy')">
                       {{ copied ? '&#10003;' : '&#128203;' }}
                     </button>
                   </div>
@@ -91,7 +91,7 @@
                     v-if="pinEnabled"
                     v-model="pinValue"
                     class="field-input"
-                    placeholder="4-6 digit PIN"
+                    :placeholder="t('dashboardEnhance.pinPlaceholder')"
                     maxlength="6"
                     @blur="savePin"
                     @keydown.enter="savePin"
@@ -109,7 +109,7 @@
                     <label class="field-label">{{ t('dashboardEnhance.iframeSnippet') }}</label>
                     <div class="share-url-row">
                       <input readonly :value="embedSnippet" class="field-input share-url-input" />
-                      <button class="copy-btn" @click="copyEmbedSnippet" :title="embedCopied ? 'Copied!' : 'Copy'">
+                      <button class="copy-btn" @click="copyEmbedSnippet" :title="embedCopied ? t('dashboardEnhance.copied') : t('dashboardEnhance.copy')">
                         {{ embedCopied ? '&#10003;' : '&#128203;' }}
                       </button>
                     </div>
@@ -147,7 +147,7 @@
               </div>
               <div class="field">
                 <label class="field-label">{{ t('dashboardEnhance.description') }}</label>
-                <input v-model="settingsDescription" class="field-input" placeholder="Optional description" />
+                <input v-model="settingsDescription" class="field-input" :placeholder="t('dashboardEnhance.optionalDescription')" />
               </div>
               <div class="field">
                 <label class="share-pin-label">
@@ -203,11 +203,11 @@
       <Transition name="modal">
         <div v-if="showDeleteDashboard" class="modal-overlay" @click.self="showDeleteDashboard = false">
           <div class="modal-box modal-small">
-            <h2 class="modal-title">Delete Dashboard?</h2>
-            <p class="modal-sub">This will permanently delete "{{ dashboard?.name }}" and all its widgets. This cannot be undone.</p>
+            <h2 class="modal-title">{{ t('dashboardEnhance.deleteDashboardConfirm') }}</h2>
+            <p class="modal-sub">{{ t('dashboardEnhance.deleteDashboardMessage', { name: dashboard?.name }) }}</p>
             <div class="modal-actions">
-              <UButton variant="ghost" @click="showDeleteDashboard = false">Cancel</UButton>
-              <UButton color="red" :loading="deletingDashboard" @click="submitDeleteDashboard">Delete</UButton>
+              <UButton variant="ghost" @click="showDeleteDashboard = false">{{ t('common.cancel') }}</UButton>
+              <UButton color="red" :loading="deletingDashboard" @click="submitDeleteDashboard">{{ t('common.delete') }}</UButton>
             </div>
           </div>
         </div>
@@ -224,9 +224,9 @@
     <!-- Empty dashboard -->
     <div v-else-if="dashboard && !dashboard.widgets.length" class="db-empty">
       <div class="empty-icon">&#128202;</div>
-      <p class="empty-title">No widgets yet</p>
-      <p class="empty-sub">Click "Edit" to add widgets to this dashboard</p>
-      <UButton @click="editMode = true; openAddWidget()">Add Widget</UButton>
+      <p class="empty-title">{{ t('dashboardEnhance.noWidgetsYet') }}</p>
+      <p class="empty-sub">{{ t('dashboardEnhance.noWidgetsHint') }}</p>
+      <UButton @click="editMode = true; openAddWidget()">{{ t('dashboardEnhance.addWidget') }}</UButton>
     </div>
 
     <!-- Dashboard grid -->
@@ -258,10 +258,10 @@
       >
         <!-- Edit mode controls -->
         <div v-if="editMode" class="widget-edit-controls">
-          <span class="drag-handle" title="Drag to reorder">&#10303;</span>
+          <span class="drag-handle" :title="t('dashboardEnhance.dragToReorder')">&#10303;</span>
           <div class="widget-edit-actions">
-            <button class="we-btn cfg" @click.stop="openWidgetConfig(widget)" title="Configure">&#9881;</button>
-            <button class="we-btn del" @click.stop="confirmDeleteWidget(widget)" title="Remove">&#10005;</button>
+            <button class="we-btn cfg" @click.stop="openWidgetConfig(widget)" :title="t('dashboardEnhance.configure')">&#9881;</button>
+            <button class="we-btn del" @click.stop="confirmDeleteWidget(widget)" :title="t('dashboardEnhance.removeTooltip')">&#10005;</button>
           </div>
         </div>
 
@@ -293,14 +293,14 @@
           @dragstart.stop="onResizeStart($event, widget)"
           @drag.stop="onResizeDrag($event, widget)"
           @dragend.stop="onResizeEnd($event, widget)"
-          title="Drag to resize"
+          :title="t('dashboardEnhance.dragToResize')"
         >&#9698;</div>
       </div>
 
       <!-- Add widget placeholder (edit mode) -->
       <div v-if="editMode" class="add-widget-cell" @click="openAddWidget()">
         <span class="add-icon">&#65291;</span>
-        <span>Add Widget</span>
+        <span>{{ t('dashboardEnhance.addWidget') }}</span>
       </div>
     </div>
 
@@ -310,27 +310,27 @@
         <div v-if="showAddWidget" class="modal-overlay" @click.self="showAddWidget = false">
           <div class="modal-box modal-flex">
             <!-- Header (fixed) -->
-            <h2 class="modal-title modal-header-fixed">{{ editingWidgetId ? 'Edit Widget' : 'Add Widget' }}</h2>
+            <h2 class="modal-title modal-header-fixed">{{ editingWidgetId ? t('dashboardEnhance.editWidget') : t('dashboardEnhance.addWidget') }}</h2>
 
             <!-- Body (scrollable) -->
             <div class="modal-body-scroll form-fields">
 
               <!-- Widget type -->
               <div class="field">
-                <label class="field-label">Widget Type</label>
+                <label class="field-label">{{ t('dashboardEnhance.widgetType') }}</label>
                 <select v-model="newWidget.widget_type" class="field-input">
-                  <optgroup label="Visualizations">
-                    <option value="line_chart">Line Chart</option>
-                    <option value="gauge">Gauge</option>
-                    <option value="sparkline">Sparkline</option>
-                    <option value="bool">Status / Bool</option>
-                    <option value="log">Log</option>
-                    <option value="json">JSON Viewer</option>
-                    <option value="map">Map (GPS)</option>
+                  <optgroup :label="t('dashboardEnhance.visualizations')">
+                    <option value="line_chart">{{ t('dashboardEnhance.lineChart') }}</option>
+                    <option value="gauge">{{ t('dashboardEnhance.gauge') }}</option>
+                    <option value="sparkline">{{ t('dashboardEnhance.sparkline') }}</option>
+                    <option value="bool">{{ t('dashboardEnhance.statusBool') }}</option>
+                    <option value="log">{{ t('dashboardEnhance.log') }}</option>
+                    <option value="json">{{ t('dashboardEnhance.jsonViewer') }}</option>
+                    <option value="map">{{ t('dashboardEnhance.mapGps') }}</option>
                   </optgroup>
-                  <optgroup label="Controls">
-                    <option value="control_toggle">Toggle Switch</option>
-                    <option value="control_slider">Slider</option>
+                  <optgroup :label="t('dashboardEnhance.controls')">
+                    <option value="control_toggle">{{ t('dashboardEnhance.toggleSwitch') }}</option>
+                    <option value="control_slider">{{ t('dashboardEnhance.slider') }}</option>
                   </optgroup>
                   <optgroup :label="t('dashboard.htmlTemplate.groupLabel') || 'Custom'">
                     <option value="html_template">{{ t('dashboard.htmlTemplate.name') || 'Custom HTML' }}</option>
@@ -340,31 +340,31 @@
 
               <!-- Device first, then variable (filtered by device) -->
               <div class="field">
-                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" label="1. Select Device" placeholder="Choose device first..." :optional="true" />
+                <UEntitySelect v-model="newWidget.device_uid" entity-type="device" :label="t('dashboardEnhance.selectDevice')" :placeholder="t('dashboardEnhance.chooseDeviceFirst')" :optional="true" />
               </div>
 
               <div class="field">
-                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" label="2. Select Variable" :placeholder="newWidget.device_uid ? 'Variables for this device...' : 'Select device first or choose global...'" />
+                <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" :label="t('dashboardEnhance.selectVariable')" :placeholder="newWidget.device_uid ? t('dashboardEnhance.variablesForDevice') : t('dashboardEnhance.selectDeviceOrGlobal')" />
               </div>
 
               <!-- Label -->
               <div class="field">
-                <label class="field-label">Label</label>
-                <input v-model="newWidget.label" class="field-input" placeholder="Display label" />
+                <label class="field-label">{{ t('dashboardEnhance.label') }}</label>
+                <input v-model="newWidget.label" class="field-input" :placeholder="t('dashboardEnhance.displayLabel')" />
               </div>
 
               <!-- Unit (numeric widgets) -->
               <div v-if="isNumericType(newWidget.widget_type)" class="field-row-3">
                 <div class="field">
-                  <label class="field-label">Unit</label>
+                  <label class="field-label">{{ t('dashboardEnhance.unit') }}</label>
                   <input v-model="newWidget.unit" class="field-input" placeholder="deg C" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Min</label>
+                  <label class="field-label">{{ t('dashboardEnhance.min') }}</label>
                   <input v-model.number="newWidget.min_value" type="number" class="field-input" placeholder="0" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Max</label>
+                  <label class="field-label">{{ t('dashboardEnhance.max') }}</label>
                   <input v-model.number="newWidget.max_value" type="number" class="field-input" placeholder="100" />
                 </div>
               </div>
@@ -372,13 +372,13 @@
               <!-- Grid size -->
               <div class="field-row-2">
                 <div class="field">
-                  <label class="field-label">Width (cols)</label>
+                  <label class="field-label">{{ t('dashboardEnhance.widthCols') }}</label>
                   <select v-model.number="newWidget.grid_span_w" class="field-input">
                     <option v-for="n in [2,3,4,5,6,8,10,12]" :key="n" :value="n">{{ n }}</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label class="field-label">Height (rows)</label>
+                  <label class="field-label">{{ t('dashboardEnhance.heightRows') }}</label>
                   <select v-model.number="newWidget.grid_span_h" class="field-input">
                     <option v-for="n in [2,3,4,5,6]" :key="n" :value="n">{{ n }}</option>
                   </select>
@@ -445,7 +445,7 @@
             <!-- Footer (fixed) -->
             <div class="modal-footer-fixed">
               <UButton variant="ghost" @click="showAddWidget = false">{{ t('common.cancel') }}</UButton>
-              <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? 'Save Changes' : 'Add Widget' }}</UButton>
+              <UButton :loading="adding" @click="submitAddWidget">{{ editingWidgetId ? t('dashboardEnhance.saveChanges') : t('dashboardEnhance.addWidget') }}</UButton>
             </div>
           </div>
         </div>
@@ -457,11 +457,11 @@
       <Transition name="modal">
         <div v-if="deletingWidget" class="modal-overlay" @click.self="deletingWidget = null">
           <div class="modal-box modal-small">
-            <h2 class="modal-title">Remove Widget?</h2>
-            <p class="modal-sub">Remove "{{ deletingWidget.label || deletingWidget.variable_key || 'this widget' }}" from the dashboard?</p>
+            <h2 class="modal-title">{{ t('dashboardEnhance.removeWidget') }}</h2>
+            <p class="modal-sub">{{ t('dashboardEnhance.removeWidgetMessage', { name: deletingWidget.label || deletingWidget.variable_key || 'Widget' }) }}</p>
             <div class="modal-actions">
               <UButton variant="ghost" @click="deletingWidget = null">{{ t('common.cancel') }}</UButton>
-              <UButton color="red" :loading="deleting" @click="submitDeleteWidget">Remove</UButton>
+              <UButton color="red" :loading="deleting" @click="submitDeleteWidget">{{ t('dashboardEnhance.remove') }}</UButton>
             </div>
           </div>
         </div>

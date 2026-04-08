@@ -73,15 +73,15 @@ function buildUrl() {
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('caps.loading');
+  if (caps.status === "error") return `${t('caps.error')}: ${caps.error ?? t('common.unknown')}`;
+  return t('caps.unavailable');
 }
 
 async function refreshEvents() {
   if (stoppedOnError.value) return;
   if (!capsReady.value) { error.value = capsStatusMessage(); return; }
-  if (!canReadEvents.value) { error.value = "Missing capability: events.read"; return; }
+  if (!canReadEvents.value) { error.value = t('caps.missing', { cap: 'events.read' }); return; }
   const s = stream.value.trim();
   if (!s) return;
   loading.value = true;
@@ -107,8 +107,8 @@ async function refreshEvents() {
 function startPolling() {
   if (polling.value) return;
   if (!capsReady.value) { error.value = capsStatusMessage(); return; }
-  if (!canReadEvents.value) { error.value = "Missing capability: events.read"; return; }
-  if (!stream.value.trim()) { error.value = "Stream required"; return; }
+  if (!canReadEvents.value) { error.value = t('caps.missing', { cap: 'events.read' }); return; }
+  if (!stream.value.trim()) { error.value = t('events.streamRequired'); return; }
   error.value = null;
   stoppedOnError.value = false;
   polling.value = true;
@@ -123,9 +123,9 @@ function stopPolling() {
 
 function setCursorFromInput() {
   const raw = String(cursorInput.value ?? "").trim();
-  if (!raw) { error.value = "Cursor required"; return; }
+  if (!raw) { error.value = t('events.cursorRequired'); return; }
   const next = Number(raw);
-  if (!Number.isFinite(next) || next < 0) { error.value = "Cursor must be a non-negative number"; return; }
+  if (!Number.isFinite(next) || next < 0) { error.value = t('events.cursorInvalid'); return; }
   cursor.value = Math.floor(next);
   items.value = [];
   nextCursor.value = 0;
@@ -142,9 +142,9 @@ async function ackCursor() {
   ackStatus.value = null;
   ackError.value = null;
   if (!capsReady.value) { ackError.value = capsStatusMessage(); return; }
-  if (!canAckEvents.value) { ackError.value = "Missing capability: events.ack"; return; }
+  if (!canAckEvents.value) { ackError.value = t('caps.missing', { cap: 'events.ack' }); return; }
   const s = stream.value.trim();
-  if (!s) { ackError.value = "Stream required"; return; }
+  if (!s) { ackError.value = t('events.streamRequired'); return; }
   try {
     const res = await fetchJson<{ ok: boolean; stored_cursor: number; status: string }>(
       "/api/v1/events/ack",
@@ -154,7 +154,7 @@ async function ackCursor() {
     if (res?.ok) {
       ackStatus.value = `ACK OK (${res.status ?? "OK"})`;
     } else {
-      ackError.value = "ACK failed";
+      ackError.value = t('events.ackFailed');
     }
   } catch (err) {
     ackError.value = mapError(err);
@@ -163,7 +163,7 @@ async function ackCursor() {
 
 function retryAll() {
   if (!capsReady.value) { error.value = capsStatusMessage(); return; }
-  if (!canReadEvents.value) { error.value = "Missing capability: events.read"; return; }
+  if (!canReadEvents.value) { error.value = t('caps.missing', { cap: 'events.read' }); return; }
   error.value = null;
   stoppedOnError.value = false;
   refreshEvents().catch(() => { stoppedOnError.value = true; poller.stop(); });
@@ -199,18 +199,18 @@ onUnmounted(() => { stopPolling(); });
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.description') }}</p>
       </div>
       <div class="flex gap-2">
-        <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">Export CSV</a>
-        <UButton variant="secondary" size="sm" @click="retryAll">Retry</UButton>
-        <UButton variant="secondary" size="sm" :disabled="!polling" @click="stopPolling">Stop</UButton>
+        <a href="/api/v1/events/export?format=csv&limit=1000" download class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40 transition-colors">{{ t('events.exportCsv') }}</a>
+        <UButton variant="secondary" size="sm" @click="retryAll">{{ t('events.retry') }}</UButton>
+        <UButton variant="secondary" size="sm" :disabled="!polling" @click="stopPolling">{{ t('events.stop') }}</UButton>
       </div>
     </div>
 
     <!-- Caps unavailable -->
     <UCard v-if="caps.status !== 'ready' || !canReadEvents" padding="md">
-      <p v-if="caps.status === 'unavailable'" class="text-sm text-[var(--text-muted)]">Capabilities unavailable</p>
-      <p v-else-if="caps.status === 'loading'" class="text-sm text-[var(--text-muted)]">Loading capabilities…</p>
-      <p v-else-if="caps.status === 'error'" class="text-sm text-[var(--status-bad)]">Capabilities error: {{ caps.error }}</p>
-      <p v-else class="text-sm text-[var(--text-muted)]">Missing capability: events.read</p>
+      <p v-if="caps.status === 'unavailable'" class="text-sm text-[var(--text-muted)]">{{ t('caps.unavailable') }}</p>
+      <p v-else-if="caps.status === 'loading'" class="text-sm text-[var(--text-muted)]">{{ t('caps.loading') }}</p>
+      <p v-else-if="caps.status === 'error'" class="text-sm text-[var(--status-bad)]">{{ t('caps.error') }}: {{ caps.error }}</p>
+      <p v-else class="text-sm text-[var(--text-muted)]">{{ t('caps.missing', { cap: 'events.read' }) }}</p>
     </UCard>
 
     <template v-else>
@@ -219,39 +219,39 @@ onUnmounted(() => { stopPolling(); });
         <!-- Stream + trace filter row -->
         <div class="flex flex-col sm:flex-row gap-3 mb-3">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Stream</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('events.stream') }}</label>
             <UEntitySelect v-model="stream" entity-type="stream" class="w-full" />
           </div>
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Trace ID filter</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('events.traceIdFilter') }}</label>
             <UInput v-model="traceFilter" placeholder="trace_id" class="w-full" />
           </div>
           <div class="flex items-end">
-            <UButton :disabled="polling" @click="startPolling" class="w-full sm:w-auto">Start</UButton>
+            <UButton :disabled="polling" @click="startPolling" class="w-full sm:w-auto">{{ t('events.start') }}</UButton>
           </div>
         </div>
 
         <!-- Cursor row -->
         <div class="flex flex-col sm:flex-row gap-3 items-end">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">Set cursor</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('events.setCursor') }}</label>
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput" :title="t('pages.events.setCursorTooltip')">Set cursor</UButton>
-            <UButton variant="secondary" size="sm" @click="jumpToNext" :title="t('pages.events.jumpToNextTooltip')">Jump to next</UButton>
+            <UButton variant="secondary" size="sm" @click="setCursorFromInput" :title="t('pages.events.setCursorTooltip')">{{ t('events.setCursor') }}</UButton>
+            <UButton variant="secondary" size="sm" @click="jumpToNext" :title="t('pages.events.jumpToNextTooltip')">{{ t('events.jumpToNext') }}</UButton>
             <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" :title="t('pages.events.ackTooltip')">ACK</UButton>
           </div>
         </div>
 
         <!-- Status bar -->
         <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-          <span class="text-xs text-[var(--text-muted)] font-mono">cursor: {{ cursor }}</span>
-          <span class="text-xs text-[var(--text-muted)] font-mono">next: {{ nextCursor }}</span>
-          <span v-if="caughtUp" class="text-xs text-[var(--status-ok)]">caught up</span>
+          <span class="text-xs text-[var(--text-muted)] font-mono">{{ t('events.cursor') }}: {{ cursor }}</span>
+          <span class="text-xs text-[var(--text-muted)] font-mono">{{ t('events.next') }}: {{ nextCursor }}</span>
+          <span v-if="caughtUp" class="text-xs text-[var(--status-ok)]">{{ t('events.caughtUp') }}</span>
           <span v-if="polling" class="flex items-center gap-1 text-xs text-[var(--status-ok)]">
             <span class="h-1.5 w-1.5 rounded-full bg-[var(--status-ok)] animate-pulse" />
-            polling
+            {{ t('events.polling') }}
           </span>
         </div>
 
@@ -269,7 +269,7 @@ onUnmounted(() => { stopPolling(); });
       <UCard v-else padding="none">
         <template #header>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-            Events
+            {{ t('events.events') }}
             <span v-if="filteredItems.length" class="ml-1.5 text-xs font-normal text-[var(--text-muted)]">({{ filteredItems.length }})</span>
           </h3>
         </template>
@@ -287,8 +287,8 @@ onUnmounted(() => { stopPolling(); });
         <!-- Empty -->
         <UEmpty
           v-else-if="filteredItems.length === 0"
-          title="No events yet"
-          description="Events are emitted when devices connect, send telemetry, or tasks run. Enter a stream name and start polling to see them here."
+          :title="t('events.noEvents')"
+          :description="t('events.noEventsDesc')"
           icon="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
         />
 
@@ -297,11 +297,11 @@ onUnmounted(() => { stopPolling(); });
           <table class="w-full text-xs">
             <thead>
               <tr class="border-b border-[var(--border)]">
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Cursor</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Time</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">Type</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden md:table-cell">Trace</th>
-                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">Payload</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('events.cursor') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('events.colTime') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('events.colType') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden md:table-cell">{{ t('events.colTrace') }}</th>
+                <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">{{ t('events.colPayload') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border)]">

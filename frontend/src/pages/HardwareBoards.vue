@@ -45,7 +45,7 @@ async function loadAll() {
     ]);
     boards.value = b.status === "fulfilled" ? b.value : [];
     shields.value = s.status === "fulfilled" ? s.value : [];
-    if (b.status === "rejected" && s.status === "rejected") error.value = "Failed to load hardware data";
+    if (b.status === "rejected" && s.status === "rejected") error.value = t('hardware.loadError');
   } finally {
     loading.value = false;
   }
@@ -64,14 +64,14 @@ onMounted(loadAll);
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-xl font-semibold text-[var(--text-primary)]">Hardware Boards</h1>
-      <p class="text-xs text-[var(--text-muted)] mt-0.5">Board profiles, shields, and pin capabilities for device configuration</p>
+      <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('hardware.title') }}</h1>
+      <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('hardware.subtitle') }}</p>
     </div>
 
-    <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+    <div v-if="loading" class="text-xs text-[var(--text-muted)]">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
       <p>{{ error }}</p>
-      <button class="mt-2 px-2.5 py-1 rounded text-xs border border-red-500/30" @click="loadAll">Retry</button>
+      <button class="mt-2 px-2.5 py-1 rounded text-xs border border-red-500/30" @click="loadAll">{{ t('hardware.retry') }}</button>
     </div>
 
     <template v-else>
@@ -104,8 +104,8 @@ onMounted(loadAll);
       <UCard v-if="selectedBoard">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ selectedBoard.name }} — Pin Map</h3>
-            <button class="text-xs text-[var(--text-muted)]" @click="selectedBoard = null">Close</button>
+            <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ selectedBoard.name }} — {{ t('hardware.pinMap') }}</h3>
+            <button class="text-xs text-[var(--text-muted)]" @click="selectedBoard = null">{{ t('common.close') }}</button>
           </div>
         </template>
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -131,10 +131,10 @@ onMounted(loadAll);
       <!-- Shields -->
       <UCard>
         <template #header>
-          <h3 class="text-sm font-semibold text-[var(--text-primary)]">Shields & Modules</h3>
-          <span class="text-xs text-[var(--text-muted)]">Pre-built hardware add-ons</span>
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('hardware.shieldsModules') }}</h3>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('hardware.shieldsDesc') }}</span>
         </template>
-        <div v-if="!shields.length" class="text-xs text-[var(--text-muted)] py-2">No shields available</div>
+        <div v-if="!shields.length" class="text-xs text-[var(--text-muted)] py-2">{{ t('hardware.noShields') }}</div>
         <div v-else class="space-y-2">
           <div v-for="s in shields" :key="s.id" class="flex items-start gap-3 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]">
             <div class="flex-1">

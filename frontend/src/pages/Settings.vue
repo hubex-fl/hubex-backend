@@ -167,8 +167,48 @@ async function setHomepageDashboard(id: number | null) {
   toast.addToast(t('settings.homepageSaved'), "success");
 }
 
+// ── Notification preferences ─────────────────────────────────────────────────
+interface NotificationPrefs {
+  email_enabled: boolean;
+  email_alerts: boolean;
+  email_digest: "off" | "daily" | "weekly";
+  email_device_offline: boolean;
+  email_automation_errors: boolean;
+}
+
+const notifPrefs = ref<NotificationPrefs>({
+  email_enabled: false,
+  email_alerts: true,
+  email_digest: "off",
+  email_device_offline: true,
+  email_automation_errors: false,
+});
+const notifSaving = ref(false);
+
+function initNotificationPrefs() {
+  const saved = prefs.get<Partial<NotificationPrefs>>("notifications", {});
+  notifPrefs.value = {
+    email_enabled: saved.email_enabled ?? false,
+    email_alerts: saved.email_alerts ?? true,
+    email_digest: saved.email_digest ?? "off",
+    email_device_offline: saved.email_device_offline ?? true,
+    email_automation_errors: saved.email_automation_errors ?? false,
+  };
+}
+
+async function saveNotificationPrefs() {
+  notifSaving.value = true;
+  try {
+    await prefs.update("notifications", { ...notifPrefs.value });
+    toast.addToast(t('settings.notificationsSaved'), "success");
+  } catch {
+    toast.addToast("Failed to save", "error");
+  }
+  notifSaving.value = false;
+}
+
 // ── Accordion sections ────────────────────────────────────────────────────────
-type SectionKey = "account" | "organization" | "developer" | "system";
+type SectionKey = "account" | "notifications" | "organization" | "developer" | "system";
 const expandedSection = ref<SectionKey | null>(null);
 
 function toggleSection(key: SectionKey) {
@@ -178,6 +218,7 @@ function toggleSection(key: SectionKey) {
 type Section = { key: SectionKey; label: string; description: string; icon: string };
 const sections: Section[] = [
   { key: "account", label: "Profile & Account", description: "Email, session, authentication", icon: "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" },
+  { key: "notifications", label: "Notifications", description: "Email alerts and digest settings", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
   { key: "organization", label: "Organization & Team", description: "Manage members and plans", icon: "M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 4.5H21m-3.75 4.5H21" },
   { key: "developer", label: "Developer", description: "API keys, capabilities, links", icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" },
   { key: "system", label: "System", description: "Demo data, UX preferences, reset", icon: "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
@@ -254,6 +295,7 @@ onMounted(async () => {
   loadDashboards();
   await prefs.load();
   initHomepagePref();
+  initNotificationPrefs();
 });
 </script>
 
@@ -368,6 +410,109 @@ onMounted(async () => {
                         {{ db.name }}
                       </option>
                     </select>
+                  </div>
+                </div>
+              </UCard>
+            </template>
+
+            <!-- Notifications content -->
+            <template v-if="section.key === 'notifications'">
+              <UCard>
+                <template #header>
+                  <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.notifications') }}</h3>
+                  <span class="text-xs text-[var(--text-muted)]">{{ t('settings.notificationsDescription') }}</span>
+                </template>
+                <div class="space-y-4">
+                  <!-- Master switch -->
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-medium text-[var(--text-primary)]">{{ t('settings.emailNotifications') }}</p>
+                      <p class="text-xs text-[var(--text-muted)]">{{ t('settings.emailNotificationsHint') }}</p>
+                    </div>
+                    <button
+                      class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                      :class="notifPrefs.email_enabled ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)] border border-[var(--border)]'"
+                      @click="notifPrefs.email_enabled = !notifPrefs.email_enabled; saveNotificationPrefs()"
+                    >
+                      <span
+                        class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform"
+                        :class="notifPrefs.email_enabled ? 'translate-x-6' : 'translate-x-1'"
+                      />
+                    </button>
+                  </div>
+
+                  <!-- Sub-toggles (only visible when master is on) -->
+                  <div v-if="notifPrefs.email_enabled" class="space-y-3 pl-1 border-l-2 border-[var(--primary)]/20 ml-1">
+                    <!-- Alert Events -->
+                    <div class="flex items-center justify-between pl-3">
+                      <div>
+                        <p class="text-sm text-[var(--text-primary)]">{{ t('settings.alertEvents') }}</p>
+                        <p class="text-xs text-[var(--text-muted)]">{{ t('settings.alertEventsHint') }}</p>
+                      </div>
+                      <button
+                        class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                        :class="notifPrefs.email_alerts ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)] border border-[var(--border)]'"
+                        @click="notifPrefs.email_alerts = !notifPrefs.email_alerts; saveNotificationPrefs()"
+                      >
+                        <span
+                          class="inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform"
+                          :class="notifPrefs.email_alerts ? 'translate-x-5' : 'translate-x-1'"
+                        />
+                      </button>
+                    </div>
+
+                    <!-- Device Offline -->
+                    <div class="flex items-center justify-between pl-3">
+                      <div>
+                        <p class="text-sm text-[var(--text-primary)]">{{ t('settings.deviceOffline') }}</p>
+                        <p class="text-xs text-[var(--text-muted)]">{{ t('settings.deviceOfflineHint') }}</p>
+                      </div>
+                      <button
+                        class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                        :class="notifPrefs.email_device_offline ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)] border border-[var(--border)]'"
+                        @click="notifPrefs.email_device_offline = !notifPrefs.email_device_offline; saveNotificationPrefs()"
+                      >
+                        <span
+                          class="inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform"
+                          :class="notifPrefs.email_device_offline ? 'translate-x-5' : 'translate-x-1'"
+                        />
+                      </button>
+                    </div>
+
+                    <!-- Automation Errors -->
+                    <div class="flex items-center justify-between pl-3">
+                      <div>
+                        <p class="text-sm text-[var(--text-primary)]">{{ t('settings.automationErrors') }}</p>
+                        <p class="text-xs text-[var(--text-muted)]">{{ t('settings.automationErrorsHint') }}</p>
+                      </div>
+                      <button
+                        class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                        :class="notifPrefs.email_automation_errors ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)] border border-[var(--border)]'"
+                        @click="notifPrefs.email_automation_errors = !notifPrefs.email_automation_errors; saveNotificationPrefs()"
+                      >
+                        <span
+                          class="inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform"
+                          :class="notifPrefs.email_automation_errors ? 'translate-x-5' : 'translate-x-1'"
+                        />
+                      </button>
+                    </div>
+
+                    <!-- Email Digest -->
+                    <div class="flex items-center justify-between pl-3">
+                      <div>
+                        <p class="text-sm text-[var(--text-primary)]">{{ t('settings.emailDigest') }}</p>
+                        <p class="text-xs text-[var(--text-muted)]">{{ t('settings.emailDigestHint') }}</p>
+                      </div>
+                      <select
+                        :value="notifPrefs.email_digest"
+                        class="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]/50 transition-colors"
+                        @change="notifPrefs.email_digest = ($event.target as HTMLSelectElement).value as 'off' | 'daily' | 'weekly'; saveNotificationPrefs()"
+                      >
+                        <option value="off">{{ t('settings.digestOff') }}</option>
+                        <option value="daily">{{ t('settings.digestDaily') }}</option>
+                        <option value="weekly">{{ t('settings.digestWeekly') }}</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </UCard>

@@ -62,9 +62,9 @@ const effectsPaused = ref(false);
 const eventsPaused = ref(false);
 
 const timeToAck = computed(() => {
-  if (!canReadEvents.value) return "Missing capability: events.read";
+  if (!canReadEvents.value) return t('caps.missing', { cap: 'events.read' });
   if (eventsError.value) return eventsError.value;
-  return "Unavailable";
+  return t('observability.unavailable');
 });
 
 const anyCap = computed(() => canReadDevices.value || canReadEffects.value || canReadEvents.value);
@@ -89,9 +89,9 @@ function mapError(err: unknown): string {
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('caps.loading');
+  if (caps.status === "error") return `${t('caps.error')}: ${caps.error ?? t('common.unknown')}`;
+  return t('caps.unavailable');
 }
 
 function lastSeen(device: DeviceRow): string | null {
@@ -129,7 +129,7 @@ async function refreshDevices() {
   }
   if (!canReadDevices.value) {
     devices.value = [];
-    devicesError.value = "Missing capability: devices.read";
+    devicesError.value = t('caps.missing', { cap: 'devices.read' });
     offlineCount.value = null;
     return;
   }
@@ -159,7 +159,7 @@ async function refreshEffects() {
   }
   if (!canReadEffects.value) {
     effects.value = [];
-    effectsError.value = "Missing capability: effects.read";
+    effectsError.value = t('caps.missing', { cap: 'effects.read' });
     failedCount.value = null;
     return;
   }
@@ -191,7 +191,7 @@ async function refreshEvents() {
     return;
   }
   if (!canReadEvents.value) {
-    eventsError.value = "Missing capability: events.read";
+    eventsError.value = t('caps.missing', { cap: 'events.read' });
     eventsCount.value = null;
     caughtUp.value = null;
     return;
@@ -239,9 +239,9 @@ function retryAll() {
     return;
   }
   if (!anyCap.value) {
-    devicesError.value = "Missing capabilities.";
-    effectsError.value = "Missing capabilities.";
-    eventsError.value = "Missing capabilities.";
+    devicesError.value = t('caps.missingAll');
+    effectsError.value = t('caps.missingAll');
+    eventsError.value = t('caps.missingAll');
     return;
   }
   devicesError.value = null;
@@ -267,7 +267,7 @@ function retryDevices() {
     return;
   }
   if (!canReadDevices.value) {
-    devicesError.value = "Missing capability: devices.read";
+    devicesError.value = t('caps.missing', { cap: 'devices.read' });
     return;
   }
   devicesPaused.value = false;
@@ -283,7 +283,7 @@ function retryEffects() {
     return;
   }
   if (!canReadEffects.value) {
-    effectsError.value = "Missing capability: effects.read";
+    effectsError.value = t('caps.missing', { cap: 'effects.read' });
     return;
   }
   effectsPaused.value = false;
@@ -299,7 +299,7 @@ function retryEvents() {
     return;
   }
   if (!canReadEvents.value) {
-    eventsError.value = "Missing capability: events.read";
+    eventsError.value = t('caps.missing', { cap: 'events.read' });
     return;
   }
   eventsPaused.value = false;
@@ -338,59 +338,59 @@ onUnmounted(() => {
   <div class="page">
     <div class="page-header">
       <h2>{{ t('nav.observability') }}</h2>
-      <button class="btn secondary" @click="retryAll">Retry</button>
+      <button class="btn secondary" @click="retryAll">{{ t('observability.retry') }}</button>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
-    <p v-else-if="!anyCap" class="muted">No capabilities available for observability.</p>
+    <p v-if="caps.status === 'unavailable'" class="muted">{{ t('caps.unavailable') }}</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">{{ t('caps.loading') }}</p>
+    <p v-else-if="caps.status === 'error'" class="error">{{ t('caps.error') }}: {{ caps.error }}</p>
+    <p v-else-if="!anyCap" class="muted">{{ t('observability.noCaps') }}</p>
 
     <div class="info-grid">
       <div class="card">
         <div class="card-header-row">
-          <div class="info-label">Events lag / caught up</div>
-          <button class="btn secondary" :disabled="!capsReady || !canReadEvents" @click="retryEvents">Retry</button>
+          <div class="info-label">{{ t('observability.eventsLag') }}</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadEvents" @click="retryEvents">{{ t('observability.retry') }}</button>
         </div>
         <div class="info-value">
-          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
-          <span v-else-if="!canReadEvents" class="muted">Missing capability: events.read</span>
+          <span v-if="!capsReady" class="muted">{{ t('caps.unavailable') }}</span>
+          <span v-else-if="!canReadEvents" class="muted">{{ t('caps.missing', { cap: 'events.read' }) }}</span>
           <span v-else-if="eventsError" class="error">{{ eventsError }}</span>
-          <span v-else-if="caughtUp === null" class="muted">Unavailable</span>
-          <span v-else>{{ caughtUp ? "Caught up" : `New events: ${eventsCount ?? 0}` }}</span>
+          <span v-else-if="caughtUp === null" class="muted">{{ t('observability.unavailable') }}</span>
+          <span v-else>{{ caughtUp ? t('observability.caughtUp') : t('observability.newEvents', { count: eventsCount ?? 0 }) }}</span>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header-row">
-          <div class="info-label">Recent failures</div>
-          <button class="btn secondary" :disabled="!capsReady || !canReadEffects" @click="retryEffects">Retry</button>
+          <div class="info-label">{{ t('observability.recentFailures') }}</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadEffects" @click="retryEffects">{{ t('observability.retry') }}</button>
         </div>
         <div class="info-value">
-          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
-          <span v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</span>
+          <span v-if="!capsReady" class="muted">{{ t('caps.unavailable') }}</span>
+          <span v-else-if="!canReadEffects" class="muted">{{ t('caps.missing', { cap: 'effects.read' }) }}</span>
           <span v-else-if="effectsError" class="error">{{ effectsError }}</span>
-          <span v-else>{{ failedCount ?? "Unavailable" }}</span>
+          <span v-else>{{ failedCount ?? t('observability.unavailable') }}</span>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header-row">
-          <div class="info-label">Offline devices</div>
-          <button class="btn secondary" :disabled="!capsReady || !canReadDevices" @click="retryDevices">Retry</button>
+          <div class="info-label">{{ t('observability.offlineDevices') }}</div>
+          <button class="btn secondary" :disabled="!capsReady || !canReadDevices" @click="retryDevices">{{ t('observability.retry') }}</button>
         </div>
         <div class="info-value">
-          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
-          <span v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
+          <span v-if="!capsReady" class="muted">{{ t('caps.unavailable') }}</span>
+          <span v-else-if="!canReadDevices" class="muted">{{ t('caps.missing', { cap: 'devices.read' }) }}</span>
           <span v-else-if="devicesError" class="error">{{ devicesError }}</span>
-          <span v-else>{{ offlineCount ?? "Unavailable" }}</span>
+          <span v-else>{{ offlineCount ?? t('observability.unavailable') }}</span>
         </div>
       </div>
 
       <div class="card">
-        <div class="info-label">Time-to-ack (approx)</div>
+        <div class="info-label">{{ t('observability.timeToAck') }}</div>
         <div class="info-value">
-          <span v-if="!capsReady" class="muted">Capabilities unavailable</span>
+          <span v-if="!capsReady" class="muted">{{ t('caps.unavailable') }}</span>
           <span v-else-if="timeToAck.startsWith('Missing capability')" class="muted">{{ timeToAck }}</span>
           <span v-else-if="timeToAck.startsWith('HTTP')" class="error">{{ timeToAck }}</span>
           <span v-else>{{ timeToAck }}</span>
@@ -398,6 +398,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-if="loading" class="muted">Loading.</div>
+    <div v-if="loading" class="muted">{{ t('common.loading') }}</div>
   </div>
 </template>
