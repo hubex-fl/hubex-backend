@@ -122,6 +122,8 @@ export function handleAiCommand(command: { command: string; payload: Record<stri
   const tourStore = useTourStore();
   const toast = useToastStore();
 
+  console.log("[ai-coop] Received command:", command.command, "payload:", command.payload);
+
   switch (command.command) {
     case "navigate": {
       const path = command.payload.path as string;

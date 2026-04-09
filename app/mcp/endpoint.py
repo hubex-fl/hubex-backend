@@ -56,8 +56,13 @@ def _log_access(entry: dict[str, Any]) -> None:
 
 
 class ToolCallRequest(BaseModel):
-    name: str
+    name: str | None = None
+    tool_name: str | None = None  # alias — accept both
     arguments: dict[str, Any] = {}
+
+    @property
+    def resolved_name(self) -> str:
+        return self.name or self.tool_name or ""
 
 
 class ToolCallResponse(BaseModel):
@@ -144,12 +149,13 @@ def _jsonrpc_error(id: Any, code: int, message: str) -> dict:
 async def _handle_jsonrpc(
     body: dict[str, Any],
     db: AsyncSession,
-    user_id: int,
+    user: User,
 ) -> dict[str, Any]:
     """Process a single MCP JSON-RPC request and return the response."""
     req_id = body.get("id")
     method = body.get("method", "")
     params = body.get("params", {})
+    user_id = user.id
 
     if method == "initialize":
         return _jsonrpc_response(req_id, {
@@ -181,7 +187,7 @@ async def _handle_jsonrpc(
                 tool_name=tool_name,
                 arguments=arguments,
                 db=db,
-                user_id=user_id,
+                user=user,
             )
             duration_ms = round((time.monotonic() - t0) * 1000)
             is_error = "error" in result
@@ -235,6 +241,7 @@ async def mcp_sse(
 
     _sessions[session_id] = {
         "user_id": user.id,
+        "user": user,
         "queue": queue,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -284,9 +291,9 @@ async def mcp_messages(
         raise HTTPException(status_code=404, detail="Unknown session. Connect to /sse first.")
 
     body = await request.json()
-    user_id: int = session["user_id"]
+    user: User = session["user"]
 
-    response = await _handle_jsonrpc(body, db, user_id)
+    response = await _handle_jsonrpc(body, db, user)
 
     # Push result to the SSE stream
     queue: asyncio.Queue = session["queue"]
@@ -339,26 +346,26 @@ async def call_tool(
 ) -> ToolCallResponse:
     """Execute an MCP tool call."""
     tool_names = {t["name"] for t in get_tool_definitions()}
-    if request.name not in tool_names:
+    if request.resolved_name not in tool_names:
         raise HTTPException(
             status_code=404,
-            detail=f"Tool '{request.name}' not found. Available: {sorted(tool_names)}",
+            detail=f"Tool '{request.resolved_name}' not found. Available: {sorted(tool_names)}",
         )
 
     t0 = time.monotonic()
     try:
         result = await execute_tool(
-            tool_name=request.name,
+            tool_name=request.resolved_name,
             arguments=request.arguments,
             db=db,
-            user_id=current_user.id,
+            user=current_user,
         )
 
         duration_ms = round((time.monotonic() - t0) * 1000)
         is_error = "error" in result
         _log_access({
             "ts": datetime.now(timezone.utc).isoformat(),
-            "tool": request.name,
+            "tool": request.resolved_name,
             "status": "error" if is_error else "ok",
             "duration_ms": duration_ms,
             "user_id": current_user.id,
@@ -371,7 +378,7 @@ async def call_tool(
         duration_ms = round((time.monotonic() - t0) * 1000)
         _log_access({
             "ts": datetime.now(timezone.utc).isoformat(),
-            "tool": request.name,
+            "tool": request.resolved_name,
             "status": "exception",
             "duration_ms": duration_ms,
             "user_id": current_user.id,

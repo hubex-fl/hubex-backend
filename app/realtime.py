@@ -1,5 +1,8 @@
+import logging
 from typing import Dict, Set
 from fastapi import WebSocket
+
+logger = logging.getLogger("uvicorn.error")
 
 
 class Hub:
@@ -58,6 +61,16 @@ class UserHub:
 
     async def send_ui_command(self, user_id: int, command: str, payload: dict) -> None:
         """Send an AI Coop UI command to all browser sessions of this user."""
+        connections = self.clients.get(user_id, set())
+        logger.info(
+            "UI command '%s' sent to user %s, %d active connection(s)",
+            command, user_id, len(connections),
+        )
+        if not connections:
+            logger.warning(
+                "No WebSocket connections for user %s — UI command '%s' will be lost",
+                user_id, command,
+            )
         msg = {"type": "ui_command", "command": command, "payload": payload}
         await self.push(user_id, msg)
 

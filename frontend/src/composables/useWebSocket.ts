@@ -82,6 +82,7 @@ function connect(): void {
       } else if (msg.type === "event" && msg.channel && msg.data) {
         eventHandlers.forEach((h) => h(msg.channel!, msg.data as Record<string, unknown>));
       } else if (msg.type === "ui_command" && msg.command) {
+        console.log("[ws] Dispatching ui_command:", msg.command, msg.payload);
         const cmd: WsUiCommand = { command: msg.command, payload: msg.payload || {} };
         uiCommandHandlers.forEach((h) => h(cmd));
       }

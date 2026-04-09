@@ -5,28 +5,89 @@ Each tool maps to internal HUBEX operations using the same
 SQLAlchemy models and business logic as the REST API.
 """
 
+import logging
 import uuid as _uuid
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db.models.alerts import AlertEvent, AlertRule
 from app.db.models.automation import AutomationRule
 from app.db.models.dashboard import Dashboard, DashboardWidget
 from app.db.models.device import Device
 from app.db.models.semantic_type import SemanticType
+from app.db.models.user import User
 from app.db.models.variables import VariableDefinition, VariableValue, VariableHistory
 from app.realtime import user_hub
+
+logger = logging.getLogger("uvicorn.error")
+
+# ── Capability enforcement ────────────────────────────────────────────────
+
+TOOL_CAPS: dict[str, list[str]] = {
+    # Read-only tools
+    "hubex_list_devices": ["devices.read"],
+    "hubex_get_device": ["devices.read"],
+    "hubex_list_variables": ["vars.read"],
+    "hubex_get_variable_value": ["vars.read"],
+    "hubex_get_variable_history": ["vars.read"],
+    "hubex_list_alerts": ["alerts.read"],
+    "hubex_list_automations": ["automations.read"],
+    "hubex_get_metrics": ["devices.read"],
+    "hubex_get_health": [],
+    "hubex_list_dashboards": ["dashboards.read"],
+    "hubex_list_semantic_types": ["vars.read"],
+    # Write tools
+    "hubex_set_variable": ["vars.write"],
+    "hubex_acknowledge_alert": ["alerts.write"],
+    "hubex_toggle_automation": ["automations.write"],
+    "hubex_test_automation": ["automations.write"],
+    "hubex_create_device": ["devices.write"],
+    "hubex_create_automation": ["automations.write"],
+    "hubex_create_dashboard": ["dashboards.write"],
+    "hubex_create_alert_rule": ["alerts.write"],
+    # UI command tools
+    "hubex_navigate": ["mcp.execute"],
+    "hubex_start_tour": ["mcp.execute"],
+    "hubex_highlight_element": ["mcp.execute"],
+    "hubex_fly_to_node": ["mcp.execute"],
+    "hubex_show_notification": ["mcp.execute"],
+}
+
+
+def _check_caps(tool_name: str, user_caps: set[str]) -> str | None:
+    """Return an error message if the user lacks required caps, else None."""
+    required = TOOL_CAPS.get(tool_name, [])
+    if not required:
+        return None
+    # "mcp.execute" grants all MCP caps; admin users have all caps
+    if "mcp.execute" in user_caps or "admin" in user_caps:
+        return None
+    missing = [c for c in required if c not in user_caps]
+    if missing:
+        return f"Missing capabilities: {', '.join(missing)}"
+    return None
 
 
 async def execute_tool(
     tool_name: str,
     arguments: dict[str, Any],
     db: AsyncSession,
-    user_id: int,
+    user: User,
 ) -> dict[str, Any]:
-    """Execute an MCP tool and return the result."""
+    """Execute an MCP tool and return the result.
+
+    The ``user`` parameter is the authenticated User ORM object providing
+    user_id and org_id context for all operations.
+    """
+    user_id = user.id
+    org_id = getattr(user, "org_id", None)
+
+    # Capability check (skip for now if user has no caps attribute — JWT users)
+    user_caps = set(getattr(user, "_mcp_caps", []))
+    cap_error = _check_caps(tool_name, user_caps)
+    if cap_error:
+        return {"error": cap_error}
 
     if tool_name == "hubex_list_devices":
         return await _list_devices(db, user_id, arguments)
@@ -37,7 +98,7 @@ async def execute_tool(
     elif tool_name == "hubex_get_variable_value":
         return await _get_variable_value(db, arguments)
     elif tool_name == "hubex_set_variable":
-        return await _set_variable(db, arguments)
+        return await _set_variable(db, user_id, arguments)
     elif tool_name == "hubex_get_variable_history":
         return await _get_variable_history(db, arguments)
     elif tool_name == "hubex_list_alerts":
@@ -71,13 +132,13 @@ async def execute_tool(
         return await _ui_notification(user_id, arguments)
     # ── AI Coop: CRUD tools ──────────────────────────────────────────────
     elif tool_name == "hubex_create_device":
-        return await _create_device(db, user_id, arguments)
+        return await _create_device(db, user_id, org_id, arguments)
     elif tool_name == "hubex_create_automation":
-        return await _create_automation(db, user_id, arguments)
+        return await _create_automation(db, user_id, org_id, arguments)
     elif tool_name == "hubex_create_dashboard":
         return await _create_dashboard(db, user_id, arguments)
     elif tool_name == "hubex_create_alert_rule":
-        return await _create_alert_rule(db, user_id, arguments)
+        return await _create_alert_rule(db, user_id, org_id, arguments)
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
@@ -156,25 +217,37 @@ async def _get_variable_value(db: AsyncSession, args: dict) -> dict:
     scope = args["scope"]
     device_uid = args.get("device_uid")
     stmt = select(VariableValue).where(
-        VariableValue.key == key,
+        VariableValue.variable_key == key,
         VariableValue.scope == scope,
     )
     if device_uid:
-        stmt = stmt.where(VariableValue.device_uid == device_uid)
+        # Resolve device_uid to device_id
+        dev_stmt = select(Device.id).where(Device.device_uid == device_uid)
+        dev_result = await db.execute(dev_stmt)
+        dev_id = dev_result.scalar_one_or_none()
+        if dev_id:
+            stmt = stmt.where(VariableValue.device_id == dev_id)
+        else:
+            return {"error": f"Device '{device_uid}' not found"}
     result = await db.execute(stmt)
     val = result.scalar_one_or_none()
     if not val:
         return {"error": f"No value for variable '{key}' in scope '{scope}'"}
+    # Resolve device_id back to device_uid for the response
+    resp_device_uid = None
+    if val.device_id:
+        dev_res = await db.execute(select(Device.device_uid).where(Device.id == val.device_id))
+        resp_device_uid = dev_res.scalar_one_or_none()
     return {
-        "key": val.key,
+        "key": val.variable_key,
         "scope": val.scope,
-        "value": val.value,
-        "device_uid": val.device_uid,
+        "value": val.value_json,
+        "device_uid": resp_device_uid,
         "updated_at": str(val.updated_at) if val.updated_at else None,
     }
 
 
-async def _set_variable(db: AsyncSession, args: dict) -> dict:
+async def _set_variable(db: AsyncSession, user_id: int, args: dict) -> dict:
     from app.core.variables import create_or_update_value
     key = args["key"]
     value = args["value"]
@@ -182,8 +255,14 @@ async def _set_variable(db: AsyncSession, args: dict) -> dict:
     device_uid = args.get("device_uid")
     try:
         await create_or_update_value(
-            db, key=key, value=value, scope=scope,
-            device_uid=device_uid, source="mcp",
+            db,
+            key=key,
+            value=value,
+            scope=scope,
+            device_uid=device_uid,
+            expected_version=None,
+            actor_user_id=user_id,
+            actor_device_id=None,
         )
         return {"success": True, "key": key, "value": value}
     except Exception as e:
@@ -224,26 +303,30 @@ async def _get_variable_history(db: AsyncSession, args: dict) -> dict:
 
 
 async def _list_alerts(db: AsyncSession, args: dict) -> dict:
-    stmt = select(AlertEvent)
+    # Join AlertEvent with AlertRule to get severity
+    stmt = select(AlertEvent, AlertRule.severity, AlertRule.name.label("rule_name")).join(
+        AlertRule, AlertEvent.rule_id == AlertRule.id
+    )
     status = args.get("status")
     if status:
         stmt = stmt.where(AlertEvent.status == status)
     stmt = stmt.order_by(AlertEvent.id.desc()).limit(50)
     result = await db.execute(stmt)
-    events = result.scalars().all()
+    rows = result.all()
     return {
         "alerts": [
             {
-                "id": a.id,
-                "rule_id": a.rule_id,
-                "status": a.status,
-                "severity": a.severity,
-                "message": a.message,
-                "created_at": str(a.created_at),
+                "id": event.id,
+                "rule_id": event.rule_id,
+                "rule_name": rule_name,
+                "status": event.status,
+                "severity": severity,
+                "message": event.message,
+                "triggered_at": str(event.triggered_at),
             }
-            for a in events
+            for event, severity, rule_name in rows
         ],
-        "count": len(events),
+        "count": len(rows),
     }
 
 
@@ -376,12 +459,14 @@ async def _list_semantic_types(db: AsyncSession) -> dict:
 
 async def _ui_navigate(user_id: int, args: dict) -> dict:
     path = args["path"]
+    logger.info("MCP UI command 'navigate' -> path=%s for user_id=%s", path, user_id)
     await user_hub.send_ui_command(user_id, "navigate", {"path": path})
     return {"success": True, "command": "navigate", "path": path}
 
 
 async def _ui_start_tour(user_id: int, args: dict) -> dict:
     tour_id = args["tour_id"]
+    logger.info("MCP UI command 'start_tour' -> tour=%s for user_id=%s", tour_id, user_id)
     await user_hub.send_ui_command(user_id, "start_tour", {"tour_id": tour_id})
     return {"success": True, "command": "start_tour", "tour_id": tour_id}
 
@@ -390,6 +475,7 @@ async def _ui_highlight(user_id: int, args: dict) -> dict:
     selector = args["selector"]
     message = args.get("message", "")
     duration = args.get("duration", 3)
+    logger.info("MCP UI command 'highlight' -> selector=%s for user_id=%s", selector, user_id)
     await user_hub.send_ui_command(user_id, "highlight", {
         "selector": selector,
         "message": message,
@@ -400,6 +486,7 @@ async def _ui_highlight(user_id: int, args: dict) -> dict:
 
 async def _ui_fly_to_node(user_id: int, args: dict) -> dict:
     node_id = args["node_id"]
+    logger.info("MCP UI command 'fly_to_node' -> node=%s for user_id=%s", node_id, user_id)
     await user_hub.send_ui_command(user_id, "fly_to_node", {"node_id": node_id})
     return {"success": True, "command": "fly_to_node", "node_id": node_id}
 
@@ -407,6 +494,7 @@ async def _ui_fly_to_node(user_id: int, args: dict) -> dict:
 async def _ui_notification(user_id: int, args: dict) -> dict:
     message = args["message"]
     notif_type = args.get("type", "info")
+    logger.info("MCP UI command 'notification' -> type=%s for user_id=%s", notif_type, user_id)
     await user_hub.send_ui_command(user_id, "notification", {
         "message": message,
         "type": notif_type,
@@ -419,7 +507,7 @@ async def _ui_notification(user_id: int, args: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-async def _create_device(db: AsyncSession, user_id: int, args: dict) -> dict:
+async def _create_device(db: AsyncSession, user_id: int, org_id: int | None, args: dict) -> dict:
     name = args["name"]
     device_type = args["device_type"]
     device_uid = f"ai-{_uuid.uuid4().hex[:12]}"
@@ -428,6 +516,7 @@ async def _create_device(db: AsyncSession, user_id: int, args: dict) -> dict:
         name=name,
         device_type=device_type,
         owner_user_id=user_id,
+        org_id=org_id,
     )
     db.add(device)
     await db.commit()
@@ -443,13 +532,7 @@ async def _create_device(db: AsyncSession, user_id: int, args: dict) -> dict:
     }
 
 
-async def _create_automation(db: AsyncSession, user_id: int, args: dict) -> dict:
-    from app.db.models.user import User
-    # Resolve org_id from user
-    user_res = await db.execute(select(User).where(User.id == user_id))
-    user = user_res.scalar_one_or_none()
-    org_id = getattr(user, "org_id", None) if user else None
-
+async def _create_automation(db: AsyncSession, user_id: int, org_id: int | None, args: dict) -> dict:
     rule = AutomationRule(
         org_id=org_id,
         name=args["name"],
@@ -483,7 +566,15 @@ async def _create_dashboard(db: AsyncSession, user_id: int, args: dict) -> dict:
 
     widgets_data = args.get("widgets", [])
     created_widgets = []
+    # Auto-calculate grid positions: 3 columns (each span 4 in a 12-col grid)
+    cols_per_row = 3
+    widget_w = 4   # 12 / 3 = 4
+    widget_h = 3
     for idx, w in enumerate(widgets_data):
+        col_idx = idx % cols_per_row         # 0, 1, 2, 0, 1, 2, ...
+        row_idx = idx // cols_per_row        # 0, 0, 0, 1, 1, 1, ...
+        grid_col = col_idx * widget_w        # 0, 4, 8, 0, 4, 8, ...
+        grid_row = row_idx * widget_h        # 0, 0, 0, 3, 3, 3, ...
         widget = DashboardWidget(
             dashboard_id=dashboard.id,
             widget_type=w.get("widget_type", "sparkline"),
@@ -491,6 +582,10 @@ async def _create_dashboard(db: AsyncSession, user_id: int, args: dict) -> dict:
             device_uid=w.get("device_uid"),
             label=w.get("label"),
             sort_order=idx,
+            grid_col=grid_col,
+            grid_row=grid_row,
+            grid_span_w=widget_w,
+            grid_span_h=widget_h,
         )
         db.add(widget)
         created_widgets.append(widget)
@@ -506,12 +601,7 @@ async def _create_dashboard(db: AsyncSession, user_id: int, args: dict) -> dict:
     }
 
 
-async def _create_alert_rule(db: AsyncSession, user_id: int, args: dict) -> dict:
-    from app.db.models.user import User
-    user_res = await db.execute(select(User).where(User.id == user_id))
-    user = user_res.scalar_one_or_none()
-    org_id = getattr(user, "org_id", None) if user else None
-
+async def _create_alert_rule(db: AsyncSession, user_id: int, org_id: int | None, args: dict) -> dict:
     rule = AlertRule(
         name=args["name"],
         condition_type=args["condition_type"],

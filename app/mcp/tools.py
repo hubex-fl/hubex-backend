@@ -88,6 +88,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["key", "value", "scope"],
         },
+        "annotations": {"requires_confirmation": True},
     },
     {
         "name": "hubex_get_variable_history",
@@ -129,6 +130,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["event_id"],
         },
+        "annotations": {"requires_confirmation": True},
     },
 
     # ── Automation Tools ──────────────────────────────────────────────────
@@ -156,6 +158,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["rule_id", "enabled"],
         },
+        "annotations": {"requires_confirmation": True},
     },
     {
         "name": "hubex_test_automation",
@@ -167,6 +170,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["rule_id"],
         },
+        "annotations": {"requires_confirmation": True},
     },
 
     # ── Metrics & Health Tools ────────────────────────────────────────────
@@ -291,6 +295,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["name", "device_type"],
         },
+        "annotations": {"requires_confirmation": True},
     },
     {
         "name": "hubex_create_automation",
@@ -313,6 +318,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["name", "trigger_type", "action_type"],
         },
+        "annotations": {"requires_confirmation": True},
     },
     {
         "name": "hubex_create_dashboard",
@@ -336,6 +342,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["name"],
         },
+        "annotations": {"requires_confirmation": True},
     },
     {
         "name": "hubex_create_alert_rule",
@@ -353,6 +360,7 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             },
             "required": ["name", "condition_type"],
         },
+        "annotations": {"requires_confirmation": True},
     },
 ]
 
