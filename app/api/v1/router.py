@@ -96,3 +96,6 @@ router.include_router(components_router, tags=["components"])
 router.include_router(codegen_router, tags=["codegen"])
 router.include_router(tours_router, tags=["tours"])
 router.include_router(simulator_router, tags=["simulator"])
+
+from .system import router as system_router
+router.include_router(system_router, tags=["system"])
