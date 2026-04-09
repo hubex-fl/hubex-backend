@@ -69,16 +69,18 @@ async def capability_guard(
     route = request.scope.get("route")
     path = getattr(route, "path", request.url.path)
 
-    required = resolve_required_caps(method, path)
     enforce = enforcement_enabled()
+
+    # Public routes bypass ALL auth — check FIRST before capability mapping
+    if is_public_route(method, path):
+        return
+
+    required = resolve_required_caps(method, path)
 
     if required is None:
         if enforce:
             _http_403(_detail("CAP_MAPPING_MISSING", "capability mapping missing"))
         _log_soft(enforce, "CAP_MAPPING_MISSING %s %s", method, path)
-        return
-
-    if is_public_route(method, path):
         return
 
     if device_token and _has_required_caps(required, DEVICE_CAPS):
