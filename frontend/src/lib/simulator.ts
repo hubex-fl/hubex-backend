@@ -64,7 +64,7 @@ export interface SimulatorUpdate {
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
-const BASE = "/api/v1/simulators";
+const BASE = "/api/v1/simulator/configs";
 
 export async function listSimulators(): Promise<SimulatorConfig[]> {
   return apiFetch<SimulatorConfig[]>(BASE);
@@ -108,7 +108,7 @@ export async function pulseValue(
 }
 
 export async function getTemplates(): Promise<SimulatorTemplate[]> {
-  return apiFetch<SimulatorTemplate[]>(`${BASE}/templates`);
+  return apiFetch<SimulatorTemplate[]>("/api/v1/simulator/templates");
 }
 
 // ── Client-side pattern preview generators ──────────────────────────────────

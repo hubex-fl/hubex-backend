@@ -942,11 +942,12 @@ function copyShareUrl() {
   setTimeout(() => copied.value = false, 2000);
 }
 
-function handlePinToggle() {
+async function handlePinToggle() {
   if (!pinEnabled.value) {
-    // Unset PIN by re-sharing without pin
+    // Unset PIN by re-sharing without pin (backend clears public_pin)
     if (dashboard.value) {
-      shareDashboard(dashboard.value.id);
+      await shareDashboard(dashboard.value.id);
+      dashboard.value.sharing_mode = "public";
     }
     pinValue.value = "";
   }

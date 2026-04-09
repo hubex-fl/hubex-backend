@@ -349,10 +349,9 @@ async function loadSystemGraph() {
       });
       y += NODE_H_SMALL + ROW_GAP;
 
-      // Connect device-scoped variables to their specific parent device only
+      // Connect device-scoped variables to devices
       if (v.scope === "device") {
-        // If the variable key contains a device_uid reference, connect only to that device
-        // Otherwise, device-scoped variables are definitions (templates) — show without connections
+        // If the variable has a specific device_uid, connect only to that device
         const varDeviceUid = (v as Record<string, unknown>).device_uid as string | undefined;
         if (varDeviceUid) {
           const matchDevice = devices.find(
@@ -366,8 +365,17 @@ async function loadSystemGraph() {
               type: "data",
             });
           }
+        } else {
+          // Device-scoped variable definitions apply to all devices
+          for (const d of devices) {
+            newEdges.push({
+              id: `edge-dev-var-${d.id}-${v.key}`,
+              from: `device-${d.id}`,
+              to: nodeId,
+              type: "data",
+            });
+          }
         }
-        // If no specific device_uid, don't connect to all devices
       }
     }
 

@@ -400,6 +400,8 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("GET", "/api/v1/pairing/status"),
     ("GET", "/api/v1/devices/pairing/status"),
     ("GET", "/api/v1/dashboards/public/{token}"),
+    ("GET", "/api/v1/dashboards/public/{token}/history"),
+    ("GET", "/api/v1/dashboards/embed/{token}"),
     ("POST", "/api/v1/auth/refresh"),
     ("GET", "/api/v1/auth/roles"),
     ("POST", "/api/v1/auth/mfa/verify"),

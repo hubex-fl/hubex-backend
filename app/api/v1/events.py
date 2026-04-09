@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
@@ -60,13 +61,17 @@ async def read_events(
     stream: str = Query("system", min_length=1, max_length=128),
     cursor: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    from_ts: Optional[float] = Query(None, description="Unix timestamp (seconds). If set, returns events after this time and overrides cursor."),
     db: AsyncSession = Depends(get_db),
 ):
+    stmt = select(EventV1).where(EventV1.stream == stream)
+    if from_ts is not None:
+        dt = datetime.fromtimestamp(from_ts, tz=timezone.utc)
+        stmt = stmt.where(EventV1.ts >= dt)
+    else:
+        stmt = stmt.where(EventV1.id > cursor)
     res = await db.execute(
-        select(EventV1)
-        .where(EventV1.stream == stream, EventV1.id > cursor)
-        .order_by(EventV1.id.asc())
-        .limit(limit)
+        stmt.order_by(EventV1.id.asc()).limit(limit)
     )
     rows = res.scalars().all()
     items = [

@@ -27,7 +27,7 @@ function capsStatusMessage(): string {
     <div class="page-header">
       <div class="flex items-center">
         <h2>{{ t('pages.traceHub.title') }}</h2>
-        <UInfoTooltip :title="t('infoTooltips.traceHub.title')" :items="tm('infoTooltips.traceHub.items').map((i: any) => rt(i))" tourId="getting-started" />
+        <UInfoTooltip :title="t('infoTooltips.traceHub.title')" :items="tm('infoTooltips.traceHub.items').map((i: any) => rt(i))" />
       </div>
     </div>
 

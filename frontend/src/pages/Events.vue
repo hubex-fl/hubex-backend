@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
@@ -33,7 +33,7 @@ const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const { signal } = useAbortHandle();
 
-const stream = ref("");
+const stream = ref("system");
 const items = ref<EventItem[]>([]);
 const cursor = ref(0);
 const nextCursor = ref(0);
@@ -44,19 +44,98 @@ const caughtUp = ref(false);
 const polling = ref(false);
 const ackStatus = ref<string | null>(null);
 const ackError = ref<string | null>(null);
-const cursorInput = ref("");
 const traceFilter = ref("");
+const traceDropdownOpen = ref(false);
+const traceInputEl = ref<HTMLInputElement | null>(null);
+const traceDropdownEl = ref<HTMLDivElement | null>(null);
+const jumpPreset = ref("");
+const useFromTs = ref(false);
+const fromTsValue = ref(0);
 
 const capsReady = computed(() => caps.status === "ready");
 const canReadEvents = computed(() => hasCap("events.read"));
 const canAckEvents = computed(() => hasCap("events.ack"));
 const limit = 100;
 const subscriberId = "ui.events.viewer";
+
+/* ── Trace ID combobox helpers ── */
+const uniqueTraceIds = computed(() => {
+  const seen = new Map<string, EventItem>();
+  for (const item of items.value) {
+    const tid = item.trace_id;
+    if (tid && !seen.has(tid)) seen.set(tid, item);
+  }
+  // Return most recent 20
+  return Array.from(seen.entries()).slice(-20).reverse();
+});
+
+const filteredTraceOptions = computed(() => {
+  const q = traceFilter.value.trim().toLowerCase();
+  if (!q) return uniqueTraceIds.value;
+  return uniqueTraceIds.value.filter(([tid]) => tid.toLowerCase().includes(q));
+});
+
+function selectTraceId(tid: string) {
+  traceFilter.value = tid;
+  traceDropdownOpen.value = false;
+}
+
+function clearTraceFilter() {
+  traceFilter.value = "";
+  traceDropdownOpen.value = false;
+}
+
+function onTraceInputFocus() {
+  if (uniqueTraceIds.value.length > 0) traceDropdownOpen.value = true;
+}
+
+function onTraceInputBlur(e: FocusEvent) {
+  // Delay to allow click on dropdown option
+  const related = e.relatedTarget as HTMLElement | null;
+  if (traceDropdownEl.value?.contains(related)) return;
+  setTimeout(() => { traceDropdownOpen.value = false; }, 150);
+}
+
+function truncateId(id: string, maxLen = 16): string {
+  return id.length > maxLen ? id.slice(0, maxLen) + "\u2026" : id;
+}
+
 const filteredItems = computed(() => {
   const raw = traceFilter.value.trim();
   if (!raw) return items.value;
   return items.value.filter((item) => String(item.trace_id ?? "").includes(raw));
 });
+
+/* ── Jump-to presets ── */
+type JumpPresetOption = { key: string; labelKey: string; getTs: () => number };
+
+const jumpPresets: JumpPresetOption[] = [
+  { key: "latest", labelKey: "events.jumpLatest", getTs: () => 0 },
+  { key: "1h",     labelKey: "events.jump1h",     getTs: () => (Date.now() / 1000) - 3600 },
+  { key: "6h",     labelKey: "events.jump6h",     getTs: () => (Date.now() / 1000) - 21600 },
+  { key: "24h",    labelKey: "events.jump24h",    getTs: () => (Date.now() / 1000) - 86400 },
+  { key: "7d",     labelKey: "events.jump7d",     getTs: () => (Date.now() / 1000) - 604800 },
+];
+
+function applyJumpPreset() {
+  const preset = jumpPresets.find((p) => p.key === jumpPreset.value);
+  if (!preset) return;
+  if (preset.key === "latest") {
+    // Reset to beginning — newest events
+    cursor.value = 0;
+    useFromTs.value = false;
+    fromTsValue.value = 0;
+  } else {
+    useFromTs.value = true;
+    fromTsValue.value = preset.getTs();
+    cursor.value = 0;
+  }
+  items.value = [];
+  nextCursor.value = 0;
+  caughtUp.value = false;
+  // Trigger an immediate fetch
+  refreshEvents();
+}
 
 function mapError(err: unknown): string {
   const e = err as ApiError;
@@ -69,6 +148,9 @@ function buildUrl() {
   params.set("stream", stream.value.trim());
   params.set("cursor", String(cursor.value));
   params.set("limit", String(limit));
+  if (useFromTs.value && fromTsValue.value > 0) {
+    params.set("from_ts", String(fromTsValue.value));
+  }
   return `/api/v1/events?${params.toString()}`;
 }
 
@@ -92,8 +174,17 @@ async function refreshEvents() {
       items.value = [...items.value, ...res.items].slice(-500);
       cursor.value = nextCursor.value;
       caughtUp.value = false;
+      // After first successful fetch with from_ts, switch to cursor-based for subsequent polls
+      if (useFromTs.value) {
+        useFromTs.value = false;
+        fromTsValue.value = 0;
+      }
     } else {
       caughtUp.value = true;
+      if (useFromTs.value) {
+        useFromTs.value = false;
+        fromTsValue.value = 0;
+      }
     }
   } catch (err) {
     error.value = mapError(err);
@@ -119,17 +210,6 @@ function stopPolling() {
   if (!polling.value) return;
   polling.value = false;
   poller.stop();
-}
-
-function setCursorFromInput() {
-  const raw = String(cursorInput.value ?? "").trim();
-  if (!raw) { error.value = t('events.cursorRequired'); return; }
-  const next = Number(raw);
-  if (!Number.isFinite(next) || next < 0) { error.value = t('events.cursorInvalid'); return; }
-  cursor.value = Math.floor(next);
-  items.value = [];
-  nextCursor.value = 0;
-  caughtUp.value = false;
 }
 
 function jumpToNext() {
@@ -177,11 +257,29 @@ watch(() => stream.value, () => {
   cursor.value = 0;
   nextCursor.value = 0;
   caughtUp.value = false;
+  useFromTs.value = false;
+  fromTsValue.value = 0;
   if (polling.value) stopPolling();
 });
 
+/* ── Auto-start: default to "system" stream and begin polling ── */
 onMounted(() => {
-  if (caps.status === "ready" && stream.value.trim()) startPolling();
+  if (!stream.value.trim()) stream.value = "system";
+
+  // Wait for caps to be ready, then auto-start
+  if (capsReady.value && canReadEvents.value) {
+    nextTick(() => startPolling());
+  } else {
+    const unwatch = watch(
+      () => caps.status,
+      (status) => {
+        if (status === "ready" && canReadEvents.value && stream.value.trim()) {
+          nextTick(() => startPolling());
+          unwatch();
+        }
+      }
+    );
+  }
 });
 
 onUnmounted(() => { stopPolling(); });
@@ -194,7 +292,7 @@ onUnmounted(() => { stopPolling(); });
       <div>
         <div class="flex items-center">
           <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
-          <UInfoTooltip :title="t('infoTooltips.events.title')" :items="tm('infoTooltips.events.items').map((i: any) => rt(i))" tourId="getting-started" />
+          <UInfoTooltip :title="t('infoTooltips.events.title')" :items="tm('infoTooltips.events.items').map((i: any) => rt(i))" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.description') }}</p>
       </div>
@@ -222,27 +320,87 @@ onUnmounted(() => { stopPolling(); });
             <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('events.stream') }}</label>
             <UEntitySelect v-model="stream" entity-type="stream" class="w-full" />
           </div>
-          <div class="flex-1">
+
+          <!-- Trace ID combobox -->
+          <div class="flex-1 relative">
             <label class="block text-xs text-[var(--text-muted)] mb-1">
               <span class="inline-flex items-center">{{ t('events.traceIdFilter') }}<UInfoTooltip :title="t('events.traceIdTooltip')" :items="[]" /></span>
             </label>
-            <UInput v-model="traceFilter" placeholder="trace_id" class="w-full" />
+            <div class="relative">
+              <input
+                ref="traceInputEl"
+                v-model="traceFilter"
+                type="text"
+                :placeholder="uniqueTraceIds.length ? t('events.traceSelectPlaceholder') : 'trace_id'"
+                class="w-full h-9 px-3 pr-16 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]/60 focus:ring-1 focus:ring-[var(--primary)]/30"
+                @focus="onTraceInputFocus"
+                @blur="onTraceInputBlur"
+                @input="traceDropdownOpen = uniqueTraceIds.length > 0"
+              />
+              <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 pr-1.5">
+                <button
+                  v-if="traceFilter"
+                  @mousedown.prevent="clearTraceFilter"
+                  class="p-1 rounded hover:bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  :title="t('common.clear')"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <button
+                  v-if="uniqueTraceIds.length"
+                  @mousedown.prevent="traceDropdownOpen = !traceDropdownOpen"
+                  class="p-1 rounded hover:bg-[var(--bg-raised)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                  <svg class="w-3.5 h-3.5 transition-transform" :class="{ 'rotate-180': traceDropdownOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+            <!-- Trace ID dropdown -->
+            <div
+              v-if="traceDropdownOpen && filteredTraceOptions.length"
+              ref="traceDropdownEl"
+              class="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-card)] shadow-lg"
+            >
+              <button
+                v-for="[tid, item] in filteredTraceOptions"
+                :key="tid"
+                @mousedown.prevent="selectTraceId(tid)"
+                class="w-full text-left px-3 py-2 hover:bg-[var(--bg-raised)] transition-colors flex items-center gap-2 text-xs"
+              >
+                <span class="font-mono text-[var(--text-primary)] truncate flex-shrink-0" style="max-width: 10rem">{{ truncateId(tid) }}</span>
+                <UBadge status="info" class="flex-shrink-0">{{ item.type }}</UBadge>
+                <span class="text-[var(--text-muted)] ml-auto whitespace-nowrap flex-shrink-0">{{ item.ts }}</span>
+              </button>
+              <div v-if="filteredTraceOptions.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
+                {{ t('events.noTraceIds') }}
+              </div>
+            </div>
           </div>
+
           <div class="flex items-end">
             <UButton :disabled="polling" @click="startPolling" class="w-full sm:w-auto">{{ t('events.start') }}</UButton>
           </div>
         </div>
 
-        <!-- Cursor row -->
+        <!-- Jump-to row -->
         <div class="flex flex-col sm:flex-row gap-3 items-end">
           <div class="flex-1">
             <label class="block text-xs text-[var(--text-muted)] mb-1">
-              <span class="inline-flex items-center">{{ t('events.setCursor') }}<UInfoTooltip :title="t('events.setCursorTooltip')" :items="[]" /></span>
+              <span class="inline-flex items-center">{{ t('events.jumpTo') }}<UInfoTooltip :title="t('events.jumpToTooltip')" :items="[]" /></span>
             </label>
-            <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
+            <select
+              v-model="jumpPreset"
+              @change="applyJumpPreset"
+              class="w-full h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]/60 focus:ring-1 focus:ring-[var(--primary)]/30 appearance-none cursor-pointer"
+              style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23888%22 stroke-width=%222%22%3E%3Cpath d=%22M6 9l6 6 6-6%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.75rem center;"
+            >
+              <option value="" disabled>{{ t('events.jumpSelectTime') }}</option>
+              <option v-for="preset in jumpPresets" :key="preset.key" :value="preset.key">
+                {{ t(preset.labelKey) }}
+              </option>
+            </select>
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton variant="secondary" size="sm" @click="setCursorFromInput" :title="t('events.setCursorTooltip')">{{ t('events.setCursor') }}</UButton>
             <UButton variant="secondary" size="sm" @click="jumpToNext" :title="t('events.jumpToNextTooltip')">
               {{ t('events.jumpToNext') }}
             </UButton>
@@ -323,7 +481,15 @@ onUnmounted(() => { stopPolling(); });
                 <td class="px-4 py-2.5 whitespace-nowrap">
                   <UBadge status="info">{{ item.type }}</UBadge>
                 </td>
-                <td class="px-4 py-2.5 font-mono text-[var(--text-muted)] hidden md:table-cell">{{ item.trace_id ?? "—" }}</td>
+                <td class="px-4 py-2.5 font-mono hidden md:table-cell">
+                  <button
+                    v-if="item.trace_id"
+                    @click="selectTraceId(item.trace_id!)"
+                    class="text-[var(--primary)] hover:underline cursor-pointer"
+                    :title="t('events.filterByTrace')"
+                  >{{ truncateId(item.trace_id, 20) }}</button>
+                  <span v-else class="text-[var(--text-muted)]">&mdash;</span>
+                </td>
                 <td class="px-4 py-2.5 font-mono text-[var(--text-muted)] max-w-xs truncate">{{ JSON.stringify(item.payload) }}</td>
               </tr>
             </tbody>

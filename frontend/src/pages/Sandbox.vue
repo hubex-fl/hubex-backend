@@ -121,8 +121,15 @@ async function load() {
   error.value = null;
   try {
     simulators.value = await listSimulators();
-  } catch {
-    error.value = t("sandbox.loadError");
+  } catch (e: unknown) {
+    // Distinguish real errors from empty state: if the API returns 404
+    // because the table doesn't exist yet, treat as empty list
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("404") || msg.includes("Not Found")) {
+      simulators.value = [];
+    } else {
+      error.value = t("sandbox.loadError");
+    }
   } finally {
     loading.value = false;
   }
@@ -375,7 +382,6 @@ onUnmounted(() => {
           <UInfoTooltip
             :title="t('sandbox.infoTitle')"
             :items="[t('sandbox.infoItem1'), t('sandbox.infoItem2'), t('sandbox.infoItem3')]"
-            tourId="getting-started"
           />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('sandbox.subtitle') }}</p>

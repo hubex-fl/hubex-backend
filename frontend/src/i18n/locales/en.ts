@@ -69,6 +69,7 @@ export default {
     created: 'Created',
     updated: 'Updated',
     unknown: 'Unknown',
+    clear: 'Clear',
   },
   auth: {
     signIn: 'Sign in',
@@ -716,7 +717,17 @@ export default {
     cursorInvalid: 'Cursor must be a non-negative number',
     ackFailed: 'ACK failed',
     traceIdTooltip: 'A unique identifier that links related events across the system. Use it to track a request from device through automations.',
-    setCursorTooltip: 'Sets the starting position for reading events. Events after this position will be shown.',
+    traceSelectPlaceholder: 'Select or type a trace ID...',
+    noTraceIds: 'No matching trace IDs',
+    filterByTrace: 'Filter events by this trace ID',
+    jumpTo: 'Jump to',
+    jumpToTooltip: 'Jump to events from a specific time range. Useful to quickly navigate to recent or older events.',
+    jumpSelectTime: 'Select time range...',
+    jumpLatest: 'Latest (newest)',
+    jump1h: '1 hour ago',
+    jump6h: '6 hours ago',
+    jump24h: '24 hours ago',
+    jump7d: '1 week ago',
     jumpToNextTooltip: 'Fetches the next batch of events after the current cursor position.',
   },
   observability: {
@@ -939,7 +950,7 @@ export default {
       entities: 'Entities',
       alerts: 'Alerts',
       events: 'Events',
-      status: 'Status Snapshot',
+      status_snapshot: 'Status Snapshot',
     },
     variableKeysLabel: 'Variable Keys',
     variableKeysPlaceholder: 'Select variables...',
@@ -1252,6 +1263,10 @@ export default {
           title: 'System Overview',
           text: 'Your dashboard shows key metrics at a glance — online devices, active alerts, recent events.',
         },
+        navDevices: {
+          title: 'Navigate to Devices',
+          text: "Click 'Devices' to see all your connected devices.",
+        },
         devices: {
           title: 'Your Devices',
           text: 'This is where all your connected devices live. Hardware sensors, API services, bridges, and software agents.',
@@ -1260,21 +1275,41 @@ export default {
           title: 'Add a Device',
           text: 'Click here to connect a new device. The wizard guides you through hardware pairing, API configuration, or bridge setup.',
         },
+        navVariables: {
+          title: 'Navigate to Variables',
+          text: "Click 'Variables' to explore your data streams.",
+        },
         variables: {
           title: 'Variables & Data',
           text: 'Variables are your data streams. Every sensor reading, status value, and configuration is stored here with full history.',
+        },
+        navAutomations: {
+          title: 'Navigate to Automations',
+          text: "Click 'Automations' to manage your if-then rules.",
         },
         automations: {
           title: 'Automations',
           text: 'Create if-then rules: When temperature exceeds 30\u00B0C \u2192 send alert, call webhook, or set another variable.',
         },
+        navSystemMap: {
+          title: 'Navigate to System Map',
+          text: "Click 'System Map' to see how everything connects.",
+        },
         systemMap: {
           title: 'System Map',
           text: 'See how everything connects. Devices \u2192 Variables \u2192 Automations \u2192 Alerts — all visualized in one view.',
         },
+        navDashboards: {
+          title: 'Navigate to Dashboards',
+          text: "Click 'Dashboards' to see your custom views.",
+        },
         dashboards: {
           title: 'Custom Dashboards',
           text: 'Build your own dashboards with widgets — charts, gauges, toggles, even custom HTML. Share them publicly or embed in other sites.',
+        },
+        navSettings: {
+          title: 'Navigate to Settings',
+          text: "Click 'Settings' to configure your account.",
         },
         settings: {
           title: 'Settings',

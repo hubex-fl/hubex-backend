@@ -295,7 +295,7 @@ onUnmounted(() => {
         <div class="header-title-row">
           <span class="streams-icon">◈</span>
           <h1 class="streams-title">{{ t('variables.streams') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.variableStreams.title')" :items="tm('infoTooltips.variableStreams.items').map((i: any) => rt(i))" tourId="getting-started" />
+          <UInfoTooltip :title="t('infoTooltips.variableStreams.title')" :items="tm('infoTooltips.variableStreams.items').map((i: any) => rt(i))" />
           <span v-if="refreshing" class="refresh-dot" :title="t('variableStreams.refreshing')" />
         </div>
         <p class="streams-desc">{{ t('variableStreams.description') }}</p>

@@ -34,6 +34,16 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.dashboardKpis.title",
     text: "tours.onboarding.steps.dashboardKpis.text",
   },
+  // -- Navigate to Devices: highlight sidebar nav first
+  {
+    id: "nav-devices",
+    page: "/",
+    target: "[data-tour='nav-devices']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navDevices.title",
+    text: "tours.onboarding.steps.navDevices.text",
+  },
   {
     id: "devices-page",
     page: "/devices",
@@ -47,11 +57,21 @@ const onboardingSteps: TourStep[] = [
   {
     id: "add-device",
     page: "/devices",
-    target: "button[data-tour='add-device'], .page-header button:last-child, header button",
+    target: "[data-tour='add-device']",
     action: "spotlight+pulse",
     position: "bottom",
     title: "tours.onboarding.steps.addDevice.title",
     text: "tours.onboarding.steps.addDevice.text",
+  },
+  // -- Navigate to Variables: highlight sidebar nav first
+  {
+    id: "nav-variables",
+    page: "/devices",
+    target: "[data-tour='nav-variables']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navVariables.title",
+    text: "tours.onboarding.steps.navVariables.text",
   },
   {
     id: "variables",
@@ -63,6 +83,16 @@ const onboardingSteps: TourStep[] = [
     text: "tours.onboarding.steps.variables.text",
     delay: 600,
   },
+  // -- Navigate to Automations: highlight sidebar nav first
+  {
+    id: "nav-automations",
+    page: "/variables",
+    target: "[data-tour='nav-automations']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navAutomations.title",
+    text: "tours.onboarding.steps.navAutomations.text",
+  },
   {
     id: "automations",
     page: "/automations",
@@ -72,6 +102,16 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.automations.title",
     text: "tours.onboarding.steps.automations.text",
     delay: 600,
+  },
+  // -- Navigate to System Map: highlight sidebar nav first
+  {
+    id: "nav-system-map",
+    page: "/automations",
+    target: "[data-tour='nav-flow-editor']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navSystemMap.title",
+    text: "tours.onboarding.steps.navSystemMap.text",
   },
   {
     id: "system-map",
@@ -83,6 +123,16 @@ const onboardingSteps: TourStep[] = [
     text: "tours.onboarding.steps.systemMap.text",
     delay: 800,
   },
+  // -- Navigate to Dashboards: highlight sidebar nav first
+  {
+    id: "nav-dashboards",
+    page: "/flow-editor",
+    target: "[data-tour='nav-dashboards']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navDashboards.title",
+    text: "tours.onboarding.steps.navDashboards.text",
+  },
   {
     id: "dashboards",
     page: "/dashboards",
@@ -92,6 +142,16 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.dashboards.title",
     text: "tours.onboarding.steps.dashboards.text",
     delay: 600,
+  },
+  // -- Navigate to Settings: highlight sidebar nav first
+  {
+    id: "nav-settings",
+    page: "/dashboards",
+    target: "[data-tour='nav-settings']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navSettings.title",
+    text: "tours.onboarding.steps.navSettings.text",
   },
   {
     id: "settings",

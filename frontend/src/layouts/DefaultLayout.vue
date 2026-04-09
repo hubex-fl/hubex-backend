@@ -332,6 +332,7 @@ function handleNavClick() {
               v-show="!isGroupCollapsed(group.label)"
               :to="item.to"
               :title="item.label"
+              :data-tour="'nav-' + (item.to === '/' ? 'dashboard' : item.to.replace('/', ''))"
               :class="[
                 'flex items-center gap-2.5 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-lg text-sm transition-colors',
                 isNavActive(item.to)
@@ -410,6 +411,7 @@ function handleNavClick() {
               <router-link
                 v-else
                 :to="item.to"
+                :data-tour="'nav-' + (item.to === '/' ? 'dashboard' : item.to.replace('/', ''))"
                 :class="[
                   'flex items-center gap-3 px-4 py-3 mx-2 my-0.5 rounded-lg text-sm transition-colors',
                   isNavActive(item.to)

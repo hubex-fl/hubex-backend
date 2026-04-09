@@ -54,7 +54,7 @@ const formMethod = ref<"GET" | "POST">("GET");
 const formDescription = ref("");
 
 // Step 2 — Data Source (GET)
-const formSourceType = ref<"variables" | "devices" | "entities" | "alerts" | "events" | "status">("variables");
+const formSourceType = ref<"variables" | "devices" | "entities" | "alerts" | "events" | "status_snapshot">("variables");
 const formVariableKeys = ref("");
 const formDeviceFilter = ref("");
 const formAggregation = ref<"none" | "avg" | "min" | "max" | "sum">("none");
@@ -98,10 +98,9 @@ const sourceConfig = computed(() => {
     };
   }
   return {
-    type: "write",
-    target: formTargetType.value,
-    allowed_keys: formAllowedKeys.value ? formAllowedKeys.value.split(",").map(s => s.trim()).filter(Boolean) : [],
-    device_scope: formDeviceScope.value || null,
+    type: "set_variable",
+    allowed_variable_keys: formAllowedKeys.value ? formAllowedKeys.value.split(",").map(s => s.trim()).filter(Boolean) : [],
+    device_uid: formDeviceScope.value || null,
   };
 });
 
@@ -111,8 +110,15 @@ async function load() {
   error.value = null;
   try {
     endpoints.value = await listEndpoints();
-  } catch {
-    error.value = t("customApi.loadError");
+  } catch (e: unknown) {
+    // Distinguish real errors from empty state: if the API returns 404
+    // because the table doesn't exist yet, treat as empty list
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("404") || msg.includes("Not Found")) {
+      endpoints.value = [];
+    } else {
+      error.value = t("customApi.loadError");
+    }
   } finally {
     loading.value = false;
   }
@@ -164,9 +170,9 @@ function openEdit(ep: CustomEndpoint) {
     formFormat.value = (cfg.format as string || "json") as typeof formFormat.value;
   } else {
     formWriteEnabled.value = ep.write_enabled;
-    formTargetType.value = (cfg.target as string) || "set_variable";
-    formAllowedKeys.value = Array.isArray(cfg.allowed_keys) ? (cfg.allowed_keys as string[]).join(", ") : "";
-    formDeviceScope.value = (cfg.device_scope as string) || "";
+    formTargetType.value = (cfg.type as string) || "set_variable";
+    formAllowedKeys.value = Array.isArray(cfg.allowed_variable_keys) ? (cfg.allowed_variable_keys as string[]).join(", ") : "";
+    formDeviceScope.value = (cfg.device_uid as string) || "";
   }
 
   formAuthType.value = ep.auth_type;
@@ -179,9 +185,11 @@ async function handleSave() {
   saving.value = true;
   try {
     if (modalMode.value === "create") {
+      let path = formPath.value.trim();
+      if (!path.startsWith("/")) path = "/" + path;
       const data: EndpointCreate = {
         name: formName.value.trim(),
-        path: formPath.value.trim(),
+        path,
         method: formMethod.value,
         description: formDescription.value || null,
         source_config: sourceConfig.value,
@@ -369,7 +377,7 @@ onMounted(load);
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('customApi.title') }}</h1>
-          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" tourId="getting-started" />
+          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           {{ t('customApi.subtitle') }}
@@ -585,7 +593,7 @@ onMounted(load);
           <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.sourceTypeLabel') }}</label>
           <div class="grid grid-cols-3 gap-2">
             <button
-              v-for="src in ['variables', 'devices', 'entities', 'alerts', 'events', 'status'] as const"
+              v-for="src in ['variables', 'devices', 'entities', 'alerts', 'events', 'status_snapshot'] as const"
               :key="src"
               :class="[
                 'px-3 py-2 rounded-lg border text-xs font-medium transition-all text-center',

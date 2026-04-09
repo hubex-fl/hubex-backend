@@ -227,6 +227,7 @@ async def share_dashboard(
     if not d.public_token:
         d.public_token = secrets.token_urlsafe(32)
     d.sharing_mode = "public"
+    d.public_pin = None
     await db.commit()
     return {"public_token": d.public_token, "url": f"/public/{d.public_token}"}
 
