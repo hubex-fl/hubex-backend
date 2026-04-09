@@ -139,13 +139,15 @@ function handleCamera(payload: Record<string, unknown>) {
     }
     if (el) {
       const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 4.0);
+      const rect = el.getBoundingClientRect();
+      const vpRect = (viewport as HTMLElement).getBoundingClientRect();
 
-      // Scroll element into view first, then apply zoom
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-      setTimeout(() => {
-        (viewport as HTMLElement).style.transformOrigin = "center center";
-        (viewport as HTMLElement).style.transform = `scale(${zoom})`;
-      }, 300);
+      // Calculate element center relative to viewport container
+      const originX = rect.left - vpRect.left + rect.width / 2;
+      const originY = rect.top - vpRect.top + rect.height / 2;
+
+      (viewport as HTMLElement).style.transformOrigin = `${originX}px ${originY}px`;
+      (viewport as HTMLElement).style.transform = `scale(${zoom})`;
     }
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
