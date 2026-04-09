@@ -29,6 +29,7 @@ export interface Dashboard {
   owner_id: number;
   sharing_mode: "private" | "org" | "public";
   public_token: string | null;
+  has_pin: boolean;
   embed_config: EmbedConfig | null;
   kiosk_config: KioskConfig | null;
   created_at: string;
@@ -216,6 +217,10 @@ export async function shareDashboard(dashboardId: number): Promise<ShareResult> 
 
 export async function setDashboardPin(dashboardId: number, pin: string): Promise<{ ok: boolean; sharing_mode: string }> {
   return apiFetch(`${BASE}/${dashboardId}/share/pin?pin=${encodeURIComponent(pin)}`, { method: "POST" });
+}
+
+export async function deleteDashboardPin(dashboardId: number): Promise<{ ok: boolean; sharing_mode: string }> {
+  return apiFetch(`${BASE}/${dashboardId}/share/pin`, { method: "DELETE" });
 }
 
 export async function unshareDashboard(dashboardId: number): Promise<{ ok: boolean; sharing_mode: string }> {

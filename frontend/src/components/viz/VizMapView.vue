@@ -1,16 +1,16 @@
 <template>
   <!-- Leaflet map — lazy-loaded only when this component mounts -->
   <div class="viz-map" ref="mapRef" :style="{ height: computedHeight }">
-    <div v-if="!loaded && !noData && !loadError" class="map-loading">
+    <div v-if="!loaded && !noData && !loadError" class="map-overlay">
       <span class="map-icon">&#x1f5fa;</span>
       <span>Loading map...</span>
     </div>
-    <div v-if="noData && !loadError" class="map-no-data">
+    <div v-if="noData && !loadError" class="map-overlay map-no-data">
       <span class="map-icon">&#x1f4cd;</span>
       <span>No GPS data available</span>
-      <span class="map-hint">Send coordinates as <code>{ lat, lng }</code> to display a map.</span>
+      <span class="map-hint">Send coordinates as <code>{ lat, lng }</code> or <code>{ latitude, longitude }</code> to display a marker.</span>
     </div>
-    <div v-if="loadError" class="map-error">{{ loadError }}</div>
+    <div v-if="loadError" class="map-overlay map-error">{{ loadError }}</div>
   </div>
 </template>
 
@@ -37,6 +37,10 @@ let marker: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let resizeObserver: ResizeObserver | null = null;
 
+// Default center: Europe (approx center of EU)
+const DEFAULT_CENTER: [number, number] = [48.5, 10.0];
+const DEFAULT_ZOOM = 4;
+
 const computedHeight = computed(() => {
   return props.height ? `${props.height}px` : '100%';
 });
@@ -57,10 +61,7 @@ async function initMap() {
   if (!mapRef.value) return;
 
   const coords = parseCoords();
-  if (!coords) {
-    noData.value = true;
-    return;
-  }
+  noData.value = !coords;
 
   try {
     // Dynamic import — Leaflet only loads when map widget is actually used
@@ -77,28 +78,34 @@ async function initMap() {
 
     delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconUrl: markerIcon.default,
-      iconRetinaUrl: markerIcon2x.default,
-      shadowUrl: markerShadow.default,
+      iconUrl: markerIcon.default ?? markerIcon,
+      iconRetinaUrl: markerIcon2x.default ?? markerIcon2x,
+      shadowUrl: markerShadow.default ?? markerShadow,
     });
 
-    const center: [number, number] = [coords.lat, coords.lng];
+    const center: [number, number] = coords
+      ? [coords.lat, coords.lng]
+      : DEFAULT_CENTER;
+    const zoom = coords ? 13 : DEFAULT_ZOOM;
 
     mapInstance = L.map(mapRef.value, {
       zoomControl: true,
       attributionControl: true,
-    }).setView(center, 13);
+    }).setView(center, zoom);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      className: "map-tiles",
+    // Dark tile layer matching the app's dark theme
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 19,
     }).addTo(mapInstance);
 
-    marker = L.marker([coords.lat, coords.lng]).addTo(mapInstance);
-    if (coords.label) marker.bindPopup(coords.label).openPopup();
+    if (coords) {
+      marker = L.marker([coords.lat, coords.lng]).addTo(mapInstance);
+      if (coords.label) marker.bindPopup(coords.label).openPopup();
+    }
 
     loaded.value = true;
-    noData.value = false;
 
     // Invalidate size after the map container becomes visible / resizes
     await nextTick();
@@ -121,20 +128,23 @@ function updateMarker() {
   const coords = parseCoords();
 
   if (!coords) {
-    // Data became null — show no-data state
-    if (mapInstance) {
-      mapInstance.remove();
-      mapInstance = null;
+    // Data became null — remove marker, show no-data overlay but keep map
+    if (marker && mapInstance) {
+      marker.remove();
       marker = null;
     }
-    loaded.value = false;
     noData.value = true;
+    // If map exists, pan back to default view
+    if (mapInstance) {
+      mapInstance.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    }
     return;
   }
 
+  noData.value = false;
+
   // Data appeared but map not yet initialized — init now
   if (!mapInstance) {
-    noData.value = false;
     initMap();
     return;
   }
@@ -170,14 +180,19 @@ onUnmounted(() => {
   overflow: hidden;
   background: #161b22;
 }
-.map-loading, .map-error, .map-no-data {
+.map-overlay {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
   color: #8b949e; font-size: 13px;
+  z-index: 800; /* above Leaflet tiles (z-index ~400) but below controls */
+  pointer-events: none;
+}
+.map-no-data {
+  background: rgba(17, 17, 16, 0.55);
+  color: #8b949e;
 }
 .map-icon { font-size: 24px; }
-.map-error { color: #f85149; }
-.map-no-data { color: #8b949e; }
+.map-error { color: #f85149; background: rgba(17, 17, 16, 0.7); }
 .map-hint { font-size: 11px; color: #6e7681; margin-top: 2px; }
 .map-hint code {
   background: rgba(255,255,255,0.06);
@@ -189,10 +204,11 @@ onUnmounted(() => {
 </style>
 
 <style>
-/* Override Leaflet tiles for dark look */
-.map-tiles { filter: brightness(0.75) saturate(0.7); }
 /* Ensure Leaflet controls are visible on dark background */
 .leaflet-control-zoom a { background: #1c2128 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
 .leaflet-control-attribution { background: rgba(22, 27, 34, 0.8) !important; color: #8b949e !important; font-size: 10px !important; }
 .leaflet-control-attribution a { color: #58a6ff !important; }
+/* Fix Leaflet popup styling for dark theme */
+.leaflet-popup-content-wrapper { background: #1c2128 !important; color: #c9d1d9 !important; border-radius: 6px !important; }
+.leaflet-popup-tip { background: #1c2128 !important; }
 </style>

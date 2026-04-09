@@ -23,6 +23,7 @@ export interface SimulatorConfig {
   name: string;
   description: string | null;
   template: string | null;
+  device_id: number | null;
   device_uid: string | null;
   variable_patterns: VariablePattern[];
   interval_seconds: number;

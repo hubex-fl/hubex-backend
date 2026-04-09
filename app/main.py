@@ -167,6 +167,7 @@ async def lifespan(app: FastAPI):
         _COLUMN_PATCHES = [
             ("dashboards", "embed_config", "JSON"),
             ("dashboards", "kiosk_config", "JSON"),
+            ("custom_endpoints", "owner_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
         ]
         for table, col, col_type in _COLUMN_PATCHES:
             try:

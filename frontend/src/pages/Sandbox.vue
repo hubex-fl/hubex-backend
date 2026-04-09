@@ -282,6 +282,19 @@ async function handleSave() {
       const created = await createSimulator(data);
       simulators.value.push(created);
       toast.addToast(t("sandbox.created"), "success");
+
+      // Auto-start if checkbox was checked
+      if (formAutoStart.value && created.id) {
+        try {
+          const started = await startSimulator(created.id);
+          const idx = simulators.value.findIndex((s) => s.id === created.id);
+          if (idx >= 0) simulators.value[idx] = started;
+          toast.addToast(t("sandbox.started"), "success");
+        } catch {
+          // Creation succeeded but auto-start failed — user can start manually
+          toast.addToast(t("sandbox.startError"), "error");
+        }
+      }
     } else if (editId.value !== null) {
       const updated = await updateSimulator(editId.value, {
         name: formName.value.trim(),
@@ -514,7 +527,13 @@ onUnmounted(() => {
           >
             <div class="flex items-center gap-3 min-w-0">
               <div>
-                <p class="text-sm font-mono font-medium text-[var(--text-primary)]">{{ vp.variable_key }}</p>
+                <router-link
+                  :to="`/variables?key=${encodeURIComponent(vp.variable_key)}`"
+                  class="text-sm font-mono font-medium text-[var(--primary)] hover:underline"
+                  :title="t('sandbox.viewVariable')"
+                >
+                  {{ vp.variable_key }}
+                </router-link>
                 <p class="text-xs text-[var(--text-muted)]">{{ vp.pattern }}</p>
               </div>
             </div>
@@ -529,11 +548,12 @@ onUnmounted(() => {
         </div>
 
         <!-- View Device link -->
-        <div v-if="detailSim.device_uid" class="pt-2">
+        <div v-if="detailSim.device_uid && detailSim.device_id" class="pt-2">
           <router-link
-            :to="`/devices`"
-            class="text-sm text-[var(--primary)] hover:underline"
+            :to="`/devices/${detailSim.device_id}`"
+            class="inline-flex items-center gap-1.5 text-sm text-[var(--primary)] hover:underline"
           >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
             {{ t('sandbox.viewDevice') }} ({{ detailSim.device_uid }})
           </router-link>
         </div>

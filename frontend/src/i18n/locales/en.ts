@@ -1492,6 +1492,7 @@ export default {
     speed: 'Speed',
     variables: 'Variables',
     viewDevice: 'View Device',
+    viewVariable: 'View Variable',
     stepTemplate: 'Template',
     stepVariables: 'Variables',
     stepSettings: 'Settings',

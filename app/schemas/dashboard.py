@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class DashboardWidgetCreate(BaseModel):
@@ -78,6 +78,7 @@ class DashboardOut(BaseModel):
     owner_id: int
     sharing_mode: str
     public_token: Optional[str] = None
+    has_pin: bool = False
     embed_config: Optional[dict] = None
     kiosk_config: Optional[dict] = None
     created_at: datetime
@@ -85,6 +86,20 @@ class DashboardOut(BaseModel):
     widgets: list[DashboardWidgetOut] = []
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _compute_has_pin(cls, data, handler):
+        # When created from ORM object (from_attributes), read public_pin directly
+        if hasattr(data, "public_pin"):
+            instance = handler(data)
+            instance.has_pin = bool(data.public_pin)
+            return instance
+        # When created from dict
+        if isinstance(data, dict) and "public_pin" in data:
+            data = dict(data)
+            data["has_pin"] = bool(data.pop("public_pin"))
+        return handler(data)
 
 
 class DashboardSummaryOut(BaseModel):

@@ -256,6 +256,9 @@
         @dragleave="onWidgetDragLeave(widget)"
         @drop.prevent.stop="onWidgetDrop($event, widget)"
       >
+        <!-- Edit mode: transparent drag overlay so dragging works across the whole widget -->
+        <div v-if="editMode" class="widget-drag-overlay"></div>
+
         <!-- Edit mode controls -->
         <div v-if="editMode" class="widget-edit-controls">
           <span class="drag-handle" :title="t('dashboardEnhance.dragToReorder')">&#10303;</span>
@@ -572,6 +575,7 @@ import {
   deleteDashboard,
   shareDashboard,
   setDashboardPin,
+  deleteDashboardPin,
   unshareDashboard,
   updateEmbedConfig,
   updateKioskConfig,
@@ -809,6 +813,7 @@ async function loadDashboard() {
     // Sync share state
     shareMode.value = dashboard.value.sharing_mode === "private" ? "private" : "public";
     shareTab.value = shareMode.value;
+    pinEnabled.value = dashboard.value.has_pin || false;
     if (dashboard.value.public_token) {
       shareToken.value = dashboard.value.public_token;
       shareUrl.value = `${window.location.origin}/public/${shareToken.value}`;
@@ -944,10 +949,13 @@ function copyShareUrl() {
 
 async function handlePinToggle() {
   if (!pinEnabled.value) {
-    // Unset PIN by re-sharing without pin (backend clears public_pin)
+    // Remove PIN via dedicated endpoint: clears public_pin and reverts to "public"
     if (dashboard.value) {
-      await shareDashboard(dashboard.value.id);
-      dashboard.value.sharing_mode = "public";
+      try {
+        const result = await deleteDashboardPin(dashboard.value.id);
+        dashboard.value.sharing_mode = result.sharing_mode || "public";
+        dashboard.value.has_pin = false;
+      } catch { /* silent */ }
     }
     pinValue.value = "";
   }
@@ -1028,6 +1036,7 @@ function onWidgetDragEnd() {
 function onWidgetDragOver(e: DragEvent, widget: DashboardWidget) {
   if (!editMode.value || !dragWidgetId.value || dragWidgetId.value === widget.id) return;
   if (resizeWidgetId.value) return; // Don't interfere with resize
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
   dragOverWidgetId.value = widget.id;
 }
 
@@ -1076,6 +1085,44 @@ function onGridDrop(e: DragEvent) {
 
 // ── Resize ───────────────────────────────────────────────────────────────────
 
+/**
+ * Check whether a widget placed at (col, row) with size (spanW, spanH) would
+ * overlap any other widget on the dashboard. Returns true if overlap is found.
+ */
+function wouldOverlap(widgetId: number, col: number, row: number, spanW: number, spanH: number): boolean {
+  if (!dashboard.value) return false;
+  const endCol = col + spanW - 1;
+  const endRow = row + spanH - 1;
+  for (const other of dashboard.value.widgets) {
+    if (other.id === widgetId) continue;
+    const oEndCol = other.grid_col + other.grid_span_w - 1;
+    const oEndRow = other.grid_row + other.grid_span_h - 1;
+    // Two rectangles overlap when they intersect on BOTH axes
+    if (col <= oEndCol && endCol >= other.grid_col && row <= oEndRow && endRow >= other.grid_row) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Find the maximum width/height the widget can grow to before hitting another widget.
+ */
+function clampToNoOverlap(widget: DashboardWidget, desiredW: number, desiredH: number): { w: number; h: number } {
+  let bestW = widget.grid_span_w;
+  let bestH = widget.grid_span_h;
+  // Try expanding width first, then height
+  for (let w = widget.grid_span_w; w <= desiredW; w++) {
+    if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, w, bestH)) break;
+    bestW = w;
+  }
+  for (let h = widget.grid_span_h; h <= desiredH; h++) {
+    if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, bestW, h)) break;
+    bestH = h;
+  }
+  return { w: bestW, h: bestH };
+}
+
 function onResizeStart(e: DragEvent, widget: DashboardWidget) {
   resizeWidgetId.value = widget.id;
   resizeStartX.value = e.clientX;
@@ -1104,12 +1151,16 @@ function onResizeDrag(e: DragEvent, widget: DashboardWidget) {
   const dx = e.clientX - resizeStartX.value;
   const dy = e.clientY - resizeStartY.value;
 
-  const newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
-  const newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
+  let newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
+  let newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
 
-  // Clamp so widget doesn't exceed grid
-  widget.grid_span_w = Math.min(newW, 13 - widget.grid_col);
-  widget.grid_span_h = newH;
+  // Clamp so widget doesn't exceed grid columns
+  newW = Math.min(newW, 13 - widget.grid_col);
+
+  // Clamp so widget doesn't overlap other widgets
+  const clamped = clampToNoOverlap(widget, newW, newH);
+  widget.grid_span_w = clamped.w;
+  widget.grid_span_h = clamped.h;
 }
 
 function onResizeEnd(e: DragEvent, widget: DashboardWidget) {
@@ -1511,6 +1562,15 @@ function openAddWidget() {
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
 }
+
+/* Drag overlay: covers widget body in edit mode so drag works everywhere */
+.widget-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: grab;
+}
+.widget-drag-overlay:active { cursor: grabbing; }
 
 /* Edit controls: top bar on each widget */
 .widget-edit-controls {

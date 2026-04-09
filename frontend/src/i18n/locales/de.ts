@@ -1487,6 +1487,7 @@ export default {
     speed: 'Geschwindigkeit',
     variables: 'Variablen',
     viewDevice: 'Geraet anzeigen',
+    viewVariable: 'Variable anzeigen',
     stepTemplate: 'Vorlage',
     stepVariables: 'Variablen',
     stepSettings: 'Einstellungen',

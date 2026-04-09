@@ -247,6 +247,21 @@ async def set_dashboard_pin(
     return {"ok": True, "sharing_mode": "pin"}
 
 
+@router.delete("/{dashboard_id}/share/pin")
+async def delete_dashboard_pin(
+    dashboard_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove PIN protection from a shared dashboard, reverting to public mode."""
+    d = await _get_dashboard_or_404(dashboard_id, current_user.id, db)
+    d.public_pin = None
+    if d.sharing_mode == "pin":
+        d.sharing_mode = "public"
+    await db.commit()
+    return {"ok": True, "sharing_mode": d.sharing_mode}
+
+
 @router.post("/{dashboard_id}/unshare")
 async def unshare_dashboard(
     dashboard_id: int,

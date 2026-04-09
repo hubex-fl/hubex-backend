@@ -283,8 +283,9 @@ const panelStyle = computed(() => {
   const s: Record<string, string> = {};
   const borderColor = dc.value.border_color as string | undefined;
   const bgColor = dc.value.bg_color as string | undefined;
-  if (borderColor) s.borderColor = borderColor;
-  if (bgColor) s.background = bgColor;
+  // Only apply explicit user-set colors; empty/null/"transparent" = use theme CSS vars
+  if (borderColor && borderColor !== "transparent") s.borderColor = borderColor;
+  if (bgColor && bgColor !== "transparent") s.background = bgColor;
   return s;
 });
 
@@ -309,16 +310,16 @@ const shadowClass = computed(() => {
 <style scoped>
 /* ── Panel shell (Grafana-style) ──────────────────────── */
 .viz-widget {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-raised, #161b22);
+  border: 1px solid var(--border, #30363d);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.2s;
 }
 .viz-widget:hover {
-  border-color: #484f58;
+  border-color: var(--border-hover, #484f58);
 }
 .widget-compact {
   background: transparent;
@@ -344,7 +345,7 @@ const shadowClass = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px 6px;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--border, #21262d);
   flex-shrink: 0;
 }
 .widget-title-row {
@@ -361,7 +362,7 @@ const shadowClass = computed(() => {
 .widget-title {
   font-size: 12px;
   font-weight: 500;
-  color: #c9d1d9;
+  color: var(--text-primary, #c9d1d9);
   font-family: monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -369,13 +370,13 @@ const shadowClass = computed(() => {
 }
 .widget-unit {
   font-size: 11px;
-  color: #8b949e;
+  color: var(--text-secondary, #8b949e);
   flex-shrink: 0;
 }
 .widget-category {
   font-size: 10px;
-  color: #58a6ff;
-  background: #58a6ff11;
+  color: var(--status-info, #58a6ff);
+  background: var(--status-info-bg, #58a6ff11);
   padding: 1px 5px;
   border-radius: 10px;
   flex-shrink: 0;
@@ -391,14 +392,14 @@ const shadowClass = computed(() => {
 .time-range-tabs {
   display: flex;
   gap: 1px;
-  background: #21262d;
+  background: var(--bg-overlay, #21262d);
   border-radius: 4px;
   padding: 2px;
 }
 .tr-btn {
   padding: 2px 6px;
   font-size: 10px;
-  color: #8b949e;
+  color: var(--text-secondary, #8b949e);
   border-radius: 3px;
   border: none;
   background: transparent;
@@ -406,21 +407,21 @@ const shadowClass = computed(() => {
   transition: background 0.1s, color 0.1s;
   white-space: nowrap;
 }
-.tr-btn:hover   { background: #30363d; color: #c9d1d9; }
-.tr-btn.active  { background: #30363d; color: #58a6ff; }
+.tr-btn:hover   { background: var(--border, #30363d); color: var(--text-primary, #c9d1d9); }
+.tr-btn.active  { background: var(--border, #30363d); color: var(--status-info, #58a6ff); }
 
 /* ── Current value pill ─────────────────────────────────── */
 .widget-current {
   font-family: monospace;
   font-size: 12px;
-  color: #e6edf3;
+  color: var(--text-primary, #e6edf3);
   font-weight: 600;
 }
-.val-unit { color: #8b949e; font-weight: 400; margin-left: 2px; }
+.val-unit { color: var(--text-secondary, #8b949e); font-weight: 400; margin-left: 2px; }
 
 .widget-type-badge {
   font-size: 9px;
-  color: #484f58;
+  color: var(--text-muted, #484f58);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -438,7 +439,7 @@ const shadowClass = computed(() => {
 .widget-unknown {
   font-family: monospace;
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary, #8b949e);
   word-break: break-all;
 }
 .control-center {
@@ -459,7 +460,7 @@ const shadowClass = computed(() => {
 }
 .skel-bar {
   height: 8px;
-  background: linear-gradient(90deg, #21262d 25%, #30363d 50%, #21262d 75%);
+  background: linear-gradient(90deg, var(--bg-overlay, #21262d) 25%, var(--border, #30363d) 50%, var(--bg-overlay, #21262d) 75%);
   background-size: 200% 100%;
   border-radius: 4px;
   animation: skel-shimmer 1.4s infinite;
@@ -475,8 +476,8 @@ const shadowClass = computed(() => {
   gap: 6px;
   padding: 4px 12px 6px;
   font-size: 10px;
-  color: #484f58;
-  border-top: 1px solid #21262d;
+  color: var(--text-muted, #484f58);
+  border-top: 1px solid var(--border, #21262d);
   flex-shrink: 0;
 }
 </style>
