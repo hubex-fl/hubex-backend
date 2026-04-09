@@ -118,19 +118,13 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
 // ---- Camera zoom/pan handler ----
 
 function handleCamera(payload: Record<string, unknown>) {
-  // Target the dedicated camera viewport wrapper (wraps <main> content area)
-  const viewport =
-    document.getElementById("camera-viewport") ||
-    document.querySelector("main") ||
-    document.body;
   const action = payload.action as string;
   const duration = (payload.duration as number) || 800;
+  const body = document.body;
 
-  // Add smooth transition
-  (viewport as HTMLElement).style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+  body.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
 
   if (action === "zoom_to" && payload.selector) {
-    // Try each selector in a comma-separated list
     const selectors = (payload.selector as string).split(",").map((s) => s.trim());
     let el: Element | null = null;
     for (const sel of selectors) {
@@ -140,26 +134,22 @@ function handleCamera(payload: Record<string, unknown>) {
     if (el) {
       const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 4.0);
       const rect = el.getBoundingClientRect();
-      const vpRect = (viewport as HTMLElement).getBoundingClientRect();
+      const originX = rect.left + rect.width / 2;
+      const originY = rect.top + rect.height / 2;
 
-      // Calculate element center relative to viewport container
-      const originX = rect.left - vpRect.left + rect.width / 2;
-      const originY = rect.top - vpRect.top + rect.height / 2;
-
-      (viewport as HTMLElement).style.transformOrigin = `${originX}px ${originY}px`;
-      (viewport as HTMLElement).style.transform = `scale(${zoom})`;
+      body.style.transformOrigin = `${originX}px ${originY}px`;
+      body.style.transform = `scale(${zoom})`;
+      body.style.overflow = "hidden";
     }
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
     const y = (payload.y as number) || 0;
-    (viewport as HTMLElement).style.transform = `translate(${x}px, ${y}px)`;
+    body.style.transform = `translate(${x}px, ${y}px)`;
   } else if (action === "reset") {
-    (viewport as HTMLElement).style.transform = "";
-    (viewport as HTMLElement).style.transformOrigin = "";
-    // Clean up after transition
-    setTimeout(() => {
-      (viewport as HTMLElement).style.transition = "";
-    }, duration);
+    body.style.transform = "";
+    body.style.transformOrigin = "";
+    body.style.overflow = "";
+    setTimeout(() => { body.style.transition = ""; }, duration);
   }
 }
 

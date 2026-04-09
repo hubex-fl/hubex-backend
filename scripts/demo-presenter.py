@@ -40,7 +40,7 @@ except ImportError:
 FULL_SEQUENCE: list[dict[str, Any]] = [
     # ── Act 1: Welcome (12s) ────────────────────────────────────────────
     {"act": 1, "label": "Welcome", "delay": 1, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, .kpi-card:first-child", "zoom": 1.8, "duration": 1000},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-card, .kpi-card:first-child", "zoom": 1.8, "duration": 1000},
     {"delay": 2, "action": "highlight", "selector": ".kpi-card:first-child", "message": "Echtzeit-Ueberblick: Devices, Alerts, Events", "duration": 4},
     {"delay": 4, "action": "camera", "camera_action": "reset", "duration": 600},
 
@@ -83,7 +83,7 @@ FULL_SEQUENCE: list[dict[str, Any]] = [
 SHORT_SEQUENCE: list[dict[str, Any]] = [
     # Condensed ~40 second version with camera
     {"act": 1, "label": "Welcome", "delay": 1, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, .kpi-card:first-child", "zoom": 1.5, "duration": 800},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-card, .kpi-card:first-child", "zoom": 1.5, "duration": 800},
     {"delay": 2, "action": "highlight", "selector": ".kpi-card:first-child", "message": "Echtzeit-Ueberblick ueber alle Geraete", "duration": 3},
     {"delay": 3, "action": "camera", "camera_action": "reset", "duration": 500},
 
@@ -107,7 +107,7 @@ SHORT_SEQUENCE: list[dict[str, Any]] = [
 TEASER_SEQUENCE: list[dict[str, Any]] = [
     # Ultra-short ~15 second teaser with camera
     {"act": 1, "label": "Dashboard", "delay": 1, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, h1", "zoom": 1.5, "duration": 800},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-card, h1", "zoom": 1.5, "duration": 800},
     {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "HubEx - der universelle IoT Device Hub", "duration": 3},
     {"delay": 3, "action": "camera", "camera_action": "reset", "duration": 500},
 
