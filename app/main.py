@@ -159,6 +159,37 @@ async def lifespan(app: FastAPI):
     # Auto-create all tables on fresh database
     from app.db.base import Base
     async with engine.begin() as conn:
+        # ── Schema migration safety: drop tables with stale columns ────
+        # custom_endpoints was created with an old schema (route_path, response_mapping, etc.)
+        # that doesn't match the current model (source_config, auth_type, api_key, etc.).
+        # Detect the old schema and drop + recreate to fix 500 errors on all queries.
+        try:
+            old_check = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='custom_endpoints'"
+            ))
+            ce_columns = [r[0] for r in old_check]
+            if ce_columns and 'route_path' in ce_columns and 'source_config' not in ce_columns:
+                logger.warning("startup: custom_endpoints has old schema — dropping for rebuild")
+                await conn.execute(text("DROP TABLE IF EXISTS custom_endpoints CASCADE"))
+                await conn.commit()
+        except Exception:
+            pass  # table doesn't exist yet — create_all will handle it
+
+        # simulator_configs: verify it has the expected columns
+        try:
+            sim_check = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='simulator_configs'"
+            ))
+            sim_columns = [r[0] for r in sim_check]
+            if sim_columns and 'variable_patterns' not in sim_columns:
+                logger.warning("startup: simulator_configs has old schema — dropping for rebuild")
+                await conn.execute(text("DROP TABLE IF EXISTS simulator_configs CASCADE"))
+                await conn.commit()
+        except Exception:
+            pass
+
         await conn.run_sync(Base.metadata.create_all)
 
         # Safety net: add columns that create_all cannot add to existing tables.

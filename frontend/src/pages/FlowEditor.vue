@@ -177,7 +177,7 @@ const EDGE_COLORS: Record<string, string> = {
 
 // ── Layout constants ───────────────────────────────────────────────────────
 
-const COL_X = [60, 300, 560, 820]; // 4 columns
+const COL_X = [60, 370, 680, 990]; // 4 columns — 310/310/310 gaps for readability
 const NODE_W = 180;
 const NODE_H_DEVICE = 50;
 const NODE_H_SMALL = 42;
@@ -349,34 +349,37 @@ async function loadSystemGraph() {
       });
       y += NODE_H_SMALL + ROW_GAP;
 
-      // Connect device-scoped variables to devices
+      // Connect variables to their owning device (if any)
       if (v.scope === "device") {
-        // If the variable has a specific device_uid, connect only to that device
+        // 1. Check explicit device_uid from API
         const varDeviceUid = (v as Record<string, unknown>).device_uid as string | undefined;
+        // 2. Parse key prefix: keys like "esp32-001.temperature" → device_uid = "esp32-001"
+        const dotIdx = v.key.indexOf(".");
+        const keyPrefix = dotIdx > 0 ? v.key.substring(0, dotIdx) : null;
+
+        let matchDevice: ApiDevice | undefined;
+
         if (varDeviceUid) {
-          const matchDevice = devices.find(
+          matchDevice = devices.find(
             (d) => d.device_uid === varDeviceUid || String(d.id) === varDeviceUid
           );
-          if (matchDevice) {
-            newEdges.push({
-              id: `edge-dev-var-${matchDevice.id}-${v.key}`,
-              from: `device-${matchDevice.id}`,
-              to: nodeId,
-              type: "data",
-            });
-          }
-        } else {
-          // Device-scoped variable definitions apply to all devices
-          for (const d of devices) {
-            newEdges.push({
-              id: `edge-dev-var-${d.id}-${v.key}`,
-              from: `device-${d.id}`,
-              to: nodeId,
-              type: "data",
-            });
-          }
+        } else if (keyPrefix) {
+          matchDevice = devices.find((d) => d.device_uid === keyPrefix);
         }
+
+        if (matchDevice) {
+          // Connect only to the owning device
+          newEdges.push({
+            id: `edge-dev-var-${matchDevice.id}-${v.key}`,
+            from: `device-${matchDevice.id}`,
+            to: nodeId,
+            type: "data",
+          });
+        }
+        // If no device match found, this device-scoped variable is orphaned — no edge drawn.
+        // This avoids the N*M explosion of connecting every device to every variable.
       }
+      // Global variables (scope != "device") get no device edges — they stand alone.
     }
 
     // ── Column 3: Automations + Alert Rules ────────────────────────────
@@ -785,6 +788,59 @@ function onNodeDragEnd() {
   dragStarted.value = false;
   document.removeEventListener("mousemove", onNodeDragMove);
   document.removeEventListener("mouseup", onNodeDragEnd);
+}
+
+// ── Touch support for node dragging ─────────────────────────────────────
+
+function onNodeTouchStart(e: TouchEvent, node: FlowNode) {
+  if (e.touches.length !== 1) return;
+  e.stopPropagation();
+  e.preventDefault(); // prevent canvas pan from taking over
+  draggingNodeId.value = node.id;
+  dragStarted.value = false;
+  const touch = e.touches[0];
+  dragStartPos.value = { x: touch.clientX, y: touch.clientY };
+  const nodeX = customPositions.value[node.id]?.x ?? node.x;
+  const nodeY = customPositions.value[node.id]?.y ?? node.y;
+  dragOffset.value = {
+    x: touch.clientX / zoom.value - nodeX,
+    y: touch.clientY / zoom.value - nodeY,
+  };
+  document.addEventListener("touchmove", onNodeTouchMove, { passive: false });
+  document.addEventListener("touchend", onNodeTouchEnd);
+  document.addEventListener("touchcancel", onNodeTouchEnd);
+}
+
+function onNodeTouchMove(e: TouchEvent) {
+  if (!draggingNodeId.value || e.touches.length !== 1) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  if (!dragStarted.value) {
+    const dx = touch.clientX - dragStartPos.value.x;
+    const dy = touch.clientY - dragStartPos.value.y;
+    if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+    dragStarted.value = true;
+  }
+  const newX = touch.clientX / zoom.value - dragOffset.value.x;
+  const newY = touch.clientY / zoom.value - dragOffset.value.y;
+  customPositions.value[draggingNodeId.value] = { x: newX, y: newY };
+  const node = nodes.value.find((n) => n.id === draggingNodeId.value);
+  if (node) {
+    node.x = newX;
+    node.y = newY;
+  }
+}
+
+function onNodeTouchEnd() {
+  if (!dragStarted.value && draggingNodeId.value) {
+    const node = nodes.value.find((n) => n.id === draggingNodeId.value);
+    if (node) selectNode(node);
+  }
+  draggingNodeId.value = null;
+  dragStarted.value = false;
+  document.removeEventListener("touchmove", onNodeTouchMove);
+  document.removeEventListener("touchend", onNodeTouchEnd);
+  document.removeEventListener("touchcancel", onNodeTouchEnd);
 }
 
 function fitToView() {
@@ -1352,6 +1408,7 @@ function applyLayout() {
             @dblclick.stop="navigateToNode(node)"
             @contextmenu="onNodeContextMenu($event, node)"
             @mousedown.stop="onNodeMouseDown($event, node)"
+            @touchstart.stop="onNodeTouchStart($event, node)"
             @mouseenter="hoveredNode = node.id"
             @mouseleave="hoveredNode = null"
           >
