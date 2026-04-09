@@ -83,8 +83,18 @@ async def execute_tool(
     user_id = user.id
     org_id = getattr(user, "org_id", None)
 
-    # Capability check (skip for now if user has no caps attribute — JWT users)
+    # Capability check — resolve caps from user role or API key
+    # JWT-authenticated users (via bridge) get full caps based on their role
     user_caps = set(getattr(user, "_mcp_caps", []))
+    if not user_caps:
+        # No explicit MCP caps → user logged in via JWT. Grant based on role.
+        # Owner/admin users get all capabilities.
+        from app.core.capabilities import resolve_caps_for_role
+        try:
+            role = getattr(user, "_role", None) or "owner"  # default to owner for MCP
+            user_caps = set(resolve_caps_for_role(role))
+        except Exception:
+            user_caps = {"mcp.read", "mcp.execute"}  # safe fallback
     cap_error = _check_caps(tool_name, user_caps)
     if cap_error:
         return {"error": cap_error}
