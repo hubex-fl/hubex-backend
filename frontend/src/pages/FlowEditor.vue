@@ -292,11 +292,14 @@ async function loadSystemGraph() {
     const alertRules = alertRes.status === "fulfilled" ? alertRes.value : [];
     const webhooks = whRes.status === "fulfilled" ? whRes.value : [];
 
-    // Build variable→device ownership map by fetching per-device variables
+    // Build variable→device ownership map by fetching per-device variables.
+    // The API returns ALL variable definitions for every device, so we filter
+    // to only variables that have actual data (value !== null) — those are
+    // the ones the device truly owns/populates.
     const varToDeviceUid: Record<string, string> = {};
     const deviceVarResults = await Promise.allSettled(
       devices.map((d) =>
-        apiFetch<{ device_uid: string; device: Array<{ key: string }> }>(
+        apiFetch<{ device_uid: string; device: Array<{ key: string; value: unknown }> }>(
           `/api/v1/variables/device/${encodeURIComponent(d.device_uid)}`
         ).then((res) => ({ device_uid: d.device_uid, vars: res.device || [] }))
       )
@@ -304,7 +307,10 @@ async function loadSystemGraph() {
     for (const r of deviceVarResults) {
       if (r.status === "fulfilled") {
         for (const v of r.value.vars) {
-          varToDeviceUid[v.key] = r.value.device_uid;
+          // Only count variables that have actual data from this device
+          if (v.value != null && !varToDeviceUid[v.key]) {
+            varToDeviceUid[v.key] = r.value.device_uid;
+          }
         }
       }
     }
