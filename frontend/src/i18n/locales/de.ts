@@ -1712,4 +1712,9 @@ export default {
     logStatus: 'Status',
     logDuration: 'Dauer',
   },
+  aiCoop: {
+    title: 'AI Coop-Modus',
+    badge: 'AI Coop',
+    logTitle: 'Letzte KI-Aktionen',
+  },
 };

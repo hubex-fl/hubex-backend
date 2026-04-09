@@ -17,7 +17,9 @@ import NotificationBell from "../components/NotificationBell.vue";
 import WelcomeScreen from "../components/WelcomeScreen.vue";
 import TourOverlay from "../components/tour/TourOverlay.vue";
 import TourLauncher from "../components/tour/TourLauncher.vue";
+import AiCoopIndicator from "../components/AiCoopIndicator.vue";
 import { useWebSocket } from "../composables/useWebSocket";
+import { handleAiCommand } from "../composables/useAiCommands";
 import { usePreferencesStore } from "../stores/preferences";
 import { useTourStore } from "../stores/tour";
 import { registerBuiltinTours } from "../lib/tours/builtin-tours";
@@ -74,6 +76,8 @@ onMounted(async () => {
   themeStore.initFromStorage();
   refreshCapabilities(signal);
   ws.start();
+  // Wire AI Coop command handler
+  ws.onUiCommand((cmd) => handleAiCommand(cmd));
   // Register built-in guided tours
   registerBuiltinTours((tour) => tourStore.registerTour(tour));
   // Load org branding on page refresh (when already logged in)
@@ -622,6 +626,9 @@ function handleNavClick() {
 
     <!-- Tour Overlay (global, teleports to body) -->
     <TourOverlay />
+
+    <!-- AI Coop Indicator (bottom-left floating badge) -->
+    <AiCoopIndicator />
   </div>
 </template>
 

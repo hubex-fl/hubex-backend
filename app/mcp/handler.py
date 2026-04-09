@@ -5,6 +5,7 @@ Each tool maps to internal HUBEX operations using the same
 SQLAlchemy models and business logic as the REST API.
 """
 
+import uuid as _uuid
 from typing import Any
 
 from sqlalchemy import func, select
@@ -12,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.alerts import AlertEvent, AlertRule
 from app.db.models.automation import AutomationRule
-from app.db.models.dashboard import Dashboard
+from app.db.models.dashboard import Dashboard, DashboardWidget
 from app.db.models.device import Device
 from app.db.models.semantic_type import SemanticType
 from app.db.models.variables import VariableDefinition, VariableValue, VariableHistory
+from app.realtime import user_hub
 
 
 async def execute_tool(
@@ -56,6 +58,26 @@ async def execute_tool(
         return await _list_dashboards(db, user_id)
     elif tool_name == "hubex_list_semantic_types":
         return await _list_semantic_types(db)
+    # ── AI Coop: UI command tools ────────────────────────────────────────
+    elif tool_name == "hubex_navigate":
+        return await _ui_navigate(user_id, arguments)
+    elif tool_name == "hubex_start_tour":
+        return await _ui_start_tour(user_id, arguments)
+    elif tool_name == "hubex_highlight_element":
+        return await _ui_highlight(user_id, arguments)
+    elif tool_name == "hubex_fly_to_node":
+        return await _ui_fly_to_node(user_id, arguments)
+    elif tool_name == "hubex_show_notification":
+        return await _ui_notification(user_id, arguments)
+    # ── AI Coop: CRUD tools ──────────────────────────────────────────────
+    elif tool_name == "hubex_create_device":
+        return await _create_device(db, user_id, arguments)
+    elif tool_name == "hubex_create_automation":
+        return await _create_automation(db, user_id, arguments)
+    elif tool_name == "hubex_create_dashboard":
+        return await _create_dashboard(db, user_id, arguments)
+    elif tool_name == "hubex_create_alert_rule":
+        return await _create_alert_rule(db, user_id, arguments)
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
@@ -344,4 +366,167 @@ async def _list_semantic_types(db: AsyncSession) -> dict:
             for t in types
         ],
         "count": len(types),
+    }
+
+
+# ---------------------------------------------------------------------------
+# AI Coop — UI command tools
+# ---------------------------------------------------------------------------
+
+
+async def _ui_navigate(user_id: int, args: dict) -> dict:
+    path = args["path"]
+    await user_hub.send_ui_command(user_id, "navigate", {"path": path})
+    return {"success": True, "command": "navigate", "path": path}
+
+
+async def _ui_start_tour(user_id: int, args: dict) -> dict:
+    tour_id = args["tour_id"]
+    await user_hub.send_ui_command(user_id, "start_tour", {"tour_id": tour_id})
+    return {"success": True, "command": "start_tour", "tour_id": tour_id}
+
+
+async def _ui_highlight(user_id: int, args: dict) -> dict:
+    selector = args["selector"]
+    message = args.get("message", "")
+    duration = args.get("duration", 3)
+    await user_hub.send_ui_command(user_id, "highlight", {
+        "selector": selector,
+        "message": message,
+        "duration": duration,
+    })
+    return {"success": True, "command": "highlight", "selector": selector}
+
+
+async def _ui_fly_to_node(user_id: int, args: dict) -> dict:
+    node_id = args["node_id"]
+    await user_hub.send_ui_command(user_id, "fly_to_node", {"node_id": node_id})
+    return {"success": True, "command": "fly_to_node", "node_id": node_id}
+
+
+async def _ui_notification(user_id: int, args: dict) -> dict:
+    message = args["message"]
+    notif_type = args.get("type", "info")
+    await user_hub.send_ui_command(user_id, "notification", {
+        "message": message,
+        "type": notif_type,
+    })
+    return {"success": True, "command": "notification", "message": message}
+
+
+# ---------------------------------------------------------------------------
+# AI Coop — CRUD tools
+# ---------------------------------------------------------------------------
+
+
+async def _create_device(db: AsyncSession, user_id: int, args: dict) -> dict:
+    name = args["name"]
+    device_type = args["device_type"]
+    device_uid = f"ai-{_uuid.uuid4().hex[:12]}"
+    device = Device(
+        device_uid=device_uid,
+        name=name,
+        device_type=device_type,
+        owner_user_id=user_id,
+    )
+    db.add(device)
+    await db.commit()
+    await db.refresh(device)
+    # Push a refresh event so the UI updates
+    await user_hub.send_ui_command(user_id, "refresh", {})
+    return {
+        "success": True,
+        "device_id": device.id,
+        "device_uid": device.device_uid,
+        "name": device.name,
+        "device_type": device.device_type,
+    }
+
+
+async def _create_automation(db: AsyncSession, user_id: int, args: dict) -> dict:
+    from app.db.models.user import User
+    # Resolve org_id from user
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalar_one_or_none()
+    org_id = getattr(user, "org_id", None) if user else None
+
+    rule = AutomationRule(
+        org_id=org_id,
+        name=args["name"],
+        trigger_type=args["trigger_type"],
+        trigger_config=args.get("trigger_config", {}),
+        action_type=args["action_type"],
+        action_config=args.get("action_config", {}),
+        enabled=args.get("enabled", True),
+    )
+    db.add(rule)
+    await db.commit()
+    await db.refresh(rule)
+    await user_hub.send_ui_command(user_id, "refresh", {})
+    return {
+        "success": True,
+        "rule_id": rule.id,
+        "name": rule.name,
+        "trigger_type": rule.trigger_type,
+        "action_type": rule.action_type,
+        "enabled": rule.enabled,
+    }
+
+
+async def _create_dashboard(db: AsyncSession, user_id: int, args: dict) -> dict:
+    dashboard = Dashboard(
+        name=args["name"],
+        owner_id=user_id,
+    )
+    db.add(dashboard)
+    await db.flush()  # get the dashboard.id
+
+    widgets_data = args.get("widgets", [])
+    created_widgets = []
+    for idx, w in enumerate(widgets_data):
+        widget = DashboardWidget(
+            dashboard_id=dashboard.id,
+            widget_type=w.get("widget_type", "sparkline"),
+            variable_key=w.get("variable_key"),
+            device_uid=w.get("device_uid"),
+            label=w.get("label"),
+            sort_order=idx,
+        )
+        db.add(widget)
+        created_widgets.append(widget)
+
+    await db.commit()
+    await db.refresh(dashboard)
+    await user_hub.send_ui_command(user_id, "refresh", {})
+    return {
+        "success": True,
+        "dashboard_id": dashboard.id,
+        "name": dashboard.name,
+        "widgets_count": len(created_widgets),
+    }
+
+
+async def _create_alert_rule(db: AsyncSession, user_id: int, args: dict) -> dict:
+    from app.db.models.user import User
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalar_one_or_none()
+    org_id = getattr(user, "org_id", None) if user else None
+
+    rule = AlertRule(
+        name=args["name"],
+        condition_type=args["condition_type"],
+        condition_config=args.get("condition_config", {}),
+        severity=args.get("severity", "warning"),
+        org_id=org_id,
+    )
+    db.add(rule)
+    await db.commit()
+    await db.refresh(rule)
+    await user_hub.send_ui_command(user_id, "refresh", {})
+    return {
+        "success": True,
+        "rule_id": rule.id,
+        "name": rule.name,
+        "condition_type": rule.condition_type,
+        "severity": rule.severity,
     }

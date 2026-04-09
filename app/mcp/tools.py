@@ -194,6 +194,166 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
         "description": "List all semantic types. Semantic types define what a variable represents (temperature, humidity, GPS, etc.) with units, triggers, and visualization hints.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+
+    # ── AI Coop: UI Navigation & Control ─────────────────────────────────
+    {
+        "name": "hubex_navigate",
+        "description": "Navigate the HUBEX UI to a specific page.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Route path, e.g. /devices, /dashboards/7, /flow-editor",
+                },
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "hubex_start_tour",
+        "description": "Start a guided tour in the UI.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "tour_id": {
+                    "type": "string",
+                    "description": "Tour ID: getting-started, data-path-trace, dashboard-present, alert-investigation",
+                },
+            },
+            "required": ["tour_id"],
+        },
+    },
+    {
+        "name": "hubex_highlight_element",
+        "description": "Highlight a UI element with a spotlight effect.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector or data-tour attribute",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Optional tooltip message to show",
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Duration in seconds (default 3)",
+                },
+            },
+            "required": ["selector"],
+        },
+    },
+    {
+        "name": "hubex_fly_to_node",
+        "description": "On the System Map, fly camera to a specific node and highlight it.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "node_id": {
+                    "type": "string",
+                    "description": "Node ID like device-1, var-temperature, auto-5",
+                },
+            },
+            "required": ["node_id"],
+        },
+    },
+    {
+        "name": "hubex_show_notification",
+        "description": "Show a toast notification in the UI.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string"},
+                "type": {
+                    "type": "string",
+                    "enum": ["info", "success", "warning", "error"],
+                },
+            },
+            "required": ["message"],
+        },
+    },
+
+    # ── AI Coop: CRUD Operations ─────────────────────────────────────────
+    {
+        "name": "hubex_create_device",
+        "description": "Register a new virtual device.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "device_type": {
+                    "type": "string",
+                    "enum": ["hardware", "service", "bridge", "agent"],
+                },
+            },
+            "required": ["name", "device_type"],
+        },
+    },
+    {
+        "name": "hubex_create_automation",
+        "description": "Create an automation rule.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "trigger_type": {
+                    "type": "string",
+                    "enum": ["variable_threshold", "device_offline", "schedule", "event"],
+                },
+                "trigger_config": {"type": "object"},
+                "action_type": {
+                    "type": "string",
+                    "enum": ["create_alert_event", "call_webhook", "set_variable", "send_email"],
+                },
+                "action_config": {"type": "object"},
+                "enabled": {"type": "boolean"},
+            },
+            "required": ["name", "trigger_type", "action_type"],
+        },
+    },
+    {
+        "name": "hubex_create_dashboard",
+        "description": "Create a new dashboard with widgets.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "widgets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "widget_type": {"type": "string"},
+                            "variable_key": {"type": "string"},
+                            "device_uid": {"type": "string"},
+                            "label": {"type": "string"},
+                        },
+                    },
+                },
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "hubex_create_alert_rule",
+        "description": "Create an alert rule.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "condition_type": {"type": "string"},
+                "condition_config": {"type": "object"},
+                "severity": {
+                    "type": "string",
+                    "enum": ["info", "warning", "critical"],
+                },
+            },
+            "required": ["name", "condition_type"],
+        },
+    },
 ]
 
 

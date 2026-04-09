@@ -56,6 +56,11 @@ class UserHub:
         """Push a notification envelope to a specific user."""
         await self.push(user_id, {"type": "notification", "data": notification})
 
+    async def send_ui_command(self, user_id: int, command: str, payload: dict) -> None:
+        """Send an AI Coop UI command to all browser sessions of this user."""
+        msg = {"type": "ui_command", "command": command, "payload": payload}
+        await self.push(user_id, msg)
+
     async def broadcast_event(self, channel: str, payload: dict) -> None:
         """Broadcast a channel event to ALL connected users."""
         msg = {"type": "event", "channel": channel, "data": payload}

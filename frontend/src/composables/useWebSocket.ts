@@ -9,7 +9,7 @@
 import { ref, computed, onUnmounted } from "vue";
 import { getToken } from "../lib/api";
 
-export type WsMessageType = "connected" | "ping" | "notification" | "event";
+export type WsMessageType = "connected" | "ping" | "notification" | "event" | "ui_command";
 
 export interface WsNotification {
   id: number;
@@ -22,21 +22,30 @@ export interface WsNotification {
   read_at: string | null;
 }
 
+export interface WsUiCommand {
+  command: string;
+  payload: Record<string, unknown>;
+}
+
 export interface WsMessage {
   type: WsMessageType;
   user_id?: number;
   channel?: string;
+  command?: string;
+  payload?: Record<string, unknown>;
   data?: WsNotification | Record<string, unknown>;
 }
 
 type NotificationHandler = (n: WsNotification) => void;
 type EventHandler = (channel: string, data: Record<string, unknown>) => void;
+type UiCommandHandler = (cmd: WsUiCommand) => void;
 
 // ---- Module-level singleton state ----
 const isConnected = ref(false);
 const lastError = ref<string | null>(null);
 const notificationHandlers = new Set<NotificationHandler>();
 const eventHandlers = new Set<EventHandler>();
+const uiCommandHandlers = new Set<UiCommandHandler>();
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,6 +81,9 @@ function connect(): void {
         notificationHandlers.forEach((h) => h(msg.data as WsNotification));
       } else if (msg.type === "event" && msg.channel && msg.data) {
         eventHandlers.forEach((h) => h(msg.channel!, msg.data as Record<string, unknown>));
+      } else if (msg.type === "ui_command" && msg.command) {
+        const cmd: WsUiCommand = { command: msg.command, payload: msg.payload || {} };
+        uiCommandHandlers.forEach((h) => h(cmd));
       }
     } catch {
       // ignore parse errors
@@ -132,6 +144,11 @@ export function useWebSocket() {
     return () => eventHandlers.delete(handler);
   }
 
+  function onUiCommand(handler: UiCommandHandler): () => void {
+    uiCommandHandlers.add(handler);
+    return () => uiCommandHandlers.delete(handler);
+  }
+
   return {
     isConnected: computed(() => isConnected.value),
     lastError: computed(() => lastError.value),
@@ -139,5 +156,6 @@ export function useWebSocket() {
     stop,
     onNotification,
     onEvent,
+    onUiCommand,
   };
 }
