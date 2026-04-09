@@ -1,14 +1,18 @@
-"""System endpoints — health, demo data, edition limits."""
+"""System endpoints — health, demo data, edition limits, demo presenter."""
 
+import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.api.deps_auth import get_current_user
 from app.core.config import settings
+from app.db.models.user import User
+from app.realtime import user_hub
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -200,3 +204,92 @@ async def reset_all_data(
 
     await db.commit()
     return {"status": "ok", "deleted": summary}
+
+
+# ---------------------------------------------------------------------------
+# Demo Presenter — automated demo sequences via MCP UI commands
+# ---------------------------------------------------------------------------
+
+DEMO_SEQUENCES: dict[str, list[dict[str, Any]]] = {
+    "teaser": [
+        {"delay": 1, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "camera", "payload": {"action": "zoom_to", "selector": ".kpi-card:first-child, .stat-card:first-child, [data-tour='dashboard-kpi']", "zoom": 2.0}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Echtzeit IoT Dashboard", "duration": 4}},
+        {"delay": 4, "command": "camera", "payload": {"action": "reset"}},
+        {"delay": 2, "command": "navigate", "payload": {"path": "/flow-editor"}},
+        {"delay": 3, "command": "fly_to_node", "payload": {"node_id": "device-1"}},
+        {"delay": 3, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "HubEx \u2014 Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 6}},
+    ],
+    "short": [
+        {"delay": 1, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "notification", "payload": {"message": "Demo gestartet: Kurzvorstellung", "type": "info"}},
+        {"delay": 2, "command": "camera", "payload": {"action": "zoom_to", "selector": ".kpi-card:first-child, .stat-card:first-child, [data-tour='dashboard-kpi']", "zoom": 2.0}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Echtzeit-Dashboard mit Live-KPIs", "duration": 3}},
+        {"delay": 4, "command": "camera", "payload": {"action": "reset"}},
+        {"delay": 2, "command": "navigate", "payload": {"path": "/devices"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": ".device-card:first-child, tr:first-child", "message": "Devices verwalten: Hardware, Services, Bridges, Agents", "duration": 4}},
+        {"delay": 5, "command": "navigate", "payload": {"path": "/flow-editor"}},
+        {"delay": 3, "command": "fly_to_node", "payload": {"node_id": "device-1"}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/automations"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Automationen: IF-THEN Regeln", "duration": 3}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "notification", "payload": {"message": "Demo abgeschlossen", "type": "success"}},
+    ],
+    "full": [
+        {"delay": 1, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "notification", "payload": {"message": "Vollst\u00e4ndige Demo gestartet", "type": "info"}},
+        {"delay": 2, "command": "camera", "payload": {"action": "zoom_to", "selector": ".kpi-card:first-child, .stat-card:first-child, [data-tour='dashboard-kpi']", "zoom": 2.0}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Echtzeit IoT Dashboard", "duration": 4}},
+        {"delay": 5, "command": "camera", "payload": {"action": "reset"}},
+        {"delay": 2, "command": "navigate", "payload": {"path": "/devices"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": ".device-card:first-child, tr:first-child", "message": "1. Anbinden: Devices registrieren", "duration": 4}},
+        {"delay": 5, "command": "navigate", "payload": {"path": "/variables"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "2. Verstehen: Variablen & Daten", "duration": 4}},
+        {"delay": 5, "command": "navigate", "payload": {"path": "/dashboards"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "3. Visualisieren: Dashboards", "duration": 4}},
+        {"delay": 5, "command": "navigate", "payload": {"path": "/automations"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "4. Automatisieren: IF-THEN Regeln", "duration": 4}},
+        {"delay": 5, "command": "navigate", "payload": {"path": "/flow-editor"}},
+        {"delay": 3, "command": "fly_to_node", "payload": {"node_id": "device-1"}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/alerts"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Alerts & Monitoring", "duration": 3}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/webhooks"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Webhooks & Integrationen", "duration": 3}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 2, "command": "notification", "payload": {"message": "Demo abgeschlossen. HubEx \u2014 Anbinden. Verstehen. Visualisieren. Automatisieren.", "type": "success"}},
+    ],
+}
+
+
+async def _run_demo_sequence(user_id: int, sequence: str, speed: float) -> None:
+    """Execute a demo presentation sequence via UI commands."""
+    steps = DEMO_SEQUENCES.get(sequence, DEMO_SEQUENCES["teaser"])
+    logger.info("Demo presenter starting: sequence=%s, steps=%d, speed=%.1f for user_id=%d",
+                sequence, len(steps), speed, user_id)
+
+    for step in steps:
+        delay = step["delay"] / speed
+        await asyncio.sleep(delay)
+        command = step["command"]
+        payload = step["payload"]
+        try:
+            await user_hub.send_ui_command(user_id, command, payload)
+        except Exception as exc:
+            logger.warning("Demo presenter step failed: command=%s error=%s", command, exc)
+
+    logger.info("Demo presenter finished: sequence=%s for user_id=%d", sequence, user_id)
+
+
+@router.post("/system/run-demo")
+async def run_demo(
+    sequence: str = Query("teaser", description="Demo sequence: teaser, short, full"),
+    speed: float = Query(1.0, description="Playback speed multiplier", ge=0.25, le=5.0),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Start an automated demo presentation that controls the UI via MCP commands."""
+    if sequence not in DEMO_SEQUENCES:
+        return {"error": f"Unknown sequence: {sequence}. Available: {list(DEMO_SEQUENCES.keys())}"}
+
+    asyncio.create_task(_run_demo_sequence(current_user.id, sequence, speed))
+    return {"status": "started", "sequence": sequence, "speed": speed}

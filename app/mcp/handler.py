@@ -5,6 +5,7 @@ Each tool maps to internal HUBEX operations using the same
 SQLAlchemy models and business logic as the REST API.
 """
 
+import asyncio
 import logging
 import uuid as _uuid
 from typing import Any
@@ -53,6 +54,7 @@ TOOL_CAPS: dict[str, list[str]] = {
     "hubex_fly_to_node": ["mcp.execute"],
     "hubex_camera": ["mcp.execute"],
     "hubex_show_notification": ["mcp.execute"],
+    "hubex_run_demo": ["mcp.execute"],
 }
 
 
@@ -143,6 +145,8 @@ async def execute_tool(
         return await _ui_camera(user_id, arguments)
     elif tool_name == "hubex_show_notification":
         return await _ui_notification(user_id, arguments)
+    elif tool_name == "hubex_run_demo":
+        return await _run_demo(user_id, arguments)
     # ── AI Coop: CRUD tools ──────────────────────────────────────────────
     elif tool_name == "hubex_create_device":
         return await _create_device(db, user_id, org_id, arguments)
@@ -527,6 +531,17 @@ async def _ui_notification(user_id: int, args: dict) -> dict:
         "type": notif_type,
     })
     return {"success": True, "command": "notification", "message": message}
+
+
+async def _run_demo(user_id: int, args: dict) -> dict:
+    from app.api.v1.system import _run_demo_sequence, DEMO_SEQUENCES
+    sequence = args.get("sequence", "teaser")
+    speed = max(0.25, min(5.0, args.get("speed", 1.0)))
+    if sequence not in DEMO_SEQUENCES:
+        return {"error": f"Unknown sequence: {sequence}. Available: {list(DEMO_SEQUENCES.keys())}"}
+    logger.info("MCP tool 'run_demo' -> sequence=%s speed=%.1f for user_id=%s", sequence, speed, user_id)
+    asyncio.create_task(_run_demo_sequence(user_id, sequence, speed))
+    return {"success": True, "command": "run_demo", "sequence": sequence, "speed": speed}
 
 
 # ---------------------------------------------------------------------------

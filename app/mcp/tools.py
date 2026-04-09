@@ -314,6 +314,26 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
             "required": ["message"],
         },
     },
+    {
+        "name": "hubex_run_demo",
+        "description": "Run an automated demo presentation that showcases HubEx features with camera zooms, highlights, and navigation.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "sequence": {
+                    "type": "string",
+                    "enum": ["teaser", "short", "full"],
+                    "default": "teaser",
+                    "description": "Demo sequence: teaser (~30s), short (~60s), full (~2min)",
+                },
+                "speed": {
+                    "type": "number",
+                    "default": 1.0,
+                    "description": "Playback speed multiplier (0.25-5.0)",
+                },
+            },
+        },
+    },
 
     # ── AI Coop: CRUD Operations ─────────────────────────────────────────
     {

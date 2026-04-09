@@ -1018,8 +1018,23 @@ function onDocumentClick() {
   }
 }
 
+// ── AI Coop: fly-to-node event listener ─────────────────────────────────
+
+function onAiFlyTo(e: Event) {
+  const detail = (e as CustomEvent).detail;
+  const nodeId = detail?.node_id;
+  if (!nodeId) return;
+  const node = nodes.value.find((n) => n.id === nodeId);
+  if (node) {
+    selectedNode.value = node;
+    inspectorOpen.value = true;
+    flyToNode(node);
+  }
+}
+
 onMounted(async () => {
   document.addEventListener("click", onDocumentClick);
+  window.addEventListener("ai-fly-to", onAiFlyTo);
   await loadSystemGraph();
   await nextTick();
   fitToView();
@@ -1027,6 +1042,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("click", onDocumentClick);
+  window.removeEventListener("ai-fly-to", onAiFlyTo);
 });
 
 // ── Inspector helpers ─────────────────────────────────────────────────────

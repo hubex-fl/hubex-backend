@@ -613,18 +613,20 @@ function handleNavClick() {
         </div>
       </div>
 
-      <!-- Page content -->
-      <main :class="[
-        'flex-1 relative',
-        route.meta?.fullscreen ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6',
-      ]">
-        <!-- Dim overlay when server is offline -->
-        <div
-          v-if="!serverHealth.serverOnline"
-          class="absolute inset-0 bg-[var(--bg-base)]/60 z-10 pointer-events-none"
-        />
-        <slot />
-      </main>
+      <!-- Camera viewport wrapper for cinematic zoom/pan effects -->
+      <div id="camera-viewport" class="flex-1 flex flex-col" style="transform-origin: center center;">
+        <main :class="[
+          'flex-1 relative',
+          route.meta?.fullscreen ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6',
+        ]">
+          <!-- Dim overlay when server is offline -->
+          <div
+            v-if="!serverHealth.serverOnline"
+            class="absolute inset-0 bg-[var(--bg-base)]/60 z-10 pointer-events-none"
+          />
+          <slot />
+        </main>
+      </div>
     </div>
 
     <!-- Toast renderer -->

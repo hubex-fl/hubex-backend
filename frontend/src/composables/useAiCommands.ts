@@ -118,15 +118,16 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
 // ---- Camera zoom/pan handler ----
 
 function handleCamera(payload: Record<string, unknown>) {
-  const main =
+  // Target the dedicated camera viewport wrapper (wraps <main> content area)
+  const viewport =
+    document.getElementById("camera-viewport") ||
     document.querySelector("main") ||
-    document.querySelector(".main-content") ||
     document.body;
   const action = payload.action as string;
   const duration = (payload.duration as number) || 800;
 
   // Add smooth transition
-  (main as HTMLElement).style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+  (viewport as HTMLElement).style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
 
   if (action === "zoom_to" && payload.selector) {
     // Try each selector in a comma-separated list
@@ -137,29 +138,25 @@ function handleCamera(payload: Record<string, unknown>) {
       if (el) break;
     }
     if (el) {
-      const rect = el.getBoundingClientRect();
-      const viewW = window.innerWidth;
-      const viewH = window.innerHeight;
       const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 4.0);
 
-      // Calculate transform to center the element and zoom in
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const translateX = viewW / 2 - centerX;
-      const translateY = viewH / 2 - centerY;
-
-      (main as HTMLElement).style.transformOrigin = `${centerX}px ${centerY}px`;
-      (main as HTMLElement).style.transform = `scale(${zoom}) translate(${translateX / zoom}px, ${translateY / zoom}px)`;
+      // Scroll element into view first, then apply zoom
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      setTimeout(() => {
+        (viewport as HTMLElement).style.transformOrigin = "center center";
+        (viewport as HTMLElement).style.transform = `scale(${zoom})`;
+      }, 300);
     }
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
     const y = (payload.y as number) || 0;
-    (main as HTMLElement).style.transform = `translate(${x}px, ${y}px)`;
+    (viewport as HTMLElement).style.transform = `translate(${x}px, ${y}px)`;
   } else if (action === "reset") {
-    (main as HTMLElement).style.transform = "";
+    (viewport as HTMLElement).style.transform = "";
+    (viewport as HTMLElement).style.transformOrigin = "";
     // Clean up after transition
     setTimeout(() => {
-      (main as HTMLElement).style.transition = "";
+      (viewport as HTMLElement).style.transition = "";
     }, duration);
   }
 }
