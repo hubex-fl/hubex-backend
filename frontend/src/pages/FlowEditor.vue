@@ -292,6 +292,23 @@ async function loadSystemGraph() {
     const alertRules = alertRes.status === "fulfilled" ? alertRes.value : [];
     const webhooks = whRes.status === "fulfilled" ? whRes.value : [];
 
+    // Build variable→device ownership map by fetching per-device variables
+    const varToDeviceUid: Record<string, string> = {};
+    const deviceVarResults = await Promise.allSettled(
+      devices.map((d) =>
+        apiFetch<{ device_uid: string; device: Array<{ key: string }> }>(
+          `/api/v1/variables/device/${encodeURIComponent(d.device_uid)}`
+        ).then((res) => ({ device_uid: d.device_uid, vars: res.device || [] }))
+      )
+    );
+    for (const r of deviceVarResults) {
+      if (r.status === "fulfilled") {
+        for (const v of r.value.vars) {
+          varToDeviceUid[v.key] = r.value.device_uid;
+        }
+      }
+    }
+
     stats.value = {
       devices: devices.length,
       variables: variables.length,
@@ -349,13 +366,15 @@ async function loadSystemGraph() {
       });
       y += NODE_H_SMALL + ROW_GAP;
 
-      // Connect variables to their owning device (if any)
+      // Connect variables to their owning device using the per-device API data
       if (v.scope === "device") {
-        // 1. Check explicit device_uid from API
-        const varDeviceUid = (v as Record<string, unknown>).device_uid as string | undefined;
-        // 2. Parse key prefix: keys like "esp32-001.temperature" → device_uid = "esp32-001"
+        // 1. Use the per-device variables map (most accurate)
+        const ownerUid = varToDeviceUid[v.key];
+        // 2. Fallback: check explicit device_uid from API
+        const varDeviceUid = ownerUid || (v as Record<string, unknown>).device_uid as string | undefined;
+        // 3. Fallback: parse key prefix (keys like "esp32-001.temperature")
         const dotIdx = v.key.indexOf(".");
-        const keyPrefix = dotIdx > 0 ? v.key.substring(0, dotIdx) : null;
+        const keyPrefix = !varDeviceUid && dotIdx > 0 ? v.key.substring(0, dotIdx) : null;
 
         let matchDevice: ApiDevice | undefined;
 
@@ -368,23 +387,16 @@ async function loadSystemGraph() {
         }
 
         if (matchDevice) {
-          // Connect only to the owning device
+          // Connect to the verified owning device
           newEdges.push({
             id: `edge-dev-var-${matchDevice.id}-${v.key}`,
             from: `device-${matchDevice.id}`,
             to: nodeId,
             type: "data",
           });
-        } else if (devices.length > 0) {
-          // Fallback: no explicit device match found — connect to the first device
-          // so the System Map always shows some connection for device-scoped variables
-          newEdges.push({
-            id: `edge-dev-var-${devices[0].id}-${v.key}`,
-            from: `device-${devices[0].id}`,
-            to: nodeId,
-            type: "data",
-          });
         }
+        // No fallback — if we can't determine the owner, leave the variable unconnected
+        // rather than incorrectly connecting it to the first device
       }
       // Global variables (scope != "device") get no device edges — they stand alone.
     }

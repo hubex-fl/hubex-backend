@@ -528,7 +528,7 @@ onUnmounted(() => {
             <div class="flex items-center gap-3 min-w-0">
               <div>
                 <router-link
-                  :to="`/variables?key=${encodeURIComponent(vp.variable_key)}`"
+                  :to="`/variables?highlight=${encodeURIComponent(vp.variable_key)}${detailSim?.device_uid ? `&device=${encodeURIComponent(detailSim.device_uid)}` : ''}`"
                   class="text-sm font-mono font-medium text-[var(--primary)] hover:underline"
                   :title="t('sandbox.viewVariable')"
                 >

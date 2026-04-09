@@ -1228,6 +1228,8 @@ export default {
     titleColor: 'Titelfarbe',
     borderRadius: 'Eckenradius',
     shadowLabel: 'Schatten',
+    deviceOffline: 'Ger\u00e4t ist offline \u2014 zeige historische Daten',
+    settingsSaved: 'Einstellungen gespeichert',
   },
   // Dashboards list page
   dashboardsList: {

@@ -29,6 +29,7 @@
             :key="r"
             class="tr-btn"
             :class="{ active: currentRange === r }"
+            :title="currentRange === r ? `Showing data from the last ${r}` : `Show data from the last ${r}`"
             @click="currentRange = r"
           >{{ r }}</button>
         </div>
@@ -271,6 +272,11 @@
             <button class="we-btn del" @click.stop="confirmDeleteWidget(widget)" :title="t('dashboardEnhance.removeTooltip')">&#10005;</button>
           </div>
         </div>
+
+        <!-- Offline device badge -->
+        <span v-if="isWidgetDeviceOffline(widget)" class="widget-offline-badge" :title="t('dashboardEnhance.deviceOffline') || 'Device is offline — showing historical data'">
+          &#9888; Offline
+        </span>
 
         <VizWidget
           :variable-key="widget.variable_key || widget.label || `widget_${widget.id}`"
@@ -592,6 +598,13 @@ import type { TimeRange } from "../composables/useVariableHistory";
 import { apiFetch } from "../lib/api";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 
+// Device status for offline badges
+interface DeviceStatus {
+  device_uid: string;
+  online: boolean;
+  health: string;
+}
+
 function rangeToFrom(range: TimeRange): number {
   const now = Math.floor(Date.now() / 1000);
   const map: Record<TimeRange, number> = {
@@ -645,6 +658,9 @@ const SHADOW_OPTIONS = [
 const historyData = ref<Record<number, VizDataPoint[]>>({});
 const historyLoading = ref<Record<number, boolean>>({});
 const currentValues = ref<Record<number, unknown>>({});
+
+// Device online status map (device_uid → online)
+const deviceOnlineMap = ref<Record<string, boolean>>({});
 
 // Add widget form
 const showAddWidget = ref(false);
@@ -838,12 +854,32 @@ async function loadDashboard() {
       kioskShowHeader.value = kc.show_header ?? true;
       kioskShowClock.value = kc.show_clock ?? true;
     }
-    await loadAllHistory();
+    await Promise.all([loadAllHistory(), loadDeviceStatuses()]);
   } catch {
     dashboard.value = null;
   } finally {
     loading.value = false;
   }
+}
+
+async function loadDeviceStatuses() {
+  try {
+    const devices = await apiFetch<DeviceStatus[]>("/api/v1/devices");
+    const map: Record<string, boolean> = {};
+    for (const d of devices) {
+      map[d.device_uid] = d.online;
+    }
+    deviceOnlineMap.value = map;
+  } catch {
+    // Non-critical — just won't show offline badges
+  }
+}
+
+function isWidgetDeviceOffline(widget: DashboardWidget): boolean {
+  if (!widget.device_uid) return false;
+  // If we have no data about this device, don't show offline
+  if (!(widget.device_uid in deviceOnlineMap.value)) return false;
+  return !deviceOnlineMap.value[widget.device_uid];
 }
 
 function startEditName() {
@@ -979,17 +1015,31 @@ async function saveShareSettings() {
     if (!pinEnabled.value) {
       // Remove PIN
       const result = await deleteDashboardPin(dashboard.value.id);
-      dashboard.value.sharing_mode = result.sharing_mode || "public";
+      dashboard.value.sharing_mode = (result.sharing_mode as typeof dashboard.value.sharing_mode) || "public";
       dashboard.value.has_pin = false;
+      pinValue.value = "";
     } else if (pinValue.value && pinValue.value.length >= 4) {
-      // Set PIN
-      await setDashboardPin(dashboard.value.id, pinValue.value);
+      // Set or update PIN
+      const result = await setDashboardPin(dashboard.value.id, pinValue.value);
       dashboard.value.has_pin = true;
+      dashboard.value.sharing_mode = (result.sharing_mode as typeof dashboard.value.sharing_mode) || "public";
+    } else if (pinEnabled.value && dashboard.value.has_pin && !pinValue.value) {
+      // PIN already set, no change needed — just mark as saved
+    } else {
+      // PIN enabled but value too short — don't save, show hint
+      shareToast.value = t('dashboardEnhance.pinPlaceholder') || "Enter a 4-6 digit PIN";
+      setTimeout(() => shareToast.value = "", 2500);
+      savingShare.value = false;
+      return;
     }
     shareDirty.value = false;
     shareToast.value = t('dashboardEnhance.settingsSaved') || "Settings saved";
     setTimeout(() => shareToast.value = "", 2500);
-  } catch { /* silent */ }
+  } catch (err) {
+    console.error("[saveShareSettings] failed:", err);
+    shareToast.value = "Save failed";
+    setTimeout(() => shareToast.value = "", 2500);
+  }
   savingShare.value = false;
 }
 
@@ -1533,7 +1583,32 @@ function openAddWidget() {
   transition: background 0.1s, color 0.1s;
 }
 .tr-btn:hover { background: var(--border); color: var(--text-base); }
-.tr-btn.active { background: var(--border); color: var(--primary); }
+.tr-btn.active {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+/* Offline device badge on widgets */
+.widget-offline-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  pointer-events: auto;
+  cursor: help;
+}
 
 .share-btn,
 .settings-btn {

@@ -1233,6 +1233,8 @@ export default {
     titleColor: 'Title Color',
     borderRadius: 'Border Radius',
     shadowLabel: 'Shadow',
+    deviceOffline: 'Device is offline — showing historical data',
+    settingsSaved: 'Settings saved',
   },
   // Dashboards list page
   dashboardsList: {
