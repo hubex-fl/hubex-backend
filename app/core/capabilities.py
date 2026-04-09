@@ -365,6 +365,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # MCP
     ("POST", "/api/v1/mcp/tools/list"): ["mcp.read"],
     ("POST", "/api/v1/mcp/tools/call"): ["mcp.execute"],
+    ("GET", "/api/v1/mcp/sse"): ["mcp.read"],
+    ("POST", "/api/v1/mcp/messages"): ["mcp.execute"],
+    ("GET", "/api/v1/mcp/status"): ["mcp.read"],
+    ("GET", "/api/v1/mcp/log"): ["mcp.read"],
     # Search
     ("GET", "/api/v1/search"): ["devices.read"],
     # System / Demo Data
@@ -413,6 +417,9 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     # Custom API runtime handler (uses per-endpoint auth, not bearer)
     ("GET", "/api/v1/custom-api/call/{path:path}"),
     ("POST", "/api/v1/custom-api/call/{path:path}"),
+    # MCP SSE transport (handles own auth via query param / bearer)
+    ("GET", "/api/v1/mcp/sse"),
+    ("POST", "/api/v1/mcp/messages"),
 }
 
 # ── RBAC: Role → Capability Mapping ──────────────────────────────────────────

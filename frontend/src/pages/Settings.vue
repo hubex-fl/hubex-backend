@@ -20,9 +20,11 @@ import SessionManager from "../components/SessionManager.vue";
 import MfaSetup from "../components/MfaSetup.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { listDashboards, type DashboardSummary } from "../lib/dashboards";
+import { useLimitsStore, type LimitResource } from "../stores/limits";
 
 const router = useRouter();
 const { t, tm, rt } = useI18n();
+const limitsStore = useLimitsStore();
 const caps = useCapabilities();
 const currentLocale = ref(getCurrentLocale());
 function switchLocale(locale: 'en' | 'de') {
@@ -208,7 +210,7 @@ async function saveNotificationPrefs() {
 }
 
 // ── Accordion sections ────────────────────────────────────────────────────────
-type SectionKey = "account" | "notifications" | "organization" | "developer" | "system";
+type SectionKey = "edition" | "account" | "notifications" | "organization" | "developer" | "system";
 const expandedSection = ref<SectionKey | null>(null);
 
 function toggleSection(key: SectionKey) {
@@ -217,12 +219,24 @@ function toggleSection(key: SectionKey) {
 
 type Section = { key: SectionKey; label: string; description: string; icon: string };
 const sections: Section[] = [
+  { key: "edition", label: t('edition.settingsTitle'), description: t('edition.settingsSubtitle'), icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" },
   { key: "account", label: "Profile & Account", description: "Email, session, authentication", icon: "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" },
   { key: "notifications", label: "Notifications", description: "Email alerts and digest settings", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
   { key: "organization", label: "Organization & Team", description: "Manage members and plans", icon: "M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 4.5H21m-3.75 4.5H21" },
   { key: "developer", label: "Developer", description: "API keys, capabilities, links", icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" },
   { key: "system", label: "System", description: "Demo data, UX preferences, reset", icon: "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
 ];
+
+/** Map resource keys to i18n keys for the edition limits table. */
+const editionResourceLabels: Record<LimitResource, string> = {
+  users: 'edition.resourceUsers',
+  devices: 'edition.resourceDevices',
+  api_keys: 'edition.resourceApiKeys',
+  dashboards: 'edition.resourceDashboards',
+  automations: 'edition.resourceAutomations',
+  custom_endpoints: 'edition.resourceCustomEndpoints',
+};
+const editionResourceKeys: LimitResource[] = ['users', 'devices', 'api_keys', 'dashboards', 'automations', 'custom_endpoints'];
 
 // ── Account tab ───────────────────────────────────────────────────────────────
 type UserInfo = { id: number; email: string };
@@ -293,6 +307,7 @@ onMounted(async () => {
   loadUser();
   loadOrgs();
   loadDashboards();
+  limitsStore.load();
   await prefs.load();
   initHomepagePref();
   initNotificationPrefs();
@@ -339,6 +354,85 @@ onMounted(async () => {
 
           <!-- Section content -->
           <div v-if="expandedSection === section.key" class="border-t border-[var(--border)] px-4 py-4 space-y-4">
+
+            <!-- Edition & Limits content -->
+            <template v-if="section.key === 'edition'">
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('edition.currentEdition') }}</h3>
+                      <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-[var(--primary)]/15 text-[var(--primary)] uppercase tracking-wider">
+                        {{ limitsStore.edition }}
+                      </span>
+                    </div>
+                    <a
+                      v-if="limitsStore.isCommunity"
+                      :href="limitsStore.upgradeUrl"
+                      target="_blank"
+                      rel="noopener"
+                      class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                      {{ t('edition.upgradeButton') }}
+                    </a>
+                  </div>
+                </template>
+                <div v-if="limitsStore.loading" class="space-y-3">
+                  <USkeleton height="1rem" width="100%" />
+                  <USkeleton height="1rem" width="80%" />
+                  <USkeleton height="1rem" width="90%" />
+                </div>
+                <div v-else-if="limitsStore.limits" class="space-y-3">
+                  <!-- Limits table -->
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                      <thead>
+                        <tr class="border-b border-[var(--border)]">
+                          <th class="text-left py-2 pr-4 text-[var(--text-muted)] font-medium">{{ t('edition.limitHeader') }}</th>
+                          <th class="text-left py-2 pr-4 text-[var(--text-muted)] font-medium">{{ t('edition.usageHeader') }}</th>
+                          <th class="text-left py-2 text-[var(--text-muted)] font-medium">{{ t('edition.statusHeader') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="key in editionResourceKeys" :key="key" class="border-b border-[var(--border)]/50">
+                          <td class="py-2.5 pr-4 text-[var(--text-primary)] font-medium">{{ t(editionResourceLabels[key]) }}</td>
+                          <td class="py-2.5 pr-4">
+                            <div class="flex items-center gap-2">
+                              <div class="flex-1 max-w-[120px] h-1.5 rounded-full bg-[var(--bg-raised)] overflow-hidden">
+                                <div
+                                  :class="[
+                                    'h-full rounded-full transition-all',
+                                    limitsStore.limits![key].exceeded ? 'bg-amber-500' : 'bg-[var(--primary)]',
+                                  ]"
+                                  :style="{ width: limitsStore.limits![key].max > 0 ? Math.min(100, (limitsStore.limits![key].current / limitsStore.limits![key].max) * 100) + '%' : '0%' }"
+                                />
+                              </div>
+                              <span class="text-[var(--text-secondary)] whitespace-nowrap">
+                                {{ limitsStore.limits![key].max > 0
+                                  ? t('edition.usageLabel', { current: limitsStore.limits![key].current, max: limitsStore.limits![key].max })
+                                  : t('edition.usageUnlimited')
+                                }}
+                              </span>
+                            </div>
+                          </td>
+                          <td class="py-2.5">
+                            <UBadge
+                              :status="limitsStore.limits![key].exceeded ? 'warn' : 'ok'"
+                            >
+                              {{ limitsStore.limits![key].exceeded ? t('edition.exceeded') : t('edition.withinLimits') }}
+                            </UBadge>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <p v-else class="text-xs text-[var(--text-muted)]">Could not load edition info.</p>
+              </UCard>
+            </template>
 
             <!-- Account content -->
             <template v-if="section.key === 'account'">

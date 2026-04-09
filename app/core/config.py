@@ -45,6 +45,16 @@ class Settings(BaseSettings):
     # CORS — kommasepariert, leer = localhost defaults
     cors_origins: str = ""
 
+    # Edition & Soft Limits (CE vs Pro — warnings only, no hard blocks)
+    edition: str = "community"  # "community" | "pro" | "enterprise"
+    max_users: int = 5
+    max_devices: int = 50
+    max_api_keys: int = 3
+    max_dashboards: int = 10
+    max_automations: int = 20
+    max_custom_endpoints: int = 5
+    upgrade_url: str = "https://hubex.io/pricing"
+
     # M27 — Scaling
     history_retention_days: int = 30
     audit_retention_days: int = 90

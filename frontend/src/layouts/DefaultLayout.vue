@@ -21,6 +21,7 @@ import { useWebSocket } from "../composables/useWebSocket";
 import { usePreferencesStore } from "../stores/preferences";
 import { useTourStore } from "../stores/tour";
 import { registerBuiltinTours } from "../lib/tours/builtin-tours";
+import { useLimitsStore } from "../stores/limits";
 
 const route = useRoute();
 const caps = useCapabilities();
@@ -34,6 +35,7 @@ const { t } = useI18n();
 const ws = useWebSocket();
 const prefsStore = usePreferencesStore();
 const tourStore = useTourStore();
+const limitsStore = useLimitsStore();
 
 // Collapsible sidebar groups
 const collapsedGroups = ref<Set<string>>(new Set(["Tools", "System"]));
@@ -76,6 +78,8 @@ onMounted(async () => {
   registerBuiltinTours((tour) => tourStore.registerTour(tour));
   // Load org branding on page refresh (when already logged in)
   if (authStore.orgId) loadOrgBranding(authStore.orgId);
+  // Load edition limits
+  if (hasToken()) limitsStore.load();
   await prefsStore.load();
   // Restore collapsed groups from preferences (default: Daten + System collapsed)
   const saved = prefsStore.get<string[]>("sidebar_collapsed_groups", null);
@@ -157,6 +161,7 @@ const navGroups = computed<NavGroup[]>(() => [
     label: t('navGroups.tools'),
     items: [
       { to: "/webhooks", label: t('nav.webhooks'), icon: "M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582", cap: null },
+      { to: "/integrations", label: t('nav.integrations'), icon: "M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244", cap: null },
       { to: "/reports", label: t('nav.reports'), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z", cap: null },
       { to: "/email-templates", label: t('nav.emailTemplates'), icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75", cap: null },
       { to: "/custom-api", label: t('nav.customApi'), icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5", cap: null },
@@ -174,6 +179,7 @@ const navGroups = computed<NavGroup[]>(() => [
       { to: "/developer", label: t('nav.apiDocs'), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z", cap: null },
       { to: "/admin", label: t('nav.adminConsole'), icon: "M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75", cap: "cap.admin" },
       { to: "/settings/types", label: t('nav.semanticTypes'), icon: "M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z", cap: null },
+      { to: "/mcp", label: t('nav.mcpServer'), icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5", cap: "mcp.read" },
     ],
   },
 ]);
@@ -206,6 +212,16 @@ function isNavActive(itemTo: string): boolean {
   }
   return false;
 }
+
+/** Map limit resource keys to i18n keys. */
+const limitResourceLabels: Record<string, string> = {
+  users: 'edition.resourceUsers',
+  devices: 'edition.resourceDevices',
+  api_keys: 'edition.resourceApiKeys',
+  dashboards: 'edition.resourceDashboards',
+  automations: 'edition.resourceAutomations',
+  custom_endpoints: 'edition.resourceCustomEndpoints',
+};
 
 function handleNavClick() {
   mobileOpen.value = false;
@@ -246,6 +262,12 @@ function handleNavClick() {
           class="font-mono font-bold text-sm tracking-widest text-[var(--text-primary)] transition-opacity"
         >
           {{ branding.productName }}
+        </span>
+        <span
+          v-if="!collapsed && limitsStore.isCommunity"
+          class="ml-1 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-[var(--primary)]/15 text-[var(--primary)] tracking-wide"
+        >
+          {{ t('edition.badge') }}
         </span>
       </div>
 
@@ -536,6 +558,44 @@ function handleNavClick() {
           <div v-else class="h-2 w-2 rounded-full bg-[var(--status-bad)]" title="Not signed in" />
         </div>
       </header>
+
+      <!-- Edition limit warning banner -->
+      <div
+        v-if="limitsStore.hasExceeded && !limitsStore.dismissed && limitsStore.isCommunity"
+        class="flex items-center justify-between gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <svg class="h-4 w-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+          </svg>
+          <span class="text-amber-300/90 truncate" v-if="limitsStore.primaryExceeded">
+            {{ t('edition.bannerMessage', {
+              current: limitsStore.primaryExceeded.entry.current,
+              max: limitsStore.primaryExceeded.entry.max,
+              resource: t(limitResourceLabels[limitsStore.primaryExceeded.resource] || limitsStore.primaryExceeded.resource),
+            }) }}
+          </span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a
+            :href="limitsStore.upgradeUrl"
+            target="_blank"
+            rel="noopener"
+            class="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors whitespace-nowrap"
+          >
+            {{ t('edition.bannerLearnMore') }}
+          </a>
+          <button
+            class="p-0.5 rounded text-amber-400/60 hover:text-amber-400 transition-colors"
+            :title="t('edition.bannerDismiss')"
+            @click="limitsStore.dismiss()"
+          >
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
       <!-- Page content -->
       <main :class="[

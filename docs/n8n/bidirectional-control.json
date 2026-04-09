@@ -1,0 +1,137 @@
+{
+  "name": "HUBEX — Bidirectional Control (Threshold)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hubex-threshold",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook — Variable Threshold",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "hubex-threshold"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract temperature value from HUBEX event\nconst event = $input.item.json;\nconst payload = event.data || {};\n\n// Try to find temperature in common payload structures\nlet temperature = null;\nif (payload.value !== undefined && (payload.key === 'temperature' || payload.variable === 'temperature')) {\n  temperature = parseFloat(payload.value);\n} else if (payload.temperature !== undefined) {\n  temperature = parseFloat(payload.temperature);\n} else if (payload.values?.temperature !== undefined) {\n  temperature = parseFloat(payload.values.temperature);\n}\n\nreturn {\n  json: {\n    temperature,\n    eventType: event.event,\n    deviceUid: payload.device_uid || payload.uid || 'unknown',\n    timestamp: event.timestamp,\n    exceedsThreshold: temperature !== null && temperature > 30,\n    rawPayload: payload\n  }\n};"
+      },
+      "id": "extract-temp",
+      "name": "Extract Temperature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-threshold",
+              "leftValue": "={{ $json.exceedsThreshold }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-threshold",
+      "name": "Temperature > 30?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hubex-backend:8000/api/v1/variables/values",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "key", "value": "hvac_mode" },
+            { "name": "value", "value": "cooling" },
+            { "name": "source", "value": "n8n-automation" }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "set-hvac",
+      "name": "HTTP — Set HVAC to Cooling",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "HUBEX API Token — Configure in n8n credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log the control action\nreturn {\n  json: {\n    action: 'hvac_set_cooling',\n    temperature: $json.temperature,\n    deviceUid: $json.deviceUid,\n    timestamp: new Date().toISOString(),\n    note: `Temperature ${$json.temperature}C exceeded 30C threshold — HVAC set to cooling mode`\n  }\n};"
+      },
+      "id": "log-action",
+      "name": "Log Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 400]
+    }
+  ],
+  "connections": {
+    "Webhook — Variable Threshold": {
+      "main": [
+        [{ "node": "Extract Temperature", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Temperature": {
+      "main": [
+        [{ "node": "Temperature > 30?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Temperature > 30?": {
+      "main": [
+        [
+          { "node": "HTTP — Set HVAC to Cooling", "type": "main", "index": 0 },
+          { "node": "Log Action", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "HUBEX" },
+    { "name": "Control" },
+    { "name": "Bidirectional" }
+  ],
+  "triggerCount": 1,
+  "meta": {
+    "instanceId": "hubex-template",
+    "templateId": "hubex-bidirectional-control"
+  }
+}

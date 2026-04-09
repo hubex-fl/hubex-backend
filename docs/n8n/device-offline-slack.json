@@ -1,0 +1,116 @@
+{
+  "name": "HUBEX — Device Offline to Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hubex-device-offline",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook — Device Offline",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "hubex-device-offline"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-event-type",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "device.offline",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-offline",
+      "name": "Filter — device.offline only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const event = $input.item.json;\nconst deviceName = event.data?.device_name || event.data?.uid || 'Unknown';\nconst deviceUid = event.data?.uid || event.data?.device_uid || '—';\nconst lastSeen = event.data?.last_seen || event.timestamp || 'unknown';\n\nreturn {\n  json: {\n    slackMessage: `:warning: *Device Offline*\\n\\n*Device:* ${deviceName}\\n*UID:* \\`${deviceUid}\\`\\n*Last Seen:* ${lastSeen}\\n*Event ID:* ${event.event_id || '—'}\\n\\n<http://localhost/devices|Open HUBEX Dashboard>`,\n    deviceName,\n    deviceUid\n  }\n};"
+      },
+      "id": "format-slack",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#hubex-alerts",
+          "mode": "name"
+        },
+        "text": "={{ $json.slackMessage }}",
+        "otherOptions": {}
+      },
+      "id": "send-slack",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [900, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "CONFIGURE_ME",
+          "name": "Slack — Configure in n8n credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Device Offline": {
+      "main": [
+        [{ "node": "Filter — device.offline only", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter — device.offline only": {
+      "main": [
+        [{ "node": "Format Slack Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [{ "node": "Send Slack Notification", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "HUBEX" },
+    { "name": "Devices" },
+    { "name": "Slack" }
+  ],
+  "triggerCount": 1,
+  "meta": {
+    "instanceId": "hubex-template",
+    "templateId": "hubex-device-offline-slack"
+  }
+}

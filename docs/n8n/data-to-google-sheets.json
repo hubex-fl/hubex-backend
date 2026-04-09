@@ -1,0 +1,131 @@
+{
+  "name": "HUBEX — Data to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule — Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://hubex-backend:8000/api/v1/variables/history",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "key", "value": "temperature" },
+            { "name": "limit", "value": "60" }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-hubex-data",
+      "name": "HTTP — Fetch HUBEX Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "HUBEX API Token — Configure in n8n credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Transform HUBEX variable history into rows for Google Sheets\nconst items = $input.all();\nconst rows = [];\n\nfor (const item of items) {\n  const data = item.json;\n  // Handle both array response and paginated response\n  const records = Array.isArray(data) ? data : (data.items || data.data || [data]);\n\n  for (const record of records) {\n    rows.push({\n      json: {\n        timestamp: record.ts || record.timestamp || new Date().toISOString(),\n        key: record.key || 'temperature',\n        value: record.value ?? record.val ?? '',\n        device_uid: record.device_uid || record.source || '',\n        unit: record.unit || record.meta?.unit || '',\n      }\n    });\n  }\n}\n\nreturn rows.length > 0 ? rows : [{ json: { timestamp: new Date().toISOString(), key: 'temperature', value: 'no data', device_uid: '', unit: '' } }];"
+      },
+      "id": "transform-data",
+      "name": "Transform to Sheet Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "key": "={{ $json.key }}",
+            "value": "={{ $json.value }}",
+            "device_uid": "={{ $json.device_uid }}",
+            "unit": "={{ $json.unit }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets",
+      "name": "Google Sheets — Append Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [960, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CONFIGURE_ME",
+          "name": "Google Sheets — Configure in n8n credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule — Every Hour": {
+      "main": [
+        [{ "node": "HTTP — Fetch HUBEX Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP — Fetch HUBEX Data": {
+      "main": [
+        [{ "node": "Transform to Sheet Rows", "type": "main", "index": 0 }]
+      ]
+    },
+    "Transform to Sheet Rows": {
+      "main": [
+        [{ "node": "Google Sheets — Append Data", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "HUBEX" },
+    { "name": "Google Sheets" },
+    { "name": "Data Export" }
+  ],
+  "triggerCount": 1,
+  "meta": {
+    "instanceId": "hubex-template",
+    "templateId": "hubex-data-to-sheets"
+  }
+}

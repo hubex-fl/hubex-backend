@@ -1,0 +1,79 @@
+{
+  "name": "HUBEX — Alert to Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hubex-alert",
+        "options": {
+          "responseMode": "onReceived",
+          "responseData": "allEntries"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook — HUBEX Alert",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "hubex-alert"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format HUBEX alert event for email\nconst event = $input.item.json;\n\nconst severity = event.data?.severity || 'info';\nconst severityEmoji = {\n  critical: '🔴',\n  warning: '🟡',\n  info: '🔵'\n}[severity] || '⚪';\n\nconst deviceName = event.data?.device_name || event.data?.device_uid || 'Unknown Device';\nconst alertTitle = event.data?.title || event.event || 'HUBEX Alert';\nconst alertMessage = event.data?.message || JSON.stringify(event.data, null, 2);\nconst timestamp = event.timestamp || new Date().toISOString();\n\nreturn {\n  json: {\n    subject: `${severityEmoji} HUBEX Alert: ${alertTitle}`,\n    htmlBody: `\n      <div style=\"font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;\">\n        <div style=\"background: #111110; padding: 20px; border-radius: 12px 12px 0 0;\">\n          <h2 style=\"color: #F5A623; margin: 0;\">HUBEX Alert</h2>\n        </div>\n        <div style=\"background: #1a1a19; padding: 20px; border: 1px solid #333;\">\n          <table style=\"width: 100%; border-collapse: collapse; color: #e0e0e0;\">\n            <tr><td style=\"padding: 8px 0; color: #888;\">Event</td><td style=\"padding: 8px 0;\">${event.event}</td></tr>\n            <tr><td style=\"padding: 8px 0; color: #888;\">Severity</td><td style=\"padding: 8px 0;\">${severityEmoji} ${severity}</td></tr>\n            <tr><td style=\"padding: 8px 0; color: #888;\">Device</td><td style=\"padding: 8px 0;\">${deviceName}</td></tr>\n            <tr><td style=\"padding: 8px 0; color: #888;\">Time</td><td style=\"padding: 8px 0;\">${timestamp}</td></tr>\n            <tr><td style=\"padding: 8px 0; color: #888;\">Message</td><td style=\"padding: 8px 0;\">${alertMessage}</td></tr>\n          </table>\n        </div>\n        <div style=\"background: #111110; padding: 12px 20px; border-radius: 0 0 12px 12px; text-align: center;\">\n          <a href=\"http://localhost/alerts\" style=\"color: #2DD4BF; text-decoration: none;\">Open HUBEX Dashboard</a>\n        </div>\n      </div>\n    `,\n    textBody: `HUBEX Alert: ${alertTitle}\\n\\nEvent: ${event.event}\\nSeverity: ${severity}\\nDevice: ${deviceName}\\nTime: ${timestamp}\\nMessage: ${alertMessage}`,\n    eventId: event.event_id,\n    stream: event.stream\n  }\n};"
+      },
+      "id": "format-alert",
+      "name": "Format Alert Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hubex@your-domain.com",
+        "toEmail": "admin@your-domain.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "html": "={{ $json.htmlBody }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 300],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_ME",
+          "name": "SMTP — Configure in n8n credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — HUBEX Alert": {
+      "main": [
+        [{ "node": "Format Alert Email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Alert Email": {
+      "main": [
+        [{ "node": "Send Email", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "HUBEX" },
+    { "name": "Alerts" }
+  ],
+  "triggerCount": 1,
+  "meta": {
+    "instanceId": "hubex-template",
+    "templateId": "hubex-alert-to-email"
+  }
+}
