@@ -57,7 +57,7 @@ class EventEmitOut(BaseModel):
 
 @router.get("", response_model=EventReadOut)
 async def read_events(
-    stream: str = Query(..., min_length=1, max_length=128),
+    stream: str = Query("system", min_length=1, max_length=128),
     cursor: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
