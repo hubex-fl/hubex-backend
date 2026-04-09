@@ -289,6 +289,7 @@ onUnmounted(() => stopAutoRefresh());
             :show-header="true"
             :time-range="currentRange"
             :writable="false"
+            :display-config="widget.display_config"
             @range-change="(r) => { currentRange = r; loadWidgetHistory(widget) }"
           />
         </div>

@@ -306,7 +306,7 @@ onMounted(async () => {
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('settings.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.settings.title')" :items="tm('infoTooltips.settings.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.settings.title')" :items="tm('infoTooltips.settings.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('settings.subtitle') }}</p>
       </div>

@@ -4,12 +4,12 @@
     Routes to the correct sub-component based on viz type.
     M20 Dashboard Builder will reuse this component directly.
   -->
-  <div class="viz-widget" :class="{ 'widget-compact': compact }">
+  <div class="viz-widget" :class="[{ 'widget-compact': compact }, radiusClass, shadowClass]" :style="panelStyle">
     <!-- Panel header (Grafana-style) -->
     <div v-if="showHeader" class="widget-header">
       <div class="widget-title-row">
         <span class="widget-icon">{{ vizIcon }}</span>
-        <span class="widget-title">{{ label || variableKey }}</span>
+        <span class="widget-title" :style="titleStyle">{{ label || variableKey }}</span>
         <span v-if="unit" class="widget-unit">{{ unit }}</span>
         <span v-if="category" class="widget-category">{{ category }}</span>
       </div>
@@ -275,6 +275,35 @@ const lastUpdated = computed(() => {
 
 // category prop — may not be part of VizWidgetProps but injected externally
 const category = computed(() => (props as unknown as { category?: string }).category ?? null);
+
+// ── Appearance styles from display_config ──────────────────────────────────
+const dc = computed(() => (props.displayConfig ?? {}) as Record<string, unknown>);
+
+const panelStyle = computed(() => {
+  const s: Record<string, string> = {};
+  const borderColor = dc.value.border_color as string | undefined;
+  const bgColor = dc.value.bg_color as string | undefined;
+  if (borderColor) s.borderColor = borderColor;
+  if (bgColor) s.background = bgColor;
+  return s;
+});
+
+const titleStyle = computed(() => {
+  const titleColor = dc.value.title_color as string | undefined;
+  return titleColor ? { color: titleColor } : {};
+});
+
+const radiusClass = computed(() => {
+  const r = dc.value.border_radius as string | undefined;
+  if (!r || r === "medium") return "";
+  return `widget-radius-${r}`;
+});
+
+const shadowClass = computed(() => {
+  const s = dc.value.shadow as string | undefined;
+  if (!s || s === "none") return "";
+  return `widget-shadow-${s}`;
+});
 </script>
 
 <style scoped>
@@ -297,6 +326,17 @@ const category = computed(() => (props as unknown as { category?: string }).cate
   border-radius: 0;
 }
 .widget-compact:hover { border: none; }
+
+/* ── Border Radius variants ────────────────────────────── */
+.widget-radius-none  { border-radius: 0; }
+.widget-radius-small { border-radius: 4px; }
+/* medium is the default (6px) — no override needed */
+.widget-radius-large { border-radius: 12px; }
+
+/* ── Shadow variants ───────────────────────────────────── */
+.widget-shadow-subtle { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.widget-shadow-medium { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.widget-shadow-strong { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6); }
 
 /* ── Header ────────────────────────────────────────────── */
 .widget-header {

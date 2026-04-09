@@ -234,11 +234,17 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("DELETE", "/api/v1/email-templates/{template_id}"): ["config.write"],
     ("POST", "/api/v1/email-templates/preview"): ["config.read"],
     # Custom API Builder
-    ("GET", "/api/v1/custom-endpoints"): ["config.read"],
-    ("POST", "/api/v1/custom-endpoints"): ["config.write"],
-    ("GET", "/api/v1/custom-endpoints/traffic"): ["config.read"],
-    ("PATCH", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
-    ("DELETE", "/api/v1/custom-endpoints/{endpoint_id}"): ["config.write"],
+    ("GET", "/api/v1/custom-api/endpoints"): ["config.read"],
+    ("POST", "/api/v1/custom-api/endpoints"): ["config.write"],
+    ("GET", "/api/v1/custom-api/endpoints/{endpoint_id}"): ["config.read"],
+    ("PUT", "/api/v1/custom-api/endpoints/{endpoint_id}"): ["config.write"],
+    ("DELETE", "/api/v1/custom-api/endpoints/{endpoint_id}"): ["config.write"],
+    ("POST", "/api/v1/custom-api/endpoints/{endpoint_id}/regenerate-key"): ["config.write"],
+    ("GET", "/api/v1/custom-api/endpoints/{endpoint_id}/preview"): ["config.read"],
+    ("GET", "/api/v1/custom-api/traffic"): ["config.read"],
+    # Custom API runtime handler (uses its own per-endpoint auth)
+    ("GET", "/api/v1/custom-api/call/{path:path}"): [],
+    ("POST", "/api/v1/custom-api/call/{path:path}"): [],
     # Observability
     ("GET", "/api/v1/observability/traces"): ["events.read"],
     ("GET", "/api/v1/observability/incidents"): ["alerts.read"],
@@ -361,6 +367,25 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("DELETE", "/api/v1/system/demo-data"): ["devices.write"],
     # User preferences
     ("PATCH", "/api/v1/users/me/preferences"): ["users.read"],
+    # Tours — user-scoped, no special capability required
+    ("GET", "/api/v1/tours"): [],
+    ("POST", "/api/v1/tours"): [],
+    ("GET", "/api/v1/tours/public/{token}"): [],
+    ("GET", "/api/v1/tours/{tour_id}"): [],
+    ("PUT", "/api/v1/tours/{tour_id}"): [],
+    ("DELETE", "/api/v1/tours/{tour_id}"): [],
+    ("POST", "/api/v1/tours/{tour_id}/share"): [],
+    # Simulator — user-scoped, no special capability required
+    ("GET", "/api/v1/simulator/templates"): [],
+    ("GET", "/api/v1/simulator/configs"): [],
+    ("POST", "/api/v1/simulator/configs"): [],
+    ("GET", "/api/v1/simulator/configs/{sim_id}"): [],
+    ("PUT", "/api/v1/simulator/configs/{sim_id}"): [],
+    ("DELETE", "/api/v1/simulator/configs/{sim_id}"): [],
+    ("POST", "/api/v1/simulator/configs/{sim_id}/start"): [],
+    ("POST", "/api/v1/simulator/configs/{sim_id}/stop"): [],
+    ("POST", "/api/v1/simulator/configs/{sim_id}/pulse"): [],
+    ("POST", "/api/v1/simulator/quick-pulse"): [],
 }
 
 # Public whitelist (auth-free, minimal, static).
@@ -378,6 +403,9 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     ("POST", "/api/v1/auth/refresh"),
     ("GET", "/api/v1/auth/roles"),
     ("POST", "/api/v1/auth/mfa/verify"),
+    # Custom API runtime handler (uses per-endpoint auth, not bearer)
+    ("GET", "/api/v1/custom-api/call/{path:path}"),
+    ("POST", "/api/v1/custom-api/call/{path:path}"),
 }
 
 # ── RBAC: Role → Capability Mapping ──────────────────────────────────────────

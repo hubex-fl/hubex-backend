@@ -228,7 +228,7 @@ async def share_dashboard(
         d.public_token = secrets.token_urlsafe(32)
     d.sharing_mode = "public"
     await db.commit()
-    return {"public_token": d.public_token, "url": f"/dashboards/public/{d.public_token}"}
+    return {"public_token": d.public_token, "url": f"/public/{d.public_token}"}
 
 
 @router.post("/{dashboard_id}/share/pin")

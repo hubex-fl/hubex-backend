@@ -666,7 +666,7 @@ onUnmounted(() => {
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('devices.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.devices.title')" :items="tm('infoTooltips.devices.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.devices.title')" :items="tm('infoTooltips.devices.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
           <span v-if="refreshing" class="text-[var(--text-muted)]">{{ t('common.loading') }}</span>

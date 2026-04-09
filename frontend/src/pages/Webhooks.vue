@@ -135,7 +135,7 @@ onMounted(loadWebhooks);
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.webhooks.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.webhooks.title')" :items="tm('infoTooltips.webhooks.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.webhooks.title')" :items="tm('infoTooltips.webhooks.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.webhooks.subtitle') }}</p>
       </div>

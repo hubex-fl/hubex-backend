@@ -387,6 +387,87 @@
                 </div>
               </div>
 
+              <!-- Appearance section -->
+              <div class="settings-section">
+                <h3 class="settings-section-title">{{ t('dashboardEnhance.appearance') }}</h3>
+
+                <!-- Border color -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.borderColor') }}</label>
+                  <div class="color-presets">
+                    <button
+                      v-for="c in APPEARANCE_COLORS"
+                      :key="c.value"
+                      class="color-swatch"
+                      :class="{ active: newWidget.border_color === c.value }"
+                      :style="{ background: c.value || 'transparent', border: c.value ? 'none' : '1px dashed var(--text-muted)' }"
+                      :title="c.label"
+                      @click="newWidget.border_color = newWidget.border_color === c.value ? '' : c.value"
+                    />
+                  </div>
+                </div>
+
+                <!-- Background color -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.bgColor') }}</label>
+                  <div class="color-presets">
+                    <button
+                      v-for="c in APPEARANCE_COLORS"
+                      :key="c.value"
+                      class="color-swatch"
+                      :class="{ active: newWidget.bg_color === c.value }"
+                      :style="{ background: c.value || 'transparent', border: c.value ? 'none' : '1px dashed var(--text-muted)' }"
+                      :title="c.label"
+                      @click="newWidget.bg_color = newWidget.bg_color === c.value ? '' : c.value"
+                    />
+                  </div>
+                </div>
+
+                <!-- Title color -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.titleColor') }}</label>
+                  <div class="color-presets">
+                    <button
+                      v-for="c in APPEARANCE_COLORS"
+                      :key="c.value"
+                      class="color-swatch"
+                      :class="{ active: newWidget.title_color === c.value }"
+                      :style="{ background: c.value || 'transparent', border: c.value ? 'none' : '1px dashed var(--text-muted)' }"
+                      :title="c.label"
+                      @click="newWidget.title_color = newWidget.title_color === c.value ? '' : c.value"
+                    />
+                  </div>
+                </div>
+
+                <!-- Border radius -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.borderRadius') }}</label>
+                  <div class="toggle-group">
+                    <button
+                      v-for="opt in RADIUS_OPTIONS"
+                      :key="opt.value"
+                      class="toggle-btn"
+                      :class="{ active: newWidget.border_radius === opt.value }"
+                      @click="newWidget.border_radius = opt.value"
+                    >{{ opt.label }}</button>
+                  </div>
+                </div>
+
+                <!-- Shadow -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.shadowLabel') }}</label>
+                  <div class="toggle-group">
+                    <button
+                      v-for="opt in SHADOW_OPTIONS"
+                      :key="opt.value"
+                      class="toggle-btn"
+                      :class="{ active: newWidget.shadow === opt.value }"
+                      @click="newWidget.shadow = opt.value"
+                    >{{ opt.label }}</button>
+                  </div>
+                </div>
+              </div>
+
               <!-- HTML Template Editor (only for html_template type) -->
               <template v-if="newWidget.widget_type === 'html_template'">
                 <div class="field">
@@ -526,6 +607,32 @@ const editMode = ref(false);
 const currentRange = ref<TimeRange>("1h");
 const TIME_RANGES: TimeRange[] = ["1h", "6h", "24h", "7d", "30d"];
 
+// Appearance presets
+const APPEARANCE_COLORS = [
+  { value: "",        label: "None" },
+  { value: "#F5A623", label: "Amber" },
+  { value: "#2DD4BF", label: "Teal" },
+  { value: "#EF4444", label: "Red" },
+  { value: "#3B82F6", label: "Blue" },
+  { value: "#22C55E", label: "Green" },
+  { value: "#A855F7", label: "Purple" },
+  { value: "#FFFFFF", label: "White" },
+];
+
+const RADIUS_OPTIONS = [
+  { value: "none",   label: "None" },
+  { value: "small",  label: "S" },
+  { value: "medium", label: "M" },
+  { value: "large",  label: "L" },
+];
+
+const SHADOW_OPTIONS = [
+  { value: "none",   label: "None" },
+  { value: "subtle", label: "Subtle" },
+  { value: "medium", label: "Medium" },
+  { value: "strong", label: "Strong" },
+];
+
 // History data per widget
 const historyData = ref<Record<number, VizDataPoint[]>>({});
 const historyLoading = ref<Record<number, boolean>>({});
@@ -644,6 +751,12 @@ function defaultNewWidget() {
     grid_span_w: 4,
     grid_span_h: 3,
     html_template: "",
+    // Appearance
+    border_color: "" as string,
+    bg_color: "" as string,
+    title_color: "" as string,
+    border_radius: "medium" as string,
+    shadow: "none" as string,
   };
 }
 
@@ -698,7 +811,7 @@ async function loadDashboard() {
     shareTab.value = shareMode.value;
     if (dashboard.value.public_token) {
       shareToken.value = dashboard.value.public_token;
-      shareUrl.value = `${window.location.origin}/dashboards/public/${shareToken.value}`;
+      shareUrl.value = `${window.location.origin}/public/${shareToken.value}`;
     }
     // Sync embed config
     const ec = dashboard.value.embed_config;
@@ -1121,11 +1234,21 @@ async function submitAddWidget() {
   try {
     const dashId = Number(route.params.id);
 
-    // Build display_config for html_template widgets
-    const displayConfig: Record<string, unknown> | null =
-      newWidget.value.widget_type === "html_template"
-        ? { html_template: newWidget.value.html_template || htmlDefaultTemplate }
-        : null;
+    // Build display_config: appearance props + html_template if applicable
+    const appearanceProps: Record<string, unknown> = {};
+    if (newWidget.value.border_color) appearanceProps.border_color = newWidget.value.border_color;
+    if (newWidget.value.bg_color) appearanceProps.bg_color = newWidget.value.bg_color;
+    if (newWidget.value.title_color) appearanceProps.title_color = newWidget.value.title_color;
+    if (newWidget.value.border_radius && newWidget.value.border_radius !== "medium") appearanceProps.border_radius = newWidget.value.border_radius;
+    if (newWidget.value.shadow && newWidget.value.shadow !== "none") appearanceProps.shadow = newWidget.value.shadow;
+
+    const displayConfig: Record<string, unknown> | null = (() => {
+      const cfg: Record<string, unknown> = { ...appearanceProps };
+      if (newWidget.value.widget_type === "html_template") {
+        cfg.html_template = newWidget.value.html_template || htmlDefaultTemplate;
+      }
+      return Object.keys(cfg).length > 0 ? cfg : null;
+    })();
 
     if (editingWidgetId.value) {
       const w = await updateWidget(dashId, editingWidgetId.value, {
@@ -1138,7 +1261,7 @@ async function submitAddWidget() {
         max_value: newWidget.value.max_value,
         grid_span_w: newWidget.value.grid_span_w,
         grid_span_h: newWidget.value.grid_span_h,
-        ...(displayConfig ? { display_config: displayConfig } : {}),
+        display_config: displayConfig,
       });
       const idx = dashboard.value!.widgets.findIndex((x) => x.id === editingWidgetId.value);
       if (idx >= 0) dashboard.value!.widgets[idx] = w;
@@ -1157,7 +1280,7 @@ async function submitAddWidget() {
         grid_row: nextPos.row,
         grid_span_w: newWidget.value.grid_span_w,
         grid_span_h: newWidget.value.grid_span_h,
-        ...(displayConfig ? { display_config: displayConfig } : {}),
+        display_config: displayConfig,
       });
       dashboard.value!.widgets.push(w);
       if (w.variable_key) loadWidgetHistory(w);
@@ -1216,6 +1339,7 @@ async function submitDeleteWidget() {
 
 function openWidgetConfig(widget: DashboardWidget) {
   editingWidgetId.value = widget.id;
+  const dc = widget.display_config || {};
   newWidget.value = {
     widget_type: widget.widget_type,
     variable_key: widget.variable_key || "",
@@ -1226,7 +1350,13 @@ function openWidgetConfig(widget: DashboardWidget) {
     max_value: widget.max_value,
     grid_span_w: widget.grid_span_w,
     grid_span_h: widget.grid_span_h,
-    html_template: (widget.display_config?.html_template as string) || "",
+    html_template: (dc.html_template as string) || "",
+    // Appearance
+    border_color: (dc.border_color as string) || "",
+    bg_color: (dc.bg_color as string) || "",
+    title_color: (dc.title_color as string) || "",
+    border_radius: (dc.border_radius as string) || "medium",
+    shadow: (dc.shadow as string) || "none",
   };
   // Reset HTML editor mode when opening config
   if (widget.widget_type === "html_template") {
@@ -1739,6 +1869,54 @@ function openAddWidget() {
 .html-var-tag:hover {
   background: var(--primary);
   color: var(--bg-base);
+}
+
+/* ── Appearance: Color Swatches ──────────────────────────── */
+.color-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+  position: relative;
+  flex-shrink: 0;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.active {
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--primary);
+  transform: scale(1.1);
+}
+
+/* ── Appearance: Toggle Group ────────────────────────────── */
+.toggle-group {
+  display: flex;
+  gap: 1px;
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  padding: 2px;
+}
+.toggle-btn {
+  flex: 1;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+.toggle-btn:hover { background: var(--bg-base); color: var(--text-base); }
+.toggle-btn.active {
+  background: var(--bg-base);
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .modal-enter-active, .modal-leave-active { transition: opacity 0.2s, transform 0.2s; }

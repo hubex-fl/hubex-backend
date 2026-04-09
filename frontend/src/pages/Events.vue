@@ -194,7 +194,7 @@ onUnmounted(() => { stopPolling(); });
       <div>
         <div class="flex items-center">
           <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.events.title') }}</h2>
-          <UInfoTooltip :title="t('infoTooltips.events.title')" :items="tm('infoTooltips.events.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.events.title')" :items="tm('infoTooltips.events.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.events.description') }}</p>
       </div>
@@ -224,10 +224,7 @@ onUnmounted(() => { stopPolling(); });
           </div>
           <div class="flex-1">
             <label class="block text-xs text-[var(--text-muted)] mb-1">
-              {{ t('events.traceIdFilter') }}
-              <span class="ml-1 inline-block cursor-help" :title="t('events.traceIdTooltip')">
-                <svg class="inline h-3 w-3 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-              </span>
+              <span class="inline-flex items-center">{{ t('events.traceIdFilter') }}<UInfoTooltip :title="t('events.traceIdTooltip')" :items="[]" /></span>
             </label>
             <UInput v-model="traceFilter" placeholder="trace_id" class="w-full" />
           </div>
@@ -240,10 +237,7 @@ onUnmounted(() => { stopPolling(); });
         <div class="flex flex-col sm:flex-row gap-3 items-end">
           <div class="flex-1">
             <label class="block text-xs text-[var(--text-muted)] mb-1">
-              {{ t('events.setCursor') }}
-              <span class="ml-1 inline-block cursor-help" :title="t('events.setCursorTooltip')">
-                <svg class="inline h-3 w-3 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-              </span>
+              <span class="inline-flex items-center">{{ t('events.setCursor') }}<UInfoTooltip :title="t('events.setCursorTooltip')" :items="[]" /></span>
             </label>
             <UInput v-model="cursorInput" type="number" min="0" placeholder="0" class="w-full" />
           </div>
@@ -251,9 +245,6 @@ onUnmounted(() => { stopPolling(); });
             <UButton variant="secondary" size="sm" @click="setCursorFromInput" :title="t('events.setCursorTooltip')">{{ t('events.setCursor') }}</UButton>
             <UButton variant="secondary" size="sm" @click="jumpToNext" :title="t('events.jumpToNextTooltip')">
               {{ t('events.jumpToNext') }}
-              <span class="ml-1 inline-block cursor-help" :title="t('events.jumpToNextTooltip')">
-                <svg class="inline h-3 w-3 text-[var(--text-muted)] opacity-60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-              </span>
             </UButton>
             <UButton v-if="canAckEvents" variant="secondary" size="sm" @click="ackCursor" :title="t('pages.events.ackTooltip')">ACK</UButton>
           </div>
@@ -316,10 +307,7 @@ onUnmounted(() => { stopPolling(); });
                 <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('events.colTime') }}</th>
                 <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap">{{ t('events.colType') }}</th>
                 <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium whitespace-nowrap hidden md:table-cell">
-                  {{ t('events.colTrace') }}
-                  <span class="ml-1 inline-block cursor-help" :title="t('events.traceIdTooltip')">
-                    <svg class="inline h-3 w-3 text-[var(--text-muted)] opacity-60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-                  </span>
+                  <span class="inline-flex items-center">{{ t('events.colTrace') }}<UInfoTooltip :title="t('events.traceIdTooltip')" :items="[]" /></span>
                 </th>
                 <th class="text-left px-4 py-2.5 text-[var(--text-muted)] font-medium">{{ t('events.colPayload') }}</th>
               </tr>

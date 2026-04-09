@@ -643,7 +643,7 @@ function toggleRuleExpand(id: number) {
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('automations.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.automations.title')" :items="tm('infoTooltips.automations.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.automations.title')" :items="tm('infoTooltips.automations.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('automations.subtitle') }}</p>
       </div>

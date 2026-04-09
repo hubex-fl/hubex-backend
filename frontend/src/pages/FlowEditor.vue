@@ -1028,7 +1028,7 @@ function applyLayout() {
     <div class="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-surface)]">
       <div class="flex items-center gap-3">
         <h1 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.flowEditor.title') }}</h1>
-        <UInfoTooltip :title="t('infoTooltips.flowEditor.title')" :items="tm('infoTooltips.flowEditor.items').map((i: any) => rt(i))" />
+        <UInfoTooltip :title="t('infoTooltips.flowEditor.title')" :items="tm('infoTooltips.flowEditor.items').map((i: any) => rt(i))" tourId="data-path-trace" />
 
         <!-- Stats pills -->
         <div class="flex items-center gap-1.5">

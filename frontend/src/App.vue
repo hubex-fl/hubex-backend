@@ -8,7 +8,7 @@ import ConnectPanel from "./components/ConnectPanel.vue";
 import FeedbackWidget from "./components/FeedbackWidget.vue";
 
 const route = useRoute();
-const isPublic = computed(() => route.meta?.layout === "public");
+const isPublic = computed(() => route.meta?.layout === "public" || route.meta?.layout === "embed");
 const layout = computed(() => {
   if (route.meta?.layout === "auth") return AuthLayout;
   if (route.meta?.layout === "kiosk") return KioskLayout;

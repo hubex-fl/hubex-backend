@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
+import { useTourStore } from "../../stores/tour";
 
 const props = defineProps<{
   title: string;
   items: string[];
+  /** Optional tour ID. When provided a "Take a guided tour" link appears. */
+  tourId?: string;
 }>();
+
+const tourStore = useTourStore();
+
+function startTour() {
+  if (props.tourId) {
+    hide();
+    tourStore.start(props.tourId);
+  }
+}
 
 const visible = ref(false);
 const tooltipRef = ref<HTMLElement | null>(null);
@@ -101,6 +113,16 @@ onUnmounted(() => {
         <ul v-if="items.length" class="info-popover-list">
           <li v-for="(item, i) in items" :key="i">{{ item }}</li>
         </ul>
+        <button
+          v-if="tourId"
+          class="info-tour-link"
+          @click.stop="startTour"
+        >
+          <svg class="info-tour-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+          </svg>
+          Take a guided tour
+        </button>
       </div>
     </Transition>
   </span>
@@ -167,6 +189,35 @@ onUnmounted(() => {
 
 .info-popover-list li + li {
   margin-top: 2px;
+}
+
+/* Tour link */
+.info-tour-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary, #F5A623);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.info-tour-link:hover {
+  opacity: 0.8;
+}
+
+.info-tour-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 /* Transition */

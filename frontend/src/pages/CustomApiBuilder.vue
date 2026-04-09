@@ -369,7 +369,7 @@ onMounted(load);
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('customApi.title') }}</h1>
-          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           {{ t('customApi.subtitle') }}
@@ -741,8 +741,8 @@ onMounted(load);
               ]"
               @click="formAuthType = auth"
             >
-              <span class="block font-semibold">{{ auth === 'api_key' ? t('customApi.authApiKey') : auth === 'bearer' ? t('customApi.authBearerToken') : t('customApi.publicNoAuth') }}</span>
-              <span class="block text-[10px] text-[var(--text-muted)] mt-0.5">{{ t(`customApi.authHint.${auth}`) }}</span>
+              <span class="block font-semibold">{{ auth === 'api_key' ? t('customApi.authApiKey') : auth === 'bearer' ? t('customApi.authBearerToken') : t('customApi.publicNoAuth') }}<span v-if="auth === 'api_key'" class="ml-1 text-[10px] font-medium text-green-400">{{ t('customApi.authRecommended') }}</span></span>
+              <span class="block text-[10px] mt-0.5 leading-snug" :class="auth === 'none' ? 'text-amber-400' : 'text-[var(--text-muted)]'">{{ t(`customApi.authHint.${auth}`) }}</span>
             </button>
           </div>
         </div>

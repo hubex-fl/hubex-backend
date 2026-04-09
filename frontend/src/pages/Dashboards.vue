@@ -6,7 +6,7 @@
       <div>
         <div class="flex items-center">
           <h1 class="page-title">{{ t('nav.dashboards') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.dashboards.title')" :items="tm('infoTooltips.dashboards.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.dashboards.title')" :items="tm('infoTooltips.dashboards.items').map((i: any) => rt(i))" tourId="getting-started" />
         </div>
         <p class="page-sub">{{ t('dashboardsList.subtitle') }}</p>
       </div>

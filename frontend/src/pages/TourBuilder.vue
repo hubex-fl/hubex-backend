@@ -128,7 +128,8 @@ async function fetchTours() {
   loading.value = true;
   try {
     tours.value = await apiFetch<TourSummary[]>("/api/v1/tours");
-  } catch {
+  } catch (err: any) {
+    console.error("[TourBuilder] fetchTours failed:", err);
     toastStore.addToast(t("tourBuilder.loadError"), "error");
   } finally {
     loading.value = false;
@@ -214,7 +215,8 @@ async function saveTour() {
     showEditor.value = false;
     await fetchTours();
     syncCustomToursToStore();
-  } catch {
+  } catch (err: any) {
+    console.error("[TourBuilder] saveTour failed:", err);
     toastStore.addToast(t("tourBuilder.saveError"), "error");
   } finally {
     saving.value = false;
@@ -445,6 +447,7 @@ onMounted(() => {
           <UInfoTooltip
             :title="t('tourBuilder.infoTitle')"
             :items="[t('tourBuilder.infoItem1'), t('tourBuilder.infoItem2'), t('tourBuilder.infoItem3')]"
+            tourId="getting-started"
           />
         </div>
         <p class="page-sub">{{ t('tourBuilder.subtitle') }}</p>

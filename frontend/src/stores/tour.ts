@@ -1,8 +1,19 @@
 import { defineStore } from "pinia";
-import { ref, computed, watch, type Ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, watch, nextTick, type Ref } from "vue";
+import type { Router } from "vue-router";
 import type { TourDefinition, TourStep } from "../lib/tour-engine";
 import { calcStepDuration, waitForElement } from "../lib/tour-engine";
+
+/**
+ * The router instance must be injected once from a component context
+ * (useRouter() only works during setup). We store the reference here so
+ * all tour store actions can navigate reliably.
+ */
+let _router: Router | null = null;
+
+export function injectTourRouter(router: Router) {
+  _router = router;
+}
 
 export const useTourStore = defineStore("tour", () => {
   /* ---- state ---- */
@@ -94,14 +105,20 @@ export const useTourStore = defineStore("tour", () => {
    * Sets `isTransitioning` while waiting so the overlay can show a loading state.
    */
   async function _navigateAndWait(step: TourStep) {
-    const router = useRouter();
-    const currentPath = router.currentRoute.value.path;
+    if (!_router) {
+      console.warn("[tour] Router not injected — call injectTourRouter() at app startup.");
+      return;
+    }
+
+    const currentPath = _router.currentRoute.value.path;
 
     if (step.page && step.page !== currentPath) {
       isTransitioning.value = true;
-      await router.push(step.page);
-      // Give Vue a tick to render the new page
-      await new Promise((r) => setTimeout(r, 100));
+      await _router.push(step.page);
+      // Wait for Vue to render the new page fully
+      await nextTick();
+      // Additional settle time for lazy-loaded route components
+      await new Promise((r) => setTimeout(r, 150));
     }
 
     // Wait for the target element

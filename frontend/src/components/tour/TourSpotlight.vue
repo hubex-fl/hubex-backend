@@ -10,10 +10,19 @@ const props = defineProps<{
 /* ---- Spotlight rect (viewport coordinates) ---- */
 const rect = ref<DOMRect | null>(null);
 
-const PADDING = 8; // px around element
+const PADDING = 10; // px around element
+
+/** Viewport dimensions for SVG viewBox (keeps SVG coords = CSS px). */
+const vpW = ref(window.innerWidth);
+const vpH = ref(window.innerHeight);
 
 function updateRect() {
   rect.value = resolveTargetRect(props.target);
+}
+
+function updateViewport() {
+  vpW.value = window.innerWidth;
+  vpH.value = window.innerHeight;
 }
 
 let _raf: number | null = null;
@@ -22,6 +31,7 @@ let _resizeObserver: ResizeObserver | null = null;
 function startTracking() {
   stopTracking();
   updateRect();
+  updateViewport();
 
   // Continuously track position (handles scroll / layout shifts)
   const tick = () => {
@@ -51,8 +61,15 @@ function stopTracking() {
   }
 }
 
-onMounted(startTracking);
-onUnmounted(stopTracking);
+onMounted(() => {
+  startTracking();
+  window.addEventListener("resize", updateViewport);
+});
+
+onUnmounted(() => {
+  stopTracking();
+  window.removeEventListener("resize", updateViewport);
+});
 
 watch(() => props.target, () => {
   startTracking();
@@ -74,14 +91,16 @@ const pulseR = computed(() =>
 </script>
 
 <template>
+  <!-- viewBox matches the viewport so SVG coords = CSS pixels from getBoundingClientRect -->
   <svg
     class="absolute inset-0 w-full h-full pointer-events-none"
-    preserveAspectRatio="none"
+    :viewBox="`0 0 ${vpW} ${vpH}`"
+    preserveAspectRatio="xMinYMin meet"
   >
     <defs>
       <mask id="tour-spotlight-mask">
         <!-- White = show (dark overlay visible) -->
-        <rect x="0" y="0" width="100%" height="100%" fill="white" />
+        <rect x="0" y="0" :width="vpW" :height="vpH" fill="white" />
         <!-- Black = hide (hole in overlay) -->
         <rect
           v-if="hasHole"
@@ -101,8 +120,8 @@ const pulseR = computed(() =>
     <rect
       x="0"
       y="0"
-      width="100%"
-      height="100%"
+      :width="vpW"
+      :height="vpH"
       fill="rgba(0,0,0,0.65)"
       mask="url(#tour-spotlight-mask)"
     />

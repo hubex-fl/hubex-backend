@@ -420,7 +420,7 @@ const statusClass: Record<string, string> = {
         <div>
           <div class="flex items-center">
             <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('alerts.title') }}</h1>
-            <UInfoTooltip :title="t('infoTooltips.alerts.title')" :items="tm('infoTooltips.alerts.items').map((i: any) => rt(i))" />
+            <UInfoTooltip :title="t('infoTooltips.alerts.title')" :items="tm('infoTooltips.alerts.items').map((i: any) => rt(i))" tourId="getting-started" />
           </div>
           <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('alerts.subtitle') }}</p>
         </div>
