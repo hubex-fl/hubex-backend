@@ -14,6 +14,14 @@ function getHomepageDashboardId(): number | null {
 
 const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(to, _from, savedPosition) {
+    // Browser back/forward: restore previous scroll position
+    if (savedPosition) return savedPosition;
+    // Hash link: scroll to the referenced element
+    if (to.hash) return { el: to.hash };
+    // Default: scroll to top on navigation
+    return { top: 0 };
+  },
   routes: [
     {
       path: "/",
@@ -62,7 +70,7 @@ const router = createRouter({
     { path: "/hardware",      component: () => import("./pages/HardwareBoards.vue"), meta: { title: "Hardware Boards" } },
     { path: "/tours",          component: () => import("./pages/TourBuilder.vue"),     meta: { title: "Tour Builder" } },
     { path: "/sandbox",       component: () => import("./pages/Sandbox.vue"),         meta: { title: "Sandbox" } },
-    { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
+    { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor", fullscreen: true } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },
     { path: "/kiosk/slideshow", component: () => import("./pages/KioskSlideshow.vue"), meta: { title: "Kiosk Slideshow", layout: "kiosk" } },

@@ -230,7 +230,7 @@ function handleNavClick() {
     <!-- Sidebar — desktop: static, mobile: overlay -->
     <aside
       :class="[
-        'flex flex-col border-r border-[var(--border)] bg-[var(--bg-surface)] transition-all duration-300 shrink-0',
+        'flex flex-col border-r border-[var(--border)] bg-[var(--bg-surface)] transition-all duration-300 shrink-0 sticky top-0 h-screen',
         // Desktop: normal sidebar (collapsed / expanded)
         'hidden md:flex',
         collapsed ? 'md:w-14' : 'md:w-56',
@@ -538,7 +538,10 @@ function handleNavClick() {
       </header>
 
       <!-- Page content -->
-      <main class="flex-1 overflow-auto p-3 md:p-6 relative">
+      <main :class="[
+        'flex-1 relative',
+        route.meta?.fullscreen ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6',
+      ]">
         <!-- Dim overlay when server is offline -->
         <div
           v-if="!serverHealth.serverOnline"

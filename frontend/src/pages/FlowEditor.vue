@@ -375,9 +375,16 @@ async function loadSystemGraph() {
             to: nodeId,
             type: "data",
           });
+        } else if (devices.length > 0) {
+          // Fallback: no explicit device match found — connect to the first device
+          // so the System Map always shows some connection for device-scoped variables
+          newEdges.push({
+            id: `edge-dev-var-${devices[0].id}-${v.key}`,
+            from: `device-${devices[0].id}`,
+            to: nodeId,
+            type: "data",
+          });
         }
-        // If no device match found, this device-scoped variable is orphaned — no edge drawn.
-        // This avoids the N*M explosion of connecting every device to every variable.
       }
       // Global variables (scope != "device") get no device edges — they stand alone.
     }

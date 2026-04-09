@@ -553,12 +553,18 @@ onMounted(async () => {
   if (route.query.device && typeof route.query.device === "string") {
     deviceUid.value = route.query.device;
   }
+  // Apply ?key= param: set search filter so the variable is visible immediately
+  const keyParam = route.query.key;
+  if (keyParam && typeof keyParam === "string") {
+    search.value = keyParam;
+  }
   await loadDefinitionsAndValues();
-  // Highlight and scroll to the target variable
-  if (route.query.highlight && typeof route.query.highlight === "string") {
-    highlightKey.value = route.query.highlight;
+  // Highlight and scroll to the target variable (supports both ?highlight= and ?key=)
+  const targetKey = (route.query.highlight || route.query.key) as string | undefined;
+  if (targetKey && typeof targetKey === "string") {
+    highlightKey.value = targetKey;
     await nextTick();
-    const el = document.querySelector(`[data-var-key="${CSS.escape(highlightKey.value)}"]`);
+    const el = document.querySelector(`[data-var-key="${CSS.escape(targetKey)}"]`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     // Clear highlight after 4 seconds
     setTimeout(() => { highlightKey.value = null; }, 4000);
