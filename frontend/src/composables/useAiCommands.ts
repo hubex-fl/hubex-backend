@@ -115,6 +115,55 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
   }, durationSec * 1000);
 }
 
+// ---- Camera zoom/pan handler ----
+
+function handleCamera(payload: Record<string, unknown>) {
+  const main =
+    document.querySelector("main") ||
+    document.querySelector(".main-content") ||
+    document.body;
+  const action = payload.action as string;
+  const duration = (payload.duration as number) || 800;
+
+  // Add smooth transition
+  (main as HTMLElement).style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+
+  if (action === "zoom_to" && payload.selector) {
+    // Try each selector in a comma-separated list
+    const selectors = (payload.selector as string).split(",").map((s) => s.trim());
+    let el: Element | null = null;
+    for (const sel of selectors) {
+      el = document.querySelector(sel);
+      if (el) break;
+    }
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const viewW = window.innerWidth;
+      const viewH = window.innerHeight;
+      const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 4.0);
+
+      // Calculate transform to center the element and zoom in
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const translateX = viewW / 2 - centerX;
+      const translateY = viewH / 2 - centerY;
+
+      (main as HTMLElement).style.transformOrigin = `${centerX}px ${centerY}px`;
+      (main as HTMLElement).style.transform = `scale(${zoom}) translate(${translateX / zoom}px, ${translateY / zoom}px)`;
+    }
+  } else if (action === "pan_to") {
+    const x = (payload.x as number) || 0;
+    const y = (payload.y as number) || 0;
+    (main as HTMLElement).style.transform = `translate(${x}px, ${y}px)`;
+  } else if (action === "reset") {
+    (main as HTMLElement).style.transform = "";
+    // Clean up after transition
+    setTimeout(() => {
+      (main as HTMLElement).style.transition = "";
+    }, duration);
+  }
+}
+
 // ---- Command handler (call from WS message handler) ----
 
 export function handleAiCommand(command: { command: string; payload: Record<string, unknown> }) {
@@ -152,6 +201,11 @@ export function handleAiCommand(command: { command: string; payload: Record<stri
         new CustomEvent("ai-fly-to", { detail: command.payload })
       );
       logAction("fly_to_node", command.payload.node_id as string);
+      break;
+    }
+    case "camera": {
+      handleCamera(command.payload);
+      logAction("camera", (command.payload.action as string) || "unknown");
       break;
     }
     case "notification": {

@@ -51,6 +51,7 @@ TOOL_CAPS: dict[str, list[str]] = {
     "hubex_start_tour": ["mcp.execute"],
     "hubex_highlight_element": ["mcp.execute"],
     "hubex_fly_to_node": ["mcp.execute"],
+    "hubex_camera": ["mcp.execute"],
     "hubex_show_notification": ["mcp.execute"],
 }
 
@@ -138,6 +139,8 @@ async def execute_tool(
         return await _ui_highlight(user_id, arguments)
     elif tool_name == "hubex_fly_to_node":
         return await _ui_fly_to_node(user_id, arguments)
+    elif tool_name == "hubex_camera":
+        return await _ui_camera(user_id, arguments)
     elif tool_name == "hubex_show_notification":
         return await _ui_notification(user_id, arguments)
     # ── AI Coop: CRUD tools ──────────────────────────────────────────────
@@ -499,6 +502,20 @@ async def _ui_fly_to_node(user_id: int, args: dict) -> dict:
     logger.info("MCP UI command 'fly_to_node' -> node=%s for user_id=%s", node_id, user_id)
     await user_hub.send_ui_command(user_id, "fly_to_node", {"node_id": node_id})
     return {"success": True, "command": "fly_to_node", "node_id": node_id}
+
+
+async def _ui_camera(user_id: int, args: dict) -> dict:
+    action = args["action"]
+    logger.info("MCP UI command 'camera' -> action=%s for user_id=%s", action, user_id)
+    await user_hub.send_ui_command(user_id, "camera", {
+        "action": action,
+        "selector": args.get("selector", ""),
+        "zoom": args.get("zoom", 2.0),
+        "duration": args.get("duration", 800),
+        "x": args.get("x", 0),
+        "y": args.get("y", 0),
+    })
+    return {"success": True, "command": "camera", "action": action}
 
 
 async def _ui_notification(user_id: int, args: dict) -> dict:

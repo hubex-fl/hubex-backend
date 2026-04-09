@@ -38,97 +38,84 @@ except ImportError:
 #   ...     — action-specific arguments
 
 FULL_SEQUENCE: list[dict[str, Any]] = [
-    # ── Act 1: Welcome (10s) ─────────────────────────────────────────────
-    {"act": 1, "label": "Welcome", "delay": 2, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "Willkommen bei HUBEX — dem universellen IoT Device Hub", "type": "info"},
-    {"delay": 3, "action": "highlight", "selector": ".kpi-cards, .dashboard-grid, .widget-grid", "message": "Echtzeit-Überblick über alle Geräte und Systeme", "duration": 4},
+    # ── Act 1: Welcome (12s) ────────────────────────────────────────────
+    {"act": 1, "label": "Welcome", "delay": 1, "action": "navigate", "path": "/"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, .kpi-card:first-child", "zoom": 1.8, "duration": 1000},
+    {"delay": 2, "action": "highlight", "selector": ".kpi-card:first-child", "message": "Echtzeit-Ueberblick: Devices, Alerts, Events", "duration": 4},
+    {"delay": 4, "action": "camera", "camera_action": "reset", "duration": 600},
 
-    # ── Act 2: Devices (15s) ─────────────────────────────────────────────
-    {"act": 2, "label": "Devices", "delay": 3, "action": "navigate", "path": "/devices"},
-    {"delay": 2, "action": "notification", "message": "Hardware, APIs, Bridges und Agents — alles an einem Ort", "type": "info"},
-    {"delay": 3, "action": "highlight", "selector": "[data-tour='add-device'], .btn-add-device, button.primary", "message": "Geräte per Wizard hinzufügen", "duration": 3},
-    {"delay": 3, "action": "navigate", "path": "/devices/1"},
-    {"delay": 2, "action": "notification", "message": "Live-Daten, Variablen, Verlauf — alles auf einen Blick", "type": "info"},
+    # ── Act 2: Devices (15s) ────────────────────────────────────────────
+    {"act": 2, "label": "Devices", "delay": 2, "action": "navigate", "path": "/devices"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "Alle Geraete an einem Ort - Hardware, APIs, Bridges, Agents", "duration": 4},
+    {"delay": 5, "action": "navigate", "path": "/devices/1"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".hero-card, .device-hero", "zoom": 1.5, "duration": 800},
+    {"delay": 3, "action": "highlight", "selector": ".hero-card, .device-hero", "message": "Live-Status, Variablen, History - alles auf einen Blick", "duration": 4},
+    {"delay": 4, "action": "camera", "camera_action": "reset"},
 
-    # ── Act 3: System Map (15s) ──────────────────────────────────────────
-    {"act": 3, "label": "System Map", "delay": 3, "action": "navigate", "path": "/flow-editor"},
-    {"delay": 2, "action": "notification", "message": "Die Systemkarte zeigt wie alles vernetzt ist", "type": "info"},
-    {"delay": 3, "action": "fly_to_node", "node_id": "device-1"},
-    {"delay": 3, "action": "notification", "message": "Klick auf einen Knoten — Details, Verbindungen, Navigation", "type": "info"},
+    # ── Act 3: System Map (15s) ─────────────────────────────────────────
+    {"act": 3, "label": "System Map", "delay": 2, "action": "navigate", "path": "/flow-editor"},
+    {"delay": 2, "action": "highlight", "selector": ".flow-canvas, canvas, svg", "message": "Systemkarte: Wie alles vernetzt ist", "duration": 4},
+    {"delay": 5, "action": "fly_to_node", "node_id": "device-1"},
+    {"delay": 3, "action": "camera", "camera_action": "zoom_to", "selector": ".inspector-panel", "zoom": 1.8, "duration": 800},
+    {"delay": 3, "action": "camera", "camera_action": "reset"},
 
-    # ── Act 4: Automations (10s) ─────────────────────────────────────────
-    {"act": 4, "label": "Automations", "delay": 3, "action": "navigate", "path": "/automations"},
-    {"delay": 2, "action": "notification", "message": "If-Then Regeln automatisieren dein System", "type": "info"},
-    {"delay": 3, "action": "create_automation",
-     "name": "Demo: Temp-Warnung",
-     "trigger_type": "variable_threshold",
-     "trigger_config": {"variable_key": "demo.temperature", "operator": ">", "threshold": 35},
-     "action_type": "create_alert_event",
-     "action_config": {"severity": "warning", "message": "Temperatur über 35°C!"},
-     "enabled": True},
-    {"delay": 2, "action": "notification", "message": "Automation erstellt — reagiert automatisch auf Temperaturänderungen", "type": "success"},
+    # ── Act 4: Dashboard (15s) ──────────────────────────────────────────
+    {"act": 4, "label": "Dashboard", "delay": 2, "action": "navigate", "path": "/dashboards/8"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".viz-widget:first-child", "zoom": 2.0, "duration": 1000},
+    {"delay": 3, "action": "highlight", "selector": ".viz-widget:first-child", "message": "Live Charts, Gauges, Custom HTML - alles konfigurierbar", "duration": 4},
+    {"delay": 4, "action": "camera", "camera_action": "reset"},
 
-    # ── Act 5: Dashboards (15s) ──────────────────────────────────────────
-    {"act": 5, "label": "Dashboards", "delay": 3, "action": "navigate", "path": "/dashboards"},
-    {"delay": 2, "action": "notification", "message": "Custom Dashboards mit Widgets, Charts und Live-Daten", "type": "info"},
-    {"delay": 3, "action": "create_dashboard",
-     "name": "Demo Dashboard",
-     "widgets": [
-         {"widget_type": "sparkline", "variable_key": "demo.temperature", "label": "Temperatur"},
-         {"widget_type": "gauge", "variable_key": "demo.humidity", "label": "Luftfeuchtigkeit"},
-         {"widget_type": "sparkline", "variable_key": "demo.pressure", "label": "Druck"},
-         {"widget_type": "stat", "variable_key": "demo.battery", "label": "Batterie"},
-         {"widget_type": "sparkline", "variable_key": "demo.signal", "label": "Signal"},
-         {"widget_type": "stat", "variable_key": "demo.uptime", "label": "Uptime"},
-     ]},
-    {"delay": 2, "action": "notification", "message": "KI hat ein Dashboard mit 6 Widgets erstellt — in Sekunden", "type": "success"},
+    # ── Act 5: Sandbox (10s) ────────────────────────────────────────────
+    {"act": 5, "label": "Sandbox", "delay": 2, "action": "navigate", "path": "/sandbox"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "Sandbox: Virtuelle Geraete simulieren", "duration": 4},
 
-    # ── Act 6: Sandbox (10s) ─────────────────────────────────────────────
-    {"act": 6, "label": "Sandbox", "delay": 3, "action": "navigate", "path": "/sandbox"},
-    {"delay": 2, "action": "notification", "message": "Virtuelle Geräte simulieren — ohne echte Hardware testen", "type": "info"},
+    # ── Act 6: MCP (10s) ────────────────────────────────────────────────
+    {"act": 6, "label": "MCP / AI Coop", "delay": 5, "action": "navigate", "path": "/mcp"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "MCP Server: KI steuert HubEx direkt", "duration": 4},
 
-    # ── Act 7: MCP / AI Coop (10s) ───────────────────────────────────────
-    {"act": 7, "label": "MCP / AI Coop", "delay": 3, "action": "navigate", "path": "/mcp"},
-    {"delay": 2, "action": "notification", "message": "MCP Server — Claude und andere KIs steuern HUBEX direkt", "type": "info"},
-    {"delay": 3, "action": "highlight", "selector": ".tools-list, .mcp-tools, .tool-card", "message": "24 Tools für vollständige KI-Integration", "duration": 4},
-
-    # ── Finale (5s) ──────────────────────────────────────────────────────
-    {"act": 8, "label": "Finale", "delay": 3, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "HUBEX — Anbinden. Verstehen. Visualisieren. Automatisieren.", "type": "success"},
+    # ── Finale (8s) ─────────────────────────────────────────────────────
+    {"act": 7, "label": "Finale", "delay": 5, "action": "navigate", "path": "/"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".getting-started, h1", "zoom": 1.3, "duration": 1200},
+    {"delay": 3, "action": "highlight", "selector": "h1, .page-title", "message": "HubEx - Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 6},
+    {"delay": 6, "action": "camera", "camera_action": "reset"},
 ]
 
 SHORT_SEQUENCE: list[dict[str, Any]] = [
-    # Condensed ~30 second version
+    # Condensed ~40 second version with camera
     {"act": 1, "label": "Welcome", "delay": 1, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "Willkommen bei HUBEX — dem universellen IoT Device Hub", "type": "info"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, .kpi-card:first-child", "zoom": 1.5, "duration": 800},
+    {"delay": 2, "action": "highlight", "selector": ".kpi-card:first-child", "message": "Echtzeit-Ueberblick ueber alle Geraete", "duration": 3},
+    {"delay": 3, "action": "camera", "camera_action": "reset", "duration": 500},
 
-    {"act": 2, "label": "Devices", "delay": 3, "action": "navigate", "path": "/devices"},
-    {"delay": 2, "action": "notification", "message": "Hardware, APIs, Bridges und Agents — alles an einem Ort", "type": "info"},
+    {"act": 2, "label": "Devices", "delay": 2, "action": "navigate", "path": "/devices"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "Hardware, APIs, Bridges, Agents - ein Ort", "duration": 3},
 
     {"act": 3, "label": "System Map", "delay": 3, "action": "navigate", "path": "/flow-editor"},
     {"delay": 2, "action": "fly_to_node", "node_id": "device-1"},
-    {"delay": 2, "action": "notification", "message": "Systemkarte — alles vernetzt auf einen Blick", "type": "info"},
+    {"delay": 2, "action": "highlight", "selector": ".flow-canvas, canvas, svg", "message": "Systemkarte - alles vernetzt", "duration": 3},
 
     {"act": 4, "label": "Dashboards", "delay": 3, "action": "navigate", "path": "/dashboards"},
-    {"delay": 2, "action": "notification", "message": "Custom Dashboards mit Live-Daten", "type": "info"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "Custom Dashboards mit Live-Daten", "duration": 3},
 
     {"act": 5, "label": "AI Coop", "delay": 3, "action": "navigate", "path": "/mcp"},
-    {"delay": 2, "action": "notification", "message": "KI-Integration via MCP — 24 Tools", "type": "info"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "KI-Integration via MCP", "duration": 3},
 
     {"act": 6, "label": "Finale", "delay": 3, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "HUBEX — Anbinden. Verstehen. Visualisieren. Automatisieren.", "type": "success"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "HubEx - Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 4},
 ]
 
 TEASER_SEQUENCE: list[dict[str, Any]] = [
-    # Ultra-short ~15 second teaser
+    # Ultra-short ~15 second teaser with camera
     {"act": 1, "label": "Dashboard", "delay": 1, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "HUBEX — der universelle IoT Device Hub", "type": "info"},
+    {"delay": 2, "action": "camera", "camera_action": "zoom_to", "selector": ".kpi-cards, h1", "zoom": 1.5, "duration": 800},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "HubEx - der universelle IoT Device Hub", "duration": 3},
+    {"delay": 3, "action": "camera", "camera_action": "reset", "duration": 500},
 
-    {"act": 2, "label": "System Map", "delay": 3, "action": "navigate", "path": "/flow-editor"},
+    {"act": 2, "label": "System Map", "delay": 1, "action": "navigate", "path": "/flow-editor"},
     {"delay": 2, "action": "fly_to_node", "node_id": "device-1"},
 
     {"act": 3, "label": "Finale", "delay": 3, "action": "navigate", "path": "/"},
-    {"delay": 2, "action": "notification", "message": "Anbinden. Verstehen. Visualisieren. Automatisieren.", "type": "success"},
+    {"delay": 2, "action": "highlight", "selector": "h1, .page-title", "message": "Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 3},
 ]
 
 SEQUENCES = {
@@ -233,6 +220,16 @@ def execute_step(client: HubexClient, step: dict[str, Any]) -> dict[str, Any] | 
             "duration": step.get("duration", 3),
         })
 
+    elif action == "camera":
+        return client.call_tool("hubex_camera", {
+            "action": step.get("camera_action", "reset"),
+            "selector": step.get("selector", ""),
+            "zoom": step.get("zoom", 2.0),
+            "duration": step.get("duration", 800),
+            "x": step.get("x", 0),
+            "y": step.get("y", 0),
+        })
+
     elif action == "fly_to_node":
         return client.call_tool("hubex_fly_to_node", {"node_id": step["node_id"]})
 
@@ -327,6 +324,8 @@ def run_demo(
             detail = step["message"][:50]
         elif action_label == "highlight":
             detail = step["selector"][:40]
+        elif action_label == "camera":
+            detail = f"{step.get('camera_action', 'reset')} {step.get('selector', '')[:30]}"
         elif action_label == "fly_to_node":
             detail = step["node_id"]
         elif action_label == "create_automation":

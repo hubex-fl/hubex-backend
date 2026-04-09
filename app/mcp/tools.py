@@ -265,6 +265,41 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "hubex_camera",
+        "description": "Control the virtual camera — zoom into elements, pan across the page, or reset to normal view. Creates cinematic effects for presentations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["zoom_to", "pan_to", "reset"],
+                    "description": "Camera action",
+                },
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector to zoom into (for zoom_to)",
+                },
+                "zoom": {
+                    "type": "number",
+                    "description": "Zoom level 1.0-4.0 (default 2.0)",
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Animation duration in ms (default 800)",
+                },
+                "x": {
+                    "type": "number",
+                    "description": "Pan X offset in px (for pan_to)",
+                },
+                "y": {
+                    "type": "number",
+                    "description": "Pan Y offset in px (for pan_to)",
+                },
+            },
+            "required": ["action"],
+        },
+    },
+    {
         "name": "hubex_show_notification",
         "description": "Show a toast notification in the UI.",
         "inputSchema": {

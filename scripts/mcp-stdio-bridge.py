@@ -132,7 +132,7 @@ def handle_request(req: dict, email: str, password: str) -> dict | None:
                 "jsonrpc": "2.0",
                 "id": req_id,
                 "result": {
-                    "content": result.get("content", [{"type": "text", "text": json.dumps(result)}]),
+                    "content": result.get("content", [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]),
                     "isError": result.get("isError", False),
                 },
             }
@@ -147,7 +147,7 @@ def handle_request(req: dict, email: str, password: str) -> dict | None:
                         "jsonrpc": "2.0",
                         "id": req_id,
                         "result": {
-                            "content": result.get("content", [{"type": "text", "text": json.dumps(result)}]),
+                            "content": result.get("content", [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]),
                             "isError": result.get("isError", False),
                         },
                     }
@@ -223,7 +223,7 @@ def main():
 
         response = handle_request(req, args.email, args.password)
         if response is not None:
-            out = json.dumps(response)
+            out = json.dumps(response, ensure_ascii=False)
             debug(f"--> {out[:200]}")
             sys.stdout.write(out + "\n")
             sys.stdout.flush()
