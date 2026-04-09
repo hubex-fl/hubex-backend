@@ -6,7 +6,7 @@
  * Also maintains a reactive log of recent AI actions for the indicator.
  */
 import { ref, type Ref } from "vue";
-import { useRouter } from "vue-router";
+import router from "../router";
 import { useTourStore } from "../stores/tour";
 import { useToastStore, type ToastVariant } from "../stores/toast";
 
@@ -118,7 +118,9 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
 // ---- Command handler (call from WS message handler) ----
 
 export function handleAiCommand(command: { command: string; payload: Record<string, unknown> }) {
-  const router = useRouter();
+  // Use the imported router singleton — useRouter() only works in synchronous
+  // component setup, but this function is called asynchronously from the
+  // WebSocket message handler.
   const tourStore = useTourStore();
   const toast = useToastStore();
 
