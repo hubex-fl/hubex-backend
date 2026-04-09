@@ -349,7 +349,12 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("PUT", "/api/v1/dashboards/{dashboard_id}/layout"): ["dashboards.write"],
     ("POST", "/api/v1/dashboards/{dashboard_id}/share"): ["dashboards.write"],
     ("POST", "/api/v1/dashboards/{dashboard_id}/share/pin"): ["dashboards.write"],
+    ("DELETE", "/api/v1/dashboards/{dashboard_id}/share/pin"): ["dashboards.write"],
     ("POST", "/api/v1/dashboards/{dashboard_id}/unshare"): ["dashboards.write"],
+    ("PUT", "/api/v1/dashboards/{dashboard_id}/embed-config"): ["dashboards.write"],
+    ("PUT", "/api/v1/dashboards/{dashboard_id}/kiosk-config"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/clone"): ["dashboards.write"],
+    ("POST", "/api/v1/dashboards/{dashboard_id}/generate-set"): ["dashboards.write"],
     ("GET", "/api/v1/dashboards/public/{token}"): [],  # public — no auth required
     # Notifications — no cap required, user-scoped
     ("GET", "/api/v1/notifications"): [],
