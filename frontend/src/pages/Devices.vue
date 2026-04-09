@@ -1016,6 +1016,7 @@ onUnmounted(() => {
                       {{ d.name || d.device_uid }}
                     </router-link>
                     <span v-if="d.name" class="text-[10px] font-mono text-[var(--text-muted)] truncate max-w-[140px]">{{ d.device_uid }}</span>
+                    <UBadge v-if="d.is_simulated" status="warn" size="sm">{{ t('devices.simulatedBadge') }}</UBadge>
                   </div>
                 </td>
 
@@ -1223,6 +1224,7 @@ onUnmounted(() => {
             <div class="flex gap-2 flex-wrap">
               <UBadge :status="healthStatus(d.health)">{{ d.health }}</UBadge>
               <UBadge :status="stateStatus(d.state)">{{ stateLabel(d) }}</UBadge>
+              <UBadge v-if="d.is_simulated" status="warn" size="sm">{{ t('devices.simulatedBadge') }}</UBadge>
             </div>
 
             <!-- Last seen -->

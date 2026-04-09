@@ -61,6 +61,7 @@ const router = createRouter({
     { path: "/plugins",       component: () => import("./pages/Plugins.vue"),        meta: { title: "Plugins" } },
     { path: "/hardware",      component: () => import("./pages/HardwareBoards.vue"), meta: { title: "Hardware Boards" } },
     { path: "/tours",          component: () => import("./pages/TourBuilder.vue"),     meta: { title: "Tour Builder" } },
+    { path: "/sandbox",       component: () => import("./pages/Sandbox.vue"),         meta: { title: "Sandbox" } },
     { path: "/flow-editor",   component: () => import("./pages/FlowEditor.vue"),     meta: { title: "Flow Editor" } },
     { path: "/dashboards",   component: () => import("./pages/Dashboards.vue"),      meta: { title: "Dashboards" } },
     { path: "/dashboards/:id", component: () => import("./pages/DashboardView.vue"),meta: { title: "Dashboard" }, name: "dashboard-view" },

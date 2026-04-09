@@ -46,6 +46,7 @@ from .hardware import router as hardware_router
 from .components import router as components_router
 from .codegen import router as codegen_router
 from .tours import router as tours_router
+from .simulator import router as simulator_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -94,3 +95,4 @@ router.include_router(hardware_router, tags=["hardware"])
 router.include_router(components_router, tags=["components"])
 router.include_router(codegen_router, tags=["codegen"])
 router.include_router(tours_router, tags=["tours"])
+router.include_router(simulator_router, tags=["simulator"])

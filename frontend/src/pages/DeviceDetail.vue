@@ -24,6 +24,7 @@ import { getVariableHistory } from "../lib/variables";
 import type { VizDataPoint } from "../lib/viz-types";
 import VizSparkline from "../components/viz/VizSparkline.vue";
 import ActionBar from "../components/ActionBar.vue";
+import QuickSimulate from "../components/QuickSimulate.vue";
 import { useConnectPanel } from "../composables/useConnectPanel";
 
 const { open: openConnectPanel } = useConnectPanel();
@@ -65,6 +66,7 @@ type DeviceInfo = {
   busy?: boolean;
   config?: DeviceConfig | null;
   category?: string;
+  is_simulated?: boolean;
   __sig?: string;
 };
 
@@ -213,6 +215,8 @@ const unclaimBusy = ref(false);
 const unclaimConfirm = ref(false);
 const unclaimError = ref<string | null>(null);
 const unclaimStatus = ref<string | null>(null);
+
+const isSimulatedDevice = computed(() => !!deviceInfo.value?.is_simulated);
 
 const isUnclaimed = computed(() => {
   const state = deviceInfo.value?.state;
@@ -456,6 +460,7 @@ const dataFlowTaskCount = computed(() => taskHistory.value.length);
 const showTechnical = ref(false);
 const showInputPanel = ref(false);
 const showOutputPanel = ref(false);
+const showSimulate = ref(false);
 
 // ── Hero ring helpers ─────────────────────────────────────────────────────────
 const RING_R = 52;
@@ -1734,7 +1739,7 @@ onUnmounted(() => {
     </div>
 
     <!-- ── Hero Card ─────────────────────────────────────────────────────────── -->
-    <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+    <div :class="['rounded-xl border bg-[var(--bg-surface)] overflow-hidden', isSimulatedDevice ? 'border-[var(--primary)]/40' : 'border-[var(--border)]']">
       <!-- Top: device identity + actions -->
       <div class="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <!-- Status ring with chip icon inside -->
@@ -1818,7 +1823,10 @@ onUnmounted(() => {
                 </button>
               </template>
             </div>
-            <p v-if="deviceInfo?.name" class="text-xs font-mono text-[var(--text-muted)]">{{ deviceInfo.device_uid }}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p v-if="deviceInfo?.name" class="text-xs font-mono text-[var(--text-muted)]">{{ deviceInfo.device_uid }}</p>
+              <UBadge v-if="isSimulatedDevice" status="warn" size="sm" class="shrink-0">{{ t('devices.simulatedDevice') }}</UBadge>
+            </div>
             <p v-if="deviceInfo?.device_type && deviceInfo.device_type !== 'unknown'" class="text-xs text-[var(--text-muted)] mt-0.5">
               <span class="inline-flex items-center gap-1">
                 <svg class="h-3 w-3" :style="{ color: DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2458,6 +2466,15 @@ onUnmounted(() => {
               </svg>
             </UButton>
             <UButton
+              size="sm"
+              :variant="showSimulate ? 'secondary' : 'ghost'"
+              :disabled="overrideDisabled || !deviceInfo?.device_uid"
+              :class="showSimulate ? 'border-[var(--primary)]/40 text-[var(--primary)]' : ''"
+              @click="showSimulate = !showSimulate"
+            >
+              {{ t('devices.simulate') }}
+            </UButton>
+            <UButton
               size="sm" variant="ghost"
               :disabled="overrideDisabled || !deviceInfo?.device_uid"
               @click="openAddOverride"
@@ -2666,6 +2683,22 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Quick Simulate panel (collapsible) -->
+        <div
+          v-if="showSimulate && variables.length"
+          class="border-t-2 border-[var(--primary)]/30 bg-[var(--primary)]/[0.03]"
+        >
+          <div class="px-4 py-2 flex items-center gap-2 border-b border-[var(--border)]">
+            <span class="text-xs font-semibold text-[var(--primary)]">{{ t('devices.quickSimulate') }}</span>
+            <span class="text-[10px] text-[var(--text-muted)]">{{ t('devices.quickSimulateHint') }}</span>
+          </div>
+          <QuickSimulate
+            :variables="variablesSorted"
+            :device-uid="deviceInfo?.device_uid ?? ''"
+            @value-sent="loadVariables"
+          />
         </div>
 
         <!-- Footer: snapshot info + View in Streams link (M8d Step 2) -->

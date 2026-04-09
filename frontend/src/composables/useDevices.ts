@@ -45,6 +45,7 @@ export type Device = {
   icon: string | null;
   location_name: string | null;
   auto_discovery: boolean;
+  is_simulated?: boolean;
   __sig?: string;
 };
 

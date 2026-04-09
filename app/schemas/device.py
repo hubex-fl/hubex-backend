@@ -26,6 +26,7 @@ class DeviceListItem(BaseModel):
     name: Optional[str] = None
     category: str = "hardware"
     icon: Optional[str] = None
+    is_simulated: bool = False
 
 
 class DeviceDetailItem(BaseModel):
@@ -58,6 +59,7 @@ class DeviceDetailItem(BaseModel):
     location_lng: Optional[float] = None
     auto_discovery: bool = True
     config: Optional[dict] = None
+    is_simulated: bool = False
 
 
 class DevicePatch(BaseModel):

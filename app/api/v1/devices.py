@@ -309,6 +309,7 @@ async def list_devices(
                 icon=device.icon,
                 location_name=device.location_name,
                 auto_discovery=device.auto_discovery if device.auto_discovery is not None else True,
+                is_simulated=bool((device.capabilities or {}).get("simulated")),
             )
         )
     return out
@@ -362,6 +363,7 @@ async def get_device(
         busy=busy,
         category=device.category or "hardware",
         config=device.config,
+        is_simulated=bool((device.capabilities or {}).get("simulated")),
     )
 
 
