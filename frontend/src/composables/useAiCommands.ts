@@ -120,9 +120,12 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
 function handleCamera(payload: Record<string, unknown>) {
   const action = payload.action as string;
   const duration = (payload.duration as number) || 800;
-  const body = document.body;
 
-  body.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+  // Zoom the main content viewport (not sidebar, not body)
+  const vp = (document.getElementById("camera-viewport") ||
+    document.querySelector("main") || document.body) as HTMLElement;
+
+  vp.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
 
   if (action === "zoom_to" && payload.selector) {
     const selectors = (payload.selector as string).split(",").map((s) => s.trim());
@@ -132,24 +135,25 @@ function handleCamera(payload: Record<string, unknown>) {
       if (el) break;
     }
     if (el) {
-      const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 4.0);
+      const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 5.0);
       const rect = el.getBoundingClientRect();
-      const originX = rect.left + rect.width / 2;
-      const originY = rect.top + rect.height / 2;
+      const vpRect = vp.getBoundingClientRect();
+      const originX = rect.left - vpRect.left + rect.width / 2;
+      const originY = rect.top - vpRect.top + rect.height / 2;
 
-      body.style.transformOrigin = `${originX}px ${originY}px`;
-      body.style.transform = `scale(${zoom})`;
-      body.style.overflow = "hidden";
+      vp.style.transformOrigin = `${originX}px ${originY}px`;
+      vp.style.transform = `scale(${zoom})`;
+      vp.style.overflow = "hidden";
     }
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
     const y = (payload.y as number) || 0;
-    body.style.transform = `translate(${x}px, ${y}px)`;
+    vp.style.transform = `translate(${x}px, ${y}px)`;
   } else if (action === "reset") {
-    body.style.transform = "";
-    body.style.transformOrigin = "";
-    body.style.overflow = "";
-    setTimeout(() => { body.style.transition = ""; }, duration);
+    vp.style.transform = "";
+    vp.style.transformOrigin = "";
+    vp.style.overflow = "";
+    setTimeout(() => { vp.style.transition = ""; }, duration);
   }
 }
 

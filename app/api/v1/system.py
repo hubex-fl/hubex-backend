@@ -213,13 +213,13 @@ async def reset_all_data(
 DEMO_SEQUENCES: dict[str, list[dict[str, Any]]] = {
     "teaser": [
         {"delay": 1, "command": "navigate", "payload": {"path": "/"}},
-        {"delay": 2, "command": "camera", "payload": {"action": "zoom_to", "selector": ".kpi-card:first-child, .stat-card:first-child, [data-tour='dashboard-kpi']", "zoom": 2.0}},
-        {"delay": 3, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "Echtzeit IoT Dashboard", "duration": 4}},
-        {"delay": 4, "command": "camera", "payload": {"action": "reset"}},
+        {"delay": 4, "command": "camera", "payload": {"action": "zoom_to", "selector": ".kpi-card:first-child", "zoom": 2.5, "duration": 1200}},
+        {"delay": 2, "command": "highlight", "payload": {"selector": ".kpi-card:first-child", "message": "Echtzeit IoT Dashboard", "duration": 4}},
+        {"delay": 5, "command": "camera", "payload": {"action": "reset", "duration": 800}},
         {"delay": 2, "command": "navigate", "payload": {"path": "/flow-editor"}},
-        {"delay": 3, "command": "fly_to_node", "payload": {"node_id": "device-1"}},
-        {"delay": 3, "command": "navigate", "payload": {"path": "/"}},
-        {"delay": 2, "command": "highlight", "payload": {"selector": "h1, .page-title", "message": "HubEx \u2014 Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 6}},
+        {"delay": 4, "command": "fly_to_node", "payload": {"node_id": "device-1"}},
+        {"delay": 4, "command": "navigate", "payload": {"path": "/"}},
+        {"delay": 3, "command": "highlight", "payload": {"selector": "h1", "message": "HubEx -- Anbinden. Verstehen. Visualisieren. Automatisieren.", "duration": 6}},
     ],
     "short": [
         {"delay": 1, "command": "navigate", "payload": {"path": "/"}},
