@@ -1012,6 +1012,18 @@ export default {
     authBearer: 'Bearer',
     authBearerToken: 'Bearer Token',
     toggleFailed: 'Toggle failed',
+    categoryLabel: 'Category',
+    allCategories: 'All Categories',
+    rootCategory: 'Ungrouped',
+    colCategory: 'Category',
+    pathErrors: {
+      tooShort: 'Path must be at least 2 characters (e.g. /x)',
+      tooLong: 'Path must not exceed 200 characters',
+      trailingSlash: 'Path must not end with a trailing slash',
+      doubleSlash: 'Path must not contain double slashes (//)',
+      traversal: 'Path must not contain path traversal (..)',
+      invalidChars: 'Path may only contain letters, numbers, hyphens, underscores, slashes, and dots',
+    },
   },
   infoTooltips: {
     events: {

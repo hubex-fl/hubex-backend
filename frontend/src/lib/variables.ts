@@ -212,8 +212,8 @@ export async function getVariableHistory(params: {
   q.set("key", params.key);
   q.set("scope", params.scope);
   if (params.deviceUid) q.set("deviceUid", params.deviceUid);
-  if (params.from)       q.set("from", String(params.from));
-  if (params.to)         q.set("to", String(params.to));
+  if (params.from)       q.set("from", new Date(params.from * 1000).toISOString());
+  if (params.to)         q.set("to", new Date(params.to * 1000).toISOString());
   if (params.limit)      q.set("limit", String(params.limit));
   if (params.downsample) q.set("downsample", String(params.downsample));
   return apiFetch<VariableHistoryResponse>(`/api/v1/variables/history?${q.toString()}`);

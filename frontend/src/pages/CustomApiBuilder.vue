@@ -77,13 +77,66 @@ const previewData = ref<string | null>(null);
 const previewLoading = ref(false);
 const editId = ref<number | null>(null);
 
+// ── Path validation ─────────────────────────────────────────────────────────
+const PATH_CHARS_RE = /^[a-zA-Z0-9\-_/\.]+$/;
+
+const pathError = computed((): string | null => {
+  const raw = formPath.value.trim();
+  if (!raw) return null; // empty is handled by canProceedStep1
+  // Prepend / if user didn't type it
+  const p = raw.startsWith("/") ? raw : "/" + raw;
+  if (p.length < 2) return t("customApi.pathErrors.tooShort");
+  if (p.length > 200) return t("customApi.pathErrors.tooLong");
+  if (p.endsWith("/") && p.length > 1) return t("customApi.pathErrors.trailingSlash");
+  if (p.includes("//")) return t("customApi.pathErrors.doubleSlash");
+  if (p.includes("..")) return t("customApi.pathErrors.traversal");
+  const body = p.slice(1);
+  if (body && !PATH_CHARS_RE.test(body)) return t("customApi.pathErrors.invalidChars");
+  return null;
+});
+
+// ── Category helpers ────────────────────────────────────────────────────────
+function getCategory(path: string): string {
+  // /api1/temperature → "api1", /test → "(root)"
+  const clean = path.startsWith("/") ? path.slice(1) : path;
+  const slashIdx = clean.indexOf("/");
+  if (slashIdx === -1) return "(root)";
+  return clean.substring(0, slashIdx);
+}
+
+const categoryFilter = ref<string>("__all__");
+
+const availableCategories = computed(() => {
+  const cats = new Set<string>();
+  for (const ep of endpoints.value) {
+    cats.add(getCategory(ep.path));
+  }
+  return Array.from(cats).sort();
+});
+
+const filteredEndpoints = computed(() => {
+  if (categoryFilter.value === "__all__") return endpoints.value;
+  return endpoints.value.filter(ep => getCategory(ep.path) === categoryFilter.value);
+});
+
+const groupedEndpoints = computed(() => {
+  const groups: Record<string, typeof endpoints.value> = {};
+  for (const ep of filteredEndpoints.value) {
+    const cat = getCategory(ep.path);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(ep);
+  }
+  // Sort group keys
+  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+});
+
 // ── Computed ─────────────────────────────────────────────────────────────────
 const totalSteps = computed(() => 4);
 
 const pathPrefix = "/api/v1/custom-api/call/";
 const fullPath = computed(() => pathPrefix + formPath.value);
 
-const canProceedStep1 = computed(() => formName.value.trim() && formPath.value.trim());
+const canProceedStep1 = computed(() => formName.value.trim() && formPath.value.trim() && !pathError.value);
 
 const sourceConfig = computed(() => {
   if (formMethod.value === "GET") {
@@ -391,16 +444,28 @@ onMounted(load);
       </div>
     </div>
 
-    <!-- View toggle -->
-    <div v-if="endpoints.length" class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)] w-fit">
-      <button
-        :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'cards' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
-        @click="viewMode = 'cards'"
-      >{{ t('customApi.cardView') }}</button>
-      <button
-        :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'table' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
-        @click="viewMode = 'table'"
-      >{{ t('customApi.tableView') }}</button>
+    <!-- View toggle + Category filter -->
+    <div v-if="endpoints.length" class="flex items-center gap-4 flex-wrap">
+      <div class="flex gap-1 p-0.5 rounded-lg bg-[var(--bg-raised)] w-fit">
+        <button
+          :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'cards' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+          @click="viewMode = 'cards'"
+        >{{ t('customApi.cardView') }}</button>
+        <button
+          :class="['px-2.5 py-1 text-xs rounded-md transition-colors', viewMode === 'table' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]']"
+          @click="viewMode = 'table'"
+        >{{ t('customApi.tableView') }}</button>
+      </div>
+      <div v-if="availableCategories.length > 1" class="flex items-center gap-2">
+        <label class="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.categoryLabel') }}</label>
+        <select v-model="categoryFilter" class="input text-xs py-1 px-2 min-w-[120px]">
+          <option value="__all__">{{ t('customApi.allCategories') }}</option>
+          <option v-for="cat in availableCategories" :key="cat" :value="cat">
+            {{ cat === '(root)' ? t('customApi.rootCategory') : cat }}
+            ({{ endpoints.filter(ep => getCategory(ep.path) === cat).length }})
+          </option>
+        </select>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -423,39 +488,50 @@ onMounted(load);
       <UButton size="sm" @click="openCreate">{{ t('customApi.createEndpoint') }}</UButton>
     </UEmpty>
 
-    <!-- Card view -->
-    <div v-else-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <div
-        v-for="ep in endpoints"
-        :key="ep.id"
-        class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4 cursor-pointer transition-all hover:border-[var(--border-hover)] hover:shadow-[var(--shadow-glow-primary)]"
-        @click="openDetail(ep)"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span
-                class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
-                :class="ep.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
-              >{{ ep.method }}</span>
-              <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ ep.name }}</span>
-            </div>
-            <p class="text-xs font-mono text-[var(--text-secondary)] truncate">/api/v1/custom-api/call/{{ ep.path }}</p>
-            <p v-if="ep.description" class="text-[10px] text-[var(--text-muted)] mt-1 line-clamp-2">{{ ep.description }}</p>
-          </div>
-          <div class="flex flex-col items-end gap-1.5 shrink-0" @click.stop>
-            <UBadge :status="ep.enabled ? 'ok' : 'neutral'" size="sm">
-              {{ ep.enabled ? t('status.enabled') : t('status.disabled') }}
-            </UBadge>
-            <UBadge status="info" size="sm">{{ getAuthLabel(ep.auth_type) }}</UBadge>
-          </div>
+    <!-- Card view (grouped by category) -->
+    <div v-else-if="viewMode === 'cards'" class="space-y-6">
+      <div v-for="[category, eps] in groupedEndpoints" :key="category">
+        <!-- Category header -->
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="h-4 w-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
+          <span class="text-xs font-semibold text-[var(--text-primary)]">{{ category === '(root)' ? t('customApi.rootCategory') : category }}</span>
+          <span class="text-[10px] text-[var(--text-muted)]">({{ eps.length }} {{ eps.length === 1 ? 'endpoint' : 'endpoints' }})</span>
         </div>
-        <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border)]">
-          <div class="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
-            <span>{{ ep.request_count }} {{ t('customApi.requests') }}</span>
-            <span>{{ ep.rate_limit }} {{ t('customApi.reqPerHour') }}</span>
+        <!-- Endpoint cards in this category -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div
+            v-for="ep in eps"
+            :key="ep.id"
+            class="border border-[var(--border)] rounded-xl bg-[var(--bg-surface)] px-5 py-4 cursor-pointer transition-all hover:border-[var(--border-hover)] hover:shadow-[var(--shadow-glow-primary)]"
+            @click="openDetail(ep)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span
+                    class="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                    :class="ep.method === 'GET' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'"
+                  >{{ ep.method }}</span>
+                  <span class="text-sm font-medium text-[var(--text-primary)] truncate">{{ ep.name }}</span>
+                </div>
+                <p class="text-xs font-mono text-[var(--text-secondary)] truncate">/api/v1/custom-api/call/{{ ep.path }}</p>
+                <p v-if="ep.description" class="text-[10px] text-[var(--text-muted)] mt-1 line-clamp-2">{{ ep.description }}</p>
+              </div>
+              <div class="flex flex-col items-end gap-1.5 shrink-0" @click.stop>
+                <UBadge :status="ep.enabled ? 'ok' : 'neutral'" size="sm">
+                  {{ ep.enabled ? t('status.enabled') : t('status.disabled') }}
+                </UBadge>
+                <UBadge status="info" size="sm">{{ getAuthLabel(ep.auth_type) }}</UBadge>
+              </div>
+            </div>
+            <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border)]">
+              <div class="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
+                <span>{{ ep.request_count }} {{ t('customApi.requests') }}</span>
+                <span>{{ ep.rate_limit }} {{ t('customApi.reqPerHour') }}</span>
+              </div>
+              <span class="text-[10px] text-[var(--text-muted)]">{{ relativeTime(ep.last_called_at) }}</span>
+            </div>
           </div>
-          <span class="text-[10px] text-[var(--text-muted)]">{{ relativeTime(ep.last_called_at) }}</span>
         </div>
       </div>
     </div>
@@ -467,6 +543,7 @@ onMounted(load);
           <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
             <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colMethod') }}</th>
             <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colPath') }}</th>
+            <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colCategory') }}</th>
             <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colSource') }}</th>
             <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colAuth') }}</th>
             <th class="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{{ t('customApi.colRateLimit') }}</th>
@@ -476,7 +553,7 @@ onMounted(load);
         </thead>
         <tbody>
           <tr
-            v-for="ep in endpoints"
+            v-for="ep in filteredEndpoints"
             :key="ep.id"
             class="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--bg-raised)] cursor-pointer transition-colors"
             @click="openDetail(ep)"
@@ -488,6 +565,9 @@ onMounted(load);
               >{{ ep.method }}</span>
             </td>
             <td class="px-4 py-2.5 font-mono text-[var(--text-secondary)]">/{{ ep.path }}</td>
+            <td class="px-4 py-2.5 text-[var(--text-muted)]">
+              <span class="px-1.5 py-0.5 rounded bg-[var(--bg-raised)] text-[10px]">{{ getCategory(ep.path) === '(root)' ? t('customApi.rootCategory') : getCategory(ep.path) }}</span>
+            </td>
             <td class="px-4 py-2.5 text-[var(--text-muted)]">{{ (ep.source_config?.type as string) || '-' }}</td>
             <td class="px-4 py-2.5">
               <UBadge status="info" size="sm">{{ getAuthLabel(ep.auth_type) }}</UBadge>
@@ -558,10 +638,11 @@ onMounted(load);
             <span class="px-3 py-2 text-xs font-mono bg-[var(--bg-raised)] border border-r-0 border-[var(--border)] rounded-l-lg text-[var(--text-muted)] whitespace-nowrap">{{ pathPrefix }}</span>
             <input
               v-model="formPath"
-              class="input w-full rounded-l-none"
+              :class="['input w-full rounded-l-none', pathError ? 'border-red-500 focus:border-red-500' : '']"
               :placeholder="t('customApi.pathPlaceholder')"
             />
           </div>
+          <p v-if="pathError" class="text-[10px] text-red-400 mt-1">{{ pathError }}</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('customApi.methodLabel') }}</label>

@@ -93,8 +93,7 @@
                     class="field-input"
                     :placeholder="t('dashboardEnhance.pinPlaceholder')"
                     maxlength="6"
-                    @blur="savePin"
-                    @keydown.enter="savePin"
+                    @input="onPinInput"
                   />
                 </div>
               </template>
@@ -125,8 +124,13 @@
                 </template>
               </template>
 
+              <!-- Save button + toast for share settings -->
+              <Transition name="fade">
+                <p v-if="shareToast" class="share-toast">{{ shareToast }}</p>
+              </Transition>
               <div class="modal-actions">
                 <UButton variant="ghost" @click="showSharePanel = false">{{ t('common.close') }}</UButton>
+                <UButton v-if="shareDirty && shareTab === 'public'" :loading="savingShare" @click="saveShareSettings">{{ t('common.save') }}</UButton>
               </div>
             </div>
           </div>
@@ -667,6 +671,9 @@ const shareToken = ref("");
 const copied = ref(false);
 const pinEnabled = ref(false);
 const pinValue = ref("");
+const shareDirty = ref(false);
+const savingShare = ref(false);
+const shareToast = ref("");
 
 // Embed state
 const embedCopied = ref(false);
@@ -875,6 +882,13 @@ watch(showSettingsPanel, (open) => {
   }
 });
 
+watch(showSharePanel, (open) => {
+  if (open) {
+    shareDirty.value = false;
+    shareToast.value = "";
+  }
+});
+
 async function saveSettings() {
   if (!dashboard.value) return;
   savingSettings.value = true;
@@ -947,25 +961,40 @@ function copyShareUrl() {
   setTimeout(() => copied.value = false, 2000);
 }
 
-async function handlePinToggle() {
+function handlePinToggle() {
+  shareDirty.value = true;
   if (!pinEnabled.value) {
-    // Remove PIN via dedicated endpoint: clears public_pin and reverts to "public"
-    if (dashboard.value) {
-      try {
-        const result = await deleteDashboardPin(dashboard.value.id);
-        dashboard.value.sharing_mode = result.sharing_mode || "public";
-        dashboard.value.has_pin = false;
-      } catch { /* silent */ }
-    }
     pinValue.value = "";
   }
 }
 
-async function savePin() {
-  if (!dashboard.value || !pinValue.value || pinValue.value.length < 4) return;
+function onPinInput() {
+  shareDirty.value = true;
+}
+
+async function saveShareSettings() {
+  if (!dashboard.value) return;
+  savingShare.value = true;
   try {
-    await setDashboardPin(dashboard.value.id, pinValue.value);
+    if (!pinEnabled.value) {
+      // Remove PIN
+      const result = await deleteDashboardPin(dashboard.value.id);
+      dashboard.value.sharing_mode = result.sharing_mode || "public";
+      dashboard.value.has_pin = false;
+    } else if (pinValue.value && pinValue.value.length >= 4) {
+      // Set PIN
+      await setDashboardPin(dashboard.value.id, pinValue.value);
+      dashboard.value.has_pin = true;
+    }
+    shareDirty.value = false;
+    shareToast.value = t('dashboardEnhance.settingsSaved') || "Settings saved";
+    setTimeout(() => shareToast.value = "", 2500);
   } catch { /* silent */ }
+  savingShare.value = false;
+}
+
+async function savePin() {
+  shareDirty.value = true;
 }
 
 // ── Embed ──────────────────────────────────────────────────────────────────
@@ -1056,20 +1085,40 @@ function onWidgetDrop(e: DragEvent, targetWidget: DashboardWidget) {
   const target = targetWidget;
   if (!source) return;
 
+  // Save original positions for potential revert
+  const origSourceCol = source.grid_col;
+  const origSourceRow = source.grid_row;
+  const origSourceOrder = source.sort_order;
+  const origTargetCol = target.grid_col;
+  const origTargetRow = target.grid_row;
+  const origTargetOrder = target.sort_order;
+
   // Swap grid positions
-  const tmpCol = source.grid_col;
-  const tmpRow = source.grid_row;
-  const tmpOrder = source.sort_order;
-  source.grid_col = target.grid_col;
-  source.grid_row = target.grid_row;
-  source.sort_order = target.sort_order;
-  target.grid_col = tmpCol;
-  target.grid_row = tmpRow;
-  target.sort_order = tmpOrder;
+  source.grid_col = origTargetCol;
+  source.grid_row = origTargetRow;
+  source.sort_order = origTargetOrder;
+  target.grid_col = origSourceCol;
+  target.grid_row = origSourceRow;
+  target.sort_order = origSourceOrder;
+
+  // Check if the swap causes overlap for either widget
+  const sourceOverlaps = wouldOverlap(source.id, source.grid_col, source.grid_row, source.grid_span_w, source.grid_span_h);
+  const targetOverlaps = wouldOverlap(target.id, target.grid_col, target.grid_row, target.grid_span_w, target.grid_span_h);
+
+  if (sourceOverlaps || targetOverlaps) {
+    // Revert to original positions
+    source.grid_col = origSourceCol;
+    source.grid_row = origSourceRow;
+    source.sort_order = origSourceOrder;
+    target.grid_col = origTargetCol;
+    target.grid_row = origTargetRow;
+    target.sort_order = origTargetOrder;
+  } else {
+    saveLayout();
+  }
 
   dragWidgetId.value = null;
   dragOverWidgetId.value = null;
-  saveLayout();
 }
 
 function onGridDragOver(e: DragEvent) {
@@ -1814,6 +1863,14 @@ function openAddWidget() {
 .modal-title { font-size: 17px; font-weight: 700; color: var(--text-base); margin-bottom: 16px; }
 .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.share-toast {
+  font-size: 12px;
+  color: #2DD4BF;
+  text-align: right;
+  margin-top: 4px;
+}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 .form-fields { display: flex; flex-direction: column; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field-label { font-size: 12px; color: var(--text-muted); }

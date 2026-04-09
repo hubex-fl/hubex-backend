@@ -1,9 +1,13 @@
 """Pydantic schemas for Custom API Builder endpoints."""
 
+import re
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+# Regex: only letters, digits, hyphens, underscores, slashes, dots
+_PATH_CHARS_RE = re.compile(r"^[a-zA-Z0-9\-_/\.]+$")
 
 
 class SourceConfigBase(BaseModel):
@@ -44,11 +48,24 @@ class EndpointCreate(BaseModel):
     @classmethod
     def validate_path(cls, v: str) -> str:
         v = v.strip()
+        if len(v) < 2:
+            raise ValueError("path must be at least 2 characters (e.g. /x)")
+        if len(v) > 200:
+            raise ValueError("path must not exceed 200 characters")
         if not v.startswith("/"):
             raise ValueError("path must start with /")
-        # Disallow double slashes, dots for path traversal
-        if ".." in v or "//" in v:
-            raise ValueError("path must not contain '..' or '//'")
+        if v.endswith("/") and len(v) > 1:
+            raise ValueError("path must not end with a trailing slash")
+        if "//" in v:
+            raise ValueError("path must not contain double slashes (//)")
+        if ".." in v:
+            raise ValueError("path must not contain path traversal (..)")
+        # Only allow safe characters (letters, digits, hyphens, underscores, slashes, dots)
+        path_body = v[1:]  # strip leading /
+        if path_body and not _PATH_CHARS_RE.match(path_body):
+            raise ValueError(
+                "path may only contain letters, numbers, hyphens, underscores, slashes, and dots"
+            )
         return v
 
     @field_validator("method", mode="before")

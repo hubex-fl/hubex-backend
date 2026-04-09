@@ -1007,6 +1007,18 @@ export default {
     authBearer: 'Bearer',
     authBearerToken: 'Bearer Token',
     toggleFailed: 'Umschalten fehlgeschlagen',
+    categoryLabel: 'Kategorie',
+    allCategories: 'Alle Kategorien',
+    rootCategory: 'Ungruppiert',
+    colCategory: 'Kategorie',
+    pathErrors: {
+      tooShort: 'Pfad muss mindestens 2 Zeichen lang sein (z.B. /x)',
+      tooLong: 'Pfad darf maximal 200 Zeichen lang sein',
+      trailingSlash: 'Pfad darf nicht mit einem Schr\u00E4gstrich enden',
+      doubleSlash: 'Pfad darf keine doppelten Schr\u00E4gstriche (//) enthalten',
+      traversal: 'Pfad darf keine Pfad-Traversierung (..) enthalten',
+      invalidChars: 'Pfad darf nur Buchstaben, Zahlen, Bindestriche, Unterstriche, Schr\u00E4gstriche und Punkte enthalten',
+    },
   },
   infoTooltips: {
     events: {
