@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "hubex": {
+      "command": "C:\\Users\\lange\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "args": [
+        "C:\\Users\\lange\\Documents\\vs_code\\projects\\backend\\hubex\\v0.1\\hubex-backend\\.claude\\worktrees\\suspicious-raman\\scripts\\mcp-stdio-bridge.py",
+        "test@test.com",
+        "Test1234!"
+      ]
+    }
+  }
+}

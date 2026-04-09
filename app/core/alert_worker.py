@@ -168,7 +168,7 @@ async def _eval_variable_threshold(config: dict, db: AsyncSession, now: datetime
     stmt = select(VariableValue).where(VariableValue.variable_key == key)
     if device_uid:
         # Resolve device_uid → device_id via a subquery
-        sub = select(Device.id).where(Device.uid == device_uid).scalar_subquery()
+        sub = select(Device.id).where(Device.device_uid == device_uid).scalar_subquery()
         stmt = stmt.where(VariableValue.device_id == sub)
     else:
         stmt = stmt.where(VariableValue.scope == "global")
