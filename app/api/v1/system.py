@@ -84,3 +84,119 @@ async def delete_demo_data(
     from app.scripts.seed_demo_data import remove_demo
     result = await remove_demo(db)
     return {"status": "ok", "deleted": result}
+
+
+# ---------------------------------------------------------------------------
+# Full system reset (admin only) — clears ALL user-created data
+# ---------------------------------------------------------------------------
+
+@router.delete("/system/reset")
+async def reset_all_data(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete ALL user data for a clean slate.
+
+    Clears: devices, variables (definitions + values + history), automations,
+    alerts, dashboards (+ widgets), entities, webhooks, custom endpoints,
+    custom tours, simulator configs, device profiles, components, events,
+    audit log, notifications, OTA firmware, and reports.
+
+    Protected by cap.admin capability in the auth guard.
+    """
+    from sqlalchemy import delete as sa_delete
+
+    summary: dict[str, int] = {}
+
+    # Order matters — delete children before parents to respect FK constraints.
+    delete_targets: list[tuple[str, type]] = []
+
+    # Variable history & values first, then definitions
+    from app.db.models.variables import VariableHistory, VariableValue, VariableDefinition
+    delete_targets += [
+        ("variable_history", VariableHistory),
+        ("variable_values", VariableValue),
+        ("variable_definitions", VariableDefinition),
+    ]
+
+    # Dashboard widgets, then dashboards
+    from app.db.models.dashboard import DashboardWidget, Dashboard
+    delete_targets += [
+        ("dashboard_widgets", DashboardWidget),
+        ("dashboards", Dashboard),
+    ]
+
+    # Automations
+    from app.db.models.automation import AutomationRule
+    delete_targets.append(("automations", AutomationRule))
+
+    # Alerts
+    from app.db.models.alerts import AlertEvent
+    delete_targets.append(("alerts", AlertEvent))
+
+    # Entities
+    from app.db.models.entities import Entity
+    delete_targets.append(("entities", Entity))
+
+    # Webhook deliveries first (FK to subscriptions), then subscriptions
+    from app.db.models.webhooks import WebhookDelivery, WebhookSubscription
+    delete_targets += [
+        ("webhook_deliveries", WebhookDelivery),
+        ("webhook_subscriptions", WebhookSubscription),
+    ]
+
+    # Custom endpoints
+    from app.db.models.custom_endpoint import CustomEndpoint
+    delete_targets.append(("custom_endpoints", CustomEndpoint))
+
+    # Custom tours
+    from app.db.models.custom_tour import CustomTour
+    delete_targets.append(("custom_tours", CustomTour))
+
+    # Simulator configs
+    from app.db.models.simulator import SimulatorConfig
+    delete_targets.append(("simulator_configs", SimulatorConfig))
+
+    # Device profiles
+    from app.db.models.device_profile import DeviceProfile
+    delete_targets.append(("device_profiles", DeviceProfile))
+
+    # Hardware components
+    from app.db.models.component import HardwareComponent
+    delete_targets.append(("components", HardwareComponent))
+
+    # Events
+    from app.db.models.events import EventV1, EventV1Checkpoint
+    delete_targets += [
+        ("event_checkpoints", EventV1Checkpoint),
+        ("events", EventV1),
+    ]
+
+    # Notifications
+    from app.db.models.notifications import Notification
+    delete_targets.append(("notifications", Notification))
+
+    # Audit log
+    from app.db.models.audit import AuditV1Entry
+    delete_targets.append(("audit_log", AuditV1Entry))
+
+    # Reports
+    from app.db.models.report import GeneratedReport, ReportTemplate
+    delete_targets += [
+        ("generated_reports", GeneratedReport),
+        ("report_templates", ReportTemplate),
+    ]
+
+    # Devices (after variables/dashboards that reference them)
+    from app.db.models.device import Device
+    delete_targets.append(("devices", Device))
+
+    for label, model in delete_targets:
+        try:
+            res = await db.execute(sa_delete(model))
+            summary[label] = res.rowcount
+        except Exception as e:
+            logger.warning("reset: failed to delete %s: %s", label, e)
+            summary[label] = -1
+
+    await db.commit()
+    return {"status": "ok", "deleted": summary}

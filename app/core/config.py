@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     max_dashboards: int = 10
     max_automations: int = 20
     max_custom_endpoints: int = 5
-    upgrade_url: str = "https://hubex.io/pricing"
+    upgrade_url: str = "https://hubextest.tech/pricing"
 
     # M27 — Scaling
     history_retention_days: int = 30

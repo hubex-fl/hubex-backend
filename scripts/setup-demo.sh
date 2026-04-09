@@ -27,7 +27,7 @@ RED="\033[91m"
 RESET="\033[0m"
 
 SERVER="${1:-http://localhost:8000}"
-DEMO_EMAIL="demo@hubex.io"
+DEMO_EMAIL="demo@hubextest.tech"
 DEMO_PASSWORD="demo1234"
 
 echo -e "\n${BOLD}${CYAN}╔═══════════════════════════════════════╗"

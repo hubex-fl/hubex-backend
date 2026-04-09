@@ -30,7 +30,7 @@ export const useLimitsStore = defineStore("limits", () => {
   const dismissed = ref(false);
 
   const edition = computed(() => data.value?.edition ?? "community");
-  const upgradeUrl = computed(() => data.value?.upgrade_url ?? "https://hubex.io/pricing");
+  const upgradeUrl = computed(() => data.value?.upgrade_url ?? "https://hubextest.tech/pricing");
   const isCommunity = computed(() => edition.value === "community");
 
   const limits = computed(() => data.value?.limits ?? null);

@@ -374,6 +374,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # System / Demo Data
     ("POST", "/api/v1/system/demo-data"): ["devices.write"],
     ("DELETE", "/api/v1/system/demo-data"): ["devices.write"],
+    ("DELETE", "/api/v1/system/reset"): ["cap.admin"],
     # User preferences
     ("PATCH", "/api/v1/users/me/preferences"): ["users.read"],
     # Tours — user-scoped, no special capability required

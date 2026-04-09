@@ -641,6 +641,18 @@ export default {
     digestDaily: 'Daily',
     digestWeekly: 'Weekly',
     notificationsSaved: 'Notification preferences saved',
+    sections: {
+      account: 'Profile & Account',
+      accountDesc: 'Email, session, authentication',
+      notifications: 'Notifications',
+      notificationsDesc: 'Email alerts and digest settings',
+      organization: 'Organization & Team',
+      organizationDesc: 'Manage members and plans',
+      developer: 'Developer',
+      developerDesc: 'API keys, capabilities, links',
+      system: 'System',
+      systemDesc: 'Demo data, UX preferences, reset',
+    },
   },
   health: {
     title: 'System Health',

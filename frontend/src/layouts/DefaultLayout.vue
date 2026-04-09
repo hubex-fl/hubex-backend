@@ -94,12 +94,24 @@ onMounted(async () => {
   }
 
   // Auto-start onboarding tour for first-time users
-  if (hasToken() && !localStorage.getItem("hubex_tour_seen")) {
+  // BUT only if the Welcome Screen is NOT currently showing —
+  // otherwise both overlap and confuse the user.
+  if (hasToken() && !localStorage.getItem("hubex_tour_seen") && !showWelcome.value) {
     await nextTick();
     // Small delay to let the dashboard render before starting the tour
     setTimeout(() => {
       tourStore.start("getting-started");
     }, 1200);
+  }
+});
+
+// When the Welcome Screen is dismissed, start the onboarding tour
+// (only if the user hasn't already seen it).
+watch(showWelcome, (isVisible, wasVisible) => {
+  if (wasVisible && !isVisible && !localStorage.getItem("hubex_tour_seen")) {
+    setTimeout(() => {
+      tourStore.start("getting-started");
+    }, 800);
   }
 });
 

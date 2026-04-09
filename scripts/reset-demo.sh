@@ -24,7 +24,7 @@ RED="\033[91m"
 RESET="\033[0m"
 
 SERVER="${1:-http://localhost:8000}"
-DEMO_EMAIL="demo@hubex.io"
+DEMO_EMAIL="demo@hubextest.tech"
 DEMO_PASSWORD="demo1234"
 
 echo -e "\n${BOLD}${CYAN}╔═══════════════════════════════════════╗"
@@ -63,17 +63,28 @@ if [ -z "$TOKEN" ]; then
 fi
 echo -e "  ${GREEN}Authenticated${RESET}"
 
-# ── Delete existing demo data ─────────────────────────────
-echo -e "\n${YELLOW}[3/4] Removing old demo data...${RESET}"
-DELETE_RESP=$(curl -s -w "\n%{http_code}" -X DELETE "${SERVER}/api/v1/system/demo-data" \
+# ── Full reset: delete ALL user data for clean slate ──────
+echo -e "\n${YELLOW}[3/4] Removing ALL data (full reset)...${RESET}"
+DELETE_RESP=$(curl -s -w "\n%{http_code}" -X DELETE "${SERVER}/api/v1/system/reset" \
   -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true)
 
 DELETE_STATUS=$(echo "$DELETE_RESP" | tail -1)
 
 if [ "$DELETE_STATUS" = "200" ]; then
-  echo -e "  ${GREEN}Old demo data removed${RESET}"
+  echo -e "  ${GREEN}All data removed (clean slate)${RESET}"
+elif [ "$DELETE_STATUS" = "403" ]; then
+  # Fallback: user may not have cap.admin, try demo-data only
+  echo -e "  ${YELLOW}No admin access — falling back to demo data cleanup only${RESET}"
+  DELETE_RESP=$(curl -s -w "\n%{http_code}" -X DELETE "${SERVER}/api/v1/system/demo-data" \
+    -H "Authorization: Bearer ${TOKEN}" 2>/dev/null || true)
+  DELETE_STATUS=$(echo "$DELETE_RESP" | tail -1)
+  if [ "$DELETE_STATUS" = "200" ]; then
+    echo -e "  ${GREEN}Demo data removed${RESET}"
+  else
+    echo -e "  ${YELLOW}Delete response: ${DELETE_STATUS}${RESET}"
+  fi
 else
-  echo -e "  ${YELLOW}Delete response: ${DELETE_STATUS} (may be empty already)${RESET}"
+  echo -e "  ${YELLOW}Reset response: ${DELETE_STATUS} (may be empty already)${RESET}"
 fi
 
 # ── Re-seed ───────────────────────────────────────────────

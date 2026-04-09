@@ -5,7 +5,7 @@ Configure via environment:
   HUBEX_SMTP_PORT=587
   HUBEX_SMTP_USER=your@email.com
   HUBEX_SMTP_PASSWORD=your_password
-  HUBEX_SMTP_FROM=noreply@hubex.io
+  HUBEX_SMTP_FROM=noreply@hubextest.tech
   HUBEX_SMTP_TLS=true
 """
 import logging
@@ -20,7 +20,7 @@ SMTP_HOST = os.getenv("HUBEX_SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("HUBEX_SMTP_PORT", "587"))
 SMTP_USER = os.getenv("HUBEX_SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("HUBEX_SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("HUBEX_SMTP_FROM", "noreply@hubex.io")
+SMTP_FROM = os.getenv("HUBEX_SMTP_FROM", "noreply@hubextest.tech")
 SMTP_TLS = os.getenv("HUBEX_SMTP_TLS", "true").lower() == "true"
 
 
