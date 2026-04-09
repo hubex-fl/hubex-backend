@@ -159,12 +159,43 @@ async def lifespan(app: FastAPI):
     from app.db.base import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # Safety net: add columns that create_all cannot add to existing tables.
+        # This covers cases where Alembic migrations have not been applied yet.
+        # Uses IF NOT EXISTS to avoid errors on PostgreSQL.
+        _COLUMN_PATCHES = [
+            ("dashboards", "embed_config", "JSON"),
+            ("dashboards", "kiosk_config", "JSON"),
+        ]
+        for table, col, col_type in _COLUMN_PATCHES:
+            try:
+                await conn.execute(text(
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}"
+                ))
+            except Exception:
+                pass
+
     logger.info("startup: database tables ensured")
 
     await init_redis()
 
     async with AsyncSessionLocal() as db:
         await sync_module_registry(db)
+
+    # Seed built-in semantic types if table is empty
+    try:
+        async with AsyncSessionLocal() as db:
+            count_result = await db.execute(text("SELECT COUNT(*) FROM semantic_types"))
+            count = count_result.scalar() or 0
+            if count == 0:
+                logger.info("startup: seeding built-in semantic types")
+                from app.scripts.seed_semantic_types import main as seed_types
+                await seed_types()
+                logger.info("startup: semantic types seeded")
+            else:
+                logger.info("startup: semantic types already present (%d)", count)
+    except Exception:
+        logger.warning("startup: failed to seed semantic types (table may not exist yet)")
 
     cleanup_task = asyncio.create_task(_token_cleanup_loop())
     dispatcher_task = asyncio.create_task(webhook_dispatcher_loop())

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { hasCap, useCapabilities, refreshCapabilities } from "../lib/capabilities";
 import { hasToken } from "../lib/api";
@@ -83,6 +83,22 @@ onMounted(async () => {
     collapsedGroups.value = new Set(saved);
   } else {
     collapsedGroups.value = new Set(["Tools", "System"]);
+  }
+
+  // Auto-start onboarding tour for first-time users
+  if (hasToken() && !localStorage.getItem("hubex_tour_seen")) {
+    await nextTick();
+    // Small delay to let the dashboard render before starting the tour
+    setTimeout(() => {
+      tourStore.start("getting-started");
+    }, 1200);
+  }
+});
+
+// Mark onboarding tour as seen when it finishes or is dismissed
+watch(() => tourStore.activeTour, (newTour, oldTour) => {
+  if (oldTour?.id === "getting-started" && !newTour) {
+    localStorage.setItem("hubex_tour_seen", "true");
   }
 });
 

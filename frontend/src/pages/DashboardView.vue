@@ -318,6 +318,7 @@
               <!-- Widget type -->
               <div class="field">
                 <label class="field-label">{{ t('dashboardEnhance.widgetType') }}</label>
+                <p class="text-[9px] text-[var(--text-muted)] -mt-0.5 mb-1">{{ t('dashboardEnhance.widgetTypeFieldHint') }}</p>
                 <select v-model="newWidget.widget_type" class="field-input">
                   <optgroup :label="t('dashboardEnhance.visualizations')">
                     <option value="line_chart">{{ t('dashboardEnhance.lineChart') }}</option>
@@ -344,6 +345,7 @@
               </div>
 
               <div class="field">
+                <p class="text-[9px] text-[var(--text-muted)] mb-1">{{ t('dashboardEnhance.variableKeyFieldHint') }}</p>
                 <UEntitySelect v-model="newWidget.variable_key" entity-type="variable" :label="t('dashboardEnhance.selectVariable')" :placeholder="newWidget.device_uid ? t('dashboardEnhance.variablesForDevice') : t('dashboardEnhance.selectDeviceOrGlobal')" />
               </div>
 

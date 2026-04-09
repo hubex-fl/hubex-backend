@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
@@ -53,9 +53,83 @@ const previewSubject = ref("");
 const previewHtml = ref("");
 
 // Inline editor preview (live WYSIWYG)
-const editorView = ref<"code" | "preview" | "split">("split");
+const editorView = ref<"code" | "preview" | "split" | "simple">("split");
 const debouncedHtml = ref("");
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Template variable reference
+const TEMPLATE_VARIABLES = [
+  { token: "{{alert.name}}", desc: "Alert rule name" },
+  { token: "{{alert.severity}}", desc: "Alert severity level" },
+  { token: "{{device.name}}", desc: "Device display name" },
+  { token: "{{device.uid}}", desc: "Device unique ID" },
+  { token: "{{variable.key}}", desc: "Variable key" },
+  { token: "{{variable.value}}", desc: "Current variable value" },
+  { token: "{{timestamp}}", desc: "Event timestamp" },
+  { token: "{{user.name}}", desc: "Recipient user name" },
+  { token: "{{org.name}}", desc: "Organization name" },
+];
+
+// Simple editor fields
+const simpleHeader = ref("");
+const simpleBody = ref("");
+const simpleFooter = ref("");
+
+// Reference for the HTML textarea
+const htmlTextareaRef = ref<HTMLTextAreaElement | null>(null);
+
+function insertVariable(token: string) {
+  if (editorView.value === "simple") {
+    // Insert at end of body in simple mode
+    simpleBody.value += token;
+    buildHtmlFromSimple();
+    return;
+  }
+  // Insert at cursor position in textarea
+  const ta = htmlTextareaRef.value;
+  if (ta) {
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = editBodyHtml.value.substring(0, start);
+    const after = editBodyHtml.value.substring(end);
+    editBodyHtml.value = before + token + after;
+    nextTick(() => {
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + token.length;
+    });
+  } else {
+    editBodyHtml.value += token;
+  }
+}
+
+function buildHtmlFromSimple() {
+  const header = simpleHeader.value.trim();
+  const body = simpleBody.value.trim();
+  const footer = simpleFooter.value.trim();
+  editBodyHtml.value = [
+    header ? `<h2 style="color:#F5A623;margin:0 0 16px 0">${header}</h2>` : '',
+    body ? `<p style="font-size:14px;line-height:1.6;color:#333;margin:0 0 16px 0">${body.replace(/\n/g, '<br/>')}</p>` : '',
+    footer ? `<p style="font-size:12px;color:#888;margin-top:24px;padding-top:12px;border-top:1px solid #eee">${footer}</p>` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function parseHtmlToSimple() {
+  // Best-effort extraction from HTML
+  const html = editBodyHtml.value;
+  const h2Match = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+  simpleHeader.value = h2Match ? h2Match[1].replace(/<[^>]+>/g, '') : '';
+  const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+  if (pMatches.length >= 2) {
+    simpleBody.value = pMatches[0].replace(/<\/?p[^>]*>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+    simpleFooter.value = pMatches[pMatches.length - 1].replace(/<\/?p[^>]*>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+  } else if (pMatches.length === 1) {
+    simpleBody.value = pMatches[0].replace(/<\/?p[^>]*>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+    simpleFooter.value = '';
+  } else {
+    simpleBody.value = html.replace(/<[^>]+>/g, '');
+    simpleFooter.value = '';
+  }
+}
 
 watch(editBodyHtml, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer);
@@ -293,7 +367,7 @@ onMounted(loadTemplates);
             <label class="text-[10px] font-medium text-[var(--text-muted)]">HTML Body</label>
             <div class="flex rounded-lg border border-[var(--border)] overflow-hidden">
               <button
-                v-for="view in (['code', 'split', 'preview'] as const)"
+                v-for="view in (['simple', 'code', 'split', 'preview'] as const)"
                 :key="view"
                 :class="[
                   'px-2 py-0.5 text-[10px] font-medium transition-colors',
@@ -301,26 +375,44 @@ onMounted(loadTemplates);
                     ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
                 ]"
-                @click="editorView = view"
-              >{{ t(`pages.emailTemplates.editorView.${view}`) }}</button>
+                @click="editorView = view; if (view === 'simple') parseHtmlToSimple();"
+              >{{ view === 'simple' ? 'Simple' : t(`pages.emailTemplates.editorView.${view}`) }}</button>
             </div>
           </div>
-          <div :class="[
-            'gap-3',
-            editorView === 'split' ? 'grid grid-cols-1 md:grid-cols-2' : '',
-          ]">
-            <textarea
-              v-if="editorView !== 'preview'"
-              v-model="editBodyHtml"
-              rows="8"
-              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono resize-y"
-              placeholder="<h2>Alert</h2><p>{variable_key} = {value}</p>"
-            />
-            <div
-              v-if="editorView !== 'code'"
-              class="rounded-lg border border-[var(--border)] bg-white overflow-hidden"
-              :class="editorView === 'preview' ? '' : ''"
-            >
+
+          <!-- Simple Editor Mode -->
+          <div v-if="editorView === 'simple'" class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="md:col-span-2 space-y-3">
+                <div>
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Header Text</label>
+                  <input v-model="simpleHeader" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Alert Notification" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Body Text</label>
+                  <textarea v-model="simpleBody" @input="buildHtmlFromSimple" rows="4" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Device {{device.name}} triggered alert {{alert.name}} with severity {{alert.severity}}." />
+                </div>
+                <div>
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Footer Text</label>
+                  <input v-model="simpleFooter" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Sent by HUBEX" />
+                </div>
+              </div>
+              <!-- Variable panel in simple mode -->
+              <div class="border border-[var(--border)] rounded-lg bg-[var(--bg-raised)] p-2">
+                <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">Insert Variable</p>
+                <div class="space-y-1">
+                  <button
+                    v-for="v in TEMPLATE_VARIABLES"
+                    :key="v.token"
+                    class="w-full text-left px-2 py-1 rounded text-[10px] font-mono text-[var(--text-primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors"
+                    :title="v.desc"
+                    @click="insertVariable(v.token)"
+                  >{{ v.token }}</button>
+                </div>
+              </div>
+            </div>
+            <!-- Live preview below -->
+            <div class="rounded-lg border border-[var(--border)] bg-white overflow-hidden">
               <div class="px-2 py-1 bg-[var(--bg-raised)] border-b border-[var(--border)] text-[10px] text-[var(--text-muted)]">
                 {{ t('pages.emailTemplates.preview') }}
               </div>
@@ -328,9 +420,51 @@ onMounted(loadTemplates);
                 :srcdoc="debouncedHtml || `<p style='color:#999;font-family:sans-serif;font-size:13px;padding:12px;'>${t('pages.emailTemplates.previewEmpty')}</p>`"
                 sandbox=""
                 class="w-full border-0"
-                :style="{ minHeight: editorView === 'preview' ? '200px' : '180px' }"
+                style="min-height: 120px"
                 :title="t('pages.emailTemplates.preview')"
               />
+            </div>
+          </div>
+
+          <!-- Code / Split / Preview modes -->
+          <div v-else class="flex gap-3">
+            <div class="flex-1" :class="editorView === 'split' ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : ''">
+              <textarea
+                v-if="editorView !== 'preview'"
+                ref="htmlTextareaRef"
+                v-model="editBodyHtml"
+                rows="8"
+                class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono resize-y"
+                placeholder="<h2>Alert</h2><p>{{variable.key}} = {{variable.value}}</p>"
+              />
+              <div
+                v-if="editorView !== 'code'"
+                class="rounded-lg border border-[var(--border)] bg-white overflow-hidden"
+              >
+                <div class="px-2 py-1 bg-[var(--bg-raised)] border-b border-[var(--border)] text-[10px] text-[var(--text-muted)]">
+                  {{ t('pages.emailTemplates.preview') }}
+                </div>
+                <iframe
+                  :srcdoc="debouncedHtml || `<p style='color:#999;font-family:sans-serif;font-size:13px;padding:12px;'>${t('pages.emailTemplates.previewEmpty')}</p>`"
+                  sandbox=""
+                  class="w-full border-0"
+                  :style="{ minHeight: editorView === 'preview' ? '200px' : '180px' }"
+                  :title="t('pages.emailTemplates.preview')"
+                />
+              </div>
+            </div>
+            <!-- Variable reference panel -->
+            <div v-if="editorView !== 'preview'" class="w-40 shrink-0 border border-[var(--border)] rounded-lg bg-[var(--bg-raised)] p-2 hidden md:block">
+              <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">Variables</p>
+              <div class="space-y-1">
+                <button
+                  v-for="v in TEMPLATE_VARIABLES"
+                  :key="v.token"
+                  class="w-full text-left px-1.5 py-1 rounded text-[9px] font-mono text-[var(--text-primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors"
+                  :title="v.desc"
+                  @click="insertVariable(v.token)"
+                >{{ v.token }}</button>
+              </div>
             </div>
           </div>
         </div>

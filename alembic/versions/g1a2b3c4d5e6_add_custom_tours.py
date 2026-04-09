@@ -22,7 +22,7 @@ def upgrade() -> None:
             "org_id",
             sa.Integer(),
             sa.ForeignKey("organizations.id", ondelete="CASCADE"),
-            nullable=False,
+            nullable=True,
             index=True,
         ),
         sa.Column(

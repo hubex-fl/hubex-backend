@@ -106,6 +106,22 @@ const searchInputRef = ref<HTMLInputElement | null>(null);
 const isAnimating = ref(false);
 const pulsingNodeId = ref<string | null>(null);
 
+// ── Layout mode ───────────────────────────────────────────────────────────
+const layoutMode = ref<"columns" | "free">("columns");
+const customPositions = ref<Record<string, { x: number; y: number }>>({});
+
+// ── Drag state ────────────────────────────────────────────────────────────
+const draggingNodeId = ref<string | null>(null);
+const dragOffset = ref({ x: 0, y: 0 });
+
+// ── Touch zoom state ──────────────────────────────────────────────────────
+const touchStartDist = ref(0);
+const touchStartZoom = ref(1);
+const touchStartPan = ref({ x: 0, y: 0 });
+const touchStartMid = ref({ x: 0, y: 0 });
+const isTouchPanning = ref(false);
+const lastTouchPos = ref({ x: 0, y: 0 });
+
 // Stats
 const stats = ref({ devices: 0, variables: 0, automations: 0, alerts: 0, webhooks: 0 });
 
@@ -333,16 +349,25 @@ async function loadSystemGraph() {
       });
       y += NODE_H_SMALL + ROW_GAP;
 
-      // Connect device-scoped variables to ALL devices
+      // Connect device-scoped variables to their specific parent device only
       if (v.scope === "device") {
-        for (const d of devices) {
-          newEdges.push({
-            id: `edge-dev-var-${d.id}-${v.key}`,
-            from: `device-${d.id}`,
-            to: nodeId,
-            type: "data",
-          });
+        // If the variable key contains a device_uid reference, connect only to that device
+        // Otherwise, device-scoped variables are definitions (templates) — show without connections
+        const varDeviceUid = (v as Record<string, unknown>).device_uid as string | undefined;
+        if (varDeviceUid) {
+          const matchDevice = devices.find(
+            (d) => d.device_uid === varDeviceUid || String(d.id) === varDeviceUid
+          );
+          if (matchDevice) {
+            newEdges.push({
+              id: `edge-dev-var-${matchDevice.id}-${v.key}`,
+              from: `device-${matchDevice.id}`,
+              to: nodeId,
+              type: "data",
+            });
+          }
         }
+        // If no specific device_uid, don't connect to all devices
       }
     }
 
@@ -575,6 +600,14 @@ function navigateToNode(node: FlowNode) {
   }
 }
 
+function highlightNode(nodeId: string) {
+  const node = nodes.value.find((n) => n.id === nodeId);
+  if (!node) return;
+  selectedNode.value = node;
+  inspectorOpen.value = true;
+  flyToNode(node);
+}
+
 function getNodeHeight(type: NodeType): number {
   return type === "device" ? NODE_H_DEVICE : NODE_H_SMALL;
 }
@@ -638,6 +671,112 @@ function onPanMove(e: MouseEvent) {
 
 function stopPan() {
   isPanning.value = false;
+}
+
+// ── Touch zoom & pan (pinch-to-zoom) ──────────────────────────────────────
+
+function getTouchDistance(e: TouchEvent): number {
+  const t1 = e.touches[0];
+  const t2 = e.touches[1];
+  return Math.sqrt((t2.clientX - t1.clientX) ** 2 + (t2.clientY - t1.clientY) ** 2);
+}
+
+function getTouchMidpoint(e: TouchEvent): { x: number; y: number } {
+  const t1 = e.touches[0];
+  const t2 = e.touches[1];
+  return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    touchStartDist.value = getTouchDistance(e);
+    touchStartZoom.value = zoom.value;
+    touchStartPan.value = { ...pan.value };
+    touchStartMid.value = getTouchMidpoint(e);
+    isTouchPanning.value = false;
+  } else if (e.touches.length === 1) {
+    isTouchPanning.value = true;
+    lastTouchPos.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const currentDist = getTouchDistance(e);
+    const scale = currentDist / touchStartDist.value;
+    zoom.value = Math.max(0.3, Math.min(2.5, touchStartZoom.value * scale));
+
+    const currentMid = getTouchMidpoint(e);
+    pan.value = {
+      x: touchStartPan.value.x + (currentMid.x - touchStartMid.value.x),
+      y: touchStartPan.value.y + (currentMid.y - touchStartMid.value.y),
+    };
+  } else if (e.touches.length === 1 && isTouchPanning.value) {
+    const dx = e.touches[0].clientX - lastTouchPos.value.x;
+    const dy = e.touches[0].clientY - lastTouchPos.value.y;
+    pan.value = { x: pan.value.x + dx, y: pan.value.y + dy };
+    lastTouchPos.value = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+}
+
+function onTouchEnd(e: TouchEvent) {
+  if (e.touches.length < 2) {
+    isTouchPanning.value = false;
+  }
+}
+
+// ── Node dragging ─────────────────────────────────────────────────────────
+
+const dragStartPos = ref({ x: 0, y: 0 });
+const dragStarted = ref(false);
+const DRAG_THRESHOLD = 5;
+
+function onNodeMouseDown(e: MouseEvent, node: FlowNode) {
+  e.stopPropagation();
+  draggingNodeId.value = node.id;
+  dragStarted.value = false;
+  dragStartPos.value = { x: e.clientX, y: e.clientY };
+  const nodeX = customPositions.value[node.id]?.x ?? node.x;
+  const nodeY = customPositions.value[node.id]?.y ?? node.y;
+  dragOffset.value = {
+    x: e.clientX / zoom.value - nodeX,
+    y: e.clientY / zoom.value - nodeY,
+  };
+  document.addEventListener("mousemove", onNodeDragMove);
+  document.addEventListener("mouseup", onNodeDragEnd);
+}
+
+function onNodeDragMove(e: MouseEvent) {
+  if (!draggingNodeId.value) return;
+  // Check if we've exceeded drag threshold before starting actual drag
+  if (!dragStarted.value) {
+    const dx = e.clientX - dragStartPos.value.x;
+    const dy = e.clientY - dragStartPos.value.y;
+    if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+    dragStarted.value = true;
+  }
+  const newX = e.clientX / zoom.value - dragOffset.value.x;
+  const newY = e.clientY / zoom.value - dragOffset.value.y;
+  customPositions.value[draggingNodeId.value] = { x: newX, y: newY };
+  const node = nodes.value.find((n) => n.id === draggingNodeId.value);
+  if (node) {
+    node.x = newX;
+    node.y = newY;
+  }
+}
+
+function onNodeDragEnd() {
+  if (!dragStarted.value && draggingNodeId.value) {
+    // It was a click, not a drag — select the node
+    const node = nodes.value.find((n) => n.id === draggingNodeId.value);
+    if (node) selectNode(node);
+  }
+  draggingNodeId.value = null;
+  dragStarted.value = false;
+  document.removeEventListener("mousemove", onNodeDragMove);
+  document.removeEventListener("mouseup", onNodeDragEnd);
 }
 
 function fitToView() {
@@ -844,6 +983,43 @@ function resetFilters() {
   filterOnlyOffline.value = false;
   filterPathNodeId.value = null;
 }
+
+// ── Layout mode toggle ───────────────────────────────────────────────────
+
+function toggleLayoutMode() {
+  layoutMode.value = layoutMode.value === "columns" ? "free" : "columns";
+  applyLayout();
+  nextTick(() => fitToView());
+}
+
+function applyLayout() {
+  if (layoutMode.value === "columns") {
+    // Restore column positions (re-run layout algorithm)
+    customPositions.value = {};
+    // Re-assign column-based positions
+    const colCounts = [0, 0, 0, 0];
+    for (const node of nodes.value) {
+      const colIdx = node.column;
+      node.x = COL_X[colIdx];
+      node.y = COL_START_Y + colCounts[colIdx] * (getNodeHeight(node.type) + ROW_GAP);
+      colCounts[colIdx]++;
+    }
+  } else {
+    // Free layout: spread nodes in a wider area using a simple force-directed approximation
+    const centerX = 500;
+    const centerY = 400;
+    const radius = Math.max(200, nodes.value.length * 25);
+    nodes.value.forEach((node, i) => {
+      const angle = (i / nodes.value.length) * 2 * Math.PI;
+      const colOffset = node.column * 150;
+      const x = centerX + colOffset + Math.cos(angle) * (radius * 0.3);
+      const y = centerY + Math.sin(angle) * radius * 0.6;
+      node.x = x;
+      node.y = y;
+      customPositions.value[node.id] = { x, y };
+    });
+  }
+}
 </script>
 
 <template>
@@ -887,6 +1063,17 @@ function resetFilters() {
         <button class="px-2 py-1 rounded text-[10px] border border-[var(--border)] hover:bg-[var(--bg-raised)] text-[var(--text-muted)]" @click="zoomReset">{{ t('pages.flowEditor.resetView') }}</button>
         <button class="px-2 py-1 rounded text-[10px] border border-[var(--border)] hover:bg-[var(--bg-raised)] text-[var(--text-muted)]" @click="fitToView">{{ t('pages.flowEditor.fitView') }}</button>
         <button class="px-2 py-1 rounded text-[10px] border border-[var(--border)] hover:bg-[var(--bg-raised)] text-[var(--text-muted)]" @click="loadSystemGraph().then(fitToView)">{{ t('pages.flowEditor.refresh') }}</button>
+
+        <span class="w-px h-4 bg-[var(--border)]" />
+
+        <!-- Layout mode toggle -->
+        <button
+          class="px-2 py-1 rounded text-[10px] border transition-colors"
+          :class="layoutMode === 'free'
+            ? 'border-[var(--primary)]/50 text-[var(--primary)] bg-[var(--primary)]/10'
+            : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--bg-raised)]'"
+          @click="toggleLayoutMode"
+        >{{ layoutMode === 'columns' ? 'Free Layout' : 'Columns' }}</button>
       </div>
     </div>
 
@@ -903,6 +1090,9 @@ function resetFilters() {
         @mouseup="stopPan"
         @mouseleave="stopPan"
         @wheel.prevent="onWheel"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
         style="background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 30px 30px;"
       >
         <!-- Floating search field -->
@@ -1148,12 +1338,12 @@ function resetFilters() {
               height: getNodeHeight(node.type) + 'px',
               borderColor: NODE_COLORS[node.type] + '60',
               backgroundColor: NODE_BG[node.type],
-              zIndex: selectedNode?.id === node.id ? 10 : 2,
-              cursor: 'pointer',
+              zIndex: draggingNodeId === node.id ? 20 : selectedNode?.id === node.id ? 10 : 2,
+              cursor: draggingNodeId === node.id ? 'grabbing' : 'grab',
             }"
-            @click.stop="selectNode(node)"
             @dblclick.stop="navigateToNode(node)"
             @contextmenu="onNodeContextMenu($event, node)"
+            @mousedown.stop="onNodeMouseDown($event, node)"
             @mouseenter="hoveredNode = node.id"
             @mouseleave="hoveredNode = null"
           >
@@ -1265,8 +1455,12 @@ function resetFilters() {
             </div>
             <button
               class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-[var(--primary)] border border-[var(--primary)]/30 hover:bg-[var(--primary)]/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
+              @click="highlightNode(selectedNode.id)"
             >&#8594; {{ t('pages.flowEditor.goToDevice') }}</button>
+            <button
+              class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
           </div>
 
           <!-- ── Variable details ────────────────────────────────────────── -->
@@ -1309,8 +1503,12 @@ function resetFilters() {
             </div>
             <button
               class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-teal-400 border border-teal-400/30 hover:bg-teal-400/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
+              @click="highlightNode(selectedNode.id)"
             >&#8594; {{ t('pages.flowEditor.goToVariable') }}</button>
+            <button
+              class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
           </div>
 
           <!-- ── Automation details ──────────────────────────────────────── -->
@@ -1340,8 +1538,12 @@ function resetFilters() {
             </div>
             <button
               class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
+              @click="highlightNode(selectedNode.id)"
             >&#8594; {{ t('pages.flowEditor.editAutomation') }}</button>
+            <button
+              class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
           </div>
 
           <!-- ── Alert Rule details ──────────────────────────────────────── -->
@@ -1373,8 +1575,12 @@ function resetFilters() {
             </div>
             <button
               class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
+              @click="highlightNode(selectedNode.id)"
             >&#8594; {{ t('pages.flowEditor.viewAlerts') }}</button>
+            <button
+              class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
           </div>
 
           <!-- ── Webhook details ─────────────────────────────────────────── -->
@@ -1407,8 +1613,12 @@ function resetFilters() {
             </div>
             <button
               class="w-full mt-2 px-3 py-1.5 rounded text-[11px] font-medium text-purple-400 border border-purple-400/30 hover:bg-purple-400/10 transition-colors"
-              @click="navigateToNode(selectedNode)"
+              @click="highlightNode(selectedNode.id)"
             >&#8594; {{ t('pages.flowEditor.viewWebhook') }}</button>
+            <button
+              class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
+              @click="navigateToNode(selectedNode)"
+            >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
           </div>
         </div>
       </Transition>

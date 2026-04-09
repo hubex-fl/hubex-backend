@@ -601,17 +601,17 @@ onMounted(load);
         <!-- Variable-specific options -->
         <template v-if="formSourceType === 'variables'">
           <UEntitySelect
-            v-model="formVariableKeys"
-            entity-type="variable"
-            :label="t('customApi.variableKeysLabel')"
-            :placeholder="t('customApi.variableKeysPlaceholder')"
-            optional
-          />
-          <UEntitySelect
             v-model="formDeviceFilter"
             entity-type="device"
             :label="t('customApi.deviceFilterLabel')"
             :placeholder="t('customApi.deviceFilterPlaceholder')"
+            optional
+          />
+          <UEntitySelect
+            v-model="formVariableKeys"
+            entity-type="variable"
+            :label="t('customApi.variableKeysLabel')"
+            :placeholder="t('customApi.variableKeysPlaceholder')"
             optional
           />
         </template>

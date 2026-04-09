@@ -34,7 +34,7 @@ class TourUpdate(BaseModel):
 
 class TourOut(BaseModel):
     id: int
-    org_id: int
+    org_id: Optional[int]
     owner_id: int
     name: str
     description: Optional[str]

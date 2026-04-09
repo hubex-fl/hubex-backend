@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
@@ -11,6 +11,13 @@ const loading = ref(true);
 // Setup state
 const setupSecret = ref<string | null>(null);
 const setupUri = ref<string | null>(null);
+
+// QR code URL — use Google Chart API to generate QR code from the provisioning URI
+const qrCodeUrl = computed(() => {
+  if (!setupUri.value) return null;
+  const encoded = encodeURIComponent(setupUri.value);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
+});
 const confirmCode = ref("");
 const confirming = ref(false);
 const recoveryCodes = ref<string[] | null>(null);
@@ -160,16 +167,36 @@ onMounted(loadStatus);
           <span class="text-[10px] text-[var(--text-muted)]">Verify</span>
         </div>
         <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-3">
-          <p class="text-xs text-[var(--text-primary)] font-medium">Open your authenticator app and scan this code</p>
-          <p class="text-[10px] text-[var(--text-muted)]">Use Google Authenticator, Microsoft Authenticator, Authy, or any TOTP app</p>
+          <p class="text-xs text-[var(--text-primary)] font-medium">Scan the QR code with your authenticator app</p>
+          <p class="text-[10px] text-[var(--text-muted)]">
+            Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
+            The codes are time-based (TOTP) and refresh every 30 seconds.
+          </p>
           <div class="flex items-center justify-center py-3">
-            <div class="bg-[var(--bg-raised)] border border-[var(--border)] rounded-lg p-4 text-center">
-              <p class="text-xs font-mono text-[var(--text-primary)] break-all select-all tracking-widest">{{ setupSecret }}</p>
-              <p class="text-[10px] text-[var(--text-muted)] mt-2">Enter this code in your authenticator app</p>
-              <p class="text-[10px] text-[var(--text-muted)] mt-1">Account: HUBEX</p>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+              <img
+                v-if="qrCodeUrl"
+                :src="qrCodeUrl"
+                alt="TOTP QR Code"
+                class="w-48 h-48"
+                loading="eager"
+              />
+              <div v-else class="w-48 h-48 flex items-center justify-center text-xs text-gray-400">
+                Generating QR code...
+              </div>
             </div>
           </div>
-          <p class="text-[10px] text-[var(--text-muted)]">Open your authenticator app, tap "Add account" or "+", then choose "Enter setup key"</p>
+          <!-- Manual entry fallback -->
+          <details class="text-[10px]">
+            <summary class="text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]">
+              Can't scan? Enter the key manually
+            </summary>
+            <div class="mt-2 bg-[var(--bg-base)] border border-[var(--border)] rounded-lg p-3 text-center">
+              <p class="text-xs font-mono text-[var(--text-primary)] break-all select-all tracking-widest">{{ setupSecret }}</p>
+              <p class="text-[10px] text-[var(--text-muted)] mt-2">Open your authenticator app, tap "Add account" or "+", choose "Enter setup key", and paste this code</p>
+              <p class="text-[10px] text-[var(--text-muted)] mt-1">Account: HUBEX | Type: Time-based (TOTP)</p>
+            </div>
+          </details>
           <div class="flex justify-end gap-2">
             <button class="text-xs text-[var(--text-muted)]" @click="closeSetup">Cancel</button>
             <button class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="showCodeInput = true">I've scanned it</button>

@@ -44,7 +44,7 @@ export interface EndpointUpdate {
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
-const BASE = "/api/v1/custom-endpoints";
+const BASE = "/api/v1/custom-api/endpoints";
 
 export async function listEndpoints(): Promise<CustomEndpoint[]> {
   return apiFetch<CustomEndpoint[]>(BASE);
@@ -63,7 +63,7 @@ export async function createEndpoint(data: EndpointCreate): Promise<CustomEndpoi
 
 export async function updateEndpoint(id: number, data: EndpointUpdate): Promise<CustomEndpoint> {
   return apiFetch<CustomEndpoint>(`${BASE}/${id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }

@@ -4,7 +4,16 @@ import { useTourStore } from "../../stores/tour";
 import { useI18n } from "vue-i18n";
 
 const tourStore = useTourStore();
-const { t } = useI18n();
+const { t, te } = useI18n();
+
+/** Resolve a string that may be an i18n key or plain text. */
+function resolveText(value: string): string {
+  if (!value) return value;
+  if (value.includes('.') && !value.includes(' ') && te(value)) {
+    return t(value);
+  }
+  return value;
+}
 
 const isOpen = ref(false);
 
@@ -59,8 +68,8 @@ function startTour(tourId: string) {
             </div>
             <!-- Text -->
             <div class="min-w-0 flex-1">
-              <div class="text-xs font-medium text-[var(--text-primary)] truncate">{{ tour.name }}</div>
-              <div class="text-[10px] text-[var(--text-muted)] mt-0.5 line-clamp-2">{{ tour.description }}</div>
+              <div class="text-xs font-medium text-[var(--text-primary)] truncate">{{ resolveText(tour.name) }}</div>
+              <div class="text-[10px] text-[var(--text-muted)] mt-0.5 line-clamp-2">{{ resolveText(tour.description) }}</div>
               <div class="text-[10px] text-[var(--text-muted)] mt-1 font-mono">
                 {{ tour.steps.length }} {{ t('tour.steps') }}
               </div>

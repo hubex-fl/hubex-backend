@@ -1024,7 +1024,10 @@ function toggleRuleExpand(id: number) {
           <!-- Additional Conditions (AND/OR) -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.additionalConditions') }}</h4>
+              <div>
+                <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.additionalConditions') }}</h4>
+                <p class="text-[9px] text-[var(--text-muted)]">{{ t('automations.conditionGroupsFieldHint') }}</p>
+              </div>
               <button class="text-[10px] text-[var(--primary)] hover:underline" @click="addConditionGroup">{{ t('automations.addConditionGroup') }}</button>
             </div>
             <div v-for="(group, gi) in conditionGroups" :key="gi" class="border border-[var(--border)] rounded-lg p-3 space-y-2 bg-[var(--bg-raised)]">
@@ -1060,7 +1063,10 @@ function toggleRuleExpand(id: number) {
 
           <!-- Action Section -->
           <div class="space-y-3">
-            <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.thenAction') }}</h4>
+            <div>
+              <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.thenAction') }}</h4>
+              <p class="text-[9px] text-[var(--text-muted)]">{{ t('automations.actionTypeFieldHint') }}</p>
+            </div>
 
             <!-- Action type selector -->
             <div class="grid grid-cols-2 gap-2">
@@ -1167,6 +1173,7 @@ function toggleRuleExpand(id: number) {
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.settingsLabel') }}</h4>
             <div class="space-y-1">
               <label :class="labelClass" :title="t('automations.cooldownTooltip')">Cooldown: {{ formCooldown }}s</label>
+              <p class="text-[9px] text-[var(--text-muted)] -mt-0.5 mb-1">{{ t('automations.cooldownFieldHint') }}</p>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />
               <div class="flex justify-between text-[10px] text-[var(--text-muted)]"><span>{{ t('automations.noCooldown') }}</span><span>{{ t('automations.oneHour') }}</span></div>
             </div>

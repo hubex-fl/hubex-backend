@@ -78,6 +78,9 @@ async function initSwagger() {
       docExpansion: "list",
     });
     swaggerLoaded.value = true;
+
+    // Inject dark mode styles for Swagger UI to match HUBEX theme
+    injectSwaggerDarkMode();
   } catch (err: any) {
     loadError.value = `Could not load Swagger UI: ${err.message}. Try opening /docs in a new tab instead.`;
   }
@@ -117,6 +120,145 @@ async function initRedoc() {
   } catch (err: any) {
     loadError.value = `Could not load ReDoc: ${err.message}. Try opening /redoc in a new tab instead.`;
   }
+}
+
+function injectSwaggerDarkMode() {
+  const existingStyle = document.getElementById("swagger-dark-mode");
+  if (existingStyle) return;
+  const style = document.createElement("style");
+  style.id = "swagger-dark-mode";
+  style.textContent = `
+    .swagger-ui-wrapper {
+      background: #1a1a19 !important;
+    }
+    .swagger-ui {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui .topbar {
+      display: none !important;
+    }
+    .swagger-ui .info .title,
+    .swagger-ui .info h1,
+    .swagger-ui .info h2,
+    .swagger-ui .info h3,
+    .swagger-ui .opblock-tag {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui .info .base-url,
+    .swagger-ui .info p,
+    .swagger-ui .info li,
+    .swagger-ui .info a,
+    .swagger-ui .info .markdown p,
+    .swagger-ui .info .markdown li {
+      color: #a8a49c !important;
+    }
+    .swagger-ui .scheme-container {
+      background: #222221 !important;
+      box-shadow: none !important;
+    }
+    .swagger-ui .opblock-tag {
+      border-bottom-color: #333 !important;
+    }
+    .swagger-ui .opblock {
+      background: #1e1e1d !important;
+      border-color: #333 !important;
+    }
+    .swagger-ui .opblock .opblock-summary {
+      border-color: #333 !important;
+    }
+    .swagger-ui .opblock .opblock-summary-method {
+      font-weight: 700;
+    }
+    .swagger-ui .opblock .opblock-summary-description,
+    .swagger-ui .opblock .opblock-summary-path,
+    .swagger-ui .opblock .opblock-summary-path span {
+      color: #c8c4bc !important;
+    }
+    .swagger-ui .opblock-body,
+    .swagger-ui .opblock .opblock-section-header {
+      background: #222221 !important;
+      border-color: #333 !important;
+    }
+    .swagger-ui .opblock .opblock-section-header h4,
+    .swagger-ui .opblock .opblock-section-header label {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui table thead tr th,
+    .swagger-ui table thead tr td,
+    .swagger-ui .parameter__name,
+    .swagger-ui .parameter__type,
+    .swagger-ui .parameter__in {
+      color: #c8c4bc !important;
+    }
+    .swagger-ui .parameters-col_description p,
+    .swagger-ui .parameters-col_description input,
+    .swagger-ui .parameters-col_description textarea,
+    .swagger-ui .parameters-col_description select {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui input[type="text"],
+    .swagger-ui textarea,
+    .swagger-ui select {
+      background: #2a2a29 !important;
+      border-color: #444 !important;
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui .model-box,
+    .swagger-ui .model {
+      background: #222221 !important;
+      color: #c8c4bc !important;
+    }
+    .swagger-ui .model-title {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui .model .property,
+    .swagger-ui .model .property.primitive {
+      color: #c8c4bc !important;
+    }
+    .swagger-ui section.models {
+      border-color: #333 !important;
+    }
+    .swagger-ui section.models h4,
+    .swagger-ui section.models h4 span {
+      color: #e0ddd8 !important;
+    }
+    .swagger-ui .response-col_status,
+    .swagger-ui .response-col_description,
+    .swagger-ui .response-col_description p,
+    .swagger-ui .responses-inner h4,
+    .swagger-ui .responses-inner h5 {
+      color: #c8c4bc !important;
+    }
+    .swagger-ui .highlight-code,
+    .swagger-ui .microlight,
+    .swagger-ui .example {
+      background: #1e1e1d !important;
+      color: #c8c4bc !important;
+    }
+    .swagger-ui .btn {
+      color: #e0ddd8 !important;
+      border-color: #555 !important;
+    }
+    .swagger-ui .btn:hover {
+      background: #333 !important;
+    }
+    .swagger-ui .opblock.opblock-get .opblock-summary {
+      border-color: #2DD4BF40 !important;
+    }
+    .swagger-ui .opblock.opblock-post .opblock-summary {
+      border-color: #3b82f640 !important;
+    }
+    .swagger-ui .opblock.opblock-put .opblock-summary {
+      border-color: #F5A62340 !important;
+    }
+    .swagger-ui .opblock.opblock-delete .opblock-summary {
+      border-color: #ef444440 !important;
+    }
+    .swagger-ui .authorization__btn {
+      fill: #F5A623 !important;
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 watch(activeTab, async (tab) => {
@@ -272,7 +414,7 @@ const sections: ApiSection[] = [
       <div
         ref="swaggerContainer"
         id="swagger-ui-embed"
-        class="swagger-ui-wrapper rounded-xl border border-[var(--border)] bg-white min-h-[400px]"
+        class="swagger-ui-wrapper rounded-xl border border-[var(--border)] min-h-[400px]"
       />
     </div>
 
@@ -374,10 +516,12 @@ const sections: ApiSection[] = [
 /* Override Swagger UI styles to fit the dark theme container */
 .swagger-ui-wrapper {
   padding: 1rem;
+  background: #1a1a19;
+  border-color: #333;
 }
 
 /* ReDoc wrapper styling */
 .redoc-wrapper {
-  background: #fafafa;
+  background: #1a1a19;
 }
 </style>

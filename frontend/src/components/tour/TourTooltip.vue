@@ -12,7 +12,20 @@ const props = defineProps<{
 }>();
 
 const tourStore = useTourStore();
-const { t } = useI18n();
+const { t, te } = useI18n();
+
+/**
+ * Resolve a string that may be an i18n key or plain text.
+ * If the key exists in i18n messages, translate it; otherwise return as-is.
+ */
+function resolveText(value: string): string {
+  if (!value) return value;
+  // Check if it looks like an i18n key (dots, no spaces) and exists in messages
+  if (value.includes('.') && !value.includes(' ') && te(value)) {
+    return t(value);
+  }
+  return value;
+}
 
 /* ---- Positioning ---- */
 const tooltipRef = ref<HTMLElement | null>(null);
@@ -185,8 +198,8 @@ watch(() => [props.step.id, props.step.target], () => {
 
     <!-- Content -->
     <div class="px-4 pt-4 pb-3">
-      <h3 class="text-sm font-semibold text-[var(--text-primary)] pr-6">{{ step.title }}</h3>
-      <p class="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{{ step.text }}</p>
+      <h3 class="text-sm font-semibold text-[var(--text-primary)] pr-6">{{ resolveText(step.title) }}</h3>
+      <p class="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{{ resolveText(step.text) }}</p>
     </div>
 
     <!-- Footer: controls + step counter -->

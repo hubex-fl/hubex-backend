@@ -46,8 +46,13 @@ _ROUTE_RULES: list[Tuple[str, int, str]] = [
     ("/api/v1/edge", 60, "device_uid"),
     ("/api/v1/webhooks", 30, "user_id"),
     ("/api/v1/ota", 30, "user_id"),
+    # Polled endpoints need higher limits (SPA polls every 10s)
+    ("/api/v1/alerts", 300, "user_id"),
+    ("/api/v1/notifications", 300, "user_id"),
+    ("/api/v1/devices", 300, "user_id"),
+    ("/api/v1/dashboards", 300, "user_id"),
 ]
-_DEFAULT_LIMIT = 120
+_DEFAULT_LIMIT = 300
 
 
 # ---------------------------------------------------------------------------

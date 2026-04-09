@@ -796,6 +796,7 @@ const statusClass: Record<string, string> = {
             <!-- Condition Type -->
             <div class="space-y-1">
               <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.conditionType') }}</label>
+              <p class="text-[9px] text-[var(--text-muted)] -mt-0.5">{{ t('alerts.conditionTypeFieldHint') }}</p>
               <select
                 v-model="form.condition_type"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
@@ -850,6 +851,7 @@ const statusClass: Record<string, string> = {
             <!-- Severity -->
             <div class="space-y-1">
               <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.severityLabel') }}</label>
+              <p class="text-[9px] text-[var(--text-muted)] -mt-0.5">{{ t('alerts.severityFieldHint') }}</p>
               <select
                 v-model="form.severity"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
