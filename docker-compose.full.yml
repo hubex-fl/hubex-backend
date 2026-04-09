@@ -45,7 +45,7 @@ services:
       HUBEX_DATABASE_URL: postgresql+asyncpg://hubex:${HUBEX_DB_PASSWORD:-hubex}@postgres:5432/hubex
       HUBEX_REDIS_URL: redis://redis:6379/0
       HUBEX_JWT_SECRET: ${HUBEX_JWT_SECRET:?Set HUBEX_JWT_SECRET in .env}
-      HUBEX_ENV: production
+      HUBEX_ENV: ${HUBEX_ENV:-dev}
       HUBEX_CORS_ORIGINS: ${HUBEX_CORS_ORIGINS:-http://localhost}
     ports:
       - "${HUBEX_PORT:-8000}:8000"
