@@ -11,6 +11,10 @@ export type Entity = {
   health_last_seen_at: string | null;
   health_status: string | null;
   created_at: string;
+  parent_id: string | null;
+  location_name: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
 };
 
 export type EntityBinding = {

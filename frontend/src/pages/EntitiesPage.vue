@@ -19,6 +19,22 @@ const { t } = useI18n();
 const caps = useCapabilities();
 const { entities, loading, error, reload } = useEntities();
 
+// ── Entity type options (combobox) ──────────────────────────────────────────
+const entityTypeOptions = [
+  { value: "building", label: "building" },
+  { value: "floor", label: "floor" },
+  { value: "room", label: "room" },
+  { value: "zone", label: "zone" },
+  { value: "property", label: "property" },
+  { value: "site", label: "site" },
+  { value: "group", label: "group" },
+  { value: "custom", label: "custom" },
+];
+const createTypeDropdownOpen = ref(false);
+const editTypeDropdownOpen = ref(false);
+const createTypeQuery = ref("");
+const editTypeQuery = ref("");
+
 // ── Search & filter ──────────────────────────────────────────────────────────
 const search = ref("");
 const typeFilter = ref("all"); // "all" | "group" | "custom"
@@ -124,15 +140,23 @@ function typeBadgeStatus(type: string): "info" | "neutral" {
 // ── Create Entity ─────────────────────────────────────────────────────────────
 const createOpen = ref(false);
 const createEntityId = ref("");
-const createEntityType = ref("sensor");
+const createEntityType = ref("room");
 const createEntityName = ref("");
+const createParentId = ref("");
+const createLocationName = ref("");
+const createLocationLat = ref("");
+const createLocationLng = ref("");
 const createError = ref<string | null>(null);
 const createLoading = ref(false);
 
 function openCreate() {
   createEntityId.value = "";
-  createEntityType.value = "sensor";
+  createEntityType.value = "room";
   createEntityName.value = "";
+  createParentId.value = "";
+  createLocationName.value = "";
+  createLocationLat.value = "";
+  createLocationLng.value = "";
   createError.value = null;
   createOpen.value = true;
 }
@@ -155,6 +179,10 @@ async function submitCreate() {
         entity_id: createEntityId.value.trim(),
         type: createEntityType.value.trim(),
         name: createEntityName.value.trim() || null,
+        parent_id: createParentId.value.trim() || null,
+        location_name: createLocationName.value.trim() || null,
+        location_lat: createLocationLat.value ? parseFloat(createLocationLat.value) : null,
+        location_lng: createLocationLng.value ? parseFloat(createLocationLng.value) : null,
       }),
     });
     createOpen.value = false;
@@ -172,6 +200,10 @@ const editOpen = ref(false);
 const editEntityId = ref("");
 const editEntityType = ref("");
 const editEntityName = ref("");
+const editParentId = ref("");
+const editLocationName = ref("");
+const editLocationLat = ref("");
+const editLocationLng = ref("");
 const editError = ref<string | null>(null);
 const editLoading = ref(false);
 
@@ -179,6 +211,10 @@ function openEdit(entity: Entity) {
   editEntityId.value = entity.entity_id;
   editEntityType.value = entity.type;
   editEntityName.value = entity.name ?? "";
+  editParentId.value = entity.parent_id ?? "";
+  editLocationName.value = entity.location_name ?? "";
+  editLocationLat.value = entity.location_lat != null ? String(entity.location_lat) : "";
+  editLocationLng.value = entity.location_lng != null ? String(entity.location_lng) : "";
   editError.value = null;
   editOpen.value = true;
 }
@@ -192,6 +228,10 @@ async function submitEdit() {
       body: JSON.stringify({
         type: editEntityType.value.trim() || null,
         name: editEntityName.value.trim() || null,
+        parent_id: editParentId.value.trim() || null,
+        location_name: editLocationName.value.trim() || null,
+        location_lat: editLocationLat.value ? parseFloat(editLocationLat.value) : null,
+        location_lng: editLocationLng.value ? parseFloat(editLocationLng.value) : null,
       }),
     });
     editOpen.value = false;
@@ -257,18 +297,25 @@ function openBind(entityId: string) {
 }
 
 async function submitBind() {
-  const deviceIdNum = parseInt(bindDeviceId.value);
-  if (!bindDeviceId.value || isNaN(deviceIdNum)) {
-    bindError.value = "Enter a valid Device ID";
+  if (!bindDeviceId.value) {
+    bindError.value = t('pages.entities.selectDeviceError');
     return;
   }
   bindLoading.value = true;
   bindError.value = null;
   try {
+    // UEntitySelect returns device_uid (string). Look up numeric device ID.
+    const devices = await apiFetch<Array<{ id: number; device_uid: string }>>("/api/v1/devices");
+    const device = devices.find((d) => d.device_uid === bindDeviceId.value);
+    if (!device) {
+      bindError.value = t('pages.entities.deviceNotFound');
+      bindLoading.value = false;
+      return;
+    }
     await apiFetch(`/api/v1/entities/${bindTargetEntityId.value}/devices`, {
       method: "POST",
       body: JSON.stringify({
-        device_ids: [deviceIdNum],
+        device_ids: [device.id],
         priority: parseInt(bindPriority.value) || 0,
         enabled: bindEnabled.value,
       }),
@@ -440,6 +487,24 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                 >
                   {{ entity.name }}
                 </span>
+                <!-- Parent indicator -->
+                <span
+                  v-if="entity.parent_id"
+                  class="text-[10px] text-[var(--text-muted)] flex items-center gap-0.5"
+                  :title="t('pages.entities.childOf') + ' ' + entity.parent_id"
+                >
+                  <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  {{ entity.parent_id }}
+                </span>
+                <!-- Location indicator -->
+                <span
+                  v-if="entity.location_name"
+                  class="text-[10px] text-[var(--text-muted)] flex items-center gap-0.5"
+                  :title="String(entity.location_name)"
+                >
+                  <svg class="h-2.5 w-2.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                  <span class="truncate max-w-[120px]">{{ entity.location_name }}</span>
+                </span>
               </div>
 
               <!-- Badges -->
@@ -589,16 +654,69 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           label="Entity ID"
           placeholder="e.g. sensor-group-1"
         />
-        <UInput
-          v-model="createEntityType"
-          label="Type"
-          placeholder="e.g. sensor, group, actuator"
-        />
+        <!-- Type combobox -->
+        <div class="relative flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('pages.entities.typeLabel') }}</label>
+          <input
+            :value="createTypeDropdownOpen ? createTypeQuery : createEntityType"
+            :placeholder="t('pages.entities.typePlaceholder')"
+            class="input w-full pr-8"
+            autocomplete="off"
+            @input="createTypeQuery = ($event.target as HTMLInputElement).value; createEntityType = createTypeQuery"
+            @focus="createTypeDropdownOpen = true; createTypeQuery = createEntityType"
+            @blur="setTimeout(() => createTypeDropdownOpen = false, 150)"
+          />
+          <svg class="absolute right-2 top-[calc(50%+8px)] -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+          <div v-if="createTypeDropdownOpen" class="absolute left-0 right-0 top-full mt-1 z-50 max-h-40 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl">
+            <button
+              v-for="opt in entityTypeOptions.filter(o => !createTypeQuery || o.value.includes(createTypeQuery.toLowerCase()))"
+              :key="opt.value"
+              type="button"
+              class="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-raised)] transition-colors"
+              :class="opt.value === createEntityType ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'"
+              @mousedown.prevent="createEntityType = opt.value; createTypeDropdownOpen = false; createTypeQuery = ''"
+            >
+              {{ t('pages.entities.types.' + opt.value) }}
+              <span class="text-[10px] text-[var(--text-muted)] ml-1">({{ opt.value }})</span>
+            </button>
+          </div>
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.typeHint') }}</p>
+        </div>
         <UInput
           v-model="createEntityName"
           label="Name (optional)"
           placeholder="Human-readable name"
         />
+        <!-- Parent Entity (optional) -->
+        <UEntitySelect
+          v-model="createParentId"
+          entity-type="entity"
+          :label="t('pages.entities.parentEntity')"
+          :placeholder="t('pages.entities.parentEntityPlaceholder')"
+          optional
+        />
+        <!-- Location fields -->
+        <UInput
+          v-model="createLocationName"
+          :label="t('pages.entities.locationName')"
+          :placeholder="t('pages.entities.locationNamePlaceholder')"
+        />
+        <div class="grid grid-cols-2 gap-3">
+          <UInput
+            v-model="createLocationLat"
+            :label="t('pages.entities.locationLat')"
+            type="number"
+            placeholder="52.520"
+          />
+          <UInput
+            v-model="createLocationLng"
+            :label="t('pages.entities.locationLng')"
+            type="number"
+            placeholder="13.405"
+          />
+        </div>
         <div
           v-if="createError"
           class="rounded-lg border border-[var(--status-bad)]/30 bg-[var(--status-bad-bg)] px-3 py-2 text-xs text-[var(--status-bad)]"
@@ -627,16 +745,69 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
         <div class="text-xs text-[var(--text-muted)]">
           Editing: <span class="font-mono font-medium text-[var(--text-primary)]">{{ editEntityId }}</span>
         </div>
-        <UInput
-          v-model="editEntityType"
-          label="Type"
-          placeholder="e.g. sensor, group, actuator"
-        />
+        <!-- Type combobox -->
+        <div class="relative flex flex-col gap-1">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('pages.entities.typeLabel') }}</label>
+          <input
+            :value="editTypeDropdownOpen ? editTypeQuery : editEntityType"
+            :placeholder="t('pages.entities.typePlaceholder')"
+            class="input w-full pr-8"
+            autocomplete="off"
+            @input="editTypeQuery = ($event.target as HTMLInputElement).value; editEntityType = editTypeQuery"
+            @focus="editTypeDropdownOpen = true; editTypeQuery = editEntityType"
+            @blur="setTimeout(() => editTypeDropdownOpen = false, 150)"
+          />
+          <svg class="absolute right-2 top-[calc(50%+8px)] -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+          <div v-if="editTypeDropdownOpen" class="absolute left-0 right-0 top-full mt-1 z-50 max-h-40 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl">
+            <button
+              v-for="opt in entityTypeOptions.filter(o => !editTypeQuery || o.value.includes(editTypeQuery.toLowerCase()))"
+              :key="opt.value"
+              type="button"
+              class="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-raised)] transition-colors"
+              :class="opt.value === editEntityType ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'"
+              @mousedown.prevent="editEntityType = opt.value; editTypeDropdownOpen = false; editTypeQuery = ''"
+            >
+              {{ t('pages.entities.types.' + opt.value) }}
+              <span class="text-[10px] text-[var(--text-muted)] ml-1">({{ opt.value }})</span>
+            </button>
+          </div>
+          <p class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.typeHint') }}</p>
+        </div>
         <UInput
           v-model="editEntityName"
           label="Name"
           placeholder="Human-readable name"
         />
+        <!-- Parent Entity (optional) -->
+        <UEntitySelect
+          v-model="editParentId"
+          entity-type="entity"
+          :label="t('pages.entities.parentEntity')"
+          :placeholder="t('pages.entities.parentEntityPlaceholder')"
+          optional
+        />
+        <!-- Location fields -->
+        <UInput
+          v-model="editLocationName"
+          :label="t('pages.entities.locationName')"
+          :placeholder="t('pages.entities.locationNamePlaceholder')"
+        />
+        <div class="grid grid-cols-2 gap-3">
+          <UInput
+            v-model="editLocationLat"
+            :label="t('pages.entities.locationLat')"
+            type="number"
+            placeholder="52.520"
+          />
+          <UInput
+            v-model="editLocationLng"
+            :label="t('pages.entities.locationLng')"
+            type="number"
+            placeholder="13.405"
+          />
+        </div>
         <div
           v-if="editError"
           class="rounded-lg border border-[var(--status-bad)]/30 bg-[var(--status-bad-bg)] px-3 py-2 text-xs text-[var(--status-bad)]"

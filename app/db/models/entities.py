@@ -14,6 +14,7 @@ class Entity(Base):
     health_last_seen_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     health_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("entities.entity_id"), nullable=True, index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # UX-G Step 4: Entity location
     location_name: Mapped[str | None] = mapped_column(String(256), nullable=True)

@@ -2168,16 +2168,22 @@ onUnmounted(() => {
           <!-- RIGHT: Connected Alerts + Automations -->
           <div class="space-y-3">
             <!-- Entity memberships -->
-            <div v-if="entityMemberships.length">
+            <div v-if="entityMembershipsLoading || entityMemberships.length" style="min-height: 2rem">
               <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">{{ t('devices.groups') }}</p>
-              <router-link
-                v-for="em in entityMemberships"
-                :key="em.entity_id"
-                to="/entities"
-                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--accent-purple, #a78bfa)]/20 bg-[var(--accent-purple, #a78bfa)]/5 hover:border-[var(--accent-purple, #a78bfa)]/40 transition-colors text-[10px] text-[var(--accent-purple, #a78bfa)] mb-1"
-              >
-                {{ em.entity_name }} <span class="text-[var(--text-muted)]">({{ em.role }})</span>
-              </router-link>
+              <div v-if="entityMembershipsLoading" class="flex items-center gap-2">
+                <USkeleton width="4rem" height="1rem" rounded="lg" />
+                <USkeleton width="5rem" height="1rem" rounded="lg" />
+              </div>
+              <template v-else>
+                <router-link
+                  v-for="em in entityMemberships"
+                  :key="em.entity_id"
+                  to="/entities"
+                  class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--accent-purple, #a78bfa)]/20 bg-[var(--accent-purple, #a78bfa)]/5 hover:border-[var(--accent-purple, #a78bfa)]/40 transition-colors text-[10px] text-[var(--accent-purple, #a78bfa)] mb-1"
+                >
+                  {{ em.entity_name }} <span class="text-[var(--text-muted)]">({{ em.role }})</span>
+                </router-link>
+              </template>
             </div>
 
             <!-- Connected Automations + Alerts -->
@@ -2230,13 +2236,13 @@ onUnmounted(() => {
       </div>
 
       <!-- Entity memberships + capabilities bar -->
-      <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-4">
+      <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-4" style="min-height: 2.75rem">
         <!-- Entity chips -->
-        <div v-if="entityMembershipsLoading" class="flex items-center gap-2">
+        <div v-if="entityMembershipsLoading" class="flex items-center gap-2" style="min-height: 1.5rem">
           <USkeleton width="4rem" height="1.25rem" rounded="full" />
           <USkeleton width="5rem" height="1.25rem" rounded="full" />
         </div>
-        <div v-else-if="entityMemberships.length" class="flex items-center gap-2 flex-wrap">
+        <div v-else-if="entityMemberships.length" class="flex items-center gap-2 flex-wrap" style="min-height: 1.5rem">
           <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mr-1">{{ t('devices.entities') }}</span>
           <router-link
             v-for="em in entityMemberships"

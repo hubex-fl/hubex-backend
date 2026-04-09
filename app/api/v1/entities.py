@@ -29,6 +29,7 @@ class EntityOut(BaseModel):
     health_last_seen_at: datetime | None
     health_status: str | None
     created_at: datetime
+    parent_id: str | None = None
     location_name: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
@@ -49,6 +50,7 @@ class EntityCreateIn(BaseModel):
     type: str = Field(min_length=1, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     tags: list | dict | None = None
+    parent_id: str | None = Field(default=None, max_length=64)
     location_name: str | None = Field(default=None, max_length=256)
     location_lat: float | None = None
     location_lng: float | None = None
@@ -60,6 +62,7 @@ class EntityUpdateIn(BaseModel):
     type: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, max_length=128)
     tags: list | dict | None = None
+    parent_id: str | None = Field(default=None, max_length=64)
     location_name: str | None = Field(default=None, max_length=256)
     location_lat: float | None = None
     location_lng: float | None = None
@@ -266,6 +269,10 @@ async def create_entity(
         type=data.type,
         name=data.name,
         tags=data.tags,
+        parent_id=data.parent_id,
+        location_name=data.location_name,
+        location_lat=data.location_lat,
+        location_lng=data.location_lng,
         org_id=org_id,
     )
     db.add(entity)
@@ -292,6 +299,14 @@ async def update_entity(
         entity.name = data.name
     if data.tags is not None:
         entity.tags = data.tags
+    if data.parent_id is not None:
+        entity.parent_id = data.parent_id if data.parent_id else None
+    if data.location_name is not None:
+        entity.location_name = data.location_name if data.location_name else None
+    if data.location_lat is not None:
+        entity.location_lat = data.location_lat
+    if data.location_lng is not None:
+        entity.location_lng = data.location_lng
     await emit_system_event(db, "entity.updated", {"entity_id": entity_id})
     await db.commit()
     await db.refresh(entity)
