@@ -65,7 +65,7 @@ def _to_out(ep: CustomEndpoint) -> EndpointOut:
         last_called_at=ep.last_called_at,
         created_at=ep.created_at,
         updated_at=ep.updated_at,
-        call_url=f"/api/v1/custom-api/call{ep.path}",
+        call_url=f"/api/v1/custom-api/call/{ep.path.lstrip('/')}",
     )
 
 
