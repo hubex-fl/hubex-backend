@@ -77,7 +77,11 @@ function connect(): void {
   ws.onmessage = (event: MessageEvent) => {
     try {
       const msg: WsMessage = JSON.parse(event.data as string);
-      if (msg.type === "notification" && msg.data) {
+      if (msg.type === "ping") {
+        // Respond to server ping to keep connection alive
+        try { ws?.send(JSON.stringify({ type: "pong" })); } catch { /* ignore */ }
+        return;
+      } else if (msg.type === "notification" && msg.data) {
         notificationHandlers.forEach((h) => h(msg.data as WsNotification));
       } else if (msg.type === "event" && msg.channel && msg.data) {
         eventHandlers.forEach((h) => h(msg.channel!, msg.data as Record<string, unknown>));
