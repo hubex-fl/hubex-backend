@@ -136,14 +136,16 @@ function handleCamera(payload: Record<string, unknown>) {
     }
     if (el) {
       const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 5.0);
-      const rect = el.getBoundingClientRect();
-      const vpRect = vp.getBoundingClientRect();
-      const originX = rect.left - vpRect.left + rect.width / 2;
-      const originY = rect.top - vpRect.top + rect.height / 2;
 
-      vp.style.transformOrigin = `${originX}px ${originY}px`;
-      vp.style.transform = `scale(${zoom})`;
-      vp.style.overflow = "hidden";
+      // Step 1: Scroll element to center of viewport (instant, no animation)
+      el.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+
+      // Step 2: After scroll settles, zoom from center
+      requestAnimationFrame(() => {
+        vp.style.transformOrigin = "center center";
+        vp.style.transform = `scale(${zoom})`;
+        vp.style.overflow = "hidden";
+      });
     }
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
