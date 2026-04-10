@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiFetch, getToken, clearToken } from "../lib/api";
 import { useCapabilities, hasCap } from "../lib/capabilities";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { usePreferencesStore } from "../stores/preferences";
 import { setLocale, getCurrentLocale, type SupportedLocale } from "../i18n";
 import UCard from "../components/ui/UCard.vue";
@@ -228,6 +228,12 @@ const expandedSection = ref<SectionKey | null>(null);
 
 // Features section state
 const featuresToggling = ref<Set<string>>(new Set());
+// Sprint 3.2 — deep-link highlight support: when navigated to
+// /settings?section=features&highlight=<key> (e.g. from the Plugins page
+// "Enable Orchestrator →" CTA), auto-expand the section, scroll to the row,
+// and pulse it for a few seconds so the user can't miss it.
+const highlightedFeatureKey = ref<string | null>(null);
+const route = useRoute();
 async function toggleFeature(key: string, next: boolean) {
   if (featuresToggling.value.has(key)) return;
   featuresToggling.value.add(key);
@@ -342,10 +348,31 @@ onMounted(async () => {
   loadOrgs();
   loadDashboards();
   limitsStore.load();
-  featuresStore.load().catch(() => { /* fail-open */ });
+  await featuresStore.load().catch(() => { /* fail-open */ });
   await prefs.load();
   initHomepagePref();
   initNotificationPrefs();
+
+  // Deep-link section expand + feature highlight from query params.
+  // Used by the Plugins page "Enable Orchestrator →" CTA.
+  const sectionParam = route.query.section as string | undefined;
+  const highlightParam = route.query.highlight as string | undefined;
+  if (sectionParam && ["edition","account","features","notifications","organization","developer","system"].includes(sectionParam)) {
+    expandedSection.value = sectionParam as SectionKey;
+  }
+  if (highlightParam) {
+    // Delay so the section body has rendered before we scroll + highlight
+    await nextTick();
+    setTimeout(() => {
+      highlightedFeatureKey.value = highlightParam;
+      const el = document.querySelector(`[data-feature-row="${highlightParam}"]`) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      // Clear the highlight class after the pulse animation finishes
+      setTimeout(() => { highlightedFeatureKey.value = null; }, 4500);
+    }, 100);
+  }
 });
 </script>
 
@@ -581,7 +608,11 @@ onMounted(async () => {
                       <div
                         v-for="feat in featuresStore.byCategory[category] || []"
                         :key="feat.key"
-                        class="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]"
+                        :data-feature-row="feat.key"
+                        :class="[
+                          'flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] transition-all',
+                          highlightedFeatureKey === feat.key ? 'feature-row-pulse' : '',
+                        ]"
                       >
                         <UToggle
                           :model-value="feat.enabled"
@@ -945,3 +976,28 @@ onMounted(async () => {
 
   </div>
 </template>
+
+<style scoped>
+/* Sprint 3.2 — deep-link highlight pulse for feature rows.
+   Triggered by ?highlight=<key> query param (e.g. from the Plugins page
+   "Enable Orchestrator →" CTA). 3 pulses over ~4s, then fades. */
+.feature-row-pulse {
+  animation: feature-row-pulse 1.4s ease-out 3;
+  box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+  border-color: var(--primary) !important;
+}
+@keyframes feature-row-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.55);
+    background-color: rgba(245, 166, 35, 0.08);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 166, 35, 0);
+    background-color: rgba(245, 166, 35, 0.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+    background-color: transparent;
+  }
+}
+</style>

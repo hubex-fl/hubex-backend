@@ -136,6 +136,16 @@ function handleOpenEmbed(plugin: InstalledPlugin): void {
   router.push(`/plugins/${encodeURIComponent(plugin.key)}/embed`);
 }
 
+function goToOrchestratorSetting(): void {
+  // Navigate to Settings → Features section with highlight query so the
+  // Settings page auto-expands the Features section and pulse-highlights
+  // the orchestrator row.
+  router.push({
+    path: "/settings",
+    query: { section: "features", highlight: "orchestrator" },
+  });
+}
+
 function askUninstall(key: string): void {
   confirmUninstallKey.value = key;
 }
@@ -275,7 +285,28 @@ function statusDotClass(status: string | null): string {
 function iframeUrlFor(plugin: InstalledPlugin): string | null {
   const manifest = plugin.manifest as Record<string, unknown>;
   const embed = manifest.embed as { iframe_url?: string } | undefined;
-  return embed?.iframe_url ?? null;
+  return resolveEmbedUrl(embed?.iframe_url ?? null);
+}
+
+/**
+ * Catalog manifests hardcode `http://localhost:5678` for n8n etc. That breaks
+ * when HubEx is accessed over a hostname or IP other than "localhost" — the
+ * browser tries to reach ITS OWN localhost:5678, not the server's. Rewrite
+ * the hostname at render time so the URL tracks wherever the user is browsing
+ * from. Only "localhost" (and its alias 127.0.0.1) is rewritten; hostnames
+ * the catalog explicitly set to something else are left alone.
+ */
+function resolveEmbedUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+      u.hostname = window.location.hostname;
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
 }
 
 function isConnectorConfigured(plugin: InstalledPlugin): boolean {
@@ -371,9 +402,22 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
 
         <div
           v-if="!orchestratorEnabled && marketplaceEntries.some((e) => e.kind === 'service')"
-          class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-2 text-[10px] text-[var(--text-muted)]"
+          class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 px-3 py-2.5 flex items-start gap-3"
         >
-          {{ t("plugins.orchestrator_hint") }}
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-[var(--text-primary)] font-medium">
+              {{ t("plugins.orchestrator_banner_title") }}
+            </p>
+            <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+              {{ t("plugins.orchestrator_hint") }}
+            </p>
+          </div>
+          <button
+            class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"
+            @click="goToOrchestratorSetting"
+          >
+            {{ t("plugins.enable_now") }} →
+          </button>
         </div>
 
         <div class="space-y-3">
@@ -415,18 +459,19 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
                 </div>
               </div>
               <div class="shrink-0">
+                <!-- Service plugin, orchestrator disabled: show "Go to Settings" instead of disabled Install -->
                 <button
-                  v-if="!store.isInstalled(entry.key)"
-                  :disabled="
-                    store.isBusy(entry.key) ||
-                    (entry.kind === 'service' && !orchestratorEnabled)
-                  "
+                  v-if="!store.isInstalled(entry.key) && entry.kind === 'service' && !orchestratorEnabled"
+                  class="px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--primary)]/50 text-[var(--primary)] hover:bg-[var(--primary)]/10"
+                  @click="goToOrchestratorSetting"
+                >
+                  {{ t("plugins.enable_to_install") }} →
+                </button>
+                <!-- Normal install button -->
+                <button
+                  v-else-if="!store.isInstalled(entry.key)"
+                  :disabled="store.isBusy(entry.key)"
                   class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  :title="
-                    entry.kind === 'service' && !orchestratorEnabled
-                      ? t('plugins.orchestrator_hint_short')
-                      : ''
-                  "
                   @click="handleInstall(entry)"
                 >
                   {{ store.isBusy(entry.key) ? t("plugins.installing") : t("plugins.install") }}

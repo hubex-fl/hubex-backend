@@ -19,7 +19,20 @@ const iframeUrl = computed<string | null>(() => {
   if (!plugin.value) return null;
   const manifest = plugin.value.manifest as Record<string, unknown>;
   const embed = manifest.embed as { iframe_url?: string } | undefined;
-  return embed?.iframe_url ?? null;
+  const raw = embed?.iframe_url;
+  if (!raw) return null;
+  // Rewrite hardcoded "localhost" to the hostname the user is actually
+  // browsing from, so the iframe works when HubEx is accessed via IP
+  // or a custom hostname (not just when running on the user's own machine).
+  try {
+    const u = new URL(raw);
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+      u.hostname = window.location.hostname;
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
 });
 
 const isRunning = computed(() => plugin.value?.runtime_status === "running");
