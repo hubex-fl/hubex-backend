@@ -29,8 +29,19 @@ const configureEntry = ref<CatalogEntry | null>(null);
 const configurePlugin = ref<InstalledPlugin | null>(null);
 const configureValues = reactive<Record<string, string>>({});
 const configureSaving = ref(false);
+/**
+ * Fields that already have a value stored in SecretV1 (from GET /status).
+ * Secret fields in this set show a "already set" hint instead of looking empty.
+ */
+const configureAlreadySetFields = ref<Set<string>>(new Set());
 
 const confirmUninstallKey = ref<string | null>(null);
+
+/**
+ * Cache of connector status per plugin key (populated after install + on load).
+ * Used to render "needs setup" / "configured" badges in the installed list.
+ */
+const connectorStatus = reactive<Record<string, { configured: boolean; set_fields: string[] }>>({});
 
 // ── derived ────────────────────────────────────────────────────────────────
 
@@ -53,7 +64,29 @@ const installedList = computed(() =>
 onMounted(async () => {
   await features.load();
   await store.load();
+  // Populate connector status cache for each installed connector so the
+  // installed list can show "needs setup" / "configured" badges on first paint.
+  await refreshAllConnectorStatus();
 });
+
+async function refreshAllConnectorStatus(): Promise<void> {
+  const connectors = store.installed.filter((p) => p.kind === "connector");
+  await Promise.all(
+    connectors.map(async (p) => {
+      try {
+        const s = await store.fetchStatus(p.key);
+        if (s.kind === "connector") {
+          connectorStatus[p.key] = {
+            configured: s.configured,
+            set_fields: s.set_fields,
+          };
+        }
+      } catch {
+        /* ignore — modal will still work, badge just won't show */
+      }
+    })
+  );
+}
 
 // ── actions ────────────────────────────────────────────────────────────────
 
@@ -69,9 +102,11 @@ async function handleInstall(entry: CatalogEntry): Promise<void> {
       t("plugins.installed_toast", { name: entry.name }),
       "success"
     );
-    // Connectors land with no credentials — open the configure modal immediately.
+    // Connectors land with no credentials — open the configure modal
+    // immediately with empty set_fields (it's a fresh install).
     if (entry.kind === "connector") {
-      openConfigure(entry, plugin);
+      connectorStatus[plugin.key] = { configured: false, set_fields: [] };
+      await openConfigure(entry, plugin);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Install failed";
@@ -120,23 +155,48 @@ async function confirmUninstall(): Promise<void> {
 
 // ── configure modal (connector credentials) ───────────────────────────────
 
-function openConfigure(entry: CatalogEntry | null, plugin: InstalledPlugin): void {
+async function openConfigure(entry: CatalogEntry | null, plugin: InstalledPlugin): Promise<void> {
   // Entry is optional (for plugins already installed, we derive the schema
   // from plugin.manifest instead of the catalog).
   configureEntry.value = entry;
   configurePlugin.value = plugin;
   for (const k of Object.keys(configureValues)) delete configureValues[k];
+
+  // Refresh status so we know which fields are already set. The /status
+  // endpoint returns set_fields without leaking the values themselves.
+  let alreadySet: string[] = connectorStatus[plugin.key]?.set_fields ?? [];
+  try {
+    const s = await store.fetchStatus(plugin.key);
+    if (s.kind === "connector") {
+      alreadySet = s.set_fields;
+      connectorStatus[plugin.key] = {
+        configured: s.configured,
+        set_fields: s.set_fields,
+      };
+    }
+  } catch {
+    /* keep cached value */
+  }
+  configureAlreadySetFields.value = new Set(alreadySet);
+
+  // Pre-fill fields with their manifest defaults (selects especially).
+  // Secret fields stay empty — user must re-enter to change; leaving empty
+  // means "keep the existing value" (backend accepts partial updates).
   const schema = credentialSchemaForPlugin(plugin);
   for (const f of schema) {
-    configureValues[f.key] = (f.default as string | undefined) ?? "";
+    if (f.secret) {
+      configureValues[f.key] = "";
+    } else {
+      configureValues[f.key] = (f.default as string | undefined) ?? "";
+    }
   }
   configureOpen.value = true;
 }
 
-function openConfigureFromInstalled(plugin: InstalledPlugin): void {
+async function openConfigureFromInstalled(plugin: InstalledPlugin): Promise<void> {
   const entry =
     store.catalog.find((e) => e.key === plugin.key) ?? null;
-  openConfigure(entry, plugin);
+  await openConfigure(entry, plugin);
 }
 
 function credentialSchemaForPlugin(plugin: InstalledPlugin): CredentialSchemaField[] {
@@ -150,17 +210,42 @@ async function saveCredentials(): Promise<void> {
   const plugin = configurePlugin.value;
   configureSaving.value = true;
   try {
-    // Strip empty values so users can skip optional fields
+    // Only send fields the user actually filled in. Empty secret fields on
+    // a re-open mean "keep the existing value" — backend accepts partial
+    // updates and won't delete anything not in the payload.
     const creds: Record<string, string> = {};
     for (const [k, v] of Object.entries(configureValues)) {
       if (v && v.trim() !== "") creds[k] = v;
     }
+    // On a fresh install, guard: require at least one required field.
+    const schema = credentialSchemaForPlugin(plugin);
+    const missingRequired = schema
+      .filter((f) => f.required)
+      .filter((f) => !(f.key in creds) && !configureAlreadySetFields.value.has(f.key));
+    if (missingRequired.length > 0) {
+      toast.addToast(
+        t("plugins.missing_required", { fields: missingRequired.map((f) => f.label).join(", ") }),
+        "error"
+      );
+      return;
+    }
     if (Object.keys(creds).length === 0) {
-      toast.addToast(t("plugins.no_fields_to_save"), "error");
+      // Nothing to update — just close. User may have opened and cancelled.
+      configureOpen.value = false;
       return;
     }
     await store.setCredentials(plugin.key, creds);
     toast.addToast(t("plugins.credentials_saved"), "success");
+    // Refresh status cache so the installed list updates immediately
+    try {
+      const s = await store.fetchStatus(plugin.key);
+      if (s.kind === "connector") {
+        connectorStatus[plugin.key] = {
+          configured: s.configured,
+          set_fields: s.set_fields,
+        };
+      }
+    } catch { /* non-fatal */ }
     configureOpen.value = false;
   } catch (err) {
     toast.addToast(err instanceof Error ? err.message : "Save failed", "error");
@@ -191,6 +276,47 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
   const manifest = plugin.manifest as Record<string, unknown>;
   const embed = manifest.embed as { iframe_url?: string } | undefined;
   return embed?.iframe_url ?? null;
+}
+
+function isConnectorConfigured(plugin: InstalledPlugin): boolean {
+  return connectorStatus[plugin.key]?.configured === true;
+}
+
+function connectorSetFields(plugin: InstalledPlugin): string[] {
+  return connectorStatus[plugin.key]?.set_fields ?? [];
+}
+
+/**
+ * Per-provider hint about where to get the API key and what it looks like.
+ * Keeps the configure modal friendly for users who've never used the API
+ * before. Falls back to a generic hint for unknown providers.
+ */
+interface ProviderHint {
+  readonly what_is_this: string;
+  readonly where_to_get: string;
+  readonly key_format: string;
+}
+function providerHint(pluginKey: string): ProviderHint | null {
+  switch (pluginKey) {
+    case "anthropic-claude":
+      return {
+        what_is_this: t("plugins.hint.claude.what"),
+        where_to_get: "https://console.anthropic.com/settings/keys",
+        key_format: t("plugins.hint.claude.format"),
+      };
+    case "openai":
+      return {
+        what_is_this: t("plugins.hint.openai.what"),
+        where_to_get: "https://platform.openai.com/api-keys",
+        key_format: t("plugins.hint.openai.format"),
+      };
+    default:
+      return null;
+  }
+}
+
+function pluginDescriptionFor(plugin: InstalledPlugin): string {
+  return plugin.description || "";
 }
 </script>
 
@@ -346,7 +472,7 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
           >
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-0.5">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span class="text-sm font-medium text-[var(--text-primary)]">
                     {{ plugin.name }}
                   </span>
@@ -360,6 +486,26 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
                   >
                     <span :class="['h-1.5 w-1.5 rounded-full', statusDotClass(plugin.runtime_status)]" />
                     {{ plugin.runtime_status || "unknown" }}
+                  </span>
+                  <!-- Connector configured/unconfigured status -->
+                  <span
+                    v-if="plugin.kind === 'connector'"
+                    :class="[
+                      'flex items-center gap-1 text-[10px]',
+                      isConnectorConfigured(plugin) ? 'text-[var(--status-ok)]' : 'text-[var(--status-warn)]',
+                    ]"
+                  >
+                    <span
+                      :class="[
+                        'h-1.5 w-1.5 rounded-full',
+                        isConnectorConfigured(plugin) ? 'bg-[var(--status-ok)]' : 'bg-[var(--status-warn)]',
+                      ]"
+                    />
+                    {{
+                      isConnectorConfigured(plugin)
+                        ? t("plugins.configured_badge")
+                        : t("plugins.unconfigured_badge")
+                    }}
                   </span>
                 </div>
                 <p
@@ -405,10 +551,15 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
                 <!-- Connector actions -->
                 <template v-else>
                   <button
-                    class="px-2 py-1 rounded-lg text-[10px] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10"
+                    :class="[
+                      'px-2 py-1 rounded-lg text-[10px] font-medium',
+                      isConnectorConfigured(plugin)
+                        ? 'text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
+                        : 'text-black bg-[var(--primary)] hover:bg-[var(--primary-hover)]',
+                    ]"
                     @click="openConfigureFromInstalled(plugin)"
                   >
-                    {{ t("plugins.configure") }}
+                    {{ isConnectorConfigured(plugin) ? t("plugins.edit_credentials") : t("plugins.needs_setup") }}
                   </button>
                 </template>
                 <!-- Common: uninstall -->
@@ -439,19 +590,62 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
       :title="configurePlugin ? t('plugins.configure_title', { name: configurePlugin.name }) : ''"
       @close="configureOpen = false"
     >
-      <div v-if="configurePlugin" class="space-y-3">
-        <p class="text-[10px] text-[var(--text-muted)]">
-          {{ t("plugins.credentials_hint") }}
-        </p>
+      <div v-if="configurePlugin" class="space-y-4">
+        <!-- Intro: what is this + where to get credentials -->
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] px-4 py-3 space-y-2">
+          <p class="text-xs text-[var(--text-primary)] leading-relaxed">
+            {{ pluginDescriptionFor(configurePlugin) }}
+          </p>
+          <p
+            v-if="providerHint(configurePlugin.key)"
+            class="text-xs text-[var(--text-muted)] leading-relaxed"
+          >
+            {{ providerHint(configurePlugin.key)!.what_is_this }}
+          </p>
+          <div
+            v-if="providerHint(configurePlugin.key)"
+            class="flex items-center gap-2 pt-1"
+          >
+            <a
+              :href="providerHint(configurePlugin.key)!.where_to_get"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] hover:underline"
+            >
+              {{ t("plugins.get_api_key") }}
+              <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7m0-7L10 14m-5-5v10a2 2 0 002 2h10" />
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Already configured notice for re-open scenario -->
+        <div
+          v-if="configureAlreadySetFields.size > 0"
+          class="rounded-lg border border-[var(--status-ok)]/30 bg-[var(--status-ok)]/10 px-3 py-2 text-xs text-[var(--status-ok)]"
+        >
+          {{ t("plugins.already_configured_notice", { count: configureAlreadySetFields.size }) }}
+        </div>
+
+        <!-- Fields -->
         <div
           v-for="field in credentialSchemaForPlugin(configurePlugin)"
           :key="field.key"
-          class="space-y-1"
+          class="space-y-1.5"
         >
-          <label class="text-[10px] font-medium text-[var(--text-muted)] flex items-center gap-1">
+          <label class="flex items-center gap-2 text-xs font-medium text-[var(--text-primary)]">
             {{ field.label }}
-            <span v-if="field.required" class="text-red-400">*</span>
+            <span v-if="field.required" class="text-red-400" :title="t('plugins.required_field')">*</span>
+            <span
+              v-if="configureAlreadySetFields.has(field.key) && field.secret"
+              class="text-[10px] text-[var(--status-ok)] font-normal"
+            >
+              ● {{ t("plugins.field_already_set") }}
+            </span>
           </label>
+
+          <!-- Select field (e.g. model dropdown) -->
           <select
             v-if="field.type === 'select'"
             v-model="configureValues[field.key]"
@@ -462,21 +656,41 @@ function iframeUrlFor(plugin: InstalledPlugin): string | null {
               :key="opt"
               :value="opt"
             >
-              {{ opt }}
+              {{ opt }}{{ opt === field.default ? " — " + t("plugins.default_label") : "" }}
             </option>
           </select>
+
+          <!-- Text / password field -->
           <input
             v-else
             v-model="configureValues[field.key]"
             :type="field.secret ? 'password' : 'text'"
-            :placeholder="field.placeholder || ''"
+            :placeholder="
+              configureAlreadySetFields.has(field.key) && field.secret
+                ? t('plugins.leave_blank_to_keep')
+                : field.placeholder || ''
+            "
             class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs"
             :class="field.secret ? 'font-mono' : ''"
+            :autocomplete="field.secret ? 'new-password' : 'off'"
           />
-          <p v-if="field.help" class="text-[9px] text-[var(--text-muted)]">
-            {{ field.help }}
+
+          <!-- Per-field help text (visible, not 9px) -->
+          <p
+            v-if="field.help || (field.secret && providerHint(configurePlugin.key))"
+            class="text-[11px] text-[var(--text-muted)] leading-relaxed"
+          >
+            <template v-if="field.help">{{ field.help }}</template>
+            <template v-else-if="field.secret && providerHint(configurePlugin.key)">
+              {{ providerHint(configurePlugin.key)!.key_format }}
+            </template>
           </p>
         </div>
+
+        <!-- Footer hint about storage -->
+        <p class="text-[10px] text-[var(--text-muted)] border-t border-[var(--border)] pt-3">
+          🔒 {{ t("plugins.credentials_hint") }}
+        </p>
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
