@@ -403,6 +403,7 @@ _gate("hardware", [
     ("GET",  "/api/v1/components/{key}"),
     ("POST", "/api/v1/codegen/generate"),
     ("GET",  "/api/v1/codegen/preview/{device_id}"),
+    ("POST", "/api/v1/codegen/project"),
 ])
 
 # --- Simulator --------------------------------------------------------------

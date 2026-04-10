@@ -70,6 +70,7 @@ const router = createRouter({
     { path: "/reports",       component: () => import("./pages/Reports.vue"),        meta: { title: "Reports", feature: "reports" } },
     { path: "/plugins",       component: () => import("./pages/Plugins.vue"),        meta: { title: "Plugins", feature: "plugins" } },
     { path: "/hardware",      component: () => import("./pages/HardwareBoards.vue"), meta: { title: "Hardware Boards", feature: "hardware" } },
+    { path: "/hardware/wizard", component: () => import("./pages/HardwareWizard.vue"), meta: { title: "ESP Projekt", feature: "hardware", fullscreen: true } },
     { path: "/tours",          component: () => import("./pages/TourBuilder.vue"),     meta: { title: "Tour Builder", feature: "tours" } },
     { path: "/sandbox",       component: () => import("./pages/Sandbox.vue"),         meta: { title: "Sandbox", feature: "sandbox" } },
     { path: "/integrations",  component: () => import("./pages/Integrations.vue"),    meta: { title: "Integrations", feature: "integrations" } },

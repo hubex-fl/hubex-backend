@@ -299,6 +299,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # Code Generator
     ("POST", "/api/v1/codegen/generate"): ["devices.write"],
     ("GET", "/api/v1/codegen/preview/{device_id}"): ["devices.read"],
+    ("POST", "/api/v1/codegen/project"): ["devices.write"],
     # OTA Firmware
     ("POST", "/api/v1/ota/firmware"): ["ota.write"],
     ("GET", "/api/v1/ota/firmware"): ["ota.read"],

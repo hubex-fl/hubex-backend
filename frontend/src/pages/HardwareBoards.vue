@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 
 const { t } = useI18n();
+const router = useRouter();
+
+function openWizard() {
+  router.push("/hardware/wizard");
+}
 
 type Pin = { number: number; label: string; capabilities: string[] };
 type Board = {
@@ -63,9 +69,19 @@ onMounted(loadAll);
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('hardware.title') }}</h1>
-      <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('hardware.subtitle') }}</p>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('hardware.title') }}</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('hardware.subtitle') }}</p>
+      </div>
+      <button class="wizard-cta-btn" @click="openWizard">
+        <span class="cta-plus">+</span>
+        Neues ESP-Projekt
+      </button>
+    </div>
+    <div class="wizard-hint">
+      <strong>Tipp:</strong> Der Wizard legt in 5 Schritten ein komplettes, compilierfertiges
+      ESP32-Projekt als ZIP an — inklusive Device, API-Key und Pin-Konfiguration.
     </div>
 
     <div v-if="loading" class="text-xs text-[var(--text-muted)]">{{ t('common.loading') }}</div>
@@ -158,3 +174,47 @@ onMounted(loadAll);
     </template>
   </div>
 </template>
+
+<style scoped>
+.wizard-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #F5A623 0%, #E09318 100%);
+  color: #111110;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.25);
+}
+
+.wizard-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(245, 166, 35, 0.35);
+}
+
+.cta-plus {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wizard-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(245, 166, 35, 0.05);
+  border: 1px solid rgba(245, 166, 35, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  line-height: 1.5;
+}
+
+.wizard-hint strong {
+  color: var(--primary);
+}
+</style>
