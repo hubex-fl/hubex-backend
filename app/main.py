@@ -239,6 +239,10 @@ async def lifespan(app: FastAPI):
             ("cms_pages", "scheduled_at", "TIMESTAMP WITH TIME ZONE"),
             ("cms_pages", "view_count", "INTEGER DEFAULT 0"),
             ("cms_pages", "last_viewed_at", "TIMESTAMP WITH TIME ZONE"),
+            # Sprint 3 — Plugin kind discriminator + service runtime state
+            ("plugins", "kind", "VARCHAR(16) NOT NULL DEFAULT 'connector'"),
+            ("plugins", "runtime_status", "VARCHAR(32)"),
+            ("plugins", "container_name", "VARCHAR(128)"),
         ]
         for table, col, col_type in _COLUMN_PATCHES:
             try:

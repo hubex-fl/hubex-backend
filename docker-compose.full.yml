@@ -1,6 +1,16 @@
 
 # HUBEX Full Stack — with n8n + Portainer
 # Usage: docker-compose -f docker-compose.full.yml up -d
+#
+# Required .env vars for the Plugin Orchestrator (Sprint 3):
+#   HUBEX_PORTAINER_PASS        — plaintext admin password the backend
+#                                 uses to authenticate to Portainer.
+#   HUBEX_PORTAINER_ADMIN_HASH  — bcrypt hash of the same password.
+#                                 Portainer bootstraps its admin user
+#                                 from this on first boot. Escape every
+#                                 '$' as '$$' in the .env file because
+#                                 compose interpolates ${VAR}.
+# See .env.example for details and a generator snippet.
 
 services:
   postgres:
@@ -51,6 +61,10 @@ services:
       HUBEX_JWT_SECRET: ${HUBEX_JWT_SECRET:?Set HUBEX_JWT_SECRET in .env}
       HUBEX_ENV: ${HUBEX_ENV:-dev}
       HUBEX_CORS_ORIGINS: ${HUBEX_CORS_ORIGINS:-http://localhost}
+      # Sprint 3 — Plugin Orchestrator (Portainer backend)
+      HUBEX_PORTAINER_URL: ${HUBEX_PORTAINER_URL:-https://portainer:9443}
+      HUBEX_PORTAINER_USER: ${HUBEX_PORTAINER_USER:-admin}
+      HUBEX_PORTAINER_PASS: ${HUBEX_PORTAINER_PASS:-}
     ports:
       - "${HUBEX_PORT:-8000}:8000"
 
@@ -84,6 +98,10 @@ services:
     image: portainer/portainer-ce:latest
     container_name: hubex-portainer
     restart: unless-stopped
+    # Admin password is bootstrapped from a bcrypt hash in HUBEX_PORTAINER_ADMIN_HASH
+    # (in .env). To rotate: regenerate the hash, update .env, and recreate this
+    # container. Works with an empty volume on first boot.
+    command: ["--admin-password", "${HUBEX_PORTAINER_ADMIN_HASH}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - hubex_portainer:/data

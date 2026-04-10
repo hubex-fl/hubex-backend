@@ -128,6 +128,15 @@ FEATURES: dict[str, FeatureDef] = {
         "Traces, metrics and distributed-call timeline.",
         "advanced",
     ),
+    "orchestrator": _f(
+        "orchestrator",
+        "Plugin Orchestrator",
+        "Spawn and manage Docker containers for service plugins (n8n, Frigate, "
+        "Ollama, ...). Uses Portainer as the Docker backend. Keep OFF for a "
+        "lightweight install that only allows connector-style plugins.",
+        "advanced",
+        default=False,
+    ),
     "sandbox": _f(
         "sandbox",
         "Sandbox",

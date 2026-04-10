@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     db_pool_size: int = 5  # SQLAlchemy pool_size
     db_max_overflow: int = 20  # SQLAlchemy max_overflow
 
+    # Sprint 3 — Plugin Orchestrator (Portainer REST backend)
+    # Only used when the 'orchestrator' feature flag is enabled.
+    portainer_url: str = "https://hubex-portainer:9443"
+    portainer_user: str = "admin"
+    portainer_pass: str = ""  # empty = orchestrator cannot start service plugins
+
 
 settings = Settings()
 

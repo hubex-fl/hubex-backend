@@ -36,3 +36,14 @@ class Plugin(Base):
     execution_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Sprint 3 — Service vs Connector plugins
+    # "service"  = Docker container managed via Portainer (requires orchestrator feature)
+    # "connector" = API credentials only, no infra cost
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="connector")
+    # Runtime lifecycle state for service plugins:
+    # None (not a service / never installed) | "installing" | "running" | "stopped" |
+    # "unhealthy" | "error". Connector plugins leave this NULL.
+    runtime_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Portainer container name for service plugins. NULL for connector plugins.
+    container_name: Mapped[str | None] = mapped_column(String(128), nullable=True)

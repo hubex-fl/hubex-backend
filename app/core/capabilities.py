@@ -82,6 +82,9 @@ CAPABILITY_REGISTRY: set[str] = {
     "cms.write",
     "media.read",
     "media.write",
+    # Sprint 3 — plugin-specific caps (previously re-used modules.*)
+    "plugins.read",
+    "plugins.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -264,13 +267,20 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/reports/generate/{template_id}"): ["config.write"],
     ("GET", "/api/v1/reports/history"): ["config.read"],
     ("GET", "/api/v1/reports/download/{report_id}"): ["config.read"],
-    # Plugins
-    ("GET", "/api/v1/plugins"): ["modules.read"],
-    ("POST", "/api/v1/plugins"): ["modules.write"],
-    ("GET", "/api/v1/plugins/{plugin_key}"): ["modules.read"],
-    ("PATCH", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
-    ("DELETE", "/api/v1/plugins/{plugin_key}"): ["modules.write"],
-    ("POST", "/api/v1/plugins/{plugin_key}/execute"): ["modules.write"],
+    # Plugins — Sprint 3: dedicated plugins.read/write caps
+    ("GET", "/api/v1/plugins"): ["plugins.read"],
+    ("GET", "/api/v1/plugins/catalog"): ["plugins.read"],
+    ("POST", "/api/v1/plugins"): ["plugins.write"],
+    ("GET", "/api/v1/plugins/{plugin_key}"): ["plugins.read"],
+    ("PATCH", "/api/v1/plugins/{plugin_key}"): ["plugins.write"],
+    ("DELETE", "/api/v1/plugins/{plugin_key}"): ["plugins.write"],
+    ("POST", "/api/v1/plugins/{plugin_key}/execute"): ["plugins.write"],
+    # Sprint 3 — new catalog-based plugin lifecycle endpoints
+    ("POST", "/api/v1/plugins/install-from-catalog/{catalog_key}"): ["plugins.write"],
+    ("PUT", "/api/v1/plugins/{plugin_key}/credentials"): ["plugins.write"],
+    ("POST", "/api/v1/plugins/{plugin_key}/start"): ["plugins.write"],
+    ("POST", "/api/v1/plugins/{plugin_key}/stop"): ["plugins.write"],
+    ("GET", "/api/v1/plugins/{plugin_key}/status"): ["plugins.read"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
@@ -533,6 +543,7 @@ _VIEWER_CAPS: list[str] = [
     "pairing.status", "config.read", "secrets.read",
     "cms.read",
     "media.read",
+    "plugins.read",
 ]
 
 # Read + write capabilities (operator role)
@@ -546,6 +557,7 @@ _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "pairing.start", "pairing.claim", "pairing.confirm",
     "ota.write", "mcp.execute", "notifications.write",
     "modules.read", "modules.write",
+    "plugins.write",  # plugins.read is inherited from _VIEWER_CAPS
     "apikeys.read", "apikeys.write",
     "core.auth.login", "core.auth.register",
     "cms.write",
