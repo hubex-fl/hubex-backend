@@ -8,7 +8,7 @@ import logging
 
 from sqlalchemy import select
 
-from app.db.base import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal
 from app.db.models.cms_page import CmsPage
 from app.db.models.user import User
 
