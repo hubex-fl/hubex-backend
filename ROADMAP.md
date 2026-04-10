@@ -1055,6 +1055,29 @@
 - [x] Step 3 — Plugin Registry: CRUD API (install/configure/enable/disable/uninstall), Plugins.vue mit Install-Modal, Toggle, Run-Button
 - [x] Step 4 — Route /plugins + Sidebar, cap-badges, execution stats, sandbox-mode Anzeige
 
+### Milestone 32b: Plugin Manager v2 — Service + Connector Kinds [done] ✅
+> **Sprint 3 scope.** Turns the M32 placeholder into a working install/configure/run
+> system with two plugin kinds plus a ship-with catalog. Uses Portainer as the
+> Docker backend so HubEx never touches the Docker socket itself. Commit `a42e481`.
+- [x] Step 1 — Plugin kind discriminator: +3 columns on Plugin model (`kind`, `runtime_status`, `container_name`) migrated via `_COLUMN_PATCHES`. "service" (Docker container via Portainer) vs "connector" (API credentials only).
+- [x] Step 2 — Portainer REST client (`app/core/portainer_client.py`): async httpx wrapper, 8h JWT cache, auto endpoint discovery, create/start/stop/remove/inspect, structured `PortainerError` (code+message+status).
+- [x] Step 3 — Plugin catalog (`app/core/plugin_catalog.py`): 3 ship-with entries as frozen dataclasses — n8n (service, adopts existing container), anthropic-claude (connector), openai (connector with `base_url` override for OpenAI-compatible APIs).
+- [x] Step 4 — `orchestrator` feature flag (category=advanced, default=False). Opt-in gate for service-plugin orchestration so lightweight installs keep docker.sock exposure zero.
+- [x] Step 5 — Dedicated `plugins.read`/`plugins.write` capabilities (replace temp `modules.*`), 12 route map entries, role-inheritance chain viewer→operator→admin→owner.
+- [x] Step 6 — `GET /api/v1/plugins/catalog` + `POST /api/v1/plugins/install-from-catalog/{key}` with dynamic kind dispatch: connector path is instant, service path checks feature flag then Portainer-adopts or fresh-spawns.
+- [x] Step 7 — `PUT /api/v1/plugins/{key}/credentials` writes to `SecretV1` with namespace `plugin:<key>`. Plaintext NEVER returned; unknown fields rejected with `allowed` hint; partial updates supported.
+- [x] Step 8 — `POST /plugins/{key}/start` + `/stop` + `GET /plugins/{key}/status` for service lifecycle. Status endpoint drift-corrects DB runtime_status against live Portainer state. Connector status returns `{configured, set_fields}` without leaking values.
+- [x] Step 9 — Uninstall cascade: `DELETE /plugins/{key}` now wipes `SecretV1` rows with `namespace=plugin:<key>`. Adopted service containers are left alone (never killed).
+- [x] Step 10 — Frontend Pinia store `stores/plugins.ts` (~240 lines): catalog/installed state, busyKeys tracker, install/uninstall/start/stop/setCredentials/fetchStatus.
+- [x] Step 11 — Frontend `pages/Plugins.vue` REWRITE (~630 lines): 2-col marketplace+installed layout, kind badges, orchestrator-disabled greying, dynamic configure modal generated from `manifest.credential_schema` (password inputs for `secret:true`), uninstall confirmation modal.
+- [x] Step 12 — Frontend `pages/PluginEmbed.vue` (~150 lines) + router `/plugins/:key/embed` with `fullscreen=true`, sandboxed iframe, "not running" placeholder with Start button, runtime_status gate.
+- [x] Step 13 — i18n en + de (+44 keys each under top-level `plugins.*` namespace). Other locales fall back to en.
+- [x] Step 14 — Deploy wiring: `docker-compose.full.yml` portainer `--admin-password ${HASH}` bootstrap + backend `HUBEX_PORTAINER_*` env; `.env.example` documents both with bcrypt generator snippet and `$$` compose-escape warning.
+- [x] Step 15 — QA: 25/25 e2e assertions against real Portainer 2.39 + 11/11 Claude smoke-test (install + credentials + no plaintext + SecretV1 + status + cascade uninstall).
+- [ ] Step 16 — Fresh-spawn path (non-adopt) ungefahren → triggert automatisch bei Sprint 4 oder beim nächsten service-catalog-entry (Frigate/Ollama)
+- [ ] Step 17 — PortainerError→503 handler path ungetestet → deferred (needs portainer-offline scenario, low risk)
+- [ ] Step 18 — Distinguish adopted vs spawned container so uninstall of fresh-spawn ones actually removes the container → Sprint 4 scope (needs second service plugin to matter)
+
 ### Milestone 33: Simulator/Testbench [done] ✅
 > Erweiterte Simulatoren die alle neuen Features abdecken.
 - [x] Step 1 — sim_advanced.py: Task-Ausführung (poll→execute→complete), Alert-Triggering (Schwellwert-Spikes), Geofence-Bewegung (GPS Kreis-Track)
@@ -1095,9 +1118,10 @@
 
 ---
 
-## Phase 9: Release-Readiness [todo]
+## Phase 9: Release-Readiness [done] ✅
 > Vollständiger Fahrplan vom aktuellen Stand bis zum ersten Release.
 > Priorisiert nach: Blocker → Hoch → Mittel → Nice-to-have.
+> Alle 8 Milestones (R1-R7 + R5b) abgeschlossen.
 
 ### Milestone R1: Infrastruktur-Blocker [done] ✅
 > Ohne diese kann NIEMAND das Produkt deployen oder nutzen. HÖCHSTE PRIORITÄT.
@@ -1203,6 +1227,50 @@
 - [x] Plugin Marketplace — docs/MARKETPLACE.md (Content-Typen, Quality Levels, Monetarisierung, 3-Phasen Plan)
 - [x] Video-Tutorials — docs/VIDEO_PLAN.md (10 Tutorial-Scripts: 5x "5 Minutes" + 5x "Deep Dive")
 - [ ] Community Forum / Discord — manuelle Online-Aktion (Struktur in docs/COMMUNITY.md definiert)
+
+---
+
+## Sprint Track — Parallele Backend Feature Sprints
+> Eigenständige feature-sprints orthogonal zur Phasen-roadmap. Jeder sprint
+> touched existing milestones (M14b, M32, M33, ...) und erweitert sie um
+> focused scope. Status ist im commit log nachvollziehbar (`feat: Sprint N`).
+
+### Sprint 1 — Runtime Feature Flags + Setup Wizard [done] ✅
+> commit `ce50e84` · touches: feature flag registry foundation
+- [x] Backend: `app/core/features.py` registry + `/api/v1/config/features` endpoints
+- [x] Backend: `feature_flags` table + opt-out migration on startup
+- [x] Frontend: setup wizard, Settings → Features page, category groups
+- [x] Integrates ROUTE_FEATURES gating via `capability_guard`
+
+### Sprint 2 — ESP Code Generator (+ 2.1 bug fixes) [done] ✅
+> commits `8957133` + `67d1f04` · touches: M14 semantic types, M33 hardware codegen
+- [x] Template engine für ESP32/ESP8266 firmware aus device config
+- [x] Project ZIP download (PlatformIO structure)
+- [x] 5 QA bugs caught + fixed (compile verified on real hardware)
+
+### Sprint 3 — Plugin Manager v2 [done] ✅
+> commit `a42e481` · touches: M32b (see above)
+- [x] Service + Connector plugin kinds via Portainer REST
+- [x] Ship-with catalog: n8n (service, adopt), anthropic-claude, openai (connectors)
+- [x] Credential management via SecretV1 with `plugin:<key>` namespace
+- [x] Lifecycle endpoints + drift-correcting status
+- [x] 2-col marketplace frontend + iframe embed + `orchestrator` feature flag
+- [x] 25/25 e2e + 11/11 Claude smoke assertions against real Portainer 2.39
+
+### Sprint 4 — Firmware Builder [up-next] 🎯
+> Follows same pattern as Sprint 3: feature-flag-gated Docker sidecar via
+> existing `portainer_client`. Enables server-side firmware compilation
+> from HardwareWizard/DeviceDetail without requiring PlatformIO on the user's machine.
+- [ ] New feature `firmware_builder` (category=hardware, default=False, requires=`orchestrator`)
+- [ ] `app/core/firmware_builder.py` wraps PlatformIO docker image via `portainer_client` (create→start→wait→read artifact→remove)
+- [ ] `POST /api/v1/firmware/build` takes device_id → generates code (Sprint 2 codegen) → compiles in sidecar → returns .bin
+- [ ] Job queue (Redis Streams or in-process) for long builds (>30s)
+- [ ] Frontend "Build & Download Firmware" button on HardwareWizard, with live log tail
+- [ ] OTA integration: built binary can be pushed directly to device via M14b OTA system
+
+### Sprint 5+ — TBD
+> Candidates: additional service plugins (Frigate, Ollama, Grafana),
+> license system (C1), HA/MQTT deep integration (M21 Steps 4-5).
 
 ---
 
@@ -1669,12 +1737,16 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                     │
                     └─► Phase 8 (Hardware-Konzepte)     ✅ CONCEPT-DONE
                           │
-                          └─► Phase 9 (Release)         ◄── NÄCHSTER SCHRITT
+                          └─► Phase 9 (Release)         ✅ DONE
                                 │
-                                └─► Phase 10 (Commercial)
+                                │   (parallel track)
+                                ├─► Sprint 1-3 (Feature Flags / Codegen / Plugin Mgr v2)  ✅ DONE
+                                │   └─► Sprint 4 (firmware_builder)        ◄── NÄCHSTER SCHRITT
+                                │
+                                └─► Phase 10 (Commercial)                  [TODO]
                                       │
-                                      ├─► Phase 11 (Hardware-Impl.)  [COMING SOON]
-                                      └─► Phase 12 (Evolution)       [BRAINSTORM]
+                                      ├─► Phase 11a (Hardware-Impl.)  [COMING SOON]
+                                      └─► Phase 11b (Evolution)       [BRAINSTORM]
 ```
 
 > **Grundregel für ALLE zukünftigen Features:**

@@ -2,8 +2,24 @@
 
 > **Erstellt:** 2026-03-31
 > **Quelle:** Alle prompt.txt bis prompt 6.txt, vision.txt, handoff.txt, lücke1bis4.txt, lücken5bis7.txt
-> **Status:** Lebendiges Dokument — wird nach jedem Sprint aktualisiert
 > **Regel:** Jeder Gap hat: IST-Zustand, SOLL-Zustand, betroffene Dateien, Erfolgskriterium
+
+---
+
+## 📦 ARCHIVE — Phase 5b (UX Completion) ist DONE
+
+> **Stand (post Sprint 3):** Sämtliche Sprint UX-1 bis UX-6 Milestones sind erledigt,
+> ebenso die Lücken-1-7-items die in ROADMAP M14b/M18b/M19b/M21/M27b/M28b/M31/M36
+> aufgenommen wurden. Dieses Dokument bleibt als historische Referenz — neue UX-arbeit
+> wird in ROADMAP.md Sprint Track eingeplant, nicht hier.
+>
+> **Noch offen (low-prio residuals, kein blocker):**
+> - **Gap 2.8** — Suchfeld-Placeholder Micro-Bug — visuelles cosmetic, kein funktionsproblem
+> - **Gap 6.3** — Connect-Panel Inline-Forms — nice-to-have, UX-E scope abgeschlossen ohne diesen step
+>
+> **Nicht mehr hier pflegen:**
+> - Status-updates zu abgeschlossenen gaps (siehe commit log + ROADMAP milestones)
+> - Neue gaps → gehen direkt in ROADMAP.md als sprint-track-item oder phase-10+-item
 
 ---
 

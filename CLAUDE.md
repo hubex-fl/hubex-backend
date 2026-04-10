@@ -6,9 +6,9 @@ HUBEX ist ein universeller IoT Device Hub (FastAPI Backend + Vue 3 Frontend).
 **Vision:** Anbinden → Verstehen → Visualisieren → Automatisieren (4 Ebenen)
 
 ## Bei Session-Start: Kontext laden
-1. Lese `memory/project_complete_context.md` — enthält Vision, UX-Prinzipien, aktuellen Stand
-2. Lese `UX_GAPS.md` im Projekt-Root — enthält alle offenen Gaps mit IST/SOLL/Dateien
-3. Lese `ROADMAP.md` — finde Phase 5b und den Step mit `← AKTUELL`
+1. Lese `ROADMAP.md` — Section "Sprint Track" nach dem aktuell offenen Sprint (`← NÄCHSTER SCHRITT`) und dem Abhängigkeits-Graph
+2. Lese `UX_GAPS.md` nur noch falls der offene Sprint auf Phase 5b/UX zurückkommt — fast alle UX gaps sind erledigt, nur 2 low-prio residuals offen (2.8, 6.3)
+3. Bei sprint-spezifischen plan-files: Check `.claude/plans/` für z.B. `wild-tinkering-hearth.md` (Sprint 3) — falls ein aktiver plan existiert, ist er dort
 
 ## 7 UX-Grundprinzipien (gelten IMMER)
 1. Progressive Disclosure — Default zugeklappt
@@ -25,14 +25,15 @@ Erklärungen/Tooltips > Farben/Fonts. Interaktive Elemente > statische Anzeigen.
 
 ## Automode — wenn User "weiter" sagt
 **SOFORT ausführen, NICHT nachfragen:**
-1. Lese `ROADMAP.md` — finde den Step mit `← AKTUELL`
-2. Lese `UX_GAPS.md` für Details zum aktuellen Sprint
-3. Lese zugehörige `PROMPT_PHASE_X_Y.md` falls vorhanden
-4. Implementiere
-5. Vite build: `cd frontend && npx vite build`
-6. UI verify: preview_start → Screenshots → Console errors
-7. ROADMAP.md updaten + UX_GAPS.md Status updaten
-8. Report ausgeben
+1. Lese `ROADMAP.md` — Section "Sprint Track", find sprint mit `◄── NÄCHSTER SCHRITT`
+2. Falls `.claude/plans/<plan-name>.md` für den sprint existiert, lesen (sprint-spezifischer implementation plan)
+3. TodoWrite mit allen Sprint-Steps aufsetzen, live abarbeiten
+4. Per module: syntax-check → `docker cp` into running container → restart → **curl-test** (QA-Rigor aus Sprint 2.1 feedback)
+5. Vite build am ende: `cd frontend && npx vite build`
+6. Full e2e: `docker compose -f docker-compose.full.yml build backend frontend` + `up -d` + curl script gegen alle neuen endpoints
+7. ROADMAP.md updaten (sprint track section + milestone extension)
+8. Commit + push (NUR wenn user explizit "commit"/"push" sagt — safety rule)
+9. Report ausgeben mit test-assertion counts
 
 ## Grundregel für JEDES neue Feature
 1. Per REST-API erreichbar? (ja)
@@ -44,18 +45,34 @@ Erklärungen/Tooltips > Farben/Fonts. Interaktive Elemente > statische Anzeigen.
 - Backend: `app/` (FastAPI, Python)
 - Frontend: `frontend/src/` (Vue 3 + TypeScript + Tailwind)
 - UI Components: `frontend/src/components/ui/`
-- Gap-Analyse: `UX_GAPS.md` (Projekt-Root)
+- Gap-Analyse: `UX_GAPS.md` (Projekt-Root) — archive/reference only, Phase 5b ist done
 - UX-Specs: `C:\Users\lange\Desktop\prompt.txt` bis `prompt 6.txt` (nicht im Repo)
 - Vision: `C:\Users\lange\Desktop\vision.txt` (nicht im Repo)
-- Test User: `codex+20251219002029@example.com` / `Test1234!`
-- Backend Port: 8000 | Frontend Port: 5173
+- Sprint plans: `.claude/plans/<name>.md` (z.B. `wild-tinkering-hearth.md` für Sprint 3)
+- Test User: `test@test.com` / `Test1234!` (role=owner, in full-docker setup)
+- Backend Port: 8000
+- Frontend Port: `80` im full-docker stack (`docker-compose.full.yml`) ODER `5173` bei `npm run dev`
+- Portainer: `https://localhost:9443` (admin / `HUBEX_PORTAINER_PASS` aus .env, bootstrap via `HUBEX_PORTAINER_ADMIN_HASH`)
 
-## Aktueller Stand
-- Phase 1–4 (M1–M12.5): ✅ Done
-- Phase 5 (M13–M20): ✅ Done (mit offenen Steps)
-- Phase 6 (M21–M24): ✅ Done
-- **Phase 5b: UX Completion** ← AKTUELL (Sprints UX-1 bis UX-5)
-- Phase 7: Enterprise (M14b, M19b, M18b, M26-M36) → danach
+## Aktueller Stand (Stand: Sprint 3 shipped)
+**Phasen-Roadmap (alle done):**
+- Phase 1–4 (Core/UI/Data/Integration): ✅
+- Phase 5 / 5b / 5c (UX + Completion + Stability): ✅
+- Phase 6 (Erweiterung: n8n/MCP/Bridge): ✅
+- Phase 7a / 7b / 7c (Production/Enterprise/Polish): ✅
+- Phase 8 (Hardware-Konzepte): ✅ concept-done
+- Phase 9 (Release-Readiness R1-R7): ✅
+
+**Sprint Track (parallele feature sprints, commit-tagged):**
+- Sprint 1: Feature Flags + Setup Wizard ✅ `ce50e84`
+- Sprint 2: ESP Codegen (+2.1 bugfixes) ✅ `67d1f04`
+- Sprint 3: Plugin Manager v2 (service+connector, portainer, catalog) ✅ `a42e481` → siehe M32b in ROADMAP
+- **Sprint 4: firmware_builder** ◄── NÄCHSTER SCHRITT (PlatformIO-sidecar via portainer_client, feature-gated)
+
+**Todo-Phasen (echte zukünftige arbeit):**
+- Phase 10: Commercialization (License, CE/EE, Legal, Hardening) [todo]
+- Phase 11a: Hardware Implementation Blocks A-H [coming soon]
+- Phase 11b: Produkt-Evolution [brainstorm]
 
 ## Design System — "Warm Depth"
 - Primary: Amber/Gold (#F5A623) | Accent: Teal (#2DD4BF) | BG: #111110
