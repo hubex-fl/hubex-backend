@@ -330,6 +330,23 @@ def _sanitize_dirname(name: str) -> str:
     return f"HUBEX_{stem}"
 
 
+def _c_string_escape(value: str) -> str:
+    """Escape a Python string so it's safe inside a C double-quoted literal.
+
+    Used for ``config.h`` defines, the ``-D HUBEX_DEVICE=\\"...\\"`` build flag,
+    and any other place the user-supplied device name lands inside quoted C
+    source. Strips newlines entirely and escapes backslashes + double quotes.
+    """
+    if value is None:
+        return ""
+    # Strip control chars first so \r\n don't end the literal
+    sanitized = value.replace("\r", "").replace("\n", " ")
+    # Backslash must be escaped BEFORE quotes, or we double-escape quotes
+    sanitized = sanitized.replace("\\", "\\\\")
+    sanitized = sanitized.replace('"', '\\"')
+    return sanitized
+
+
 def _collect_libraries(components: list[dict]) -> list[str]:
     """Union of all unique libraries required by the components (order-preserving)."""
     seen: set[str] = set()
@@ -343,18 +360,36 @@ def _collect_libraries(components: list[dict]) -> list[str]:
 
 
 def _cpp_snippets(spec: ProjectSpec) -> dict[str, str]:
-    """Build C++ snippets (pin_defines, sensor_init, etc.) from the pin assignments."""
+    """Build C++ snippets (pin_defines, sensor_init, etc.) from the pin assignments.
+
+    Walks ``spec.components`` (not ``spec.pin_assignments``) so that I2C devices
+    sharing the bus — which are stored as a nested ``i2c_devices`` list on the
+    SDA pin assignment — are NOT silently dropped from the generated code.
+
+    Telemetry field names are deduplicated across components: if the same
+    variable key (e.g. ``temperature``) is produced by multiple sensors, the
+    second and later occurrences get a ``_<pin>`` suffix so no JSON payload key
+    is silently overwritten.
+    """
     pin_defines: list[str] = []
     sensor_inits: list[str] = []
     sensor_reads: list[str] = []
     pin_setup: list[str] = []
     library_includes: list[str] = []
     telemetry_fields: list[str] = []
+    telemetry_keys_seen: set[str] = set()
+
+    def tkey(key: str, pin: int) -> str:
+        """Return ``key`` if not yet seen, otherwise ``key_<pin>`` to disambiguate."""
+        if key not in telemetry_keys_seen:
+            telemetry_keys_seen.add(key)
+            return key
+        disambig = f"{key}_{pin}"
+        telemetry_keys_seen.add(disambig)
+        return disambig
 
     libs = _collect_libraries(spec.components)
     for lib in libs:
-        guard = lib.replace(" ", "_").replace("-", "_")
-        # Very rough include inference. Components with no Arduino header → commented note.
         header = {
             "DHT sensor library": "DHT.h",
             "Adafruit BME280 Library": "Adafruit_BME280.h",
@@ -372,65 +407,119 @@ def _cpp_snippets(spec: ProjectSpec) -> dict[str, str]:
         if header and header not in ("ArduinoJson.h",):  # ArduinoJson is in the base template
             library_includes.append(f"#include <{header}>  // {lib}")
 
-    # Walk components in a stable order (same as pin_assignments iteration)
-    seen_components: set[str] = set()
-    for pin_num, assignment in sorted(spec.pin_assignments.items()):
-        comp_key = assignment.get("component")
-        if not comp_key or comp_key in ("i2c_bus",):
+    # Auto-include Wire.h if any component uses the I2C bus (bus_type == "i2c")
+    if any((c.get("bus_type") == "i2c") for c in spec.components):
+        library_includes.insert(0, "#include <Wire.h>  // I2C bus")
+
+    # Build a reverse lookup: comp_key -> (primary_pin, is_i2c_rider)
+    # Primary pin for regular components is the pin they own. For I2C devices
+    # it's the SDA pin they share.
+    comp_to_pin: dict[str, tuple[int, bool]] = {}
+    for pin_num_any, assignment in spec.pin_assignments.items():
+        pin_num = int(pin_num_any) if isinstance(pin_num_any, str) else int(pin_num_any)
+        owner = assignment.get("component")
+        if owner and owner != "i2c_bus":
+            # Owner pin — first occurrence wins (components with multi-pin
+            # requirements like HC-SR04 get their lowest pin as primary).
+            comp_to_pin.setdefault(owner, (pin_num, False))
+        for rider in assignment.get("i2c_devices") or []:
+            comp_to_pin.setdefault(rider, (pin_num, True))
+
+    # Walk components in a stable order (by key) so the generated output is
+    # deterministic regardless of dict iteration.
+    for comp in sorted(spec.components, key=lambda c: c.get("key", "")):
+        comp_key = comp.get("key", "")
+        if not comp_key:
             continue
-        if comp_key in seen_components:
+        placement = comp_to_pin.get(comp_key)
+        if placement is None:
+            # Unallocated (shouldn't happen — assign_pins either places or raises)
             continue
-        seen_components.add(comp_key)
-        comp = next((c for c in spec.components if c.get("key") == comp_key), None)
-        if not comp:
-            continue
+        pin_num, is_i2c_rider = placement
 
         up = comp_key.upper().replace("-", "_")
-        var_key = assignment.get("variable_key", comp_key)
-        pin_defines.append(f"#define PIN_{up} {pin_num}")
+        var_key = comp_key  # fallback; real key comes from component.variables
+        vars_list = comp.get("variables") or []
+        if vars_list:
+            var_key = vars_list[0].get("key") or comp_key
 
+        # Only emit PIN_XXX defines for components that OWN a pin. I2C devices
+        # don't need their own #define — they talk via the shared Wire bus.
+        if not is_i2c_rider:
+            pin_defines.append(f"#define PIN_{up} {pin_num}")
+
+        # NOTE: all sensor cache variables are declared at file scope in
+        # `sensor_inits` so they are visible to BOTH `loop()` (where
+        # `sensor_reads` writes them) AND `pushTelemetry()` (where
+        # `telemetry_fields` reads them). Never redeclare them inside loop!
         if comp_key == "dht22":
             sensor_inits.append(f"DHT dht_{pin_num}(PIN_{up}, DHT22);")
+            sensor_inits.append(f"float g_dht_{pin_num}_temp = NAN;")
+            sensor_inits.append(f"float g_dht_{pin_num}_hum = NAN;")
             pin_setup.append(f"dht_{pin_num}.begin();")
-            sensor_reads.append(f"    float t_{pin_num} = dht_{pin_num}.readTemperature();")
-            sensor_reads.append(f"    float h_{pin_num} = dht_{pin_num}.readHumidity();")
-            telemetry_fields.append(f'    payload["temperature"] = t_{pin_num};')
-            telemetry_fields.append(f'    payload["humidity"] = h_{pin_num};')
+            sensor_reads.append(f"    g_dht_{pin_num}_temp = dht_{pin_num}.readTemperature();")
+            sensor_reads.append(f"    g_dht_{pin_num}_hum = dht_{pin_num}.readHumidity();")
+            tk_t = tkey("temperature", pin_num)
+            tk_h = tkey("humidity", pin_num)
+            telemetry_fields.append(f'    payload["{tk_t}"] = g_dht_{pin_num}_temp;')
+            telemetry_fields.append(f'    payload["{tk_h}"] = g_dht_{pin_num}_hum;')
         elif comp_key == "ds18b20":
             sensor_inits.append(f"OneWire ow_{pin_num}(PIN_{up});")
             sensor_inits.append(f"DallasTemperature ds_{pin_num}(&ow_{pin_num});")
+            sensor_inits.append(f"float g_ds_{pin_num}_temp = NAN;")
             pin_setup.append(f"ds_{pin_num}.begin();")
             sensor_reads.append(f"    ds_{pin_num}.requestTemperatures();")
-            sensor_reads.append(f"    float t_{pin_num} = ds_{pin_num}.getTempCByIndex(0);")
-            telemetry_fields.append(f'    payload["temperature"] = t_{pin_num};')
+            sensor_reads.append(f"    g_ds_{pin_num}_temp = ds_{pin_num}.getTempCByIndex(0);")
+            tk_t = tkey("temperature", pin_num)
+            telemetry_fields.append(f'    payload["{tk_t}"] = g_ds_{pin_num}_temp;')
         elif comp_key == "analog_input":
+            sensor_inits.append(f"int g_adc_{pin_num} = 0;")
             pin_setup.append(f"pinMode(PIN_{up}, INPUT);")
-            sensor_reads.append(f"    int v_{pin_num} = analogRead(PIN_{up});")
-            telemetry_fields.append(f'    payload["{var_key}"] = v_{pin_num};')
+            sensor_reads.append(f"    g_adc_{pin_num} = analogRead(PIN_{up});")
+            tk = tkey(var_key, pin_num)
+            telemetry_fields.append(f'    payload["{tk}"] = g_adc_{pin_num};')
         elif comp_key in ("pir", "button"):
+            sensor_inits.append(f"int g_din_{pin_num} = 0;")
             pin_setup.append(f"pinMode(PIN_{up}, INPUT);")
-            sensor_reads.append(f"    int v_{pin_num} = digitalRead(PIN_{up});")
-            telemetry_fields.append(f'    payload["{var_key}"] = v_{pin_num};')
+            sensor_reads.append(f"    g_din_{pin_num} = digitalRead(PIN_{up});")
+            tk = tkey(var_key, pin_num)
+            telemetry_fields.append(f'    payload["{tk}"] = g_din_{pin_num};')
         elif comp_key in ("relay", "led_pwm", "buzzer"):
+            # Actuators read their own pin state directly — no cache needed.
             pin_setup.append(f"pinMode(PIN_{up}, OUTPUT);")
-            telemetry_fields.append(f'    payload["{var_key}"] = digitalRead(PIN_{up});')
+            tk = tkey(var_key, pin_num)
+            telemetry_fields.append(f'    payload["{tk}"] = digitalRead(PIN_{up});')
         elif comp_key == "bme280":
+            # I2C rider: no PIN_BME280 #define, talks to Wire bus.
             sensor_inits.append("Adafruit_BME280 bme;")
+            sensor_inits.append("float g_bme_temp = NAN;")
+            sensor_inits.append("float g_bme_hum = NAN;")
+            sensor_inits.append("float g_bme_pres = NAN;")
+            pin_setup.append("Wire.begin();")
             pin_setup.append("if (!bme.begin(0x76)) { Serial.println(\"BME280 not found\"); }")
-            sensor_reads.append("    float bmet = bme.readTemperature();")
-            sensor_reads.append("    float bmeh = bme.readHumidity();")
-            sensor_reads.append("    float bmep = bme.readPressure() / 100.0F;")
-            telemetry_fields.append('    payload["temperature"] = bmet;')
-            telemetry_fields.append('    payload["humidity"] = bmeh;')
-            telemetry_fields.append('    payload["pressure"] = bmep;')
+            sensor_reads.append("    g_bme_temp = bme.readTemperature();")
+            sensor_reads.append("    g_bme_hum = bme.readHumidity();")
+            sensor_reads.append("    g_bme_pres = bme.readPressure() / 100.0F;")
+            tk_t = tkey("temperature", pin_num)
+            tk_h = tkey("humidity", pin_num)
+            tk_p = tkey("pressure", pin_num)
+            telemetry_fields.append(f'    payload["{tk_t}"] = g_bme_temp;')
+            telemetry_fields.append(f'    payload["{tk_h}"] = g_bme_hum;')
+            telemetry_fields.append(f'    payload["{tk_p}"] = g_bme_pres;')
         elif comp_key == "bh1750":
+            # I2C rider
             sensor_inits.append("BH1750 lightMeter;")
+            sensor_inits.append("float g_bh_lux = 0.0F;")
+            pin_setup.append("Wire.begin();")
             pin_setup.append("lightMeter.begin();")
-            sensor_reads.append("    float lux = lightMeter.readLightLevel();")
-            telemetry_fields.append('    payload["lux"] = lux;')
+            sensor_reads.append("    g_bh_lux = lightMeter.readLightLevel();")
+            tk = tkey("lux", pin_num)
+            telemetry_fields.append(f'    payload["{tk}"] = g_bh_lux;')
         elif comp_key == "hcsr04":
+            sensor_inits.append(f"long g_hcsr_{pin_num}_cm = 0;")
             sensor_reads.append(f'    // HC-SR04 on pin {pin_num}: trigger/echo wiring TBD')
-            telemetry_fields.append('    payload["distance_cm"] = 0;')
+            tk = tkey("distance_cm", pin_num)
+            telemetry_fields.append(f'    payload["{tk}"] = g_hcsr_{pin_num}_cm;')
         elif comp_key == "servo":
             sensor_inits.append(f"Servo servo_{pin_num};")
             pin_setup.append(f"servo_{pin_num}.attach(PIN_{up});")
@@ -440,11 +529,18 @@ def _cpp_snippets(spec: ProjectSpec) -> dict[str, str]:
         else:
             sensor_reads.append(f"    // {comp_key}: TODO (pin {pin_num})")
 
+    # Dedupe pin_setup lines (e.g. avoid calling Wire.begin() twice when
+    # both BME280 and BH1750 are on the bus).
+    pin_setup_dedup: list[str] = []
+    for line in pin_setup:
+        if line not in pin_setup_dedup:
+            pin_setup_dedup.append(line)
+
     return {
         "library_includes": "\n".join(library_includes) or "// no extra libraries",
         "pin_defines": "\n".join(pin_defines) or "// no pins configured",
         "sensor_init": "\n".join(sensor_inits),
-        "pin_setup": "\n  ".join(pin_setup) if pin_setup else "// no pinMode calls",
+        "pin_setup": "\n  ".join(pin_setup_dedup) if pin_setup_dedup else "// no pinMode calls",
         "sensor_setup": "",
         "sensor_read": "\n".join(sensor_reads) or "    // no sensors configured",
         "telemetry_fields": "\n".join(telemetry_fields) or '    payload["status"] = "ok";',
@@ -516,21 +612,21 @@ def _build_platformio(spec: ProjectSpec) -> dict[str, str]:
         env_name=env_name,
         platform=platform,
         pio_board=pio_board,
-        device_name=spec.device_name,
+        device_name=_c_string_escape(spec.device_name),
         lib_deps=lib_deps_block,
     )
 
     main_cpp = PLATFORMIO_MAIN_CPP_TEMPLATE.format(
-        board_name=spec.board_name,
+        board_name=_c_string_escape(spec.board_name),
         **snippets,
     )
 
     config_h = CONFIG_H_TEMPLATE.format(
-        wifi_ssid=spec.wifi_ssid,
-        wifi_pass=spec.wifi_pass,
-        server_url=spec.server_url,
-        device_token=spec.device_token,
-        device_name=spec.device_name,
+        wifi_ssid=_c_string_escape(spec.wifi_ssid),
+        wifi_pass=_c_string_escape(spec.wifi_pass),
+        server_url=_c_string_escape(spec.server_url),
+        device_token=_c_string_escape(spec.device_token),
+        device_name=_c_string_escape(spec.device_name),
     )
 
     return {
@@ -557,17 +653,17 @@ def _build_arduino_ide(spec: ProjectSpec) -> dict[str, str]:
 
     snippets = _cpp_snippets(spec)
     sketch = ARDUINO_IDE_INO_TEMPLATE.format(
-        board_name=spec.board_name,
+        board_name=_c_string_escape(spec.board_name),
         arduino_lib_comment=arduino_lib_comment,
         **snippets,
     )
 
     config_h = CONFIG_H_TEMPLATE.format(
-        wifi_ssid=spec.wifi_ssid,
-        wifi_pass=spec.wifi_pass,
-        server_url=spec.server_url,
-        device_token=spec.device_token,
-        device_name=spec.device_name,
+        wifi_ssid=_c_string_escape(spec.wifi_ssid),
+        wifi_pass=_c_string_escape(spec.wifi_pass),
+        server_url=_c_string_escape(spec.server_url),
+        device_token=_c_string_escape(spec.device_token),
+        device_name=_c_string_escape(spec.device_name),
     )
 
     return {
@@ -586,12 +682,14 @@ def _build_micropython(spec: ProjectSpec) -> dict[str, str]:
         board_name=spec.board_name,
         **_mpy_snippets(spec),
     )
+    # MicroPython config.py uses Python string literals — reuse the same
+    # escape helper since it handles \\ and " which are unsafe in both.
     config_py = MICROPYTHON_CONFIG_PY_TEMPLATE.format(
-        wifi_ssid=spec.wifi_ssid,
-        wifi_pass=spec.wifi_pass,
-        server_url=spec.server_url,
-        device_token=spec.device_token,
-        device_name=spec.device_name,
+        wifi_ssid=_c_string_escape(spec.wifi_ssid),
+        wifi_pass=_c_string_escape(spec.wifi_pass),
+        server_url=_c_string_escape(spec.server_url),
+        device_token=_c_string_escape(spec.device_token),
+        device_name=_c_string_escape(spec.device_name),
     )
 
     return {

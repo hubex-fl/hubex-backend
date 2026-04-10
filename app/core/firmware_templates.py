@@ -211,6 +211,8 @@ void loop() {{
 PLATFORMIO_INI_TEMPLATE = '''; HubEx — PlatformIO Project Configuration
 ; Auto-generated — safe to edit, but `lib_deps` and `board` must stay correct.
 ; Full docs: https://docs.platformio.org/page/projectconf.html
+;
+; Device: {device_name}
 
 [env:{env_name}]
 platform = {platform}
@@ -219,10 +221,9 @@ framework = arduino
 monitor_speed = 115200
 upload_speed = 921600
 
-; Build flags — exposes the WiFi/API-key constants from include/config.h
+; Build flags — exposes include/config.h to the compiler
 build_flags =
     -Iinclude
-    -D HUBEX_DEVICE=\\"{device_name}\\"
 
 ; Arduino libraries needed by the selected components
 lib_deps =
@@ -285,7 +286,8 @@ void pushTelemetry() {{
 void setup() {{
   Serial.begin(115200);
   delay(200);
-  Serial.println("[HUBEX] Booting " HUBEX_DEVICE);
+  Serial.print("[HUBEX] Booting ");
+  Serial.println(HUBEX_DEVICE_NAME);
 
   {pin_setup}
   {sensor_setup}
@@ -353,6 +355,9 @@ void pushTelemetry() {{
 
 void setup() {{
   Serial.begin(115200);
+  delay(200);
+  Serial.print("[HUBEX] Booting ");
+  Serial.println(HUBEX_DEVICE_NAME);
   {pin_setup}
   {sensor_setup}
   connectWifi();
