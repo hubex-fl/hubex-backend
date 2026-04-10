@@ -47,6 +47,7 @@ TOOL_CAPS: dict[str, list[str]] = {
     "hubex_create_automation": ["automations.write"],
     "hubex_create_dashboard": ["dashboards.write"],
     "hubex_create_alert_rule": ["alerts.write"],
+    "hubex_create_cms_page": ["cms.write"],
     # UI command tools
     "hubex_navigate": ["mcp.execute"],
     "hubex_start_tour": ["mcp.execute"],
@@ -156,6 +157,8 @@ async def execute_tool(
         return await _create_dashboard(db, user_id, arguments)
     elif tool_name == "hubex_create_alert_rule":
         return await _create_alert_rule(db, user_id, org_id, arguments)
+    elif tool_name == "hubex_create_cms_page":
+        return await _create_cms_page(db, user_id, org_id, arguments)
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
@@ -661,4 +664,45 @@ async def _create_alert_rule(db: AsyncSession, user_id: int, org_id: int | None,
         "name": rule.name,
         "condition_type": rule.condition_type,
         "severity": rule.severity,
+    }
+
+
+async def _create_cms_page(db: AsyncSession, user_id: int, org_id: int | None, args: dict) -> dict:
+    from datetime import datetime, timezone
+    from app.db.models.cms_page import CmsPage
+
+    slug = args["slug"]
+    # Check for slug collision
+    existing = await db.execute(select(CmsPage.id).where(CmsPage.slug == slug))
+    if existing.scalar_one_or_none() is not None:
+        return {"error": f"CMS page with slug '{slug}' already exists"}
+
+    now = datetime.now(timezone.utc)
+    publish = bool(args.get("publish", False))
+    page = CmsPage(
+        org_id=org_id,
+        owner_id=user_id,
+        slug=slug,
+        title=args["title"],
+        content_html=args["content_html"],
+        content_mode="html",
+        layout=args.get("layout", "default"),
+        visibility=args.get("visibility", "private"),
+        published=publish,
+        published_at=now if publish else None,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(page)
+    await db.commit()
+    await db.refresh(page)
+    await user_hub.send_ui_command(user_id, "refresh", {})
+    return {
+        "success": True,
+        "page_id": page.id,
+        "slug": page.slug,
+        "title": page.title,
+        "layout": page.layout,
+        "visibility": page.visibility,
+        "published": page.published,
     }

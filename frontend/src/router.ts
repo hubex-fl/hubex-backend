@@ -79,6 +79,11 @@ const router = createRouter({
     { path: "/kiosk/:id",     component: () => import("./pages/DashboardView.vue"),meta: { title: "Kiosk", layout: "kiosk" } },
     { path: "/embed/:token",  component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Embedded Dashboard", layout: "embed" } },
     { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public" } },
+    // CMS Pages
+    { path: "/cms",            component: () => import("./pages/CmsPages.vue"),       meta: { title: "CMS Pages" } },
+    { path: "/cms/:id/edit",   component: () => import("./pages/CmsPageEditor.vue"),  meta: { title: "Edit Page", fullscreen: true } },
+    { path: "/cms/:slug/view", component: () => import("./pages/CmsPageView.vue"),    meta: { title: "View Page", fullscreen: true } },
+    { path: "/p/:slug",        component: () => import("./pages/CmsPageView.vue"),    meta: { title: "Page", layout: "public" } },
   ],
 });
 

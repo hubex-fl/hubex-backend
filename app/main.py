@@ -231,6 +231,13 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.warning("startup: failed to seed semantic types (table may not exist yet)")
 
+    # Seed the default CMS landing page (if none exists)
+    try:
+        from app.scripts.seed_cms_landing import seed_landing_page
+        await seed_landing_page()
+    except Exception:
+        logger.warning("startup: failed to seed landing CMS page")
+
     cleanup_task = asyncio.create_task(_token_cleanup_loop())
     dispatcher_task = asyncio.create_task(webhook_dispatcher_loop())
     alert_task = asyncio.create_task(alert_worker_loop())

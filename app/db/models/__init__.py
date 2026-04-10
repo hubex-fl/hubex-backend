@@ -44,6 +44,7 @@ from .component import HardwareComponent
 from .device_profile import DeviceProfile
 from .custom_tour import CustomTour
 from .simulator import SimulatorConfig
+from .cms_page import CmsPage
 
 __all__ = [
     "User",
@@ -113,4 +114,5 @@ __all__ = [
     "DeviceProfile",
     "CustomTour",
     "SimulatorConfig",
+    "CmsPage",
 ]

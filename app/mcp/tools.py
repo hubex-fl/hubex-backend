@@ -417,6 +417,31 @@ HUBEX_TOOLS: list[dict[str, Any]] = [
         },
         "annotations": {"requires_confirmation": True},
     },
+    {
+        "name": "hubex_create_cms_page",
+        "description": "Create a new CMS page with HTML content. Supports template variables like {{variable:key}}, {{device:uid:name}}, {{metric:devices_online}}.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "slug": {"type": "string", "description": "URL slug, e.g. 'about'"},
+                "title": {"type": "string"},
+                "content_html": {"type": "string", "description": "HTML body of the page"},
+                "layout": {
+                    "type": "string",
+                    "enum": ["default", "landing", "minimal", "fullscreen"],
+                    "default": "default",
+                },
+                "visibility": {
+                    "type": "string",
+                    "enum": ["private", "public"],
+                    "default": "private",
+                },
+                "publish": {"type": "boolean", "default": False},
+            },
+            "required": ["slug", "title", "content_html"],
+        },
+        "annotations": {"requires_confirmation": True},
+    },
 ]
 
 

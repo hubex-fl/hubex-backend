@@ -78,6 +78,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "mcp.execute",
     "apikeys.read",
     "apikeys.write",
+    "cms.read",
+    "cms.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -397,6 +399,23 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/simulator/configs/{sim_id}/stop"): [],
     ("POST", "/api/v1/simulator/configs/{sim_id}/pulse"): [],
     ("POST", "/api/v1/simulator/quick-pulse"): [],
+    # CMS Pages
+    ("GET", "/api/v1/cms/pages"): ["cms.read"],
+    ("POST", "/api/v1/cms/pages"): ["cms.write"],
+    ("GET", "/api/v1/cms/pages/{page_id}"): ["cms.read"],
+    ("PUT", "/api/v1/cms/pages/{page_id}"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/pages/{page_id}"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/publish"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/unpublish"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/share"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/pages/{page_id}/share"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/pin"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/pages/{page_id}/pin"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/clone"): ["cms.write"],
+    ("GET", "/api/v1/cms/pages/{page_id}/render"): ["cms.read"],
+    # Public CMS routes — no auth
+    ("GET", "/api/v1/cms/pages/public/{token}"): [],
+    ("GET", "/api/v1/cms/pages/slug/{slug}"): [],
 }
 
 # Public whitelist (auth-free, minimal, static).
@@ -422,6 +441,9 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     # MCP SSE transport (handles own auth via query param / bearer)
     ("GET", "/api/v1/mcp/sse"),
     ("POST", "/api/v1/mcp/messages"),
+    # CMS public routes
+    ("GET", "/api/v1/cms/pages/public/{token}"),
+    ("GET", "/api/v1/cms/pages/slug/{slug}"),
 }
 
 # ── RBAC: Role → Capability Mapping ──────────────────────────────────────────
@@ -435,6 +457,7 @@ _VIEWER_CAPS: list[str] = [
     "providers.read", "org.read", "org.members.read", "users.read",
     "audit.read", "ota.read", "mcp.read", "notifications.read",
     "pairing.status", "config.read", "secrets.read",
+    "cms.read",
 ]
 
 # Read + write capabilities (operator role)
@@ -450,6 +473,7 @@ _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "modules.read", "modules.write",
     "apikeys.read", "apikeys.write",
     "core.auth.login", "core.auth.register",
+    "cms.write",
 ]
 
 # Admin capabilities (all except cap.admin superuser flag)
