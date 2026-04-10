@@ -645,6 +645,8 @@ export default {
     sections: {
       account: 'Profil & Konto',
       accountDesc: 'E-Mail, Sitzung, Authentifizierung',
+      features: 'Features',
+      featuresDesc: 'Subsysteme zur Laufzeit ein- und ausschalten',
       notifications: 'Benachrichtigungen',
       notificationsDesc: 'E-Mail-Alarme und Zusammenfassungen',
       organization: 'Organisation & Team',

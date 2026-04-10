@@ -165,6 +165,9 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/secrets/{secret_id}"): ["secrets.read"],
     ("GET", "/api/v1/config"): ["config.read"],
     ("GET", "/api/v1/config/{config_id}"): ["config.read"],
+    # Feature flags (runtime-togglable subsystems)
+    ("GET", "/api/v1/config/features"): ["config.read"],
+    ("PUT", "/api/v1/config/features/{key}"): ["config.write"],
     ("GET", "/api/v1/effects"): ["effects.read"],
     ("GET", "/api/v1/effects/{effect_id}"): ["effects.read"],
     ("GET", "/api/v1/signals"): ["signals.read"],

@@ -51,6 +51,7 @@ from .cms_redirect import CmsRedirect
 from .media_asset import MediaAsset
 from .cms_form import CmsForm, CmsFormSubmission
 from .site_settings import SiteSettings
+from .feature_flag import FeatureFlag
 
 __all__ = [
     "User",
@@ -128,4 +129,5 @@ __all__ = [
     "CmsForm",
     "CmsFormSubmission",
     "SiteSettings",
+    "FeatureFlag",
 ]

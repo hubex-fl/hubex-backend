@@ -21,8 +21,11 @@ import MfaSetup from "../components/MfaSetup.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { listDashboards, type DashboardSummary } from "../lib/dashboards";
 import { useLimitsStore, type LimitResource } from "../stores/limits";
+import { useFeaturesStore } from "../stores/features";
+import UToggle from "../components/ui/UToggle.vue";
 
 const router = useRouter();
+const featuresStore = useFeaturesStore();
 const { t, tm, rt } = useI18n();
 const limitsStore = useLimitsStore();
 const caps = useCapabilities();
@@ -220,8 +223,27 @@ async function saveNotificationPrefs() {
 }
 
 // ── Accordion sections ────────────────────────────────────────────────────────
-type SectionKey = "edition" | "account" | "notifications" | "organization" | "developer" | "system";
+type SectionKey = "edition" | "account" | "features" | "notifications" | "organization" | "developer" | "system";
 const expandedSection = ref<SectionKey | null>(null);
+
+// Features section state
+const featuresToggling = ref<Set<string>>(new Set());
+async function toggleFeature(key: string, next: boolean) {
+  if (featuresToggling.value.has(key)) return;
+  featuresToggling.value.add(key);
+  try {
+    await featuresStore.setEnabled(key, next);
+    toast.addToast(
+      next ? `Feature "${key}" aktiviert` : `Feature "${key}" deaktiviert`,
+      "success",
+      3000
+    );
+  } catch (e: any) {
+    toast.addToast(e?.message || "Toggle failed", "error");
+  } finally {
+    featuresToggling.value.delete(key);
+  }
+}
 
 function toggleSection(key: SectionKey) {
   expandedSection.value = expandedSection.value === key ? null : key;
@@ -231,6 +253,7 @@ type Section = { key: SectionKey; labelKey: string; descKey: string; icon: strin
 const sectionDefs: Section[] = [
   { key: "edition", labelKey: 'edition.settingsTitle', descKey: 'edition.settingsSubtitle', icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" },
   { key: "account", labelKey: 'settings.sections.account', descKey: 'settings.sections.accountDesc', icon: "M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" },
+  { key: "features", labelKey: 'settings.sections.features', descKey: 'settings.sections.featuresDesc', icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" },
   { key: "notifications", labelKey: 'settings.sections.notifications', descKey: 'settings.sections.notificationsDesc', icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
   { key: "organization", labelKey: 'settings.sections.organization', descKey: 'settings.sections.organizationDesc', icon: "M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 4.5H21m-3.75 4.5H21" },
   { key: "developer", labelKey: 'settings.sections.developer', descKey: 'settings.sections.developerDesc', icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" },
@@ -319,6 +342,7 @@ onMounted(async () => {
   loadOrgs();
   loadDashboards();
   limitsStore.load();
+  featuresStore.load().catch(() => { /* fail-open */ });
   await prefs.load();
   initHomepagePref();
   initNotificationPrefs();
@@ -515,6 +539,74 @@ onMounted(async () => {
                         {{ db.name }}
                       </option>
                     </select>
+                  </div>
+                </div>
+              </UCard>
+            </template>
+
+            <!-- Features content -->
+            <template v-if="section.key === 'features'">
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h3 class="text-sm font-semibold text-[var(--text-primary)]">
+                        Runtime Feature Flags
+                      </h3>
+                      <span class="text-xs text-[var(--text-muted)]">
+                        Toggle subsystems on or off without a restart.
+                        {{ featuresStore.enabledCount }} / {{ featuresStore.total }} enabled.
+                      </span>
+                    </div>
+                    <UButton variant="secondary" size="sm" @click="router.push('/setup')">
+                      Open Setup Wizard
+                    </UButton>
+                  </div>
+                </template>
+                <div v-if="!featuresStore.loaded" class="text-sm text-[var(--text-muted)] py-4">
+                  Loading features…
+                </div>
+                <div v-else class="space-y-6">
+                  <div
+                    v-for="category in featuresStore.categories"
+                    :key="category"
+                    class="space-y-2"
+                  >
+                    <div
+                      class="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--primary)]"
+                    >
+                      {{ category }}
+                    </div>
+                    <div class="space-y-2">
+                      <div
+                        v-for="feat in featuresStore.byCategory[category] || []"
+                        :key="feat.key"
+                        class="flex items-start gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]"
+                      >
+                        <UToggle
+                          :model-value="feat.enabled"
+                          :disabled="featuresToggling.has(feat.key)"
+                          @update:model-value="(v: boolean) => toggleFeature(feat.key, v)"
+                        />
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm font-semibold text-[var(--text-primary)]">
+                            {{ feat.name }}
+                            <span class="ml-2 font-mono text-[11px] text-[var(--text-muted)]">
+                              {{ feat.key }}
+                            </span>
+                          </div>
+                          <div class="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                            {{ feat.description }}
+                          </div>
+                          <div
+                            v-if="feat.requires.length"
+                            class="text-[11px] text-[var(--text-muted)] mt-1 font-mono"
+                          >
+                            requires: {{ feat.requires.join(", ") }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </UCard>

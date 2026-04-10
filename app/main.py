@@ -16,6 +16,7 @@ from app.core.cache import CacheMiddleware
 from app.core.config import settings
 from app.core.logging_config import configure_logging, is_test_env
 from app.core.middleware import SecurityMiddleware
+from app.core.features import sync_feature_flags
 from app.core.modules import sync_module_registry
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.redis_client import close_redis, init_redis
@@ -253,6 +254,14 @@ async def lifespan(app: FastAPI):
 
     async with AsyncSessionLocal() as db:
         await sync_module_registry(db)
+
+    # Ensure feature-flag rows exist (opt-out migration: new flags default to ON)
+    try:
+        async with AsyncSessionLocal() as db:
+            enabled_count = await sync_feature_flags(db)
+            logger.info("startup: feature flags ensured (%d enabled)", enabled_count)
+    except Exception as e:
+        logger.warning("startup: failed to sync feature flags: %s", e)
 
     # Seed built-in semantic types if table is empty
     try:

@@ -14,6 +14,7 @@ from app.core.capabilities import (
     resolve_required_caps,
     validate_caps,
 )
+from app.core.features import is_feature_enabled, resolve_feature_for_route
 from app.api.deps import get_db
 from app.core.api_keys import is_api_key
 from app.db.models.modules import ModuleRegistry
@@ -82,6 +83,23 @@ async def capability_guard(
             _http_403(_detail("CAP_MAPPING_MISSING", "capability mapping missing"))
         _log_soft(enforce, "CAP_MAPPING_MISSING %s %s", method, path)
         return
+
+    # Feature flag gate — route may belong to a disabled subsystem
+    feature_key = resolve_feature_for_route(method, path)
+    if feature_key is not None:
+        try:
+            feat_enabled = await is_feature_enabled(db, feature_key)
+        except Exception:
+            feat_enabled = True  # fail-open on DB hiccups
+        if not feat_enabled:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "FEATURE_DISABLED",
+                    "message": f"feature '{feature_key}' is disabled",
+                    "feature": feature_key,
+                },
+            )
 
     if device_token and _has_required_caps(required, DEVICE_CAPS):
         return
