@@ -80,6 +80,8 @@ CAPABILITY_REGISTRY: set[str] = {
     "apikeys.write",
     "cms.read",
     "cms.write",
+    "media.read",
+    "media.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -416,6 +418,65 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     # Public CMS routes — no auth
     ("GET", "/api/v1/cms/pages/public/{token}"): [],
     ("GET", "/api/v1/cms/pages/slug/{slug}"): [],
+    # CMS hierarchy + move
+    ("GET", "/api/v1/cms/pages/tree"): ["cms.read"],
+    ("PUT", "/api/v1/cms/pages/{page_id}/move"): ["cms.write"],
+    # CMS Menus
+    ("GET", "/api/v1/cms/menus"): ["cms.read"],
+    ("POST", "/api/v1/cms/menus"): ["cms.write"],
+    ("GET", "/api/v1/cms/menus/{menu_id}"): ["cms.read"],
+    ("PUT", "/api/v1/cms/menus/{menu_id}"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/menus/{menu_id}"): ["cms.write"],
+    # Public menu lookup by location — no auth
+    ("GET", "/api/v1/cms/menus/location/{location}"): [],
+    # CMS Templates
+    ("GET", "/api/v1/cms/templates"): ["cms.read"],
+    ("GET", "/api/v1/cms/templates/{template_id}"): ["cms.read"],
+    ("POST", "/api/v1/cms/pages/from-template/{template_id}"): ["cms.write"],
+    # CMS Forms
+    ("GET", "/api/v1/cms/forms"): ["cms.read"],
+    ("POST", "/api/v1/cms/forms"): ["cms.write"],
+    ("GET", "/api/v1/cms/forms/{form_id}"): ["cms.read"],
+    ("PUT", "/api/v1/cms/forms/{form_id}"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/forms/{form_id}"): ["cms.write"],
+    ("GET", "/api/v1/cms/forms/{form_id}/submissions"): ["cms.read"],
+    ("GET", "/api/v1/cms/forms/{form_id}/submissions/{submission_id}"): ["cms.read"],
+    ("DELETE", "/api/v1/cms/forms/{form_id}/submissions/{submission_id}"): ["cms.write"],
+    # Public form endpoints — no auth
+    ("GET", "/api/v1/cms/forms/public/{slug}"): [],
+    ("POST", "/api/v1/cms/forms/public/{slug}/submit"): [],
+    # Site Settings
+    ("GET", "/api/v1/site/settings"): ["config.read"],
+    ("PUT", "/api/v1/site/settings"): ["config.write"],
+    ("GET", "/api/v1/site/settings/public"): [],
+    # CMS Page versions
+    ("GET", "/api/v1/cms/pages/{page_id}/versions"): ["cms.read"],
+    ("GET", "/api/v1/cms/pages/{page_id}/versions/{ver}"): ["cms.read"],
+    ("POST", "/api/v1/cms/pages/{page_id}/versions/{ver}/restore"): ["cms.write"],
+    # Media Library
+    ("POST", "/api/v1/media/upload"): ["media.write"],
+    ("GET", "/api/v1/media"): ["media.read"],
+    ("GET", "/api/v1/media/{asset_id}"): ["media.read"],
+    ("PUT", "/api/v1/media/{asset_id}"): ["media.write"],
+    ("DELETE", "/api/v1/media/{asset_id}"): ["media.write"],
+    # Media file + thumbnail — no auth (public, like dashboard embeds)
+    ("GET", "/api/v1/media/{asset_id}/file"): [],
+    ("GET", "/api/v1/media/{asset_id}/thumbnail"): [],
+    # CMS Search, Export, Import, Publishing workflow, Stats
+    ("GET", "/api/v1/cms/search"): ["cms.read"],
+    ("GET", "/api/v1/cms/pages/{page_id}/export"): ["cms.read"],
+    ("POST", "/api/v1/cms/pages/import"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/schedule"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/archive"): ["cms.write"],
+    ("POST", "/api/v1/cms/pages/{page_id}/unarchive"): ["cms.write"],
+    ("GET", "/api/v1/cms/pages/{page_id}/stats"): ["cms.read"],
+    # CMS Redirects
+    ("GET", "/api/v1/cms/redirects"): ["cms.read"],
+    ("POST", "/api/v1/cms/redirects"): ["cms.write"],
+    ("PUT", "/api/v1/cms/redirects/{redirect_id}"): ["cms.write"],
+    ("DELETE", "/api/v1/cms/redirects/{redirect_id}"): ["cms.write"],
+    # Redirect lookup — no auth (used by middleware/client)
+    ("GET", "/api/v1/cms/redirects/lookup"): [],
 }
 
 # Public whitelist (auth-free, minimal, static).
@@ -444,6 +505,15 @@ PUBLIC_WHITELIST: set[tuple[str, str]] = {
     # CMS public routes
     ("GET", "/api/v1/cms/pages/public/{token}"),
     ("GET", "/api/v1/cms/pages/slug/{slug}"),
+    ("GET", "/api/v1/cms/menus/location/{location}"),
+    ("GET", "/api/v1/cms/forms/public/{slug}"),
+    ("POST", "/api/v1/cms/forms/public/{slug}/submit"),
+    ("GET", "/api/v1/site/settings/public"),
+    # Media Library — public file serving
+    ("GET", "/api/v1/media/{asset_id}/file"),
+    ("GET", "/api/v1/media/{asset_id}/thumbnail"),
+    # CMS redirect lookup (no auth; used by public routes / middleware)
+    ("GET", "/api/v1/cms/redirects/lookup"),
 }
 
 # ── RBAC: Role → Capability Mapping ──────────────────────────────────────────
@@ -458,6 +528,7 @@ _VIEWER_CAPS: list[str] = [
     "audit.read", "ota.read", "mcp.read", "notifications.read",
     "pairing.status", "config.read", "secrets.read",
     "cms.read",
+    "media.read",
 ]
 
 # Read + write capabilities (operator role)
@@ -474,6 +545,7 @@ _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "apikeys.read", "apikeys.write",
     "core.auth.login", "core.auth.register",
     "cms.write",
+    "media.write",
 ]
 
 # Admin capabilities (all except cap.admin superuser flag)

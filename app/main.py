@@ -53,6 +53,34 @@ async def _demo_heartbeat_loop() -> None:
             logger.debug("demo_heartbeat: error updating demo devices")
 
 
+async def _cms_scheduled_publisher_loop() -> None:
+    """Check for CMS pages with scheduled_at < now() and publish them. Every 5 minutes."""
+    from datetime import datetime, timezone
+    while True:
+        await asyncio.sleep(300)  # 5 minutes
+        try:
+            async with AsyncSessionLocal() as db:
+                now = datetime.now(timezone.utc)
+                result = await db.execute(text(
+                    """
+                    UPDATE cms_pages
+                    SET published = TRUE,
+                        status = 'published',
+                        published_at = :now,
+                        scheduled_at = NULL,
+                        updated_at = :now
+                    WHERE status = 'scheduled'
+                      AND scheduled_at IS NOT NULL
+                      AND scheduled_at <= :now
+                    """
+                ), {"now": now})
+                if result.rowcount and result.rowcount > 0:
+                    logger.info("cms_scheduled_publisher: published %d scheduled pages", result.rowcount)
+                await db.commit()
+        except Exception as e:
+            logger.debug("cms_scheduled_publisher: error — %s", e)
+
+
 async def _computed_variables_loop() -> None:
     """Recompute computed variables every 30 seconds."""
     from app.core.computed_variables import compute_all
@@ -200,6 +228,16 @@ async def lifespan(app: FastAPI):
             ("dashboards", "kiosk_config", "JSON"),
             ("custom_endpoints", "owner_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
             ("entities", "parent_id", "VARCHAR(64) REFERENCES entities(entity_id)"),
+            # CMS hierarchy + blocks
+            ("cms_pages", "parent_id", "INTEGER REFERENCES cms_pages(id) ON DELETE SET NULL"),
+            ("cms_pages", "menu_order", "INTEGER DEFAULT 0"),
+            ("cms_pages", "show_in_menu", "BOOLEAN DEFAULT TRUE"),
+            ("cms_pages", "blocks", "JSON"),
+            # CMS publishing workflow + analytics
+            ("cms_pages", "status", "VARCHAR(16) DEFAULT 'draft'"),
+            ("cms_pages", "scheduled_at", "TIMESTAMP WITH TIME ZONE"),
+            ("cms_pages", "view_count", "INTEGER DEFAULT 0"),
+            ("cms_pages", "last_viewed_at", "TIMESTAMP WITH TIME ZONE"),
         ]
         for table, col, col_type in _COLUMN_PATCHES:
             try:
@@ -251,8 +289,9 @@ async def lifespan(app: FastAPI):
     partition_task = asyncio.create_task(partition_maintenance_loop())
     telemetry_task = asyncio.create_task(telemetry_worker_loop())
     simulator_task = asyncio.create_task(simulator_worker_loop())
+    cms_publisher_task = asyncio.create_task(_cms_scheduled_publisher_loop())
 
-    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task, computed_task, simulator_task)
+    background_tasks = (cleanup_task, dispatcher_task, alert_task, health_task, ota_task, retention_task, automation_task, demo_heartbeat_task, api_poll_task, computed_task, simulator_task, cms_publisher_task)
 
     # ---- SIGTERM handler for graceful shutdown ----
     loop = asyncio.get_event_loop()
@@ -334,6 +373,63 @@ app.include_router(user_ws_router, prefix="/api/v1")
 # ---------------------------------------------------------------------------
 # Health / Readiness endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/sitemap.xml", tags=["seo"])
+async def sitemap() -> Any:
+    """XML sitemap of all published public CMS pages (sitemaps.org protocol)."""
+    from fastapi.responses import Response
+    from sqlalchemy import select as _select
+    from app.db.models.cms_page import CmsPage as _CmsPage
+    import os as _os
+
+    base_url = _os.getenv("HUBEX_PUBLIC_URL", "").rstrip("/") or "http://localhost:5173"
+    urls: list[str] = []
+    try:
+        async with AsyncSessionLocal() as db:
+            res = await db.execute(
+                _select(_CmsPage).where(
+                    _CmsPage.published.is_(True),
+                    _CmsPage.visibility != "private",
+                )
+            )
+            pages = list(res.scalars().all())
+        for p in pages:
+            lastmod = (p.updated_at or p.published_at)
+            lastmod_str = lastmod.date().isoformat() if lastmod else ""
+            lastmod_tag = f"<lastmod>{lastmod_str}</lastmod>" if lastmod_str else ""
+            urls.append(
+                f"<url><loc>{base_url}/p/{p.slug}</loc>{lastmod_tag}"
+                f"<changefreq>weekly</changefreq><priority>0.8</priority></url>"
+            )
+    except Exception as exc:
+        logger.warning("sitemap: failed to enumerate pages: %s", exc)
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + "".join(urls)
+        + "</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/robots.txt", tags=["seo"])
+async def robots() -> Any:
+    """Robots.txt referencing the sitemap."""
+    from fastapi.responses import Response
+    import os as _os
+
+    base_url = _os.getenv("HUBEX_PUBLIC_URL", "").rstrip("/") or "http://localhost:5173"
+    body = (
+        "User-agent: *\n"
+        "Disallow: /api/\n"
+        "Disallow: /admin/\n"
+        "Disallow: /settings\n"
+        "Allow: /\n"
+        f"Sitemap: {base_url}/sitemap.xml\n"
+    )
+    return Response(content=body, media_type="text/plain")
+
 
 @app.get("/health", tags=["health"])
 async def health() -> dict:

@@ -137,14 +137,34 @@ function toggleSidebar() { collapsed.value = !collapsed.value; }
 function openMobileSidebar() { mobileOpen.value = true; }
 function closeMobileSidebar() { mobileOpen.value = false; }
 
+type NavChild = {
+  to: string;
+  label: string;
+};
 type NavItem = {
   to: string;
   label: string;
   icon: string;
   cap: string | null;
   comingSoon?: boolean;
+  children?: NavChild[];
 };
 type NavGroup = { label: string; items: NavItem[] };
+
+// Collapsible sub-nav entries (e.g. CMS)
+const collapsedSubs = ref<Set<string>>(new Set());
+function toggleSubNav(path: string) {
+  const next = new Set(collapsedSubs.value);
+  if (next.has(path)) next.delete(path);
+  else next.add(path);
+  collapsedSubs.value = next;
+}
+function isSubCollapsed(path: string): boolean {
+  return collapsedSubs.value.has(path);
+}
+function isSubActiveForParent(parentPath: string): boolean {
+  return route.path === parentPath || route.path.startsWith(parentPath + "/");
+}
 
 const navGroups = computed<NavGroup[]>(() => [
   {
@@ -180,7 +200,14 @@ const navGroups = computed<NavGroup[]>(() => [
       { to: "/integrations", label: t('nav.integrations'), icon: "M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244", cap: null },
       { to: "/reports", label: t('nav.reports'), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z", cap: null },
       { to: "/email-templates", label: t('nav.emailTemplates'), icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75", cap: null },
-      { to: "/cms", label: t('nav.cms'), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zM9 12h6m-6 3h6m-6 3h6", cap: null },
+      { to: "/cms", label: t('nav.cms'), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zM9 12h6m-6 3h6m-6 3h6", cap: null, children: [
+        { to: "/cms", label: "Pages" },
+        { to: "/cms/forms", label: "Forms" },
+        { to: "/cms/menus", label: "Menus" },
+        { to: "/cms/media", label: "Media" },
+        { to: "/cms/redirects", label: "Redirects" },
+        { to: "/cms/settings", label: "Settings" },
+      ] },
       { to: "/custom-api", label: t('nav.customApi'), icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5", cap: null },
       { to: "/flow-editor", label: t('nav.flowEditor'), icon: "M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zm9.75 0A2.25 2.25 0 0115.75 3.75H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25z", cap: null },
       { to: "/hardware", label: t('nav.hardware'), icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z", cap: null },
@@ -365,6 +392,48 @@ function handleNavClick() {
               <span v-if="!collapsed" class="truncate flex-1 text-[var(--text-muted)]">{{ item.label }}</span>
               <span v-if="!collapsed" class="text-[9px] font-semibold px-1 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)] shrink-0">Soon</span>
             </div>
+            <!-- Nav item with sub-items (expand/collapse) -->
+            <template v-else-if="item.children && item.children.length && !collapsed">
+              <button
+                v-show="!isGroupCollapsed(group.label)"
+                :class="[
+                  'w-full flex items-center gap-2.5 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-lg text-sm transition-colors',
+                  isSubActiveForParent(item.to)
+                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
+                ]"
+                @click="toggleSubNav(item.to)"
+              >
+                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+                </svg>
+                <span class="truncate flex-1 text-left">{{ item.label }}</span>
+                <svg
+                  :class="['h-3 w-3 shrink-0 transition-transform duration-200', isSubCollapsed(item.to) ? '-rotate-90' : '']"
+                  fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <div
+                v-show="!isGroupCollapsed(group.label) && !isSubCollapsed(item.to)"
+                class="ml-5 pl-2 border-l border-[var(--border)]"
+              >
+                <router-link
+                  v-for="child in item.children"
+                  :key="child.to"
+                  :to="child.to"
+                  :class="[
+                    'flex items-center gap-2 px-3 py-1.5 mx-1.5 my-0.5 rounded-lg text-[12px] transition-colors',
+                    route.path === child.to
+                      ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
+                  ]"
+                >
+                  <span class="truncate">{{ child.label }}</span>
+                </router-link>
+              </div>
+            </template>
             <!-- Normal nav item -->
             <router-link
               v-else
@@ -447,23 +516,41 @@ function handleNavClick() {
                 <span class="text-[9px] font-semibold px-1 py-0.5 rounded bg-[var(--bg-raised)] text-[var(--text-muted)] shrink-0">Soon</span>
               </div>
               <!-- Normal link (mobile) -->
-              <router-link
-                v-else
-                :to="item.to"
-                :data-tour="'nav-' + (item.to === '/' ? 'dashboard' : item.to.replace('/', ''))"
-                :class="[
-                  'flex items-center gap-3 px-4 py-3 mx-2 my-0.5 rounded-lg text-sm transition-colors',
-                  isNavActive(item.to)
-                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
-                ]"
-                @click="handleNavClick"
-              >
-                <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-                </svg>
-                <span class="truncate">{{ item.label }}</span>
-              </router-link>
+              <template v-else>
+                <router-link
+                  :to="item.to"
+                  :data-tour="'nav-' + (item.to === '/' ? 'dashboard' : item.to.replace('/', ''))"
+                  :class="[
+                    'flex items-center gap-3 px-4 py-3 mx-2 my-0.5 rounded-lg text-sm transition-colors',
+                    isNavActive(item.to)
+                      ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
+                  ]"
+                  @click="handleNavClick"
+                >
+                  <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+                  </svg>
+                  <span class="truncate">{{ item.label }}</span>
+                </router-link>
+                <!-- Sub-items (mobile) -->
+                <div v-if="item.children && item.children.length && isSubActiveForParent(item.to)" class="ml-10 border-l border-[var(--border)] pl-2">
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.to"
+                    :to="child.to"
+                    :class="[
+                      'flex items-center gap-2 px-3 py-2 mx-2 my-0.5 rounded-lg text-xs transition-colors',
+                      route.path === child.to
+                        ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]',
+                    ]"
+                    @click="handleNavClick"
+                  >
+                    <span class="truncate">{{ child.label }}</span>
+                  </router-link>
+                </div>
+              </template>
             </template>
           </template>
         </nav>

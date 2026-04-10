@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
+import TreeNode from "../components/cms/CmsPageTreeNode.vue";
 
 const router = useRouter();
 const toast = useToastStore();
@@ -18,23 +19,150 @@ type CmsPageSummary = {
   visibility: string;
   published: boolean;
   published_at: string | null;
+  status?: string;
+  scheduled_at?: string | null;
+  view_count?: number;
+  last_viewed_at?: string | null;
   updated_at: string;
   created_at: string;
 };
 
+type SearchResult = {
+  id: number;
+  slug: string;
+  title: string;
+  layout: string;
+  visibility: string;
+  published: boolean;
+  updated_at: string;
+  snippet: string;
+};
+
+type CmsPageTreeNode = {
+  id: number;
+  slug: string;
+  title: string;
+  layout: string;
+  visibility: string;
+  published: boolean;
+  parent_id: number | null;
+  menu_order: number;
+  show_in_menu: boolean;
+  children: CmsPageTreeNode[];
+};
+
 const pages = ref<CmsPageSummary[]>([]);
+const tree = ref<CmsPageTreeNode[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const filter = ref<"all" | "published" | "drafts" | "public">("all");
+const viewMode = ref<"grid" | "tree">("grid");
+const expandedIds = ref<Set<number>>(new Set());
+
+// Drag-drop state (HTML5 DnD)
+const dragNodeId = ref<number | null>(null);
+const dropTargetId = ref<number | null>(null);
+const dropAsChild = ref(false);
 
 // Create modal
 const createOpen = ref(false);
 const newSlug = ref("");
 const newTitle = ref("");
 const newLayout = ref<"default" | "landing" | "minimal" | "fullscreen">("default");
+const newParentId = ref<number | null>(null);
 const saving = ref(false);
 
+// Template picker
+type CmsTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  thumbnail: string;
+  layout: string;
+  content_mode: string;
+};
+const templatePickerOpen = ref(false);
+const templates = ref<CmsTemplate[]>([]);
+const templatesLoading = ref(false);
+const selectedTemplate = ref<CmsTemplate | null>(null);
+
 const filteredPages = computed(() => pages.value);
+
+// Full-text search state
+const searchQuery = ref("");
+const searchResults = ref<SearchResult[]>([]);
+const searchLoading = ref(false);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onSearchInput() {
+  if (searchTimer) clearTimeout(searchTimer);
+  const q = searchQuery.value.trim();
+  if (!q) {
+    searchResults.value = [];
+    return;
+  }
+  searchTimer = setTimeout(async () => {
+    searchLoading.value = true;
+    try {
+      const res = await apiFetch<{ results: SearchResult[] }>(
+        `/api/v1/cms/search?q=${encodeURIComponent(q)}`
+      );
+      searchResults.value = res.results || [];
+    } catch (e: any) {
+      toast.show(e.message || "Search failed", "error");
+    } finally {
+      searchLoading.value = false;
+    }
+  }, 300);
+}
+
+function clearSearch() {
+  searchQuery.value = "";
+  searchResults.value = [];
+}
+
+// Export / Import
+async function exportPage(p: CmsPageSummary) {
+  try {
+    const data = await apiFetch<any>(`/api/v1/cms/pages/${p.id}/export`);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cms-page-${p.slug || p.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.show("Page exported", "success");
+  } catch (e: any) {
+    toast.show(e.message || "Export failed", "error");
+  }
+}
+
+const importFileInput = ref<HTMLInputElement | null>(null);
+function triggerImport() {
+  importFileInput.value?.click();
+}
+async function onImportFile(ev: Event) {
+  const target = ev.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = "";
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const created = await apiFetch<{ id: number; slug: string }>("/api/v1/cms/pages/import", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    toast.show(`Imported as /${created.slug}`, "success");
+    await loadPages();
+  } catch (e: any) {
+    toast.show(e.message || "Import failed", "error");
+  }
+}
 
 async function loadPages() {
   loading.value = true;
@@ -44,6 +172,9 @@ async function loadPages() {
       ? "/api/v1/cms/pages"
       : `/api/v1/cms/pages?filter=${filter.value}`;
     pages.value = await apiFetch<CmsPageSummary[]>(url);
+    if (viewMode.value === "tree") {
+      await loadTree();
+    }
   } catch (e: any) {
     error.value = e.message || "Failed to load pages";
   } finally {
@@ -51,11 +182,105 @@ async function loadPages() {
   }
 }
 
-function openCreate() {
+async function loadTree() {
+  try {
+    tree.value = await apiFetch<CmsPageTreeNode[]>("/api/v1/cms/pages/tree");
+    // Expand the first level by default
+    for (const node of tree.value) {
+      expandedIds.value.add(node.id);
+    }
+  } catch (e: any) {
+    error.value = e.message || "Failed to load tree";
+  }
+}
+
+async function switchView(mode: "grid" | "tree") {
+  viewMode.value = mode;
+  if (mode === "tree" && tree.value.length === 0) {
+    await loadTree();
+  }
+}
+
+function toggleExpand(id: number) {
+  const next = new Set(expandedIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  expandedIds.value = next;
+}
+
+function addChildPage(parentId: number) {
+  openCreate();
+  newParentId.value = parentId;
+}
+
+// HTML5 drag-drop handlers
+function onDragStart(ev: DragEvent, node: CmsPageTreeNode) {
+  dragNodeId.value = node.id;
+  if (ev.dataTransfer) {
+    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.setData("text/plain", String(node.id));
+  }
+}
+function onDragOver(ev: DragEvent, node: CmsPageTreeNode, asChild = false) {
+  if (dragNodeId.value === null || dragNodeId.value === node.id) return;
+  ev.preventDefault();
+  dropTargetId.value = node.id;
+  dropAsChild.value = asChild;
+}
+function onDragLeave() {
+  dropTargetId.value = null;
+}
+async function onDrop(ev: DragEvent, target: CmsPageTreeNode) {
+  ev.preventDefault();
+  const sourceId = dragNodeId.value;
+  dragNodeId.value = null;
+  dropTargetId.value = null;
+  if (sourceId === null || sourceId === target.id) return;
+  const newParent = dropAsChild.value ? target.id : target.parent_id;
+  try {
+    await apiFetch(`/api/v1/cms/pages/${sourceId}/move`, {
+      method: "PUT",
+      body: JSON.stringify({
+        parent_id: newParent,
+        menu_order: (target.menu_order || 0) + 1,
+      }),
+    });
+    toast.show(t('cms.moved') || "Page moved", "success");
+    await loadTree();
+  } catch (e: any) {
+    toast.show(e.message || "Move failed", "error");
+  }
+}
+
+async function openTemplatePicker() {
+  selectedTemplate.value = null;
+  templatePickerOpen.value = true;
+  if (templates.value.length === 0) {
+    templatesLoading.value = true;
+    try {
+      const res = await apiFetch<{ templates: CmsTemplate[] }>("/api/v1/cms/templates");
+      templates.value = res.templates || [];
+    } catch (e: any) {
+      toast.show(e.message || "Failed to load templates", "error");
+    } finally {
+      templatesLoading.value = false;
+    }
+  }
+}
+
+function selectTemplate(tpl: CmsTemplate | null) {
+  selectedTemplate.value = tpl;
+  templatePickerOpen.value = false;
   newSlug.value = "";
   newTitle.value = "";
-  newLayout.value = "default";
+  newLayout.value = (tpl?.layout as any) || "default";
+  newParentId.value = null;
   createOpen.value = true;
+}
+
+function openCreate() {
+  // Default create flow: show template picker first
+  openTemplatePicker();
 }
 
 function slugify(s: string): string {
@@ -80,20 +305,35 @@ async function createPage() {
   }
   saving.value = true;
   try {
-    const page = await apiFetch<{ id: number }>("/api/v1/cms/pages", {
-      method: "POST",
-      body: JSON.stringify({
+    let page: { id: number };
+    if (selectedTemplate.value) {
+      // Create from template
+      const params = new URLSearchParams({
         slug: newSlug.value.trim(),
         title: newTitle.value.trim(),
-        layout: newLayout.value,
-        content_html: `<h1>${newTitle.value}</h1>\n<p>${t('cms.defaultContent')}</p>`,
-        content_mode: "html",
-        visibility: "private",
-        published: false,
-      }),
-    });
+      });
+      page = await apiFetch<{ id: number }>(
+        `/api/v1/cms/pages/from-template/${selectedTemplate.value.id}?${params}`,
+        { method: "POST" }
+      );
+    } else {
+      page = await apiFetch<{ id: number }>("/api/v1/cms/pages", {
+        method: "POST",
+        body: JSON.stringify({
+          slug: newSlug.value.trim(),
+          title: newTitle.value.trim(),
+          layout: newLayout.value,
+          content_html: `<h1>${newTitle.value}</h1>\n<p>${t('cms.defaultContent')}</p>`,
+          content_mode: "html",
+          visibility: "private",
+          published: false,
+          parent_id: newParentId.value,
+        }),
+      });
+    }
     toast.show(t('cms.created'), "success");
     createOpen.value = false;
+    selectedTemplate.value = null;
     router.push(`/cms/${page.id}/edit`);
   } catch (e: any) {
     toast.show(e.message || "Failed to create", "error");
@@ -156,10 +396,58 @@ onMounted(loadPages);
         <h1 class="page-title">{{ t('cms.title') }}</h1>
         <p class="page-sub">{{ t('cms.subtitle') }}</p>
       </div>
-      <button class="btn-primary" @click="openCreate">
-        + {{ t('cms.createPage') }}
-      </button>
+      <div class="head-actions">
+        <button class="btn-secondary" @click="triggerImport">Import</button>
+        <input
+          ref="importFileInput"
+          type="file"
+          accept="application/json,.json"
+          style="display:none"
+          @change="onImportFile"
+        />
+        <button class="btn-primary" @click="openCreate">
+          + {{ t('cms.createPage') }}
+        </button>
+      </div>
     </header>
+
+    <!-- Full-text search bar -->
+    <div class="search-wrap">
+      <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+      </svg>
+      <input
+        v-model="searchQuery"
+        type="search"
+        class="search-input"
+        placeholder="Search pages by title, description or content…"
+        @input="onSearchInput"
+      />
+      <button v-if="searchQuery" class="search-clear" @click="clearSearch" title="Clear">×</button>
+    </div>
+
+    <!-- Search results -->
+    <div v-if="searchQuery.trim()" class="search-results-wrap">
+      <div v-if="searchLoading" class="state-msg small">Searching…</div>
+      <div v-else-if="searchResults.length === 0" class="state-msg small">
+        No results for "{{ searchQuery }}"
+      </div>
+      <div v-else class="search-results">
+        <div class="search-count">{{ searchResults.length }} result<span v-if="searchResults.length !== 1">s</span></div>
+        <button
+          v-for="r in searchResults"
+          :key="r.id"
+          class="search-result-card"
+          @click="router.push(`/cms/${r.id}/edit`)"
+        >
+          <div class="sr-head">
+            <span class="sr-title">{{ r.title }}</span>
+            <span class="sr-slug">/{{ r.slug }}</span>
+          </div>
+          <div v-if="r.snippet" class="sr-snippet">{{ r.snippet }}</div>
+        </button>
+      </div>
+    </div>
 
     <div class="filter-bar">
       <button
@@ -171,10 +459,53 @@ onMounted(loadPages);
       >
         {{ t(`cms.filter.${f}`) }}
       </button>
+      <div class="view-toggle">
+        <button
+          class="view-btn"
+          :class="{ active: viewMode === 'grid' }"
+          @click="switchView('grid')"
+          type="button"
+          title="Grid view"
+        >
+          ▤ Grid
+        </button>
+        <button
+          class="view-btn"
+          :class="{ active: viewMode === 'tree' }"
+          @click="switchView('tree')"
+          type="button"
+          title="Tree view"
+        >
+          ▸ Tree
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="state-msg">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="state-msg error">{{ error }}</div>
+
+    <!-- Tree view -->
+    <div v-else-if="viewMode === 'tree'" class="tree-wrap">
+      <div v-if="tree.length === 0" class="state-msg">{{ t('cms.empty') }}</div>
+      <ul v-else class="tree-list">
+        <TreeNode
+          v-for="node in tree"
+          :key="node.id"
+          :node="node"
+          :expanded-ids="expandedIds"
+          :drop-target-id="dropTargetId"
+          :drop-as-child="dropAsChild"
+          @toggle="toggleExpand"
+          @edit="(id: number) => router.push(`/cms/${id}/edit`)"
+          @add-child="addChildPage"
+          @drag-start="onDragStart"
+          @drag-over="onDragOver"
+          @drag-leave="onDragLeave"
+          @drop="onDrop"
+        />
+      </ul>
+    </div>
+
     <div v-else-if="filteredPages.length === 0" class="state-msg">
       {{ t('cms.empty') }}
     </div>
@@ -196,7 +527,12 @@ onMounted(loadPages);
           <p v-if="p.description" class="card-desc">{{ p.description }}</p>
           <div class="card-meta">
             <span v-if="p.published" class="pub-tag">✓ {{ t('cms.published') }}</span>
+            <span v-else-if="p.status === 'scheduled'" class="sched-tag">⏰ Scheduled</span>
+            <span v-else-if="p.status === 'archived'" class="arch-tag">Archived</span>
             <span v-else class="draft-tag">{{ t('cms.draft') }}</span>
+            <span v-if="(p.view_count ?? 0) > 0" class="views-tag" title="Total views">
+              👁 {{ p.view_count }} views
+            </span>
           </div>
         </div>
         <div class="card-actions">
@@ -206,7 +542,44 @@ onMounted(loadPages);
           </button>
           <button class="a-btn" @click="sharePage(p)">{{ t('cms.share') }}</button>
           <button class="a-btn" @click="clonePage(p.id)">{{ t('cms.clone') }}</button>
+          <button class="a-btn" @click="exportPage(p)" title="Download as JSON">Export</button>
           <button class="a-btn danger" @click="deletePage(p.id, p.title)">{{ t('common.delete') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Picker Modal -->
+    <div v-if="templatePickerOpen" class="modal-overlay" @click.self="templatePickerOpen = false">
+      <div class="modal tpl-modal">
+        <div class="tpl-head">
+          <h2>Start from a template</h2>
+          <button class="close-x" @click="templatePickerOpen = false">×</button>
+        </div>
+        <p class="tpl-sub">Pick a starting layout or begin from a blank page.</p>
+        <div v-if="templatesLoading" class="state-msg">Loading templates…</div>
+        <div v-else class="tpl-grid">
+          <button class="tpl-card blank" @click="selectTemplate(null)">
+            <div class="tpl-thumb blank-thumb">+</div>
+            <div class="tpl-body">
+              <h3>Blank Page</h3>
+              <p>Start from scratch</p>
+            </div>
+          </button>
+          <button
+            v-for="tpl in templates"
+            :key="tpl.id"
+            class="tpl-card"
+            @click="selectTemplate(tpl)"
+          >
+            <div class="tpl-thumb" :class="`layout-${tpl.layout}`">
+              <div class="thumb-label">{{ tpl.layout }}</div>
+            </div>
+            <div class="tpl-body">
+              <h3>{{ tpl.name }}</h3>
+              <p>{{ tpl.description }}</p>
+              <span class="tpl-cat">{{ tpl.category }}</span>
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -214,7 +587,10 @@ onMounted(loadPages);
     <!-- Create Modal -->
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
       <div class="modal">
-        <h2>{{ t('cms.createPage') }}</h2>
+        <h2>
+          {{ t('cms.createPage') }}
+          <span v-if="selectedTemplate" class="tpl-tag">from {{ selectedTemplate.name }}</span>
+        </h2>
         <label class="field">
           <span>{{ t('cms.fields.title') }}</span>
           <input v-model="newTitle" @input="onTitleInput" type="text" :placeholder="t('cms.fields.titlePlaceholder')" />
@@ -223,13 +599,22 @@ onMounted(loadPages);
           <span>{{ t('cms.fields.slug') }}</span>
           <input v-model="newSlug" type="text" placeholder="my-page" />
         </label>
-        <label class="field">
+        <label v-if="!selectedTemplate" class="field">
           <span>{{ t('cms.fields.layout') }}</span>
           <select v-model="newLayout">
             <option value="default">{{ t('cms.layout.default') }}</option>
             <option value="landing">{{ t('cms.layout.landing') }}</option>
             <option value="minimal">{{ t('cms.layout.minimal') }}</option>
             <option value="fullscreen">{{ t('cms.layout.fullscreen') }}</option>
+          </select>
+        </label>
+        <label v-if="!selectedTemplate" class="field">
+          <span>Parent page (optional)</span>
+          <select v-model="newParentId">
+            <option :value="null">— none (top-level) —</option>
+            <option v-for="p in pages" :key="p.id" :value="p.id">
+              {{ p.title }}
+            </option>
           </select>
         </label>
         <div class="modal-actions">
@@ -291,6 +676,40 @@ onMounted(loadPages);
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
+  align-items: center;
+}
+.view-toggle {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 2px;
+}
+.view-btn {
+  background: transparent;
+  color: #A1A1AA;
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.view-btn.active {
+  background: rgba(245,166,35,0.2);
+  color: #F5A623;
+}
+.tree-wrap {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.tree-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 .filter-chip {
   background: rgba(255,255,255,0.04);
@@ -312,6 +731,117 @@ onMounted(loadPages);
   color: #71717A;
 }
 .state-msg.error { color: #ef4444; }
+.state-msg.small { padding: 20px; font-size: 13px; }
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+.search-wrap {
+  position: relative;
+  margin-bottom: 16px;
+}
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #71717A;
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #F5F5F5;
+  padding: 12px 40px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #F5A623;
+  background: rgba(255,255,255,0.06);
+}
+.search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: #A1A1AA;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+.search-clear:hover { color: #F5F5F5; background: rgba(255,255,255,0.08); }
+.search-results-wrap {
+  margin-bottom: 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 8px;
+}
+.search-count {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #71717A;
+  letter-spacing: 0.05em;
+  padding: 6px 10px;
+}
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.search-result-card {
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #E5E5E5;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.search-result-card:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(245,166,35,0.2);
+}
+.sr-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.sr-title { font-weight: 600; font-size: 14px; color: #F5F5F5; }
+.sr-slug {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: #71717A;
+}
+.sr-snippet {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #A1A1AA;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.sched-tag { color: #F5A623; }
+.arch-tag { color: #71717A; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.views-tag {
+  color: #71717A;
+  margin-left: 8px;
+  font-size: 11px;
+}
 .pages-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -467,5 +997,111 @@ onMounted(loadPages);
   justify-content: flex-end;
   gap: 8px;
   margin-top: 24px;
+}
+
+/* Template picker */
+.tpl-modal {
+  min-width: 720px;
+  max-width: 900px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.tpl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.tpl-head h2 { margin: 0; }
+.close-x {
+  background: transparent;
+  color: #71717A;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 8px;
+}
+.close-x:hover { color: #ef4444; }
+.tpl-sub {
+  color: #A1A1AA;
+  font-size: 13px;
+  margin: 0 0 20px;
+}
+.tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.tpl-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+  color: inherit;
+  font-family: inherit;
+}
+.tpl-card:hover {
+  border-color: #F5A623;
+  transform: translateY(-2px);
+}
+.tpl-thumb {
+  height: 88px;
+  background: linear-gradient(135deg, #1f1f1e 0%, #2a2a28 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tpl-thumb.layout-landing { background: linear-gradient(135deg, rgba(245,166,35,0.2), rgba(45,212,191,0.1)); }
+.tpl-thumb.layout-fullscreen { background: linear-gradient(135deg, #111110, #1f1f1e); }
+.tpl-thumb.layout-minimal { background: #1a1a18; }
+.tpl-thumb .thumb-label {
+  font-family: 'IBM Plex Mono', monospace;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.blank-thumb {
+  color: #F5A623;
+  font-size: 36px;
+  font-weight: 300;
+}
+.tpl-body { padding: 12px 14px 14px; }
+.tpl-body h3 {
+  font-size: 14px;
+  color: #F5F5F5;
+  margin: 0 0 4px;
+}
+.tpl-body p {
+  color: #A1A1AA;
+  font-size: 12px;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.tpl-cat {
+  display: inline-block;
+  font-size: 10px;
+  color: #2DD4BF;
+  background: rgba(45,212,191,0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tpl-tag {
+  display: inline-block;
+  font-size: 11px;
+  color: #F5A623;
+  background: rgba(245,166,35,0.1);
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-left: 10px;
+  font-weight: 500;
+  vertical-align: middle;
 }
 </style>

@@ -45,6 +45,12 @@ from .device_profile import DeviceProfile
 from .custom_tour import CustomTour
 from .simulator import SimulatorConfig
 from .cms_page import CmsPage
+from .cms_page_version import CmsPageVersion
+from .cms_menu import CmsMenu
+from .cms_redirect import CmsRedirect
+from .media_asset import MediaAsset
+from .cms_form import CmsForm, CmsFormSubmission
+from .site_settings import SiteSettings
 
 __all__ = [
     "User",
@@ -115,4 +121,11 @@ __all__ = [
     "CustomTour",
     "SimulatorConfig",
     "CmsPage",
+    "CmsPageVersion",
+    "CmsMenu",
+    "CmsRedirect",
+    "MediaAsset",
+    "CmsForm",
+    "CmsFormSubmission",
+    "SiteSettings",
 ]

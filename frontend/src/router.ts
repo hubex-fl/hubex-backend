@@ -36,7 +36,7 @@ const router = createRouter({
         }
       },
     },
-    { path: "/landing",      component: () => import("./pages/Landing.vue"),        meta: { layout: "public", title: "HUBEX — The Universal IoT Device Hub" } },
+    { path: "/landing",      component: () => import("./pages/Landing.vue"),        meta: { layout: "public", noPublicShell: true, title: "HUBEX — The Universal IoT Device Hub" } },
     { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In" } },
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage" } },
     { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices" } },
@@ -78,9 +78,17 @@ const router = createRouter({
     { path: "/kiosk/slideshow", component: () => import("./pages/KioskSlideshow.vue"), meta: { title: "Kiosk Slideshow", layout: "kiosk" } },
     { path: "/kiosk/:id",     component: () => import("./pages/DashboardView.vue"),meta: { title: "Kiosk", layout: "kiosk" } },
     { path: "/embed/:token",  component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Embedded Dashboard", layout: "embed" } },
-    { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public" } },
-    // CMS Pages
+    { path: "/public/:token", component: () => import("./pages/PublicDashboard.vue"), meta: { title: "Dashboard", layout: "public", noPublicShell: true } },
+    // CMS
     { path: "/cms",            component: () => import("./pages/CmsPages.vue"),       meta: { title: "CMS Pages" } },
+    { path: "/cms/forms",      component: () => import("./pages/CmsForms.vue"),       meta: { title: "CMS Forms" } },
+    { path: "/cms/forms/:id/edit", component: () => import("./pages/CmsFormEditor.vue"), meta: { title: "Edit Form" } },
+    { path: "/cms/forms/:id/submissions", component: () => import("./pages/CmsFormSubmissions.vue"), meta: { title: "Form Submissions" } },
+    { path: "/cms/menus",      component: () => import("./pages/CmsMenus.vue"),       meta: { title: "CMS Menus" } },
+    { path: "/cms/menus/:id/edit", component: () => import("./pages/CmsMenuEditor.vue"), meta: { title: "Edit Menu", fullscreen: true } },
+    { path: "/cms/media",      component: () => import("./pages/CmsMedia.vue"),       meta: { title: "Media Library" } },
+    { path: "/cms/redirects",  component: () => import("./pages/CmsRedirects.vue"),   meta: { title: "URL Redirects" } },
+    { path: "/cms/settings",   component: () => import("./pages/SiteSettings.vue"),   meta: { title: "Site Settings" } },
     { path: "/cms/:id/edit",   component: () => import("./pages/CmsPageEditor.vue"),  meta: { title: "Edit Page", fullscreen: true } },
     { path: "/cms/:slug/view", component: () => import("./pages/CmsPageView.vue"),    meta: { title: "View Page", fullscreen: true } },
     { path: "/p/:slug",        component: () => import("./pages/CmsPageView.vue"),    meta: { title: "Page", layout: "public" } },

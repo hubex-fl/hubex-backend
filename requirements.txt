@@ -19,3 +19,4 @@ uvicorn[standard]==0.38.0
 watchfiles==0.24.0
 qrcode[svg]==8.0
 requests>=2.31.0
+Pillow>=10.0.0,<12.0.0

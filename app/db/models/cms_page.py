@@ -19,6 +19,9 @@ class CmsPage(Base):
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_html: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    # Block-based editor — list of block objects [{id, type, props}]
+    # When non-null/non-empty, takes precedence over content_html on render.
+    blocks: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # "html" | "markdown" | "simple"
     content_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default="html", server_default="html"
@@ -47,6 +50,28 @@ class CmsPage(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Publishing workflow: "draft" | "published" | "scheduled" | "archived"
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="draft", server_default="draft"
+    )
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Analytics
+    view_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Hierarchy — parent/child tree, menu ordering, menu visibility
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cms_pages.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    menu_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    show_in_menu: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -4,11 +4,17 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
+import { useCmsEditorStore, type CmsBlock } from "../stores/cmsEditor";
+import BlockCanvas from "../components/cms/BlockCanvas.vue";
+import BlockLibrary from "../components/cms/BlockLibrary.vue";
+import BlockPropertiesPanel from "../components/cms/BlockPropertiesPanel.vue";
+import PageVersionHistory from "../components/cms/PageVersionHistory.vue";
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToastStore();
 const { t } = useI18n();
+const cmsEditor = useCmsEditorStore();
 
 type CmsPage = {
   id: number;
@@ -25,6 +31,11 @@ type CmsPage = {
   public_token: string | null;
   has_pin: boolean;
   published: boolean;
+  status?: string;
+  scheduled_at?: string | null;
+  view_count?: number;
+  last_viewed_at?: string | null;
+  blocks: CmsBlock[] | null;
 };
 
 const pageId = computed(() => Number(route.params.id));
@@ -44,11 +55,14 @@ const editMetaDescription = ref("");
 const editOgImage = ref("");
 const editVisibility = ref<"private" | "public" | "embed">("private");
 
-// View mode
+// Editor mode: blocks (default), html, preview
+const editorMode = ref<"blocks" | "html" | "preview">("blocks");
+// HTML sub-view mode (for legacy HTML editor)
 const viewMode = ref<"code" | "split" | "preview">("split");
 const previewHtml = ref("");
 const showMeta = ref(false);
 const showStarters = ref(true);
+const showHistory = ref(false);
 
 // Debounce preview rendering
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -69,12 +83,29 @@ async function loadPage() {
     editMetaDescription.value = p.meta_description || "";
     editOgImage.value = p.og_image || "";
     editVisibility.value = (p.visibility as any) || "private";
+    // Hydrate block editor store
+    cmsEditor.setBlocks(Array.isArray(p.blocks) ? p.blocks : []);
+    // If page has no blocks but has legacy HTML, default to HTML mode
+    if ((!p.blocks || p.blocks.length === 0) && (p.content_html || "").trim().length > 0) {
+      editorMode.value = "html";
+    } else {
+      editorMode.value = "blocks";
+    }
     await renderPreview();
   } catch (e: any) {
     error.value = e.message || "Failed to load";
   } finally {
     loading.value = false;
   }
+}
+
+function insertBlock(payload: { type: string; props: Record<string, any> }) {
+  cmsEditor.addBlock(payload.type, payload.props);
+}
+
+function updateBlockProp(key: string, value: any) {
+  if (cmsEditor.selectedIndex < 0) return;
+  cmsEditor.setBlockProp(cmsEditor.selectedIndex, key, value);
 }
 
 async function renderPreview() {
@@ -99,6 +130,9 @@ async function saveDraft() {
   if (!page.value) return;
   saving.value = true;
   try {
+    // Prepare blocks payload — null if empty so backend falls back to HTML
+    const blocksPayload =
+      cmsEditor.blocks.length > 0 ? cmsEditor.blocks : null;
     await apiFetch(`/api/v1/cms/pages/${page.value.id}`, {
       method: "PUT",
       body: JSON.stringify({
@@ -112,8 +146,10 @@ async function saveDraft() {
         meta_description: editMetaDescription.value || null,
         og_image: editOgImage.value || null,
         visibility: editVisibility.value,
+        blocks: blocksPayload,
       }),
     });
+    cmsEditor.markClean();
     toast.show(t('cms.saved'), "success");
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -131,6 +167,81 @@ async function publish() {
     await loadPage();
   } catch (e: any) {
     toast.show(e.message, "error");
+  }
+}
+
+// ── Publishing workflow ──
+const showPublishMenu = ref(false);
+const showScheduleModal = ref(false);
+const scheduleDateTime = ref("");
+
+async function unpublishPage() {
+  if (!page.value) return;
+  showPublishMenu.value = false;
+  try {
+    await apiFetch(`/api/v1/cms/pages/${page.value.id}/unpublish`, { method: "POST" });
+    toast.show("Moved to draft", "success");
+    await loadPage();
+  } catch (e: any) {
+    toast.show(e.message, "error");
+  }
+}
+
+async function archivePage() {
+  if (!page.value) return;
+  showPublishMenu.value = false;
+  if (!confirm("Archive this page? It will be hidden but preserved.")) return;
+  try {
+    await apiFetch(`/api/v1/cms/pages/${page.value.id}/archive`, { method: "POST" });
+    toast.show("Page archived", "success");
+    await loadPage();
+  } catch (e: any) {
+    toast.show(e.message, "error");
+  }
+}
+
+function openSchedule() {
+  showPublishMenu.value = false;
+  // Default: one hour from now, formatted for datetime-local input
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  scheduleDateTime.value =
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  showScheduleModal.value = true;
+}
+
+async function submitSchedule() {
+  if (!page.value || !scheduleDateTime.value) return;
+  await saveDraft();
+  const iso = new Date(scheduleDateTime.value).toISOString();
+  try {
+    await apiFetch(`/api/v1/cms/pages/${page.value.id}/schedule`, {
+      method: "POST",
+      body: JSON.stringify({ published_at: iso }),
+    });
+    toast.show("Page scheduled for publishing", "success");
+    showScheduleModal.value = false;
+    await loadPage();
+  } catch (e: any) {
+    toast.show(e.message, "error");
+  }
+}
+
+// Relative time helper for stats
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  try {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const sec = Math.floor(diffMs / 1000);
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const days = Math.floor(hr / 24);
+    return `${days}d ago`;
+  } catch {
+    return iso;
   }
 }
 
@@ -294,13 +405,125 @@ onMounted(loadPage);
           <option value="fullscreen">{{ t('cms.layout.fullscreen') }}</option>
         </select>
         <button class="btn-ghost" @click="showMeta = !showMeta">{{ t('cms.meta') }}</button>
+        <button class="btn-ghost" @click="showHistory = true">History</button>
         <button class="btn-secondary" :disabled="saving" @click="saveDraft">
           {{ saving ? '...' : t('common.save') }}
         </button>
-        <button class="btn-primary" @click="publish">{{ t('cms.publish') }}</button>
+        <div class="publish-dropdown">
+          <button class="btn-primary" @click="publish">{{ t('cms.publish') }}</button>
+          <button class="btn-primary dropdown-caret" @click="showPublishMenu = !showPublishMenu" title="Publishing options">▾</button>
+          <div v-if="showPublishMenu" class="publish-menu" @click.self="showPublishMenu = false">
+            <button class="publish-item" @click="publish">
+              <span>Publish now</span>
+              <span class="hint">Make page live immediately</span>
+            </button>
+            <button class="publish-item" @click="openSchedule">
+              <span>Schedule…</span>
+              <span class="hint">Pick a date &amp; time</span>
+            </button>
+            <button class="publish-item" @click="saveDraft(); showPublishMenu = false">
+              <span>Save as draft</span>
+              <span class="hint">Keep hidden from the public</span>
+            </button>
+            <button class="publish-item" v-if="page?.published" @click="unpublishPage">
+              <span>Unpublish</span>
+              <span class="hint">Back to draft</span>
+            </button>
+            <button class="publish-item danger" @click="archivePage">
+              <span>Archive</span>
+              <span class="hint">Hide but preserve</span>
+            </button>
+          </div>
+        </div>
         <button class="btn-primary" @click="share">{{ t('cms.share') }}</button>
       </div>
     </header>
+
+    <!-- Stats panel -->
+    <div v-if="page" class="stats-panel">
+      <div class="stat-item">
+        <span class="stat-label">Views</span>
+        <span class="stat-value">{{ page.view_count ?? 0 }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Last viewed</span>
+        <span class="stat-value">{{ relativeTime(page.last_viewed_at) }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Status</span>
+        <span class="stat-value">{{ page.status || (page.published ? 'published' : 'draft') }}</span>
+      </div>
+      <div v-if="page.scheduled_at" class="stat-item">
+        <span class="stat-label">Scheduled</span>
+        <span class="stat-value">{{ new Date(page.scheduled_at).toLocaleString() }}</span>
+      </div>
+    </div>
+
+    <!-- Schedule modal -->
+    <div v-if="showScheduleModal" class="modal-overlay" @click.self="showScheduleModal = false">
+      <div class="modal">
+        <h2>Schedule Publishing</h2>
+        <p class="schedule-hint">The page will be published automatically at the selected time (checked every 5 minutes).</p>
+        <label class="field">
+          <span>When</span>
+          <input v-model="scheduleDateTime" type="datetime-local" />
+        </label>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showScheduleModal = false">Cancel</button>
+          <button class="btn-primary" @click="submitSchedule">Schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editor mode tabs -->
+    <div class="mode-bar">
+      <div class="mode-tabs">
+        <button
+          type="button"
+          class="mode-tab"
+          :class="{ active: editorMode === 'blocks' }"
+          @click="editorMode = 'blocks'"
+        >
+          Blocks
+        </button>
+        <button
+          type="button"
+          class="mode-tab"
+          :class="{ active: editorMode === 'html' }"
+          @click="editorMode = 'html'"
+        >
+          HTML
+        </button>
+        <button
+          type="button"
+          class="mode-tab"
+          :class="{ active: editorMode === 'preview' }"
+          @click="editorMode = 'preview'"
+        >
+          Preview
+        </button>
+      </div>
+      <div v-if="editorMode === 'blocks'" class="mode-actions">
+        <button
+          type="button"
+          class="btn-ghost sm"
+          :disabled="!cmsEditor.canUndo"
+          @click="cmsEditor.undo()"
+          title="Undo"
+        >
+          ↶ Undo
+        </button>
+        <button
+          type="button"
+          class="btn-ghost sm"
+          :disabled="!cmsEditor.canRedo"
+          @click="cmsEditor.redo()"
+          title="Redo"
+        >
+          ↷ Redo
+        </button>
+      </div>
+    </div>
 
     <div v-if="showMeta" class="meta-panel">
       <label class="meta-field">
@@ -329,75 +552,119 @@ onMounted(loadPage);
       </label>
     </div>
 
-    <div class="view-bar">
-      <div class="view-tabs">
-        <button
-          v-for="m in ['code','split','preview'] as const"
-          :key="m"
-          class="view-tab"
-          :class="{ active: viewMode === m }"
-          @click="viewMode = m"
-        >
-          {{ t(`cms.view.${m}`) }}
-        </button>
-      </div>
-    </div>
-
-    <div class="editor-grid" :class="`view-${viewMode}`">
-      <!-- Code editor -->
-      <div v-if="viewMode !== 'preview'" class="code-pane">
-        <textarea
-          class="code-editor"
-          v-model="editContent"
-          spellcheck="false"
-          :placeholder="t('cms.editorPlaceholder')"
-        ></textarea>
-      </div>
-
-      <!-- Preview -->
-      <div v-if="viewMode !== 'code'" class="preview-pane">
-        <iframe
-          class="preview-frame"
-          :srcdoc="previewHtml"
-          sandbox="allow-same-origin"
-        ></iframe>
-      </div>
-
-      <!-- Sidebar: variables + starters -->
-      <aside class="sidebar">
-        <div class="sidebar-section">
-          <h4>{{ t('cms.templateVars') }}</h4>
-          <div v-for="g in templateVars" :key="g.group" class="var-group">
-            <div class="var-group-head">{{ g.group }}</div>
-            <div
-              v-for="v in g.items"
-              :key="v.ref"
-              class="var-row"
-              @click="insertVar(v.ref)"
-              :title="t('cms.clickToInsert')"
-            >
-              <code class="var-ref">{{ v.ref }}</code>
-              <div class="var-desc">{{ v.desc }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="sidebar-section">
-          <h4 @click="showStarters = !showStarters" class="collapsible">
-            {{ t('cms.starters') }} {{ showStarters ? '−' : '+' }}
-          </h4>
-          <div v-if="showStarters">
-            <button
-              v-for="s in starters"
-              :key="s.name"
-              class="starter-btn"
-              @click="insertStarter(s.html)"
-            >
-              + {{ s.name }}
-            </button>
-          </div>
-        </div>
+    <!-- BLOCK EDITOR MODE -->
+    <div v-if="editorMode === 'blocks'" class="blocks-grid">
+      <aside class="blocks-lib">
+        <BlockLibrary @insert="insertBlock" />
+      </aside>
+      <main
+        class="blocks-canvas-pane"
+        @click="cmsEditor.selectBlock(-1)"
+      >
+        <BlockCanvas
+          :blocks="cmsEditor.blocks"
+          :selected-index="cmsEditor.selectedIndex"
+          @select="(i:number) => cmsEditor.selectBlock(i)"
+          @duplicate="(i:number) => cmsEditor.duplicateBlock(i)"
+          @delete="(i:number) => cmsEditor.deleteBlock(i)"
+          @move-up="(i:number) => cmsEditor.moveBlock(i, i-1)"
+          @move-down="(i:number) => cmsEditor.moveBlock(i, i+1)"
+        />
+      </main>
+      <aside class="blocks-props">
+        <BlockPropertiesPanel
+          :block="cmsEditor.selectedBlock"
+          @update="updateBlockProp"
+        />
       </aside>
     </div>
+
+    <!-- HTML EDITOR MODE (legacy) -->
+    <div v-else-if="editorMode === 'html'" class="html-mode-wrap">
+      <div class="view-bar">
+        <div class="view-tabs">
+          <button
+            v-for="m in ['code','split','preview'] as const"
+            :key="m"
+            class="view-tab"
+            :class="{ active: viewMode === m }"
+            @click="viewMode = m"
+          >
+            {{ t(`cms.view.${m}`) }}
+          </button>
+        </div>
+      </div>
+
+      <div class="editor-grid" :class="`view-${viewMode}`">
+        <div v-if="viewMode !== 'preview'" class="code-pane">
+          <textarea
+            class="code-editor"
+            v-model="editContent"
+            spellcheck="false"
+            :placeholder="t('cms.editorPlaceholder')"
+          ></textarea>
+        </div>
+
+        <div v-if="viewMode !== 'code'" class="preview-pane">
+          <iframe
+            class="preview-frame"
+            :srcdoc="previewHtml"
+            sandbox="allow-same-origin"
+          ></iframe>
+        </div>
+
+        <aside class="sidebar">
+          <div class="sidebar-section">
+            <h4>{{ t('cms.templateVars') }}</h4>
+            <div v-for="g in templateVars" :key="g.group" class="var-group">
+              <div class="var-group-head">{{ g.group }}</div>
+              <div
+                v-for="v in g.items"
+                :key="v.ref"
+                class="var-row"
+                @click="insertVar(v.ref)"
+                :title="t('cms.clickToInsert')"
+              >
+                <code class="var-ref">{{ v.ref }}</code>
+                <div class="var-desc">{{ v.desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-section">
+            <h4 @click="showStarters = !showStarters" class="collapsible">
+              {{ t('cms.starters') }} {{ showStarters ? '−' : '+' }}
+            </h4>
+            <div v-if="showStarters">
+              <button
+                v-for="s in starters"
+                :key="s.name"
+                class="starter-btn"
+                @click="insertStarter(s.html)"
+              >
+                + {{ s.name }}
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- PREVIEW MODE -->
+    <div v-else class="preview-only">
+      <iframe
+        class="preview-frame"
+        :srcdoc="previewHtml"
+        sandbox="allow-same-origin"
+      ></iframe>
+    </div>
+
+    <!-- Version history modal -->
+    <PageVersionHistory
+      v-if="showHistory && page"
+      :page-id="page.id"
+      @close="showHistory = false"
+      @restored="loadPage"
+    />
   </div>
   <div v-else-if="loading" class="loading">{{ t('common.loading') }}</div>
   <div v-else-if="error" class="loading error">{{ error }}</div>
@@ -655,4 +922,223 @@ onMounted(loadPage);
   color: #71717A;
 }
 .loading.error { color: #ef4444; }
+
+/* Editor mode bar (blocks/html/preview) */
+.mode-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 24px;
+  background: #0f0f0e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mode-tabs {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px;
+  border-radius: 8px;
+}
+.mode-tab {
+  background: transparent;
+  border: none;
+  color: #71717a;
+  padding: 6px 18px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.mode-tab.active {
+  background: rgba(245, 166, 35, 0.2);
+  color: #f5a623;
+}
+.mode-actions {
+  display: flex;
+  gap: 6px;
+}
+.btn-ghost.sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* Blocks grid: library | canvas | properties */
+.blocks-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  overflow: hidden;
+}
+.blocks-lib {
+  background: #111110;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+}
+.blocks-canvas-pane {
+  background: #0c0c0b;
+  overflow-y: auto;
+}
+.blocks-props {
+  background: #111110;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+}
+
+/* HTML mode wrapper */
+.html-mode-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.html-mode-wrap .editor-grid {
+  flex: 1;
+}
+
+/* Preview-only mode */
+.preview-only {
+  flex: 1;
+  background: #fff;
+  overflow: hidden;
+}
+.preview-only .preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Publishing dropdown */
+.publish-dropdown {
+  position: relative;
+  display: flex;
+}
+.publish-dropdown .btn-primary {
+  border-radius: 8px 0 0 8px;
+}
+.publish-dropdown .dropdown-caret {
+  border-radius: 0 8px 8px 0;
+  border-left: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 10px 12px;
+}
+.publish-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 220px;
+  background: #1a1a18;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  padding: 6px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.publish-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: #E5E5E5;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.publish-item:hover { background: rgba(255, 255, 255, 0.05); }
+.publish-item.danger { color: #fca5a5; }
+.publish-item.danger:hover { background: rgba(239, 68, 68, 0.1); }
+.publish-item .hint {
+  font-size: 11px;
+  color: #71717A;
+  font-weight: 400;
+}
+
+/* Stats panel */
+.stats-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+}
+.stat-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.stat-label {
+  color: #71717A;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.stat-value {
+  color: #F5F5F5;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* Schedule modal */
+.schedule-hint {
+  color: #A1A1AA;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: #1a1a18;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 28px;
+  min-width: 420px;
+  max-width: 500px;
+}
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: #F5F5F5;
+}
+.modal .field {
+  display: block;
+  margin-bottom: 16px;
+}
+.modal .field span {
+  display: block;
+  font-size: 11px;
+  color: #A1A1AA;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.modal .field input {
+  width: 100%;
+  background: #111110;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #F5F5F5;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
 </style>

@@ -11,4 +11,9 @@ import "./style.css";
 // context, but Pinia actions run outside of that).
 injectTourRouter(router);
 
-createApp(App).use(createPinia()).use(i18n).use(router).mount("#app");
+const pinia = createPinia();
+// Expose the pinia instance globally so dynamically-mounted components
+// (e.g. CMS BlockRenderer hydrated HubEx blocks) can share the same store.
+try { (window as any).__hubex_pinia = pinia; } catch { /* noop */ }
+
+createApp(App).use(pinia).use(i18n).use(router).mount("#app");

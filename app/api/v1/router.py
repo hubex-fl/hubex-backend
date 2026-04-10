@@ -48,6 +48,11 @@ from .codegen import router as codegen_router
 from .tours import router as tours_router
 from .simulator import router as simulator_router
 from .cms_pages import router as cms_pages_router
+from .cms_menus import router as cms_menus_router
+from .cms_forms import router as cms_forms_router
+from .cms_redirects import router as cms_redirects_router
+from .site_settings import router as site_settings_router
+from .media import router as media_router
 
 router = APIRouter(dependencies=[Depends(capability_guard), Depends(rate_limit_guard)])
 
@@ -98,6 +103,11 @@ router.include_router(codegen_router, tags=["codegen"])
 router.include_router(tours_router, tags=["tours"])
 router.include_router(simulator_router, tags=["simulator"])
 router.include_router(cms_pages_router, tags=["cms"])
+router.include_router(cms_menus_router, tags=["cms-menus"])
+router.include_router(cms_forms_router, tags=["cms-forms"])
+router.include_router(cms_redirects_router, tags=["cms-redirects"])
+router.include_router(site_settings_router, tags=["site-settings"])
+router.include_router(media_router, tags=["media"])
 
 from .system import router as system_router
 router.include_router(system_router, tags=["system"])
