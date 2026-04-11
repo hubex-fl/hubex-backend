@@ -49,6 +49,7 @@ export default {
     edit: 'Editar',
     create: 'Crear',
     close: 'Cerrar',
+    skipToContent: 'Saltar al contenido principal',
     refresh: 'Actualizar',
     search: 'Buscar',
     filter: 'Filtrar',

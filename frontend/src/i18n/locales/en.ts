@@ -111,6 +111,7 @@ export default {
     edit: 'Edit',
     create: 'Create',
     close: 'Close',
+    skipToContent: 'Skip to main content',
     refresh: 'Refresh',
     search: 'Search',
     filter: 'Filter',

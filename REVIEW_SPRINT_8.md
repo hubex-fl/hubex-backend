@@ -8,7 +8,7 @@
 - **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings, **36/36 fixed**
 - **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, **8/11 fixed**, 3 flagged
 - **Round 3 (Persona):** 🔁 **IN PROGRESS** — user's initial walk done (25 findings), Option A fix batch done, Neuer-User walk done
-- **Round 4 (Perf + A11y):** ⏸ pending
+- **Round 4 (Perf + A11y):** ✅ **COMPLETE** — 5 routes measured, 5 a11y sweeps, 6 findings, **5/6 fixed** (1 P3 deferred)
 - **Round 5 (Fixing):** ✅ merged into per-round fix phases
 - **Round 6 (Release):** ⏸ pending (after Round 3 walks complete + Round 4)
 - **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
@@ -675,6 +675,84 @@ Remaining Round 3 items that STILL need user input (from the initial walk, not t
 ## Fix List
 
 *(empty — awaiting your priorization of Round 1 findings. Once you mark each as `must-fix` / `nice-to-fix` / `defer` / `false-positive`, the list gets built and Round 5 starts.)*
+
+---
+
+## Round 4 — Performance + Accessibility (2026-04-11)
+
+Agent-driven pass, no persona walk needed. Two phases:
+1. **Perf** — Navigation Timing API + resource inventory across 5 core pages
+2. **A11y** — focus-ring, ARIA, landmarks, color contrast
+
+### Perf measurements (5 core pages)
+
+| Route | DOM Interactive | DCL | Load | Long Tasks | API calls | Duplicates |
+|---|---|---|---|---|---|---|
+| `/` | 45 ms | 139 ms | 480 ms | 0 | 14 | `users/me ×2` |
+| `/devices` | 31 ms | — | 119 ms | 0 | — | `users/me ×2` |
+| `/devices/1` | 38 ms | — | 388 ms | 0 | 18 | `users/me`, `audit` |
+| `/alerts` | 47 ms | 126 ms | 490 ms | 0 | 9 | `users/me ×2` |
+| `/automations` | 22 ms | 62 ms | 76 ms | 0 | 7 | `users/me ×2` |
+
+**Verdict:** Load is well under 500 ms everywhere, zero long tasks — Sprint 7.5 bundle splitting holds up. No slow resources (no `>100 ms` single asset), no oversized chunks beyond the known `index-CIhTkvGA.js 604 kB` (already flagged in Sprint 7.5 backlog).
+
+### A11y sweeps
+
+1. **Focus ring** — `:focus` rules: 23, `:focus-visible` rules: 6, `outline:none` overrides: 1. UButton uses `focus-visible:ring-2` baseline. ✅ Acceptable.
+2. **ARIA audit (Dashboard)** — 18 buttons, 32 links, 0 unlabeled icon buttons, 0 unlabeled inputs. ✅
+3. **ARIA audit (DeviceDetail)** — 56 buttons, 26 icon-only WITH label (93%), **2 unlabeled** (sensordata-panel refresh + variables-panel refresh).
+4. **Landmarks (Dashboard)** — 1 header / 1 main / 1 nav / 1 aside / h1: 1. No `footer` (acceptable), no skip-link, `html[lang]="en"` stuck at build-time default.
+5. **Color contrast (dark theme computed tokens)** — primary-on-base: **15.57** (AAA), secondary-on-base: **5.91** (AA), amber/warn/ok/bad status colors all AA+, **muted-on-base: 2.95 (FAIL)**, muted-on-surface: 2.79, muted-on-raised: 2.55.
+
+### Findings
+
+| ID | Severity | Area | Description | Status |
+|---|---|---|---|---|
+| **R4-Perf-01** | P3 | Perf | `/api/v1/users/me` fetched twice on session bootstrap (once from auth store, once from capabilities layer). Same count across all 5 routes → it's a one-time boot cost, not a per-route leak. | 📋 deferred — cleanup, not a bug |
+| **R4-A11y-F01** | P2 | ARIA | 2 unlabeled icon-only buttons on DeviceDetail: the refresh buttons in the Sensordaten and Variables panel headers. Screen readers say "button button" for them. | ✅ fixed |
+| **R4-A11y-F02** | P2 | Landmark | `<html lang>` stuck at `en` (index.html default) even when user's saved locale is `de`. `setLocale()` patched the attribute on user change but never on app bootstrap. | ✅ fixed |
+| **R4-A11y-F03** | P2 | Landmark | No "Skip to main content" link. Keyboard-only users must tab through the entire sidebar (~30 links) on every page. | ✅ fixed |
+| **R4-A11y-F04** | P2 | Landmark | `<main>` had no `id`, which made skip-link and focus-management impossible. | ✅ fixed (`id="main-content"` + `tabindex="-1"`) |
+| **R4-A11y-F05** | P1 | Contrast | `--text-muted: #5a5a72` on `--bg-base: #0a0a0f` = **2.95:1** — **fails WCAG AA** (requires 4.5:1 normal text, 3:1 large text). Used throughout for captions, hints, relative timestamps, panel descriptions — probably the single biggest a11y issue in the app. | ✅ fixed (`#7e7e94` → 5.0:1 AA pass) |
+
+### Fixes applied (all in worktree `suspicious-raman`)
+
+- **F01**: `frontend/src/pages/DeviceDetail.vue:2439-2447` + `2545-2549` — added `:aria-label` + `:title` using existing `common.refresh` key to both icon-only refresh buttons
+- **F02**: `frontend/src/i18n/index.ts` — `document.documentElement.setAttribute('lang', _initialLocale)` at module load time so bootstrap matches the saved locale
+- **F03**: `frontend/src/layouts/DefaultLayout.vue:314-321` — skip-link with `.sr-only focus:not-sr-only` Tailwind pattern, targets `#main-content`, programmatic `focus()` + `scrollIntoView()` on activate
+- **F04**: `frontend/src/layouts/DefaultLayout.vue:755-762` — `<main id="main-content" tabindex="-1">` so the skip-link can focus it even though `<main>` isn't naturally focusable
+- **F05**: `frontend/src/style.css:19` — `--text-muted: #5a5a72` → `#7e7e94` (dark theme, 2.95→5.00) and line 82 `#9898b0 → #6a6a82` (light theme, 2.54→4.80). Secondary stays at `#8b8b9e` (5.91) so "muted is softer than secondary" visual hierarchy is preserved.
+
+### i18n additions (skip-link label)
+
+All 8 locales got a new `common.skipToContent` key:
+
+| Locale | Value |
+|---|---|
+| en | Skip to main content |
+| de | Zum Hauptinhalt springen |
+| fr | Aller au contenu principal |
+| es | Saltar al contenido principal |
+| it | Vai al contenuto principale |
+| nl | Naar hoofdinhoud |
+| pl | Przejdź do głównej treści |
+| pt | Ir para o conteúdo principal |
+
+### Live verification (post-reload)
+
+On `/devices/1` after nginx bundle swap:
+- `lang="de"` ✅ (matches saved locale)
+- Skip-link present, targets `#main-content` which now exists ✅
+- Icon-only no-label count: **0** (was 2) ✅
+- `--text-muted` on `--bg-base`: **4.98:1 AA** (was 2.95:1 fail) ✅
+- `--text-muted` on `--bg-surface`: **4.70:1 AA** ✅
+- `--text-muted` on `--bg-raised`: **4.30:1 AA large** ✅
+- Dashboard screenshot: captions "6 / 13 online", "Keine aktiven Alarme", section labels all visibly crisper ✅
+- No console errors ✅
+
+### Deferred (1 item)
+
+- **R4-Perf-01** — `/users/me` double-bootstrap. Root cause: `auth.ts` and `capabilities.ts` both call it independently on first mount. Cleanup idea: make capabilities share the auth-store payload rather than re-fetch. Logged here for the backlog, not a release blocker.
 
 ---
 

@@ -16,7 +16,9 @@
 
   --text-primary:   #e4e4e7;
   --text-secondary: #8b8b9e;
-  --text-muted:     #5a5a72;
+  /* Sprint 8 R4 A11y-F05: bumped #5a5a72 (2.95:1 — fail) to #7e7e94 (5.0:1 — AA pass)
+     so captions/hints/timestamps meet WCAG AA on --bg-base. */
+  --text-muted:     #7e7e94;
   --text-invert:    #0a0a0f;
 
   --bg-hover:     #1e1e32;
@@ -79,7 +81,9 @@
 
   --text-primary:   #1f1f2e;
   --text-secondary: #5a5a72;
-  --text-muted:     #9898b0;
+  /* Sprint 8 R4 A11y-F05: bumped #9898b0 (2.54:1 — fail) to #6a6a82 (4.8:1 — AA pass)
+     for parity with the dark-mode muted fix. */
+  --text-muted:     #6a6a82;
   --text-invert:    #ffffff;
 
   --bg-hover:     #e8e8f0;

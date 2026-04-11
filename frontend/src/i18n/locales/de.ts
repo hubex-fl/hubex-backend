@@ -111,6 +111,7 @@ export default {
     edit: 'Bearbeiten',
     create: 'Erstellen',
     close: 'Schließen',
+    skipToContent: 'Zum Hauptinhalt springen',
     refresh: 'Aktualisieren',
     search: 'Suchen',
     filter: 'Filtern',

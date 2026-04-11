@@ -311,6 +311,15 @@ function handleNavClick() {
 <template>
   <div class="min-h-screen bg-[var(--bg-base)] flex">
 
+    <!-- Skip to main content (Sprint 8 R4 A11y-F04) — visually hidden until focused -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--primary)] focus:text-[var(--text-invert)] focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+      @click.prevent="() => { const el = document.getElementById('main-content'); if (el) { el.focus(); el.scrollIntoView(); } }"
+    >
+      {{ t('common.skipToContent') }}
+    </a>
+
     <!-- Offline banner -->
     <UOfflineBanner />
 
@@ -752,10 +761,14 @@ function handleNavClick() {
 
       <!-- Camera viewport wrapper for cinematic zoom/pan effects -->
       <div id="camera-viewport" class="flex-1 flex flex-col" style="transform-origin: center center;">
-        <main :class="[
-          'flex-1 relative',
-          route.meta?.fullscreen ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6',
-        ]">
+        <main
+          id="main-content"
+          tabindex="-1"
+          :class="[
+            'flex-1 relative',
+            route.meta?.fullscreen ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6',
+          ]"
+        >
           <!-- Dim overlay when server is offline -->
           <div
             v-if="!serverHealth.serverOnline"
