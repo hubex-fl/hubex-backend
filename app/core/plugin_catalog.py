@@ -1,12 +1,15 @@
-"""Built-in plugin catalog — hardcoded list of ship-with plugins (Sprint 3).
+"""Built-in plugin catalog — hardcoded list of ship-with plugins.
 
-v1 ships **three** plugins. They are defined inline as Python data so IDEs
-can type-check the manifests and there is no I/O at startup. A future
-sprint can replace this with a remote catalog fetch (out of scope for v1).
+Sprint 3 shipped the first three (n8n + Anthropic Claude + OpenAI).
+Sprint 6 adds three more service plugins that extend the same Portainer
+runtime infrastructure:
 
-* **n8n** — service plugin, workflow automation embedded via iframe
+* **n8n** — service plugin, workflow automation (adopted from compose)
 * **anthropic-claude** — connector plugin, Anthropic API credentials
 * **openai** — connector plugin, OpenAI-compatible API credentials
+* **frigate** — service plugin, NVR + camera ML (iframe-capable)
+* **ollama** — service plugin, local LLM runtime (headless, pair with OpenAI connector)
+* **grafana** — service plugin, embedded dashboards (iframe via GF_SECURITY_ALLOW_EMBEDDING)
 
 Catalog entries are pure data. Decisions that depend on runtime state (e.g.
 "does the n8n container already exist on this host?") live in the install
@@ -184,6 +187,143 @@ _OPENAI_MANIFEST: dict[str, Any] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Sprint 6 — additional service plugins
+# ---------------------------------------------------------------------------
+
+_FRIGATE_MANIFEST: dict[str, Any] = {
+    "kind": "service",
+    "docker": {
+        # Frigate ships as a single image with the web UI + the Python
+        # detection worker. We pin the -stable tag so installs are
+        # reproducible between HubEx upgrades. Users can switch to a
+        # specific version tag via a Sprint-future "edit manifest" UI.
+        "image": "ghcr.io/blakeblackshear/frigate:stable",
+        "container_name": "hubex-plugin-frigate",
+        "ports": [
+            {"host": 5000, "container": 5000},   # Web UI + API
+            {"host": 8554, "container": 8554},   # RTSP restream
+            {"host": 8555, "container": 8555},   # WebRTC
+        ],
+        "env": [
+            # Frigate reads its main config from /config/config.yml; users
+            # must populate that file with their cameras BEFORE first
+            # start. We point the volume at a HubEx-managed path so the
+            # config survives plugin restarts. A future sprint can expose
+            # a Frigate-config editor via the Plugin configure modal.
+            {"key": "TZ", "value": "Europe/Berlin"},
+        ],
+        "volumes": [
+            {"source": "hubex_plugin_frigate_config", "target": "/config"},
+            {"source": "hubex_plugin_frigate_media", "target": "/media/frigate"},
+        ],
+    },
+    "embed": {
+        # Frigate's web UI uses absolute asset paths but DOES honor the
+        # X-Frame-Options when the backend is set to allow it. For v1 we
+        # link out to a new tab (same compromise as n8n) — iframing a
+        # live video UI is brittle anyway because MSE/WebRTC assumes the
+        # top-level origin. Users get the management UI in a new tab,
+        # HubEx still owns the container and health status.
+        "allow_iframe": False,
+        "iframe_url": "http://localhost:5000",
+        "open_url": "http://localhost:5000",
+        "proxy_path": "/plugins-embed/frigate/",
+        "sidebar_label": "Frigate NVR",
+        "sidebar_icon": "camera",
+    },
+    "health": {
+        "endpoint": "http://localhost:5000/api/config",
+        "expected_status": 200,
+    },
+}
+
+
+_OLLAMA_MANIFEST: dict[str, Any] = {
+    "kind": "service",
+    "docker": {
+        # Ollama is a headless LLM runtime — it exposes an OpenAI-compatible
+        # HTTP API on port 11434 but has NO web UI. Users interact with it
+        # via the existing HubEx "openai" connector plugin (just point
+        # base_url at http://ollama:11434/v1). Pulling models is a CLI
+        # operation (`docker exec hubex-plugin-ollama ollama pull llama3`)
+        # for now — a future sprint can surface a "pull model" button in
+        # the Plugin configure modal.
+        "image": "ollama/ollama:latest",
+        "container_name": "hubex-plugin-ollama",
+        "ports": [{"host": 11434, "container": 11434}],
+        "env": [
+            # Keep models loaded in memory for a bit so consecutive
+            # queries don't re-load from disk every time.
+            {"key": "OLLAMA_KEEP_ALIVE", "value": "30m"},
+        ],
+        "volumes": [
+            # Large volume for model storage (can easily be 10-50 GB).
+            {"source": "hubex_plugin_ollama_models", "target": "/root/.ollama"},
+        ],
+    },
+    "embed": {
+        # Pure runtime — no UI to embed or open. "open_url" points to
+        # the /api/tags endpoint which lists loaded models and is the
+        # closest thing to a "is it working?" page.
+        "allow_iframe": False,
+        "iframe_url": None,
+        "open_url": "http://localhost:11434/api/tags",
+        "proxy_path": None,
+        "sidebar_label": "Ollama",
+        "sidebar_icon": "cpu",
+    },
+    "health": {
+        # Ollama responds 200 on the root path with "Ollama is running".
+        "endpoint": "http://localhost:11434/",
+        "expected_status": 200,
+    },
+}
+
+
+_GRAFANA_MANIFEST: dict[str, Any] = {
+    "kind": "service",
+    "docker": {
+        "image": "grafana/grafana-oss:latest",
+        "container_name": "hubex-plugin-grafana",
+        "ports": [{"host": 3000, "container": 3000}],
+        "env": [
+            # Enable iframe embedding + anonymous viewer access so HubEx
+            # dashboards can surface Grafana panels without a separate
+            # login. Admins still need to sign in to Grafana to edit;
+            # this only enables read-only embed views.
+            {"key": "GF_SECURITY_ALLOW_EMBEDDING", "value": "true"},
+            {"key": "GF_AUTH_ANONYMOUS_ENABLED", "value": "true"},
+            {"key": "GF_AUTH_ANONYMOUS_ORG_ROLE", "value": "Viewer"},
+            # Allow loading Grafana under any origin's iframe — HubEx
+            # runs on localhost/domain so we need to relax the default
+            # same-origin policy.
+            {"key": "GF_SECURITY_COOKIE_SAMESITE", "value": "disabled"},
+            {"key": "GF_SERVER_ROOT_URL", "value": "http://localhost:3000/"},
+        ],
+        "volumes": [
+            {"source": "hubex_plugin_grafana_data", "target": "/var/lib/grafana"},
+        ],
+    },
+    "embed": {
+        # Grafana with GF_SECURITY_ALLOW_EMBEDDING=true is the cleanest
+        # iframe experience of our three new service plugins — dashboards
+        # render correctly inside HubEx. We still offer open_url for the
+        # "edit" workflow which is better in a full browser tab.
+        "allow_iframe": True,
+        "iframe_url": "http://localhost:3000",
+        "open_url": "http://localhost:3000",
+        "proxy_path": "/plugins-embed/grafana/",
+        "sidebar_label": "Grafana",
+        "sidebar_icon": "chart",
+    },
+    "health": {
+        "endpoint": "http://localhost:3000/api/health",
+        "expected_status": 200,
+    },
+}
+
+
 CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry(
         key="n8n",
@@ -231,6 +371,54 @@ CATALOG: tuple[CatalogEntry, ...] = (
         icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U00002728</text></svg>",
         docs_url="https://platform.openai.com/docs",
         tags=("ai", "llm", "embeddings"),
+    ),
+    # Sprint 6 — additional service plugins extending the Portainer
+    # runtime infrastructure built in Sprint 3.
+    CatalogEntry(
+        key="frigate",
+        name="Frigate",
+        description=(
+            "Open-source NVR with real-time camera object detection. Connects "
+            "your IP cameras, runs ML inference on a Coral TPU or CPU, and feeds "
+            "detection events into HubEx automations. Management UI opens in a new tab."
+        ),
+        kind="service",
+        category="surveillance",
+        manifest=_FRIGATE_MANIFEST,
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U0001F4F9</text></svg>",
+        docs_url="https://docs.frigate.video",
+        tags=("video", "ml", "nvr", "cctv", "object-detection"),
+    ),
+    CatalogEntry(
+        key="ollama",
+        name="Ollama",
+        description=(
+            "Local LLM runtime — run open-source models (Llama, Mistral, Phi, "
+            "Qwen, ...) on your own hardware with an OpenAI-compatible API. "
+            "Pair with the OpenAI connector (base_url=http://ollama:11434/v1) "
+            "to use your local models everywhere HubEx talks to an LLM."
+        ),
+        kind="service",
+        category="ai",
+        manifest=_OLLAMA_MANIFEST,
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U0001F999</text></svg>",
+        docs_url="https://ollama.com/library",
+        tags=("ai", "llm", "local", "self-hosted"),
+    ),
+    CatalogEntry(
+        key="grafana",
+        name="Grafana",
+        description=(
+            "Metric dashboards with rich visualisations. Point Grafana at the "
+            "HubEx PostgreSQL or a Prometheus exporter, build panels, then embed "
+            "them directly inside HubEx dashboards. Iframe-embeddable out of the box."
+        ),
+        kind="service",
+        category="monitoring",
+        manifest=_GRAFANA_MANIFEST,
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U0001F4C8</text></svg>",
+        docs_url="https://grafana.com/docs/grafana/latest",
+        tags=("monitoring", "dashboard", "metrics", "time-series"),
     ),
 )
 

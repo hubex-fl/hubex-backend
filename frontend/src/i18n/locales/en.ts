@@ -2084,6 +2084,10 @@ export default {
       n8n: 'Visual workflow automation. Connect HubEx devices to 400+ external services with a drag-and-drop editor. Embedded directly in HubEx.',
       'anthropic-claude': 'Claude AI models from Anthropic. Stores your API key in HubEx secrets so any part of HubEx (AI Coop, automation nodes, dashboards) can use it.',
       openai: 'OpenAI or any OpenAI-compatible API (GPT, Groq, Together, Ollama). Stores the API key and base URL in HubEx secrets for reuse across features.',
+      // Sprint 6 — additional service plugins
+      frigate: 'Open-source NVR with real-time camera object detection. Connects your IP cameras, runs ML inference on a Coral TPU or CPU, and feeds detection events into HubEx automations. Management UI opens in a new tab.',
+      ollama: 'Local LLM runtime — run open-source models (Llama, Mistral, Phi, Qwen, …) on your own hardware with an OpenAI-compatible API. Pair with the OpenAI connector (base_url=http://ollama:11434/v1) to use local models everywhere HubEx talks to an LLM.',
+      grafana: 'Metric dashboards with rich visualisations. Point Grafana at HubEx PostgreSQL or a Prometheus exporter, build panels, then embed them directly inside HubEx dashboards. Iframe-embeddable out of the box.',
     },
     marketplace: 'Marketplace',
     installed: 'Installed',

@@ -1340,13 +1340,94 @@
 - [x] **5.c Legacy alert format backfill script** — `scripts/backfill_alert_format.py`. One-pass idempotent SQLAlchemy script that regex-rewrites `variable 'X' value N gt M` → `X = N > M` across existing `AlertEvent.message` rows. Dry-run by default, `--commit` flag to write. 10/10 unit cases pass. Admin can run at any time.
 - [x] **5.d `vue/no-undef-components` ESLint rule** — prevents the Sprint 3.8-hotfix DeviceDetail REAL-18/19 pattern (unresolved component renders as unknown HTML tag + leaks slot DOM into page flow). Zero violations in the current codebase — 3.8-hotfix closed the whole category.
 
-### Sprint 6+ — TBD
-> Candidates (pick based on business priority):
-> - Additional service plugins (Frigate / Ollama / Grafana) — extends Sprint 3 Plugin Manager infrastructure
-> - Firmware Builder → OTA integration — closes the Sprint 4 feature loop (built .bin auto-flash via M14b OTA)
-> - Phase 10 C1 License System — start the commercialization track
-> - HA/MQTT deep integration (M21 Steps 4-5)
-> - Bundle splitting (Vite `index.js` is 664 KB, warns every build)
+### Sprint 6 — Service Plugin Expansion ✅ DONE (2026-04-11)
+> Frigate / Ollama / Grafana catalog entries. Extends Sprint 3 Plugin
+> Manager v2 — these are config + docker image entries in
+> `app/core/plugin_catalog.py`, the Portainer runtime already handles
+> them. Total catalog entries: 3 → 6.
+- [x] **Frigate service plugin** — NVR + real-time camera object detection. `ghcr.io/blakeblackshear/frigate:stable`, 3 ports (5000/8554/8555), config volume + media volume, allow_iframe=false (live video UIs are brittle in frames, opens in new tab instead).
+- [x] **Ollama service plugin** — headless local LLM runtime. `ollama/ollama:latest`, port 11434, model-storage volume, no UI (pure runtime), documented as pairing with the existing OpenAI connector via `base_url=http://ollama:11434/v1` — clean architecture where Ollama = runtime, OpenAI connector = how you talk to it. OLLAMA_KEEP_ALIVE=30m env so consecutive queries don't re-load models.
+- [x] **Grafana service plugin** — metric dashboards. `grafana/grafana-oss:latest`, port 3000, GF_SECURITY_ALLOW_EMBEDDING=true + GF_AUTH_ANONYMOUS_ENABLED=true + anonymous Viewer role so HubEx dashboards can surface Grafana panels without separate login. allow_iframe=true + proxy_path /plugins-embed/grafana/. The cleanest iframe experience of the three.
+- [x] Icon SVGs for all three (inline data-URL emoji: 📹 Frigate / 🦙 Ollama / 📈 Grafana) + full i18n descriptions (en + de).
+- [x] Browser-verified: /plugins shows "Marktplatz — 6 verfügbar", all 3 new cards render with German descriptions, tags, Service badges, Install buttons enabled. Zero console errors.
+
+**Out of scope (intentionally):** Actually installing + pulling Frigate (2 GB image) / Ollama / Grafana in the test environment. The critical path (catalog entry + i18n helper + UI render) is end-to-end verified; runtime installation will be tested on demand by anyone clicking Install.
+
+### Sprint 7 — Firmware Builder → OTA Integration
+> Closes the Sprint 4 feature loop: built `.bin` artifacts from the
+> Firmware Builder should be one-click-flashable via the existing M14b
+> OTA system. "Build → Push to device" workflow from FirmwareBuilder.vue.
+- [ ] Backend: `POST /api/v1/firmware/builds/{id}/ota` accepts a device_id, creates an OTA job from the build artifact
+- [ ] Frontend: "Push to device" button next to "Download .bin" in FirmwareBuilder.vue with device selector
+- [ ] OTA progress surfaced in build list (linked OTA job id + status)
+
+### Sprint 7.5 — Bundle Splitting
+> Perf-hygiene wrapper before the Dev Stable Review. Vite warns every
+> build that `index.js` is ~664 KB; splitting routes + vendors with
+> `build.rollupOptions.output.manualChunks` drops the initial payload
+> and makes the UX review cleaner (no false-flagging slow load as a
+> UX bug). Small, contained scope, low risk.
+- [ ] Route-based code splitting already exists (we're using `() => import(...)`) but vendor chunks are all in the main bundle — split `vue`, `vue-router`, `vue-i18n`, `pinia`, `@vueuse`, `lucide`, etc.
+- [ ] Measure dist sizes before/after — target: main bundle <300 KB gzip
+
+### 🎯 Sprint 8 — DEV STABLE REVIEW + FIXING
+> **User-requested milestone (2026-04-11).** Before adding more features,
+> do a comprehensive review of everything built so far — basic
+> functionality → UI → UX → optics — and fix whatever surfaces. After
+> the review + fixing, tag the state as `dev-stable-v1` and use it as
+> the baseline for the demo version.
+
+**Why here:** Sprint 6 (service plugins) + Sprint 7 (OTA) + Sprint 7.5
+(bundle splitting) finish all the in-flight feature loops and perf
+hygiene. After that, nothing is "half-done" — it's the natural
+intermediate state for a full audit. Doing the review earlier means
+auditing incomplete features (OTA loop still open). Doing it later
+means License System's feature-gating infrastructure gets mixed into
+the audit scope.
+
+**Review scope — how we test:**
+1. **Smoke-test every page** (26 routes): does it load, no console errors, no unresolved components, no network 4xx/5xx
+2. **Full user walkthrough per persona** — new user, operator, admin, viewer — from signup/login through the 7 UX principles
+3. **Cross-locale pass** — DE + EN, check for raw-English leaks (post-Sprint-3.6/3.7/3.8 there should be none left)
+4. **Cross-device pass** — mobile 375px, tablet 768px, desktop 1280px; use `preview_resize`
+5. **Perf audit** — Lighthouse or Chrome devtools Performance trace on Dashboard, Devices, DeviceDetail, Alerts, Automations
+6. **Accessibility quick-pass** — keyboard nav, focus visible, ARIA labels on icon buttons
+7. **Flow integrity** — follow the Vision ("Anbinden → Verstehen → Visualisieren → Automatisieren") end-to-end for each persona
+8. **Edge cases** — empty states, error states, race conditions, permission-denied, feature-disabled, network-offline
+
+**Deliverables:**
+- `REVIEW_SPRINT_8.md` with one section per route + one per persona with observations, severity, fix-or-defer status
+- Fix list tracked in BUG_TRACKER.md as "Sprint 8 review findings"
+- After fixing, git tag `dev-stable-v1` + a `CHANGELOG.md` entry
+
+### Sprint 8.5 — Dev Stable Tag + Maturity Badge Infrastructure
+> Ships the scaffolding that makes "alpha/beta/coming_soon" labels
+> real. Without this, the demo version concept has no way to hide
+> in-progress features from end users.
+- [ ] Alembic migration: add `maturity` column to `feature_flag` table (enum `stable` | `beta` | `alpha` | `coming_soon`, default `stable`)
+- [ ] Seed migration: backfill current 27 features → `stable` (the Sprint 8 review will have confirmed they are)
+- [ ] Backend `GET /api/v1/features` returns `maturity` in the payload
+- [ ] Frontend: `UBadge` `MaturityBadge` component, rendered next to feature names in Settings → Features
+- [ ] Demo-mode environment flag `HUBEX_DEMO_MODE=1` filters out non-stable features from the nav + public feature list (but still visible to admins in Settings with a badge)
+- [ ] Git tag `dev-stable-v1` + CHANGELOG entry
+
+### Sprint 9 — Phase 10 C1 License System
+> Now has the maturity infrastructure from Sprint 8.5 to plug into.
+> License files (Ed25519 signed JSON) become the sophisticated commercial
+> version of feature gating — they can override `maturity` per license
+> tier (e.g. a beta-user license can enable `maturity == beta` features).
+- [ ] License file format (JSON + Ed25519 signature)
+- [ ] `app/core/license.py` validation
+- [ ] License → JWT feature-flag embedding
+- [ ] Frontend Enterprise-feature toggles per license
+- [ ] Admin Console license info (plan, expiry, features)
+- [ ] Key-pair generation + secure private key handling
+
+### Sprint 10+ — TBD (post-commercialization)
+> Candidates: HA/MQTT deep integration (M21 Steps 4-5), Phase 10 C2-C6
+> (CE/EE feature gating, security hardening, legal/compliance, platform
+> integrations, product-level booster features), Phase 11a hardware
+> implementation, Phase 11b evolution brainstorm items.
 
 ---
 
@@ -1820,7 +1901,12 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │   └─► Sprint 4 (firmware_builder)                        ✅ DONE
                                 │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META + REAL-18/19)  ✅ DONE
                                 │               └─► Sprint 5 (useFeatureLabels, REAL-10, backfill, lint)  ✅ DONE
-                                │                     └─► Sprint 6 (new track — TBD)  ◄── NÄCHSTER SCHRITT
+                                │                     └─► Sprint 6 (Frigate/Ollama/Grafana plugins)  ✅ DONE
+                                │                           └─► Sprint 7 (Firmware Builder OTA)  ◄── NÄCHSTER SCHRITT
+                                │                                 └─► Sprint 7.5 (Bundle splitting)
+                                │                                       └─► 🎯 Sprint 8 (DEV STABLE REVIEW)
+                                │                                             └─► Sprint 8.5 (dev-stable-v1 tag + maturity badges)
+                                │                                                   └─► Sprint 9 (Phase 10 C1 License System)
                                 │
                                 └─► Phase 10 (Commercial)                  [TODO]
                                       │

@@ -2075,6 +2075,10 @@ export default {
       n8n: 'Visuelle Workflow-Automation. Verbindet HubEx-Ger\u00e4te mit 400+ externen Services \u00fcber einen Drag-and-Drop-Editor. Direkt in HubEx eingebettet.',
       'anthropic-claude': 'Claude-KI-Modelle von Anthropic. Speichert deinen API-Key in HubEx-Secrets, damit jeder Teil von HubEx (AI Coop, Automation-Nodes, Dashboards) ihn nutzen kann.',
       openai: 'OpenAI oder ein OpenAI-kompatibler API-Provider (GPT, Groq, Together, Ollama). Speichert API-Key und Base-URL in HubEx-Secrets zur Wiederverwendung.',
+      // Sprint 6 — additional service plugins
+      frigate: 'Open-Source-NVR mit Echtzeit-Objekterkennung f\u00fcr IP-Kameras. ML-Inferenz auf Coral-TPU oder CPU, Erkennungs-Events flie\u00dfen in HubEx-Automationen. Management-UI \u00f6ffnet in neuem Tab.',
+      ollama: 'Lokale LLM-Laufzeit — Open-Source-Modelle (Llama, Mistral, Phi, Qwen, \u2026) auf eigener Hardware mit OpenAI-kompatibler API. Kombiniere mit dem OpenAI-Connector (base_url=http://ollama:11434/v1) um lokale Modelle \u00fcberall einzusetzen.',
+      grafana: 'Metrik-Dashboards mit reichen Visualisierungen. Grafana auf HubEx-PostgreSQL oder einen Prometheus-Exporter richten, Panels bauen und direkt in HubEx-Dashboards einbetten. Iframe-f\u00e4hig out-of-the-box.',
     },
     marketplace: 'Marktplatz',
     installed: 'Installiert',
