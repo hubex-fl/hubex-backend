@@ -455,6 +455,9 @@ export const devicesOverviewTour: TourDefinition = {
   steps: devicesOverviewSteps,
   category: "builtin",
   autoplay: false,
+  // TourDefinition requires autoplayInterval even when autoplay is false;
+  // this value is unused because autoplay is off but satisfies the type.
+  autoplayInterval: 5000,
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -497,6 +500,7 @@ export const automationsOverviewTour: TourDefinition = {
   steps: automationsOverviewSteps,
   category: "builtin",
   autoplay: false,
+  autoplayInterval: 5000,
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -538,6 +542,7 @@ export const variablesOverviewTour: TourDefinition = {
   steps: variablesOverviewSteps,
   category: "builtin",
   autoplay: false,
+  autoplayInterval: 5000,
 };
 
 /** All static built-in tour definitions (excluding dynamic dashboard-present). */
