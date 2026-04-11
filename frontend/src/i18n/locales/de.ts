@@ -54,6 +54,12 @@ export default {
     cmsMedia: 'Medien',
     cmsRedirects: 'Weiterleitungen',
     cmsSettings: 'Einstellungen',
+    // Sprint 8 R2-F11 — CMS-Editor-Unterrouten
+    cmsFormEdit: 'Formular bearbeiten',
+    cmsFormSubmissions: 'Einsendungen',
+    cmsMenuEdit: 'Men\u00fc bearbeiten',
+    cmsPageEdit: 'Seite bearbeiten',
+    cmsPageView: 'Seite ansehen',
   },
   navGroups: {
     main: 'Haupt',
@@ -61,6 +67,15 @@ export default {
     monitoring: 'Monitoring',
     tools: 'Werkzeuge',
     system: 'System',
+  },
+  // Sprint 8 R2-F10 — Seitenleisten-Menü "+ Neu"
+  newMenu: {
+    label: 'Neu',
+    createNewTooltip: 'Neu erstellen...',
+    device: 'Ger\u00e4t',
+    automation: 'Automatisierung',
+    alertRule: 'Alarm-Regel',
+    dashboard: 'Dashboard',
   },
   common: {
     save: 'Speichern',

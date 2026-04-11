@@ -9,6 +9,7 @@ import {
   deleteNotification,
   severityColor,
 } from "../lib/notifications";
+import { fmtRelativeIso } from "../lib/relativeTime";
 import { useWebSocket, type WsNotification } from "../composables/useWebSocket";
 
 const isOpen = ref(false);
@@ -95,16 +96,7 @@ async function handleDelete(n: NotificationItem) {
 }
 
 function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffM = Math.floor(diffMs / 60000);
-  if (diffM < 1) return "just now";
-  if (diffM < 60) return `${diffM}m ago`;
-  const diffH = Math.floor(diffM / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  const diffD = Math.floor(diffH / 24);
-  return `${diffD}d ago`;
+  return fmtRelativeIso(iso);
 }
 
 onMounted(async () => {

@@ -22,6 +22,7 @@ import {
 } from "../lib/variables";
 import { DISPLAY_HINT_OPTIONS } from "../lib/viz-resolve";
 import type { VizDataPoint } from "../lib/viz-types";
+import { fmtAgeSeconds } from "../lib/relativeTime";
 
 import UCard   from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
@@ -195,10 +196,9 @@ function valueDisplay(def: VariableDefinition, val?: VariableValue): string {
 function updatedAgo(val?: VariableValue): string {
   if (!val?.updated_at) return "–";
   const ago = Math.floor((Date.now() - new Date(val.updated_at).getTime()) / 1000);
-  if (ago < 60)    return `${ago}s ago`;
-  if (ago < 3600)  return `${Math.floor(ago / 60)}m ago`;
-  if (ago < 86400) return `${Math.floor(ago / 3600)}h ago`;
-  return new Date(val.updated_at).toLocaleDateString();
+  // >1 day: show a locale date instead of "X days ago" (unchanged behaviour)
+  if (ago >= 86400) return new Date(val.updated_at).toLocaleDateString();
+  return fmtAgeSeconds(ago);
 }
 
 function scopeStatus(scope: string): "info" | "neutral" {

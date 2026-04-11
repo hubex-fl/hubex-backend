@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { apiFetch } from "../lib/api";
+import { fmtRelativeIso } from "../lib/relativeTime";
 import { useToastStore } from "../stores/toast";
 
 const toast = useToastStore();
@@ -109,14 +110,7 @@ function closeCreate() {
 
 function relativeTime(dt: string | null): string {
   if (!dt) return "never";
-  const diff = Date.now() - new Date(dt).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  return fmtRelativeIso(dt);
 }
 
 onMounted(loadKeys);

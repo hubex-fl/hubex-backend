@@ -159,6 +159,7 @@ import { computed, ref } from "vue";
 import type { VizDataPoint, VizWidgetProps } from "../../lib/viz-types";
 import { VIZ_COLORS } from "../../lib/viz-types";
 import { resolveVizType, vizTypeLabel } from "../../lib/viz-resolve";
+import { fmtAgeSeconds } from "../../lib/relativeTime";
 import type { TimeRange } from "../../composables/useVariableHistory";
 
 import VizSparkline      from "./VizSparkline.vue";
@@ -268,9 +269,7 @@ const lastUpdated = computed(() => {
   if (!pts.length) return null;
   const last = Math.max(...pts.map((p) => p.t));
   const ago = Math.floor(Date.now() / 1000 - last);
-  if (ago < 60)   return `${ago}s ago`;
-  if (ago < 3600) return `${Math.floor(ago / 60)}m ago`;
-  return `${Math.floor(ago / 3600)}h ago`;
+  return fmtAgeSeconds(ago);
 });
 
 // category prop — may not be part of VizWidgetProps but injected externally

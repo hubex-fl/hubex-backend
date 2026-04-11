@@ -1554,12 +1554,15 @@ function payloadPreview(payload: Record<string, any> | null | undefined, expande
   return text.slice(0, 120) + "...";
 }
 
+// Sprint 8 R2-F06 fix: previously hardcoded English "{N}s ago" —
+// reuses the dashboardsList.relative.* namespace for consistency
+// with Devices.vue / Dashboards.vue relative-time strings.
 function fmtAge(ageSeconds: number | null) {
   if (ageSeconds === null) return "—";
   const bucketed = bucketSeconds(ageSeconds);
-  if (bucketed < 60) return `${bucketed}s ago`;
-  if (bucketed < 3600) return `${Math.floor(bucketed / 60)}m ago`;
-  return `${Math.floor(bucketed / 3600)}h ago`;
+  if (bucketed < 60) return t("dashboardsList.relative.secondsAgo", { n: bucketed });
+  if (bucketed < 3600) return t("dashboardsList.relative.minutesAgo", { n: Math.floor(bucketed / 60) });
+  return t("dashboardsList.relative.hoursAgo", { n: Math.floor(bucketed / 3600) });
 }
 
 function fmtRemaining(seconds: number | null) {

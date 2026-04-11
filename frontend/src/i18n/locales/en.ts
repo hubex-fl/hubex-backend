@@ -54,6 +54,12 @@ export default {
     cmsMedia: 'Media',
     cmsRedirects: 'Redirects',
     cmsSettings: 'Settings',
+    // Sprint 8 R2-F11 — CMS editor sub-routes (router.ts titleKey)
+    cmsFormEdit: 'Edit Form',
+    cmsFormSubmissions: 'Form Submissions',
+    cmsMenuEdit: 'Edit Menu',
+    cmsPageEdit: 'Edit Page',
+    cmsPageView: 'View Page',
   },
   navGroups: {
     main: 'Main',
@@ -61,6 +67,15 @@ export default {
     monitoring: 'Monitoring',
     tools: 'Tools',
     system: 'System',
+  },
+  // Sprint 8 R2-F10 — sidebar "+ New" menu
+  newMenu: {
+    label: 'New',
+    createNewTooltip: 'Create new...',
+    device: 'Device',
+    automation: 'Automation',
+    alertRule: 'Alert Rule',
+    dashboard: 'Dashboard',
   },
   common: {
     save: 'Save',

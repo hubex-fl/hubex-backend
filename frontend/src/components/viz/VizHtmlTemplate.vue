@@ -19,6 +19,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { VizDataPoint } from "../../lib/viz-types";
+import { fmtAgeSeconds } from "../../lib/relativeTime";
 
 export interface VizHtmlTemplateProps {
   htmlTemplate?: string;
@@ -77,15 +78,12 @@ function formatTimestamp(ts: number | null): string {
   return d.toLocaleString();
 }
 
-/** Format timestamp as relative time ("2m ago") */
+/** Format timestamp as relative time ("2m ago" / "vor 2 Min") */
 function formatRelativeTime(ts: number | null): string {
   if (!ts) return "--";
   const ago = Math.floor(Date.now() / 1000 - ts);
-  if (ago < 0) return "just now";
-  if (ago < 60) return `${ago}s ago`;
-  if (ago < 3600) return `${Math.floor(ago / 60)}m ago`;
-  if (ago < 86400) return `${Math.floor(ago / 3600)}h ago`;
-  return `${Math.floor(ago / 86400)}d ago`;
+  if (ago < 0) return fmtAgeSeconds(0);
+  return fmtAgeSeconds(ago);
 }
 
 /** Replace all template variables in the HTML string */

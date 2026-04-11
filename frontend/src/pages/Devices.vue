@@ -365,15 +365,19 @@ function fmtTime(iso: string | null) {
   }
 }
 
+// Sprint 8 R2-F04 fix: previously hardcoded English "{N}s ago" /
+// "{N}m ago" / "{N}h ago" — now routes through i18n via the
+// existing dashboardsList.relative.* namespace (reused because
+// the same relative-time vocabulary applies).
 function fmtAge(seconds: number | null) {
   if (seconds === null || seconds === undefined) return "";
   let s = seconds;
   if (s < 60) s = Math.floor(s / 5) * 5;
   else if (s < 600) s = Math.floor(s / 30) * 30;
   else s = Math.floor(s / 60) * 60;
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  return `${Math.floor(s / 3600)}h ago`;
+  if (s < 60) return t("dashboardsList.relative.secondsAgo", { n: s });
+  if (s < 3600) return t("dashboardsList.relative.minutesAgo", { n: Math.floor(s / 60) });
+  return t("dashboardsList.relative.hoursAgo", { n: Math.floor(s / 3600) });
 }
 
 function healthStatus(h: Device["health"]): "ok" | "warn" | "bad" {

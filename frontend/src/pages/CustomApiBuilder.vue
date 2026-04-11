@@ -23,6 +23,7 @@ import UToggle from "../components/ui/UToggle.vue";
 import UInput from "../components/ui/UInput.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import { fmtRelativeIso } from "../lib/relativeTime";
 
 const { t, tm, rt } = useI18n();
 const toast = useToastStore();
@@ -359,11 +360,7 @@ watch(modalStep, (step) => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function relativeTime(ts: string | null): string {
   if (!ts) return t("customApi.neverCalled");
-  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  return fmtRelativeIso(ts);
 }
 
 function getEndpointUrl(ep: CustomEndpoint): string {

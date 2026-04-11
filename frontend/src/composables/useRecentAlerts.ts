@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { apiFetch } from "../lib/api";
 import { createPoller } from "../lib/poller";
+import { i18n } from "../i18n";
 
 export interface AlertItem {
   id: number;
@@ -34,6 +35,8 @@ export function severityStatus(sev: string): "bad" | "warn" | "info" {
   return "info";
 }
 
+// Sprint 8 R2-F02 fix: previously hardcoded German strings "vor Xh" /
+// "gerade eben" — leaked onto EN locale. Now routes through i18n.
 export function relativeTime(dateStr: string): string {
   if (!dateStr) return "";
   const parsed = new Date(dateStr).getTime();
@@ -42,10 +45,11 @@ export function relativeTime(dateStr: string): string {
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
   const days = Math.floor(hours / 24);
-  if (days > 0) return `vor ${days}d`;
-  if (hours > 0) return `vor ${hours}h`;
-  if (mins > 0) return `vor ${mins}m`;
-  return "gerade eben";
+  const t = i18n.global.t;
+  if (days > 0) return t("dashboardsList.relative.daysAgo", { n: days });
+  if (hours > 0) return t("dashboardsList.relative.hoursAgo", { n: hours });
+  if (mins > 0) return t("dashboardsList.relative.minutesAgo", { n: mins });
+  return t("dashboardsList.relative.justNow");
 }
 
 export function useRecentAlerts(intervalMs = 10_000) {

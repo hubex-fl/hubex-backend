@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { VizDataPoint } from "../../lib/viz-types";
+import { fmtAgeSeconds } from "../../lib/relativeTime";
 
 const props = withDefaults(defineProps<{
   currentValue?: unknown;
@@ -64,10 +65,7 @@ const lastChange = computed(() => {
     const pVal = Boolean(p.raw);
     if (pVal !== current) {
       const ago = Math.floor((Date.now() / 1000 - p.t));
-      if (ago < 60) return `${ago}s ago`;
-      if (ago < 3600) return `${Math.floor(ago / 60)}m ago`;
-      if (ago < 86400) return `${Math.floor(ago / 3600)}h ago`;
-      return `${Math.floor(ago / 86400)}d ago`;
+      return fmtAgeSeconds(ago);
     }
   }
   return null;

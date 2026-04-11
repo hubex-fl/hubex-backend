@@ -351,7 +351,7 @@ function handleNavClick() {
         </span>
       </div>
 
-      <!-- + New Button -->
+      <!-- + New Button — Sprint 8 R2-F10 i18n fix -->
       <div v-if="!collapsed" class="px-2.5 pt-2 pb-1">
         <div class="relative">
           <button
@@ -359,23 +359,23 @@ function handleNavClick() {
             @click="showNewMenu = !showNewMenu"
           >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            New
+            {{ t('newMenu.label') }}
           </button>
           <div
             v-if="showNewMenu"
             class="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-lg py-1"
           >
             <router-link to="/devices?wizard=open" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
-              <span>+ Device</span>
+              <span>+ {{ t('newMenu.device') }}</span>
             </router-link>
             <router-link to="/automations?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
-              <span>+ Automation</span>
+              <span>+ {{ t('newMenu.automation') }}</span>
             </router-link>
             <router-link to="/alerts?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
-              <span>+ Alert Rule</span>
+              <span>+ {{ t('newMenu.alertRule') }}</span>
             </router-link>
             <router-link to="/dashboards?create=true" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" @click="showNewMenu = false">
-              <span>+ Dashboard</span>
+              <span>+ {{ t('newMenu.dashboard') }}</span>
             </router-link>
           </div>
         </div>
@@ -383,7 +383,7 @@ function handleNavClick() {
       <div v-else class="px-2 pt-2 pb-1">
         <button
           class="w-full flex items-center justify-center p-1.5 rounded-lg text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-          title="Create new..."
+          :title="t('newMenu.createNewTooltip')"
           @click="showNewMenu = !showNewMenu"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
