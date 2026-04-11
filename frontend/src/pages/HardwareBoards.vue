@@ -4,12 +4,14 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { useBoardLabels } from "../composables/useBoardLabels";
+import { useShieldLabels } from "../composables/useShieldLabels";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 
 const { t } = useI18n();
 const router = useRouter();
 const { boardName, boardDescription } = useBoardLabels();
+const { shieldName, shieldDescription } = useShieldLabels();
 
 function openWizard() {
   router.push("/hardware/wizard");
@@ -78,12 +80,11 @@ onMounted(loadAll);
       </div>
       <button class="wizard-cta-btn" @click="openWizard">
         <span class="cta-plus">+</span>
-        Neues ESP-Projekt
+        {{ t('hardware.newProjectCta') }}
       </button>
     </div>
     <div class="wizard-hint">
-      <strong>Tipp:</strong> Der Wizard legt in 5 Schritten ein komplettes, compilierfertiges
-      ESP32-Projekt als ZIP an — inklusive Device, API-Key und Pin-Konfiguration.
+      <strong>{{ t('hardware.wizardHintLabel') }}</strong> {{ t('hardware.wizardHintBody') }}
     </div>
 
     <div v-if="loading" class="text-xs text-[var(--text-muted)]">{{ t('common.loading') }}</div>
@@ -157,12 +158,12 @@ onMounted(loadAll);
           <div v-for="s in shields" :key="s.id" class="flex items-start gap-3 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]">
             <div class="flex-1">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-medium text-[var(--text-primary)]">{{ s.name }}</span>
+                <span class="text-xs font-medium text-[var(--text-primary)]">{{ shieldName(s) }}</span>
                 <UBadge v-if="s.bus_type" status="info" size="sm">{{ s.bus_type }}</UBadge>
                 <UBadge v-if="s.target_chip" status="neutral" size="sm">{{ s.target_chip }}</UBadge>
-                <UBadge v-else status="neutral" size="sm">universal</UBadge>
+                <UBadge v-else status="neutral" size="sm">{{ t('hardware.shieldBadgeUniversal') }}</UBadge>
               </div>
-              <p v-if="s.description" class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ s.description }}</p>
+              <p v-if="shieldDescription(s)" class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ shieldDescription(s) }}</p>
               <div v-if="s.components?.length" class="flex gap-1 mt-1">
                 <span v-for="(c, i) in s.components" :key="i" class="text-[9px] px-1 py-0.5 rounded bg-[var(--bg-base)] border border-[var(--border)] font-mono text-[var(--text-muted)]">
                   {{ (c as Record<string, unknown>).model || (c as Record<string, unknown>).type }}

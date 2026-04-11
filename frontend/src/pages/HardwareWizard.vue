@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { downloadProjectZip, CodegenError } from "../lib/codegen";
 import { useToastStore } from "../stores/toast";
 import { useBoardLabels } from "../composables/useBoardLabels";
+import { useComponentLabels } from "../composables/useComponentLabels";
 
+const { t } = useI18n();
 const { boardName, boardDescription } = useBoardLabels();
+const { componentName, componentDescription } = useComponentLabels();
 
 interface Board {
   id: number;
@@ -67,7 +71,7 @@ onMounted(async () => {
     boards.value = Array.from(byChip.values());
     components.value = componentsRes;
   } catch (e: any) {
-    toast.addToast(e?.message || "Failed to load hardware catalog", "error");
+    toast.addToast(e?.message || t("hardwareWizard.loadCatalogFailed"), "error");
   } finally {
     loading.value = false;
   }
@@ -149,7 +153,10 @@ async function downloadProject() {
     });
     lastResult.value = result;
     toast.addToast(
-      `Device created (id=${result.device_id}) and project downloaded as ${result.filename}`,
+      t("hardwareWizard.toast.created", {
+        id: result.device_id ?? "",
+        filename: result.filename,
+      }),
       "success",
       6000
     );
@@ -157,7 +164,7 @@ async function downloadProject() {
     if (e instanceof CodegenError) {
       toast.addToast(`${e.code}: ${e.message}`, "error", 8000);
     } else {
-      toast.addToast(e?.message || "Project download failed", "error");
+      toast.addToast(e?.message || t("hardwareWizard.toast.downloadFailed"), "error");
     }
   } finally {
     submitting.value = false;
@@ -182,20 +189,20 @@ function resetWizard() {
     <div class="wizard-card">
       <!-- Header -->
       <header class="wiz-head">
-        <div class="wiz-title"><span class="brand">HUBEX</span> · Neues ESP-Projekt</div>
-        <div class="wiz-step">Schritt {{ currentStep }} von {{ totalSteps }}</div>
+        <div class="wiz-title"><span class="brand">HUBEX</span> · {{ t('hardwareWizard.brandTitle') }}</div>
+        <div class="wiz-step">{{ t('hardwareWizard.stepOfTotal', { current: currentStep, total: totalSteps }) }}</div>
       </header>
       <div class="progress-track">
         <div class="progress-fill" :style="{ width: `${progressPercent}%` }" />
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="loading-block">Lade Hardware-Katalog…</div>
+      <div v-if="loading" class="loading-block">{{ t('hardwareWizard.loadingCatalog') }}</div>
 
       <!-- Step 1: Board -->
       <section v-else-if="currentStep === 1" class="step">
-        <h1 class="step-title">Welches Board nutzt du?</h1>
-        <p class="step-sub">Wähle dein Mikrocontroller-Board.</p>
+        <h1 class="step-title">{{ t('hardwareWizard.step1.title') }}</h1>
+        <p class="step-sub">{{ t('hardwareWizard.step1.subtitle') }}</p>
 
         <div class="board-grid">
           <button
@@ -209,8 +216,8 @@ function resetWizard() {
             <div class="board-name">{{ boardName(b) }}</div>
             <div v-if="boardDescription(b)" class="board-desc">{{ boardDescription(b) }}</div>
             <div class="board-tags">
-              <span v-if="b.wifi_capable" class="tag">WiFi</span>
-              <span v-if="b.bluetooth_capable" class="tag">BLE</span>
+              <span v-if="b.wifi_capable" class="tag">{{ t('hardwareWizard.step1.tagWifi') }}</span>
+              <span v-if="b.bluetooth_capable" class="tag">{{ t('hardwareWizard.step1.tagBle') }}</span>
             </div>
           </button>
         </div>
@@ -218,11 +225,8 @@ function resetWizard() {
 
       <!-- Step 2: Framework -->
       <section v-else-if="currentStep === 2" class="step">
-        <h1 class="step-title">Welches Framework?</h1>
-        <p class="step-sub">
-          Der generierte Code-Stil hängt vom Framework ab. Wir empfehlen PlatformIO
-          für den komfortabelsten Build mit automatischem Library-Download.
-        </p>
+        <h1 class="step-title">{{ t('hardwareWizard.step2.title') }}</h1>
+        <p class="step-sub">{{ t('hardwareWizard.step2.subtitle') }}</p>
 
         <div class="fw-grid">
           <button
@@ -230,11 +234,16 @@ function resetWizard() {
             :class="{ selected: selectedFramework === 'platformio' }"
             @click="selectFramework('platformio')"
           >
-            <div class="fw-name">PlatformIO <span class="recommended">empfohlen</span></div>
+            <div class="fw-name">
+              {{ t('hardwareWizard.step2.platformioName') }}
+              <span class="recommended">{{ t('hardwareWizard.step2.recommended') }}</span>
+            </div>
             <div class="fw-desc">
-              <strong>platformio.ini</strong> + <code>src/main.cpp</code>. Libraries
-              werden automatisch aus der Cloud geladen, beim Build kein manuelles Setup.
-              Öffne den Ordner in VS Code und führe <code>pio run -t upload</code> aus.
+              <i18n-t keypath="hardwareWizard.step2.platformioDesc" scope="global">
+                <template #iniFile><strong>platformio.ini</strong></template>
+                <template #mainFile><code>src/main.cpp</code></template>
+                <template #runCmd><code>pio run -t upload</code></template>
+              </i18n-t>
             </div>
           </button>
 
@@ -243,10 +252,11 @@ function resetWizard() {
             :class="{ selected: selectedFramework === 'arduino' }"
             @click="selectFramework('arduino')"
           >
-            <div class="fw-name">Arduino IDE</div>
+            <div class="fw-name">{{ t('hardwareWizard.step2.arduinoName') }}</div>
             <div class="fw-desc">
-              Flacher <code>.ino</code>-Sketch. Öffne den Ordner direkt in der Arduino
-              IDE, installiere die im README aufgelisteten Libraries und drücke Upload.
+              <i18n-t keypath="hardwareWizard.step2.arduinoDesc" scope="global">
+                <template #sketchFile><code>.ino</code></template>
+              </i18n-t>
             </div>
           </button>
 
@@ -255,11 +265,12 @@ function resetWizard() {
             :class="{ selected: selectedFramework === 'micropython' }"
             @click="selectFramework('micropython')"
           >
-            <div class="fw-name">MicroPython</div>
+            <div class="fw-name">{{ t('hardwareWizard.step2.micropythonName') }}</div>
             <div class="fw-desc">
-              Python statt C++: <code>boot.py</code> + <code>main.py</code>. Benötigt
-              eine vorinstallierte MicroPython-Firmware auf deinem Board. Achtung:
-              manche Komponenten haben in v1 noch keinen MicroPython-Treiber.
+              <i18n-t keypath="hardwareWizard.step2.micropythonDesc" scope="global">
+                <template #bootFile><code>boot.py</code></template>
+                <template #mainFile><code>main.py</code></template>
+              </i18n-t>
             </div>
           </button>
         </div>
@@ -267,13 +278,12 @@ function resetWizard() {
 
       <!-- Step 3: Components -->
       <section v-else-if="currentStep === 3" class="step">
-        <h1 class="step-title">Welche Komponenten?</h1>
+        <h1 class="step-title">{{ t('hardwareWizard.step3.title') }}</h1>
         <p class="step-sub">
-          {{ selectedComponentKeys.size }} ausgewählt. Die Pin-Zuweisung erfolgt
-          automatisch auf passende GPIOs deines Boards.
+          {{ t('hardwareWizard.step3.subtitle', { count: selectedComponentKeys.size }) }}
         </p>
 
-        <div class="comp-section-head">SENSOREN</div>
+        <div class="comp-section-head">{{ t('hardwareWizard.step3.sectionSensors') }}</div>
         <div class="comp-grid">
           <button
             v-for="c in sensors"
@@ -289,23 +299,23 @@ function resetWizard() {
             </div>
             <div class="comp-body">
               <div class="comp-name">
-                {{ c.name }}
+                {{ componentName(c) }}
                 <span v-if="c.bus_type" class="bus-tag">{{ c.bus_type }}</span>
                 <span
                   v-if="selectedFramework === 'micropython' && !isMpySupported(c.key)"
                   class="warn-tag"
-                  title="In MicroPython v1 nicht unterstützt — wird im Code als TODO markiert"
-                >MPy-TODO</span>
+                  :title="t('hardwareWizard.step3.warnMpyTodoTooltip')"
+                >{{ t('hardwareWizard.step3.warnMpyTodo') }}</span>
               </div>
-              <div class="comp-desc">{{ c.description }}</div>
+              <div class="comp-desc">{{ componentDescription(c) }}</div>
               <div v-if="c.variables.length" class="comp-vars">
-                Variables: {{ c.variables.map(v => v.key + (v.unit ? ` (${v.unit})` : '')).join(", ") }}
+                {{ t('hardwareWizard.step3.variablesLabel') }} {{ c.variables.map(v => v.key + (v.unit ? ` (${v.unit})` : '')).join(", ") }}
               </div>
             </div>
           </button>
         </div>
 
-        <div class="comp-section-head">AKTOREN &amp; DISPLAYS</div>
+        <div class="comp-section-head">{{ t('hardwareWizard.step3.sectionActuators') }}</div>
         <div class="comp-grid">
           <button
             v-for="c in actuators"
@@ -321,14 +331,15 @@ function resetWizard() {
             </div>
             <div class="comp-body">
               <div class="comp-name">
-                {{ c.name }}
+                {{ componentName(c) }}
                 <span v-if="c.bus_type" class="bus-tag">{{ c.bus_type }}</span>
                 <span
                   v-if="selectedFramework === 'micropython' && !isMpySupported(c.key)"
                   class="warn-tag"
-                >MPy-TODO</span>
+                  :title="t('hardwareWizard.step3.warnMpyTodoTooltip')"
+                >{{ t('hardwareWizard.step3.warnMpyTodo') }}</span>
               </div>
-              <div class="comp-desc">{{ c.description }}</div>
+              <div class="comp-desc">{{ componentDescription(c) }}</div>
             </div>
           </button>
         </div>
@@ -336,58 +347,51 @@ function resetWizard() {
 
       <!-- Step 4: Transport -->
       <section v-else-if="currentStep === 4" class="step">
-        <h1 class="step-title">WiFi + Server</h1>
-        <p class="step-sub">
-          Diese Werte werden in die Config-Datei des Projekts eingebettet. Du kannst
-          sie später direkt im Code ändern.
-        </p>
+        <h1 class="step-title">{{ t('hardwareWizard.step4.title') }}</h1>
+        <p class="step-sub">{{ t('hardwareWizard.step4.subtitle') }}</p>
 
         <div class="form-grid">
           <label class="form-field">
-            <span class="label-text">WiFi-SSID</span>
-            <input v-model="wifiSsid" type="text" placeholder="MeinWLAN" class="form-input" />
+            <span class="label-text">{{ t('hardwareWizard.step4.wifiSsid') }}</span>
+            <input v-model="wifiSsid" type="text" :placeholder="t('hardwareWizard.step4.wifiSsidPlaceholder')" class="form-input" />
           </label>
           <label class="form-field">
-            <span class="label-text">WiFi-Passwort</span>
+            <span class="label-text">{{ t('hardwareWizard.step4.wifiPassword') }}</span>
             <input v-model="wifiPass" type="password" placeholder="••••••••" class="form-input" />
           </label>
           <label class="form-field full">
-            <span class="label-text">HubEx-Server-URL</span>
+            <span class="label-text">{{ t('hardwareWizard.step4.serverUrl') }}</span>
             <input v-model="serverUrl" type="text" placeholder="http://192.168.1.100:8000" class="form-input" />
-            <span class="field-hint">
-              An diese URL schickt dein ESP32 Telemetrie. Auf dem Gerät muss diese
-              URL erreichbar sein (gleiches Netzwerk oder externe IP).
-            </span>
+            <span class="field-hint">{{ t('hardwareWizard.step4.serverUrlHint') }}</span>
           </label>
         </div>
       </section>
 
       <!-- Step 5: Name + Download -->
       <section v-else-if="currentStep === 5 && !lastResult" class="step">
-        <h1 class="step-title">Name und Download</h1>
+        <h1 class="step-title">{{ t('hardwareWizard.step5.title') }}</h1>
         <p class="step-sub">
-          Gib deinem Gerät einen Namen. Es wird sofort in HubEx unter
-          <strong>Devices</strong> angelegt, sobald du auf Download klickst.
+          {{ t('hardwareWizard.step5.subtitleBefore') }}<strong>{{ t('hardwareWizard.step5.subtitleDevicesLink') }}</strong>{{ t('hardwareWizard.step5.subtitleAfter') }}
         </p>
 
         <div class="form-grid">
           <label class="form-field full">
-            <span class="label-text">Geräte-Name</span>
-            <input v-model="deviceName" type="text" placeholder="z.B. Wetterstation Garten" class="form-input" />
+            <span class="label-text">{{ t('hardwareWizard.step5.deviceName') }}</span>
+            <input v-model="deviceName" type="text" :placeholder="t('hardwareWizard.step5.deviceNamePlaceholder')" class="form-input" />
           </label>
         </div>
 
         <div class="summary-card">
-          <div class="summary-row"><span>Board</span><strong>{{ selectedBoard ? boardName(selectedBoard) : '—' }}</strong></div>
-          <div class="summary-row"><span>Framework</span><strong>{{ selectedFramework }}</strong></div>
-          <div class="summary-row"><span>Komponenten</span><strong>{{ selectedComponentKeys.size }}</strong></div>
-          <div class="summary-row"><span>WiFi SSID</span><strong>{{ wifiSsid || '(leer — später setzen)' }}</strong></div>
-          <div class="summary-row"><span>Server URL</span><strong>{{ serverUrl }}</strong></div>
+          <div class="summary-row"><span>{{ t('hardwareWizard.step5.summaryBoard') }}</span><strong>{{ selectedBoard ? boardName(selectedBoard) : t('hardwareWizard.step5.summaryBoardEmpty') }}</strong></div>
+          <div class="summary-row"><span>{{ t('hardwareWizard.step5.summaryFramework') }}</span><strong>{{ selectedFramework }}</strong></div>
+          <div class="summary-row"><span>{{ t('hardwareWizard.step5.summaryComponents') }}</span><strong>{{ selectedComponentKeys.size }}</strong></div>
+          <div class="summary-row"><span>{{ t('hardwareWizard.step5.summaryWifiSsid') }}</span><strong>{{ wifiSsid || t('hardwareWizard.step5.summaryWifiEmpty') }}</strong></div>
+          <div class="summary-row"><span>{{ t('hardwareWizard.step5.summaryServerUrl') }}</span><strong>{{ serverUrl }}</strong></div>
         </div>
 
         <div class="comp-list-summary">
           <div v-for="c in selectedComponents" :key="c.key" class="comp-chip">
-            {{ c.name }}
+            {{ componentName(c) }}
           </div>
         </div>
       </section>
@@ -401,36 +405,32 @@ function resetWizard() {
               <polyline points="8,12 11,15 16,9" />
             </svg>
           </div>
-          <h1 class="step-title">Fertig! 🚀</h1>
-          <p class="step-sub">
-            Dein Projekt wurde erstellt und der Download hat begonnen.
-          </p>
+          <h1 class="step-title">{{ t('hardwareWizard.success.title') }}</h1>
+          <p class="step-sub">{{ t('hardwareWizard.success.subtitle') }}</p>
 
           <div class="summary-card">
-            <div class="summary-row"><span>ZIP-Datei</span><strong>{{ lastResult.filename }}</strong></div>
-            <div class="summary-row"><span>Device ID</span><strong>#{{ lastResult.device_id }}</strong></div>
-            <div class="summary-row"><span>Device UID</span><strong>{{ lastResult.device_uid }}</strong></div>
+            <div class="summary-row"><span>{{ t('hardwareWizard.success.summaryZip') }}</span><strong>{{ lastResult.filename }}</strong></div>
+            <div class="summary-row"><span>{{ t('hardwareWizard.success.summaryDeviceId') }}</span><strong>#{{ lastResult.device_id }}</strong></div>
+            <div class="summary-row"><span>{{ t('hardwareWizard.success.summaryDeviceUid') }}</span><strong>{{ lastResult.device_uid }}</strong></div>
           </div>
 
           <p class="hint">
-            Entpacke die ZIP, öffne das Projekt, kompiliere und flashe auf dein Board.
-            Sobald das Gerät online ist, erscheint es hier in HubEx unter
-            <strong>Devices</strong> und beginnt Telemetrie zu senden.
+            {{ t('hardwareWizard.success.hintBefore') }}<strong>{{ t('hardwareWizard.success.hintDevicesLink') }}</strong>{{ t('hardwareWizard.success.hintAfter') }}
           </p>
 
           <div class="success-actions">
-            <button class="btn-primary" @click="goToDevices">Zu Devices</button>
-            <button class="btn-secondary" @click="resetWizard">Neues Projekt</button>
+            <button class="btn-primary" @click="goToDevices">{{ t('hardwareWizard.success.ctaGoToDevices') }}</button>
+            <button class="btn-secondary" @click="resetWizard">{{ t('hardwareWizard.success.ctaNewProject') }}</button>
           </div>
         </div>
       </section>
 
       <!-- Footer -->
       <footer v-if="!lastResult" class="wiz-foot">
-        <button class="btn-ghost" @click="cancel">Abbrechen</button>
+        <button class="btn-ghost" @click="cancel">{{ t('hardwareWizard.footer.cancel') }}</button>
         <div class="spacer" />
         <button v-if="currentStep > 1" class="btn-secondary" :disabled="submitting" @click="prev">
-          Zurück
+          {{ t('hardwareWizard.footer.back') }}
         </button>
         <button
           v-if="currentStep < totalSteps"
@@ -438,7 +438,7 @@ function resetWizard() {
           :disabled="!canAdvance || submitting"
           @click="next"
         >
-          Weiter
+          {{ t('hardwareWizard.footer.next') }}
         </button>
         <button
           v-else
@@ -446,7 +446,7 @@ function resetWizard() {
           :disabled="!canAdvance || submitting"
           @click="downloadProject"
         >
-          {{ submitting ? "Erzeuge Projekt…" : "Projekt herunterladen" }}
+          {{ submitting ? t('hardwareWizard.footer.generating') : t('hardwareWizard.footer.downloadProject') }}
         </button>
       </footer>
     </div>
