@@ -153,10 +153,35 @@ function eventIconColor(eventType: string): string {
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p class="kpi-number text-[var(--status-ok)]">{{ metrics.devices.online }}</p>
+          <p
+            class="kpi-number"
+            :class="
+              metrics.devices.total === 0
+                ? 'text-[var(--text-muted)]'
+                : onlinePct >= 80
+                  ? 'text-[var(--status-ok)]'
+                  : onlinePct >= 50
+                    ? 'text-[var(--status-warn)]'
+                    : 'text-[var(--status-bad)]'
+            "
+          >{{ metrics.devices.online }}</p>
           <p class="kpi-label">{{ t('dashboard.devicesOnline') }}</p>
+          <!--
+            Sprint 5 REAL-10 fix: replaced vague "Major outage" label
+            (which clashed with the positive-looking big number "6") with
+            an honest "6 / 13 online" ratio. Number color also now
+            encodes health so users get the warn signal visually.
+          -->
           <p class="kpi-sub">
-            {{ onlinePct >= 80 ? t('dashboard.fleetHealthy') : onlinePct >= 50 ? t('dashboard.partialOutage') : t('dashboard.majorOutage') }}
+            <template v-if="metrics.devices.total === 0">
+              {{ t('dashboard.noDevices') }}
+            </template>
+            <template v-else-if="metrics.devices.online === 0">
+              {{ t('dashboard.allOffline') }}
+            </template>
+            <template v-else>
+              {{ t('dashboard.onlineRatio', { online: metrics.devices.online, total: metrics.devices.total }) }}
+            </template>
           </p>
         </div>
 

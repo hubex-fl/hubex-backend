@@ -759,6 +759,10 @@ export default {
     fleetHealthy: 'Flotte gesund',
     partialOutage: 'Teilausfall',
     majorOutage: 'Großer Ausfall',
+    // Sprint 5 — REAL-10 fix
+    onlineRatio: '{online} / {total} online',
+    allOffline: 'alle Ger\u00e4te offline',
+    noDevices: 'Noch keine Ger\u00e4te',
     rulesFiring: '{count} Regel aktiv | {count} Regeln aktiv',
     gettingStarted: 'Erste Schritte mit HUBEX',
     dismiss: 'Ausblenden',

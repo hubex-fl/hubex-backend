@@ -763,6 +763,13 @@ export default {
     fleetHealthy: 'Fleet healthy',
     partialOutage: 'Partial outage',
     majorOutage: 'Major outage',
+    // Sprint 5 — REAL-10 fix: replace the vague fleet-status label next to
+    // the big online-count number with an honest ratio. Old label could
+    // display "Major outage" next to a positive-looking "6" which read
+    // like a contradiction. New label always shows "X / Y online".
+    onlineRatio: '{online} / {total} online',
+    allOffline: 'all devices offline',
+    noDevices: 'No devices yet',
     rulesFiring: '{count} rule currently firing | {count} rules currently firing',
     gettingStarted: 'Getting Started with HUBEX',
     dismiss: 'Dismiss',

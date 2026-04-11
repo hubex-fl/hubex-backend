@@ -6,11 +6,13 @@ import UToggle from "../components/ui/UToggle.vue";
 import { useFeaturesStore, type FeatureFlag } from "../stores/features";
 import { useToastStore } from "../stores/toast";
 import { apiFetch } from "../lib/api";
+import { useFeatureLabels } from "../composables/useFeatureLabels";
 
 const router = useRouter();
 const features = useFeaturesStore();
 const toast = useToastStore();
 const { t } = useI18n();
+const { featureName, featureDescription, featureCategory } = useFeatureLabels();
 const adminEmail = ref<string>("administrator");
 
 type UseCase =
@@ -248,7 +250,7 @@ function prev() {
         </p>
 
         <div v-for="(list, cat) in featuresByCategory" :key="cat" class="feature-group">
-          <div class="feature-group-head">{{ cat.toUpperCase() }}</div>
+          <div class="feature-group-head">{{ featureCategory(cat).toUpperCase() }}</div>
           <div class="feature-rows">
             <div v-for="f in list" :key="f.key" class="feature-row">
               <UToggle
@@ -256,8 +258,8 @@ function prev() {
                 size="md"
               />
               <div class="feature-row-body">
-                <div class="feature-row-name">{{ f.name }}</div>
-                <div class="feature-row-desc">{{ f.description }}</div>
+                <div class="feature-row-name">{{ featureName(f.key, f.name) }}</div>
+                <div class="feature-row-desc">{{ featureDescription(f.key, f.description) }}</div>
                 <div v-if="f.requires.length" class="feature-row-deps">
                   {{ t('setupWizard.step2.requiresPrefix') }} {{ f.requires.join(", ") }}
                 </div>

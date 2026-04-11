@@ -403,7 +403,58 @@ live devtools perf trace, not code reading).
 - **Status:** ✅ Sprint 3.8-hotfix (2026-04-11)
 
 ### Lesson learned
-When investigating a "mystery perf issue" in a Vue component, **grep the script imports against the template component usages FIRST**. Unresolved `<UFoo>` tags will look like perf or layout bugs because they render fallback DOM in-place with none of the component's behavior. This should be added to a lint rule (`vue/no-undef-components` or similar) — parked for a follow-up.
+When investigating a "mystery perf issue" in a Vue component, **grep the script imports against the template component usages FIRST**. Unresolved `<UFoo>` tags will look like perf or layout bugs because they render fallback DOM in-place with none of the component's behavior. This should be added to a lint rule (`vue/no-undef-components` or similar) — parked for a follow-up. **→ DONE in Sprint 5.d (see below).**
+
+---
+
+## ✅ Fixed in Sprint 5 (residual polish + lint-rule prevention)
+
+Sprint 5 was a "wrap up the 3.8 residuals" sprint — 4 small-but-visible items
+that had been parked across Sprints 3.4–3.8. All four done in one commit.
+
+### ✅ P2 — REAL-10 Dashboard "Großer Ausfall" semantic mismatch — FIXED 5
+- **Symptom:** When 46% of devices were online (6/13), the KPI card showed a positive-green "6" with a sub-label "Großer Ausfall" underneath. The two visual signals contradicted each other — the big number looked healthy, but the label said catastrophic outage.
+- **Original report (Sprint 3.5):** REAL-10. Parked because it needed a design decision.
+- **Fix:**
+  1. **Honest ratio instead of vague label** — sub-label now reads `{online} / {total} online` (e.g. "6 / 13 online") via new `dashboard.onlineRatio` i18n key in en+de. No more fuzzy `fleetHealthy`/`partialOutage`/`majorOutage` tri-state. Information-dense and never contradicts the big number.
+  2. **Big number color encodes health** — stays `status-ok` green when ≥80%, flips to `status-warn` amber at 50-79%, `status-bad` red when <50%, and `text-muted` grey when no devices at all. So the color now gives the warning signal visually without needing a wordy label.
+  3. **Edge cases** — new `dashboard.noDevices` (`"Noch keine Geräte"`) and `dashboard.allOffline` (`"alle Geräte offline"`) keys for the two degenerate ratios so the ratio string doesn't weirdly show `0 / 0 online` or similar.
+- **File:** `frontend/src/pages/DashboardPage.vue` + `frontend/src/i18n/locales/{en,de}.ts`
+- **Verified live on home dashboard (DE):** "6 / 13 online" with the 6 in red — matches expectations perfectly for a 46% fleet.
+- **Status:** ✅ Sprint 5.b
+
+### ✅ P2 — Legacy alert format backfill script — FIXED 5
+- **Symptom:** BUG_TRACKER Sprint 3.6 note — `app/core/alert_worker.py` was updated to emit new math-symbol alert messages (`temperature = 20.3 > 20`) but pre-existing `AlertEvent.message` rows in the DB still carried the old English-codes format (`variable 'temperature' value 20.3 gt 20`). New alerts used new format, old didn't → mixed English/symbol output in the Alerts page + Dashboard widget depending on alert age.
+- **Fix:** `scripts/backfill_alert_format.py` — one-pass SQLAlchemy script that batches through `AlertEvent.message LIKE 'variable ''%'`, regex-parses the legacy format, rewrites in-place to the new symbol format. Idempotent (re-running is a no-op because rewritten rows no longer match the regex). Dry-run by default (`python -m scripts.backfill_alert_format`); commit with `--commit`.
+- **Regex coverage:** handles all 6 operators (gt, gte, lt, lte, eq, ne), positive and negative numbers, decimals, and nested dotted variable keys (`sensors.battery`).
+- **Tested:** 10/10 unit cases pass (6 rewrites, 4 no-op on non-legacy / already-new / empty / null input).
+- **File:** `scripts/backfill_alert_format.py`
+- **Status:** ✅ Sprint 5.c — script ready, admin can run it on production DB at any point.
+
+### ✅ P3 — `useFeatureLabels()` composable + SetupWizard Step 2 i18n — FIXED 5
+- **Symptom:** Sprint 3.8's SetupWizard i18n sweep left Step 2 ("Fine-tune features") still showing raw English feature names + descriptions ("Custom API Builder / Create custom REST endpoints from variable/device queries.") because those strings come from the backend features store, not the SetupWizard template. Settings.vue already had a private `featureNameI18n()` + `featureDescriptionI18n()` pair since Sprint 3.6, but they couldn't be reused from SetupWizard without duplication.
+- **Fix:** Extracted both helpers (plus a new `featureCategory()` helper that was previously inline in Settings.vue) into a shared composable `frontend/src/composables/useFeatureLabels.ts`. Settings.vue migrated to use the composable (no behavior change). SetupWizard.vue now imports `useFeatureLabels` and wires `featureName(f.key, f.name)` / `featureDescription(f.key, f.description)` / `featureCategory(cat)` into Step 2 template.
+- **File:** `frontend/src/composables/useFeatureLabels.ts` (new, 48 lines), `frontend/src/pages/Settings.vue` (−10 lines, removed inline helpers), `frontend/src/pages/SetupWizard.vue` (+3 lines, wired composable)
+- **Verified live on /setup Step 2 (DE):**
+  - Category header: `ERWEITERT` (was `ADVANCED`)
+  - Feature name: `Custom-API-Builder` (was `Custom API Builder`)
+  - Feature desc: `Eigene REST-Endpunkte aus Variablen/Geräte-Queries bauen.` (was English)
+  - `Plugin-Orchestrator` with full German multi-line description
+  - `Semantische Typen` (was `Semantic Types`)
+  - Counter: `15 von 27 Features aktiv` (correctly interpolated)
+- **Status:** ✅ Sprint 5.a
+
+### ✅ P3 — `vue/no-undef-components` ESLint rule — FIXED 5
+- **Symptom:** Same root cause class as the Sprint 3.8-hotfix REAL-18/19 DeviceDetail freeze — components used in a template but never imported in `<script setup>` render as unknown HTML tags with raw slot DOM, silently bypassing `v-if` / `<Teleport>` / component props entirely. Previously nothing at build or lint time flagged this pattern.
+- **Fix:** Added `vue/no-undef-components` rule to `frontend/eslint.config.js` (v9+ of eslint-plugin-vue, already in dependencies). Configured `ignorePatterns` for legitimate unscoped components: Vue built-ins (`Transition`, `Teleport`, `KeepAlive`, `Suspense`), vue-router (`RouterLink`, `RouterView`), and vue-i18n (`I18nT`).
+- **Lint sweep result:** `npx eslint "src/**/*.vue"` returned **0 `vue/no-undef-components` violations** across the entire frontend codebase. Sprint 3.8-hotfix's DeviceDetail fix was complete — no other pages are leaking unresolved components. The rule will now fail CI (once CI exists) if anyone reintroduces the pattern.
+- **File:** `frontend/eslint.config.js`
+- **Status:** ✅ Sprint 5.d — closes the loop on the 3.8-hotfix lesson
+
+### Still open after Sprint 5 (very small backlog now)
+
+- Bundle splitting: `index.js` is 664 KB, Vite warns every build. Not urgent, quality-of-life.
+- Sprint 6+ candidates (new tracks): Frigate/Ollama/Grafana service plugins, Firmware Builder → OTA integration, Phase 10 C1 License System.
 
 ---
 

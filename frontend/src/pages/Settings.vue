@@ -22,6 +22,7 @@ import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { listDashboards, type DashboardSummary } from "../lib/dashboards";
 import { useLimitsStore, type LimitResource } from "../stores/limits";
 import { useFeaturesStore } from "../stores/features";
+import { useFeatureLabels } from "../composables/useFeatureLabels";
 import UToggle from "../components/ui/UToggle.vue";
 
 const router = useRouter();
@@ -229,22 +230,13 @@ const expandedSection = ref<SectionKey | null>(null);
 // Features section state
 const featuresToggling = ref<Set<string>>(new Set());
 
-// Sprint 3.6 — client-side translation of backend FEATURE registry
-// labels. The backend ships English in app/core/features.py; until
-// backend i18n lands, we look up settings.featureNames.<key> and
-// settings.featureDescs.<key> and fall back to the raw string.
-function featureNameI18n(key: string, raw: string): string {
-  const i18nKey = `settings.featureNames.${key}`;
-  const translated = t(i18nKey);
-  if (translated && translated !== i18nKey) return translated;
-  return raw;
-}
-function featureDescriptionI18n(key: string, raw: string): string {
-  const i18nKey = `settings.featureDescs.${key}`;
-  const translated = t(i18nKey);
-  if (translated && translated !== i18nKey) return translated;
-  return raw;
-}
+// Sprint 5 — backend feature-registry label helpers moved to shared
+// composable so SetupWizard Step 2 can use them too. Original
+// implementation landed in Sprint 3.6 as local setup functions here.
+const {
+  featureName: featureNameI18n,
+  featureDescription: featureDescriptionI18n,
+} = useFeatureLabels();
 // Sprint 3.2 — deep-link highlight support: when navigated to
 // /settings?section=features&highlight=<key> (e.g. from the Plugins page
 // "Enable Orchestrator →" CTA), auto-expand the section, scroll to the row,

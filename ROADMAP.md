@@ -1332,10 +1332,21 @@
 **Sprint 3.8 out-of-scope (logged, to be picked up later):**
 - Setup Wizard Step 2 still shows raw English `f.name` + `f.description` from the features store. Sprint 3.6 already built `featureNameI18n`/`featureDescriptionI18n` for the Settings page; not wiring those into SetupWizard here because it would require moving them out of Settings.vue into a shared composable (`useFeatureLabels()`). Parked.
 
-### Sprint 5+ — TBD
-> Candidates: additional service plugins (Frigate, Ollama, Grafana),
-> license system (C1), HA/MQTT deep integration (M21 Steps 4-5),
-> OTA integration (Firmware Builder ⇢ M14b).
+### Sprint 5 — Residual polish wrap-up ✅ DONE (2026-04-11)
+> All four items that had been parked across Sprints 3.4–3.8 landed
+> in a single Sprint 5 commit. Parallel-track polish is now closed.
+- [x] **5.a `useFeatureLabels()` composable** extracted from Settings.vue → shared between Settings + SetupWizard. SetupWizard Step 2 now shows all feature names + descriptions + category headers in German instead of raw English from the backend features store. Browser-verified live: `Custom-API-Builder`, `Plugin-Orchestrator` with full German descriptions, `15 von 27 Features aktiv`, category header `ERWEITERT`.
+- [x] **5.b REAL-10 Dashboard "Großer Ausfall"** semantic mismatch fixed. Vague tri-state label (`fleetHealthy`/`partialOutage`/`majorOutage`) replaced with an honest ratio `{online} / {total} online`, and the big-number color now encodes health (ok→green / warn→amber / bad→red / no-devices→grey). Browser-verified: "6 / 13 online" with the 6 in red at 46% ratio.
+- [x] **5.c Legacy alert format backfill script** — `scripts/backfill_alert_format.py`. One-pass idempotent SQLAlchemy script that regex-rewrites `variable 'X' value N gt M` → `X = N > M` across existing `AlertEvent.message` rows. Dry-run by default, `--commit` flag to write. 10/10 unit cases pass. Admin can run at any time.
+- [x] **5.d `vue/no-undef-components` ESLint rule** — prevents the Sprint 3.8-hotfix DeviceDetail REAL-18/19 pattern (unresolved component renders as unknown HTML tag + leaks slot DOM into page flow). Zero violations in the current codebase — 3.8-hotfix closed the whole category.
+
+### Sprint 6+ — TBD
+> Candidates (pick based on business priority):
+> - Additional service plugins (Frigate / Ollama / Grafana) — extends Sprint 3 Plugin Manager infrastructure
+> - Firmware Builder → OTA integration — closes the Sprint 4 feature loop (built .bin auto-flash via M14b OTA)
+> - Phase 10 C1 License System — start the commercialization track
+> - HA/MQTT deep integration (M21 Steps 4-5)
+> - Bundle splitting (Vite `index.js` is 664 KB, warns every build)
 
 ---
 
@@ -1808,7 +1819,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 ├─► Sprint 1-3 (Feature Flags / Codegen / Plugin Mgr v2)  ✅ DONE
                                 │   └─► Sprint 4 (firmware_builder)                        ✅ DONE
                                 │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META + REAL-18/19)  ✅ DONE
-                                │               └─► Sprint 5 (residual polish + next track)  ◄── NÄCHSTER SCHRITT
+                                │               └─► Sprint 5 (useFeatureLabels, REAL-10, backfill, lint)  ✅ DONE
+                                │                     └─► Sprint 6 (new track — TBD)  ◄── NÄCHSTER SCHRITT
                                 │
                                 └─► Phase 10 (Commercial)                  [TODO]
                                       │
