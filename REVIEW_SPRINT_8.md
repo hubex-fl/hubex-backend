@@ -6,13 +6,59 @@
 ## Quick-Status
 - **Started:** 2026-04-11
 - **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings
-- **Round 2 (Visual):** ⏸ pending
+- **Round 1 Fixes:** ✅ **ALL 36 FINDINGS FIXED** in 10 commits (user directive: all fixes before Round 2)
+- **Round 2 (Visual):** ⏸ pending — ready to start
 - **Round 3 (Persona):** ⏸ pending (human-driven)
 - **Round 4 (Perf + A11y):** ⏸ pending
-- **Round 5 (Fixing):** ⏸ pending
-- **Round 6 (Release):** ⏸ pending
+- **Round 5 (Fixing):** ✅ merged into Round 1 fix phase
+- **Round 6 (Release):** ⏸ pending (after Rounds 2-4)
 - **Findings:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3**
-- **Fixed:** 0
+- **Fixed:** **36 / 36** ✅
+
+### Round 1 Fix Commits
+
+| Batch | Commit | Findings | Description |
+|-------|--------|----------|-------------|
+| 1 | `e8cbac1` | F03, F07 | Data bugs: metrics org-scoping + /audit onMounted auto-load |
+| 2 | `651f0f4` | F01, F02, F18 | Sidebar CMS children + Tour/Sandbox i18n + /login redirect |
+| 3 | `01b19be` | F08, F09, F10, F16, F17 | 5 pages (entities, effects, executions, admin, system-stage) |
+| 4 | `31aa94e` | F12, F15, F27 | reports + email-templates + semantic-types (+2 seed-name helpers) |
+| 5a | `e9281df` | F06 (part 1) | useBoardLabels composable + hardware pages |
+| 5b | `1b6760b` | F06 (part 2) | HardwareWizard full i18n + useShieldLabels + useComponentLabels |
+| 6 | `bd4b7c0` | F04, F05, F11, F13, F19-F26, F34-F36 | 15 minor findings batched (incl. /landing 105 keys) |
+| 7a | `8d7db62` | F28-F33 (main) | 6 CMS main pages (291 new keys) |
+| 7b | `c40bc14` | F28-F33 (editors) | 5 CMS editor child pages + 3 components (800 new keys) |
+| 7c+7d | `02479bb` | F28-F33 (final) | BlockCanvas, PageVersionHistory, TreeNode, 7 block renderers (149 new keys) |
+
+**Total i18n keys added: ~2,100 per locale. Strict en/de parity maintained throughout.**
+
+### Composables introduced
+
+- `useBoardLabels` — backend-seeded board name/description translation
+- `useShieldLabels` — backend-seeded shield name/description translation (with standalone `shieldSlug()`)
+- `useComponentLabels` — backend-seeded hardware component name/description translation
+
+Plus inline `localized*` seed-name helpers for:
+- `localizedTemplateName` in EmailTemplates
+- `localizedTypeName` in SemanticTypes
+- `localizedSimulatorName` in Sandbox
+
+### Design decisions made by user
+
+| Finding | Call |
+|---------|------|
+| F01 /login redirect when authenticated | Fixed (router.replace('/') on mount) |
+| F11 "Observability" / F25 JWT labels | Route through i18n; loanword values kept in DE when no good translation |
+| F34 /landing full German marketing | Translate everything — did with ~105 keys, proper marketing German |
+| F06 board-descs + backend seed pattern | Yes, composable pattern approved (useBoardLabels, etc.) |
+| CMS strategy | Option (a) — fix all 6 CMS routes + all editors before tag |
+
+### Cumulative file impact
+- **61 files touched** across 10 commits
+- **~5,800 line-edits** (insertions + deletions)
+- **6 new composables/helpers** created
+- **2 backend fixes** (metrics.py org scoping, Audit.vue auto-load)
+- **Zero regressions** (vite build clean every batch, no unresolved components, no console errors)
 
 ### Summary of Round 1
 
@@ -225,27 +271,28 @@ Legend: ✅ clean · ⚠️ findings present · ❌ broken
 
 ---
 
-## 🚦 Kontrollpunkt 1 — User Priorization Requested
+## 🚦 Kontrollpunkt 1 — CLOSED ✅
 
-**Runde 1 ist fertig.** Ich stoppe hier wie abgesprochen.
+User directive on 2026-04-11: "1-3 Alles richtig erkannt von dir. Bei allem korrektur und -immer full translate (notfalls kann man wenn die übersetzung schlecht ist in der übersetzung auch das englische nehmen). Alle fix blöcke vor dev-stable. zu 4. wir halten das fest so wie oben angewiesen, machen alles was du für sinnvoll hällst und dann runde 2"
 
-**Was ich von dir brauche:**
+Translation: fix everything, always full translate, all fixes BEFORE Round 2, no CMS deferral.
 
-1. **Priorisierung der 8 P1 Findings** — welche sind *must-fix* vor `dev-stable-v1` Tag, welche können in den Backlog?
-2. **Design-Decision auf ein paar Judgment-Calls:**
-   - F01 /login-Redirect: wollen wir das? (neues Feature vs reiner Fix)
-   - F11 "Observability" / F25 JWT-Technikbegriffe: lassen wir die als Tech-Loanwörter?
-   - F34 /landing: marketing bleibt English by design?
-   - F06 Board-Descs + Backend-Seed-Strings allgemein: akzeptieren wir `useBoardLabels()` Komponente (analog `useFeatureLabels`)?
-3. **CMS-Strategie:** 5 von 6 CMS Routes sind 100% English. Das ist ein eigener Sub-Sprint (~200+ Keys). Wollen wir:
-   - (a) Das alles vor `dev-stable-v1` in einem Rutsch fixen?
-   - (b) Das CMS-Feature als `maturity: beta` flaggen (Sprint 8.5 Infra) und den i18n-Sweep auf nach dem Tag schieben?
-   - (c) CMS komplett aus dem Dev-Stable-Scope rausnehmen und im Demo-Mode default-disablen?
-4. **Sollen wir Runde 2 (Visual Pass) starten oder erst direkt in Runde 5 Fixing?**
-   Vorschlag: lies die Matrix erstmal, entscheide die 4 Fragen oben, dann:
-   - Wenn CMS raus → direkt Runde 2+3+4+5 in Sequenz
-   - Wenn CMS rein → erstmal Sprint 8-Sub "CMS i18n sweep" vorlagern, dann Runde 2+
+**Result:** All 36 findings closed in 10 batches. CMS entirely swept (no deferral). ~2,100 i18n keys added. Round 2 can now proceed on a clean fixed codebase.
 
 ---
 
-Commit-Vorschlag: Review-Doc jetzt committen damit du beim nächsten "weiter" einen sauberen Ausgangszustand hast. Sag mir welche Richtung.
+## Round 2 — Visual Pass (next)
+
+Screenshots at 3 breakpoints (375 / 768 / 1440) × 2 locales (EN / DE) for the key flows. Focus routes:
+- / (Dashboard) — check REAL-10 fix rendering on all widths
+- /devices — row density, action button placement
+- /devices/1 — verify REAL-18/19 fix at narrow widths (was the original freeze trigger)
+- /alerts, /automations, /variables — core flows
+- /firmware — OTA badge rendering
+- /plugins — 6-card marketplace + install flow
+- /hardware/wizard — 5-step wizard at each breakpoint
+- /setup — 5-step setup wizard
+- /cms — main page + at least one editor (CmsPageEditor)
+- /landing — marketing page DE + EN
+
+Each screenshot gets an observation note. Findings flagged into `## Visual Findings (Runde 2)` section below.
