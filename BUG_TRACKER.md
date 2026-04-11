@@ -235,6 +235,43 @@
 
 ---
 
+## ✅ Fixed in Sprint 3.6 (systematic i18n sweep)
+
+Following user's choice "1" (systematic i18n sweep), went through all REAL-*
+hardcoded English findings from Sprint 3.5's browser walkthrough and landed
+fixes page by page. Not every single string got i18n'd (SetupWizard is its
+own sprint), but all the high-frequency ones users bumped into got wired.
+
+| Area | REAL-# | Fix |
+|---|---|---|
+| **Router top-bar titles (37 routes)** | REAL-37 | Added `titleKey` meta field parallel to `title`; DefaultLayout.vue now has a `topBarTitle` computed that prefers `t(titleKey)` with fallback to legacy `title` then path-pretty-print. Added ~12 missing nav.* keys in en/de (deviceDetail, signIn, systemStage, setup, featureDisabled, tokenInspector, variableStreams, hardwareBoards, hardwareWizard, auditLog, plugin). Now top-bar shows "Geräte"/"Alarme" etc. |
+| **Devices page sort/filter options** | REAL-11 | `sortOptions`/`filterOptions`/`selectModeOptions` now `computed(() => [... t(...)])`, was static module-level English arrays |
+| **Devices bulk/single purge modals** | REAL-11 | 2 purge modals + titles + confirm text + placeholders + buttons all i18n'd (bulkDeleteTitle, bulkDeleteConfirm, typeDeleteToConfirm, confirmDelete, deleteDevice, nSelected) |
+| **Devices "Select all" / "nSelected"** | REAL-13 | Template hardcoded strings |
+| **Devices pairing warnings** | REAL-11 | "Unknown device UID" / "Device already claimed" reactive strings |
+| **Devices UID input label/placeholder** | REAL-13 | Using existing devices.deviceUid key |
+| **Alerts status filter pills** | REAL-31 | Removed `s.charAt(0).toUpperCase() + s.slice(1)` fallback, now pure `t('alerts.statusFilter.' + s)`. New statusFilter.{all,firing,acknowledged,resolved} sub-keys en+de |
+| **Alerts severity badges** | REAL-32 | Both event severity badge and rule severity badge now use `t('alerts.severity' + capitalize(sev))` |
+| **Alerts status badges** | REAL-32 | Event status badge uses `t('alerts.statusFilter.' + status)` |
+| **Automations name/description placeholders** | REAL-29/30 | Template was reading raw english, now `:placeholder="t('automations.namePlaceholder')"` etc. Added keys en+de |
+| **Settings > Features "Runtime Feature Flags" title + "Open Setup Wizard" + "Loading features..."** | REAL-35 | Added settings.runtimeFeatureFlags, toggleSubsystems (with interpolation), openSetupWizard, loadingFeatures keys |
+| **Settings > Features feature names + descriptions** | REAL-36 | Added `featureNameI18n(key, raw)` / `featureDescriptionI18n(key, raw)` helpers in Settings.vue that look up `settings.featureNames.<key>` / `settings.featureDescs.<key>` with fallback to raw string. Added full maps for all 26 features in en+de. |
+| **Settings > Features category headers** | REAL-35 | `{{ t('settings.featureCategory.' + category) }}` with fallback to raw category. Added category.{core,content,ai,advanced,hardware,security,compliance,integration,dev,ui,ux} en+de |
+| **Plugin catalog descriptions (marketplace + installed cards + configure modal)** | REAL-34 | Added `pluginDescriptionI18n(key, raw)` helper looking up `plugins.descriptions.<key>` with raw fallback. Added n8n/anthropic-claude/openai German translations. All 3 description render sites switched to the helper. |
+| **Backend alert_worker.py message format** | REAL-1/6/33 | Changed `f"variable '{key}' value {numeric} {operator} {threshold}"` to `f"{key} = {numeric} {sym} {threshold}"` with math symbols (`>` `≥` `<` `≤` `=` `≠`). Locale-agnostic and doesn't need frontend translation. New alerts will show readable format; pre-existing DB alerts still have the old format (not mass-updated). |
+
+### Still open after Sprint 3.6
+
+- REAL-14/15 Devices page column headers (DEVICE/TYPE/HEALTH/STATE/...) and status badges (ok/ready/online/Simuliert)
+- REAL-21 Variables page backend-seeded descriptions ("CPU usage", "Battery level", "Auto-discovered from telemetry") — these live in backend seed/auto-discovery code, needs backend change
+- REAL-22/23/24 Variables tag labels (actuator/power/system) and type badges (device/float)
+- REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — still needs devtools perf trace
+- REAL-10 Dashboard "Großer Ausfall" semantic mismatch — design decision
+- Devices Unclaim mode button text truncation ("Entkopplungs-") — tailwind fixed-width button cuts off "Entkopplungs-Modus"; needs css width fix
+- SetupWizard — the biggest remaining offender per Sprint 3.4 audit, punted to Sprint 3.7
+
+---
+
 ## ✅ Verified still working in Sprint 3.5 real-browser pass
 
 - ✅ Sprint 3.1 configure modal: rich intro, "API-Key holen ↗" link, provider hint, visible help text, lock icon privacy line, "Speichern & schließen" button

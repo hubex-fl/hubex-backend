@@ -41,6 +41,28 @@ const tourStore = useTourStore();
 const limitsStore = useLimitsStore();
 const featuresStore = useFeaturesStore();
 
+// Sprint 3.6 — top-bar title is now locale-aware.
+// Routes can provide either:
+//   meta.titleKey: 'nav.devices'  (preferred, translated on the fly)
+//   meta.title: 'Devices'         (fallback for legacy routes not yet migrated)
+// If neither, falls back to path-based pretty-print, then literal "Dashboard".
+const topBarTitle = computed(() => {
+  const key = (route.meta as { titleKey?: string } | undefined)?.titleKey;
+  if (key) {
+    const translated = t(key);
+    // vue-i18n returns the key verbatim on missing-key; fall through to title/path in that case
+    if (translated && translated !== key) return translated;
+  }
+  const fallback = (route.meta as { title?: string } | undefined)?.title;
+  if (fallback) return fallback;
+  const fromPath = route.path
+    .split("/")
+    .filter(Boolean)
+    .map((s) => s.replace(/-/g, " "))
+    .join(" / ");
+  return fromPath || "Dashboard";
+});
+
 // Collapsible sidebar groups
 const collapsedGroups = ref<Set<string>>(new Set(["Tools", "System"]));
 const showNewMenu = ref(false);
@@ -588,7 +610,7 @@ function handleNavClick() {
           </button>
 
           <h1 class="text-sm font-semibold text-[var(--text-primary)] truncate">
-            {{ route.meta?.title || route.path.split("/").filter(Boolean).map(s => s.replace(/-/g, " ")).join(" / ") || "Dashboard" }}
+            {{ topBarTitle }}
           </h1>
           <span
             v-if="caps.status !== 'ready'"

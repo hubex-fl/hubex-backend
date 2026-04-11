@@ -228,6 +228,23 @@ const expandedSection = ref<SectionKey | null>(null);
 
 // Features section state
 const featuresToggling = ref<Set<string>>(new Set());
+
+// Sprint 3.6 — client-side translation of backend FEATURE registry
+// labels. The backend ships English in app/core/features.py; until
+// backend i18n lands, we look up settings.featureNames.<key> and
+// settings.featureDescs.<key> and fall back to the raw string.
+function featureNameI18n(key: string, raw: string): string {
+  const i18nKey = `settings.featureNames.${key}`;
+  const translated = t(i18nKey);
+  if (translated && translated !== i18nKey) return translated;
+  return raw;
+}
+function featureDescriptionI18n(key: string, raw: string): string {
+  const i18nKey = `settings.featureDescs.${key}`;
+  const translated = t(i18nKey);
+  if (translated && translated !== i18nKey) return translated;
+  return raw;
+}
 // Sprint 3.2 — deep-link highlight support: when navigated to
 // /settings?section=features&highlight=<key> (e.g. from the Plugins page
 // "Enable Orchestrator →" CTA), auto-expand the section, scroll to the row,
@@ -578,20 +595,19 @@ onMounted(async () => {
                   <div class="flex items-center justify-between">
                     <div>
                       <h3 class="text-sm font-semibold text-[var(--text-primary)]">
-                        Runtime Feature Flags
+                        {{ t('settings.runtimeFeatureFlags') }}
                       </h3>
                       <span class="text-xs text-[var(--text-muted)]">
-                        Toggle subsystems on or off without a restart.
-                        {{ featuresStore.enabledCount }} / {{ featuresStore.total }} enabled.
+                        {{ t('settings.toggleSubsystems', { enabled: featuresStore.enabledCount, total: featuresStore.total }) }}
                       </span>
                     </div>
                     <UButton variant="secondary" size="sm" @click="router.push('/setup')">
-                      Open Setup Wizard
+                      {{ t('settings.openSetupWizard') }}
                     </UButton>
                   </div>
                 </template>
                 <div v-if="!featuresStore.loaded" class="text-sm text-[var(--text-muted)] py-4">
-                  Loading features…
+                  {{ t('settings.loadingFeatures') }}
                 </div>
                 <div v-else class="space-y-6">
                   <div
@@ -602,7 +618,7 @@ onMounted(async () => {
                     <div
                       class="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--primary)]"
                     >
-                      {{ category }}
+                      {{ t(`settings.featureCategory.${category}`) !== `settings.featureCategory.${category}` ? t(`settings.featureCategory.${category}`) : category }}
                     </div>
                     <div class="space-y-2">
                       <div
@@ -621,19 +637,19 @@ onMounted(async () => {
                         />
                         <div class="flex-1 min-w-0">
                           <div class="text-sm font-semibold text-[var(--text-primary)]">
-                            {{ feat.name }}
+                            {{ featureNameI18n(feat.key, feat.name) }}
                             <span class="ml-2 font-mono text-[11px] text-[var(--text-muted)]">
                               {{ feat.key }}
                             </span>
                           </div>
                           <div class="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                            {{ feat.description }}
+                            {{ featureDescriptionI18n(feat.key, feat.description) }}
                           </div>
                           <div
                             v-if="feat.requires.length"
                             class="text-[11px] text-[var(--text-muted)] mt-1 font-mono"
                           >
-                            requires: {{ feat.requires.join(", ") }}
+                            {{ t('settings.featureRequires') }} {{ feat.requires.join(", ") }}
                           </div>
                         </div>
                       </div>

@@ -371,8 +371,21 @@ function providerHint(pluginKey: string): ProviderHint | null {
   }
 }
 
+/**
+ * Sprint 3.6 bugfix: backend plugin catalog descriptions are hardcoded
+ * English in `app/core/plugin_catalog.py`. Until backend-side i18n lands,
+ * we translate known catalog keys client-side by looking up
+ * `plugins.descriptions.<key>` and falling back to the raw backend text.
+ */
+function pluginDescriptionI18n(key: string, raw: string | null | undefined): string {
+  const i18nKey = `plugins.descriptions.${key}`;
+  const translated = t(i18nKey);
+  if (translated && translated !== i18nKey) return translated;
+  return raw || "";
+}
+
 function pluginDescriptionFor(plugin: InstalledPlugin): string {
-  return plugin.description || "";
+  return pluginDescriptionI18n(plugin.key, plugin.description);
 }
 </script>
 
@@ -485,7 +498,7 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
                   </span>
                 </div>
                 <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                  {{ entry.description }}
+                  {{ pluginDescriptionI18n(entry.key, entry.description) }}
                 </p>
                 <div v-if="entry.tags.length" class="mt-1.5 flex flex-wrap gap-1">
                   <span
@@ -597,7 +610,7 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
                   v-if="plugin.description"
                   class="text-[10px] text-[var(--text-muted)] leading-relaxed"
                 >
-                  {{ plugin.description }}
+                  {{ pluginDescriptionI18n(plugin.key, plugin.description) }}
                 </p>
                 <div
                   v-if="plugin.kind === 'service' && plugin.container_name"

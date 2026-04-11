@@ -918,11 +918,11 @@ function toggleRuleExpand(id: number) {
           <div class="space-y-3">
             <div class="space-y-1">
               <label :class="labelClass">{{ t('automations.nameLabel') }} <span class="text-red-400">*</span></label>
-              <input v-model="formName" type="text" placeholder="e.g. High temperature alert" :class="inputClass" />
+              <input v-model="formName" type="text" :placeholder="t('automations.namePlaceholder')" :class="inputClass" />
             </div>
             <div class="space-y-1">
               <label :class="labelClass">{{ t('automations.descriptionLabel') }} <span class="text-[var(--text-muted)]">{{ t('automations.descriptionOptional') }}</span></label>
-              <input v-model="formDescription" type="text" placeholder="What does this rule do?" :class="inputClass" />
+              <input v-model="formDescription" type="text" :placeholder="t('automations.descriptionPlaceholder')" :class="inputClass" />
             </div>
           </div>
 

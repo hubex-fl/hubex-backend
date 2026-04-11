@@ -193,7 +193,16 @@ async def _eval_variable_threshold(config: dict, db: AsyncSession, now: datetime
     }
     fired = ops.get(operator, False)
     if fired:
-        return True, f"variable '{key}' value {numeric} {operator} {threshold}"
+        # Sprint 3.6 bugfix: use math symbols instead of english op words.
+        # Old message "variable 'temperature' value 20.3 gt 20" is locale-
+        # agnostic-ish, but "gt/gte/lt/lte/eq/ne" are english codes. The
+        # symbols ">", "<", "=" etc. are universal and render identically
+        # in every locale. Frontend Alerts + Dashboard widgets display
+        # this string directly, so this makes them readable without any
+        # frontend translation pass.
+        symbols = {"gt": ">", "gte": "\u2265", "lt": "<", "lte": "\u2264", "eq": "=", "ne": "\u2260"}
+        sym = symbols.get(operator, operator)
+        return True, f"{key} = {numeric} {sym} {threshold}"
     return False, ""
 
 

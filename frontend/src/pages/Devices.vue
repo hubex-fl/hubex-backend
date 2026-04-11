@@ -153,27 +153,28 @@ const filterBy = ref("all");
 const RECENT_SECONDS = 300;
 const OFFLINE_OLD_SECONDS = 7 * 24 * 60 * 60;
 
-const sortOptions = [
-  { value: "last_seen", label: "Last seen" },
-  { value: "state", label: "State priority" },
-  { value: "health", label: "Health" },
-];
+// Sprint 3.6 — sort/filter/mode labels are now locale-aware
+const sortOptions = computed(() => [
+  { value: "last_seen", label: t("devices.sortLastSeen") },
+  { value: "state", label: t("devices.sortState") },
+  { value: "health", label: t("devices.sortHealth") },
+]);
 
 const filterOptions = computed(() => {
   const opts: Array<{ value: string; label: string }> = [
-    { value: "all", label: "All" },
-    { value: "recent", label: "Recently active" },
+    { value: "all", label: t("devices.filterAll") },
+    { value: "recent", label: t("devices.filterRecent") },
   ];
   if (includeUnclaimed.value) {
     opts.push(
-      { value: "claimed", label: "Claimed" },
-      { value: "unclaimed", label: "Unclaimed" },
-      { value: "claimable", label: "Claimable" },
+      { value: "claimed", label: t("devices.filterClaimed") },
+      { value: "unclaimed", label: t("devices.filterUnclaimed") },
+      { value: "claimable", label: t("devices.filterClaimable") },
     );
   }
   opts.push(
-    { value: "offline", label: "Offline" },
-    { value: "offline_old", label: "Offline (old)" },
+    { value: "offline", label: t("devices.filterOffline") },
+    { value: "offline_old", label: t("devices.filterOfflineOld") },
   );
   // Device type filters (only show types that exist)
   const presentTypes = new Set(devices.value.map((d) => d.device_type));
@@ -202,8 +203,10 @@ const singlePurgeDevice = ref<Device | null>(null);
 const singlePurgeConfirmText = ref("");
 
 const selectModeOptions = computed(() => {
-  const opts: Array<{ value: string; label: string }> = [{ value: "unclaim", label: "Unclaim mode" }];
-  if (canShowPurge.value) opts.push({ value: "purge", label: "Delete mode" });
+  const opts: Array<{ value: string; label: string }> = [
+    { value: "unclaim", label: t("devices.unclaimMode") },
+  ];
+  if (canShowPurge.value) opts.push({ value: "purge", label: t("devices.deleteMode") });
   return opts;
 });
 
@@ -216,10 +219,10 @@ const pairingDevice = computed(() => {
 
 const pairingStateWarning = computed(() => {
   if (!pairingDeviceUid.value.trim()) return null;
-  if (pairingLookupStatus.value === "not_found") return "Unknown device UID";
+  if (pairingLookupStatus.value === "not_found") return t("devices.unknownDeviceUid");
   if (!pairingDevice.value) {
     if (pairingLookupStatus.value === "found" && pairingLookup.value?.claimed) {
-      return "Device already claimed";
+      return t("devices.deviceAlreadyClaimed");
     }
     return null;
   }
@@ -756,8 +759,8 @@ onUnmounted(() => {
             <div class="space-y-1.5">
               <UInput
                 v-model="pairingDeviceUid"
-                label="Device UID"
-                placeholder="Device UID"
+                :label="t('devices.deviceUid')"
+                :placeholder="t('devices.deviceUid')"
               />
               <div v-if="pairingDeviceUid.trim() && pairingLookupStatus !== 'idle'" class="flex items-center gap-1.5 min-h-[1.25rem]">
                 <span v-if="pairingLookupStatus === 'loading'" class="text-xs text-[var(--text-muted)]">Looking up…</span>
@@ -887,10 +890,10 @@ onUnmounted(() => {
             :disabled="!selectableIds.length"
             @change="toggleSelectAll"
           />
-          <span>Select all</span>
+          <span>{{ t('devices.selectAll') }}</span>
         </label>
         <span v-if="selectedIds.length" class="text-[var(--text-secondary)]">
-          {{ selectedIds.length }} selected
+          {{ t('devices.nSelected', { n: selectedIds.length }) }}
         </span>
       </div>
 
@@ -1341,28 +1344,26 @@ onUnmounted(() => {
     <!-- ── 6. Bulk Purge Modal ─────────────────────────────────────────────── -->
     <UModal
       :open="showBulkPurgeModal"
-      title="Confirm Bulk Delete"
+      :title="t('devices.bulkDeleteTitle')"
       size="sm"
       @close="showBulkPurgeModal = false"
     >
       <div class="space-y-4">
         <p class="text-sm text-[var(--text-secondary)]">
-          Permanently delete
-          <span class="font-semibold text-[var(--status-bad)]">{{ selectedIds.length }}</span>
-          device{{ selectedIds.length !== 1 ? "s" : "" }} and all related data? This cannot be undone.
+          {{ t('devices.bulkDeleteConfirm', { n: selectedIds.length }) }}
         </p>
         <div class="bulk-confirm">
           <UInput
             v-model="bulkPurgeConfirmText"
-            placeholder="Type DELETE to confirm"
-            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'DELETE' ? 'Type DELETE in uppercase' : undefined"
+            :placeholder="t('devices.typeDeleteToConfirm')"
+            :error="bulkPurgeConfirmText && bulkPurgeConfirmText !== 'DELETE' ? t('devices.typeDeleteUppercase') : undefined"
           />
         </div>
       </div>
       <template #footer>
         <div class="flex gap-3 justify-end">
           <UButton variant="ghost" :disabled="bulkPurgeBusy" @click="showBulkPurgeModal = false">
-            Cancel
+            {{ t('common.cancel') }}
           </UButton>
           <UButton
             variant="danger"
@@ -1370,7 +1371,7 @@ onUnmounted(() => {
             :disabled="bulkPurgeConfirmText !== 'DELETE' || bulkPurgeBusy"
             @click="bulkPurge"
           >
-            Confirm delete
+            {{ t('devices.confirmDelete') }}
           </UButton>
         </div>
       </template>
@@ -1379,31 +1380,29 @@ onUnmounted(() => {
     <!-- ── 7. Single Device Purge Modal ───────────────────────────────────── -->
     <UModal
       :open="showSinglePurgeModal"
-      title="Confirm Device Delete"
+      :title="t('devices.singleDeleteTitle')"
       size="sm"
       @close="showSinglePurgeModal = false"
     >
       <div class="space-y-4">
         <p class="text-sm text-[var(--text-secondary)]">
-          Permanently delete
-          <span class="font-mono text-[var(--text-primary)]">{{ singlePurgeDevice?.device_uid }}</span>
-          and all related data? This cannot be undone.
+          {{ t('devices.singleDeleteConfirm', { uid: singlePurgeDevice?.device_uid || '' }) }}
         </p>
         <UInput
           v-model="singlePurgeConfirmText"
-          placeholder="Type DELETE to confirm"
-          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'DELETE' ? 'Type DELETE in uppercase' : undefined"
+          :placeholder="t('devices.typeDeleteToConfirm')"
+          :error="singlePurgeConfirmText && singlePurgeConfirmText !== 'DELETE' ? t('devices.typeDeleteUppercase') : undefined"
         />
       </div>
       <template #footer>
         <div class="flex gap-3 justify-end">
-          <UButton variant="ghost" @click="showSinglePurgeModal = false">Cancel</UButton>
+          <UButton variant="ghost" @click="showSinglePurgeModal = false">{{ t('common.cancel') }}</UButton>
           <UButton
             variant="danger"
             :disabled="singlePurgeConfirmText !== 'DELETE'"
             @click="confirmSinglePurge"
           >
-            Delete device
+            {{ t('devices.deleteDevice') }}
           </UButton>
         </div>
       </template>

@@ -492,7 +492,7 @@ const statusClass: Record<string, string> = {
               ]"
               @click="statusFilter = s as typeof statusFilter"
             >
-              {{ s === 'all' ? t('alerts.allFilter') : s.charAt(0).toUpperCase() + s.slice(1) }}
+              {{ t(`alerts.statusFilter.${s}`) }}
             </button>
           </div>
 
@@ -535,7 +535,7 @@ const statusClass: Record<string, string> = {
               <span
                 :class="['shrink-0 mt-0.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[rules.find(r => r.id === ev.rule_id)?.severity ?? 'info']]"
               >
-                {{ rules.find(r => r.id === ev.rule_id)?.severity ?? "info" }}
+                {{ t(`alerts.severity${(rules.find(r => r.id === ev.rule_id)?.severity ?? 'info').charAt(0).toUpperCase() + (rules.find(r => r.id === ev.rule_id)?.severity ?? 'info').slice(1)}`) }}
               </span>
 
               <!-- Main content -->
@@ -545,7 +545,7 @@ const statusClass: Record<string, string> = {
                   <span
                     :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', statusClass[ev.status], ev.status === 'firing' ? 'animate-pulse' : '']"
                   >
-                    {{ ev.status }}
+                    {{ t(`alerts.statusFilter.${ev.status}`) }}
                   </span>
                   <span class="text-xs text-[var(--text-muted)]">{{ ruleNameFor(ev.rule_id) }}</span>
                   <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
@@ -694,7 +694,7 @@ const statusClass: Record<string, string> = {
                   {{ rule.condition_type }}
                 </span>
                 <span :class="['text-[10px] font-mono uppercase px-2 py-0.5 rounded', severityClass[rule.severity]]">
-                  {{ rule.severity }}
+                  {{ t(`alerts.severity${rule.severity.charAt(0).toUpperCase() + rule.severity.slice(1)}`) }}
                 </span>
               </div>
               <p v-if="rule.condition_type === 'variable_threshold' && rule.condition_config" class="text-xs text-[var(--primary)] font-mono">
