@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
-import { apiFetch } from "../lib/api";
+import { apiFetch, getToken } from "../lib/api";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -13,6 +13,16 @@ const error = ref("");
 const loading = ref(false);
 const router = useRouter();
 const auth = useAuthStore();
+
+// Sprint 8 R1-F01 — auto-redirect away from /login when already
+// authenticated. Before: navigating to /login with a valid token
+// still rendered the login form — confusing UX. Now: if a token
+// is present at mount time, redirect immediately to the dashboard.
+onMounted(() => {
+  if (getToken()) {
+    router.replace("/");
+  }
+});
 
 async function onSubmit() {
   error.value = "";

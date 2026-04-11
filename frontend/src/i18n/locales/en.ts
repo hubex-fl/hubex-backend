@@ -47,6 +47,13 @@ export default {
     setup: 'Setup',
     featureDisabled: 'Feature Disabled',
     tokenInspector: 'Token Inspector',
+    // Sprint 8 R1-F02 — CMS sub-navigation children
+    cmsPages: 'Pages',
+    cmsForms: 'Forms',
+    cmsMenus: 'Menus',
+    cmsMedia: 'Media',
+    cmsRedirects: 'Redirects',
+    cmsSettings: 'Settings',
   },
   navGroups: {
     main: 'Main',
