@@ -602,7 +602,7 @@ onMounted(async () => {
     <div class="vars-header">
       <div class="vars-header-left">
         <h1 class="vars-title">{{ t('variables.title') }}</h1>
-        <UInfoTooltip :title="t('infoTooltips.variables.title')" :items="tm('infoTooltips.variables.items').map((i: any) => rt(i))" />
+        <UInfoTooltip :title="t('infoTooltips.variables.title')" :items="tm('infoTooltips.variables.items').map((i: any) => rt(i))" tourId="variables-overview" />
         <span class="vars-count">{{ filteredRows.length }}</span>
       </div>
       <UButton @click="openCreate" size="sm">

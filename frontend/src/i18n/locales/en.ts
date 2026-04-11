@@ -850,6 +850,9 @@ export default {
   settings: {
     title: 'Settings',
     subtitle: 'Manage your account, organization, and integrations',
+    // Sprint 8 R4 F20: search
+    searchPlaceholder: 'Search settings…',
+    searchNoResults: 'No settings matched "{query}"',
     // Sprint 3.6 — Features tab i18n
     runtimeFeatureFlags: 'Runtime Feature Flags',
     toggleSubsystems: 'Toggle subsystems on or off without a restart. {enabled} / {total} enabled.',
@@ -1303,7 +1306,8 @@ export default {
       subtitle: 'Templates for automation emails, alerts, and reports',
       preview: 'Preview',
       previewEmpty: 'Start typing HTML to see a live preview',
-      editorView: { code: 'Code', split: 'Split', preview: 'Preview', simple: 'Simple' },
+      editorView: { visual: 'Visual', code: 'Code', split: 'Split', preview: 'Preview', simple: 'Simple' },
+      visualHint: 'Drop in variables from the list above, then format the text with the toolbar. Switch to Code view anytime for full HTML control.',
       linkAutomations: 'Automations',
       linkReports: 'Reports',
       newTemplate: '+ New Template',
@@ -1563,6 +1567,25 @@ export default {
       modulesEnabled: 'Modules Enabled',
       activeCapabilities: 'Active Capabilities',
       systemStatus: 'System Status',
+      // Sprint 8 R4 Bucket C F22: MVP admin panels
+      yourCapsTitle: 'Your Capabilities',
+      yourCapsCount: '{n} active',
+      yourCapsLoading: 'Checking capabilities\u2026',
+      yourCapsEmpty: 'No capabilities present for your current token.',
+      yourOrgsTitle: 'Your Organizations',
+      yourOrgsHint: 'Organizations you can access with this account',
+      loadingOrgs: 'Loading organizations\u2026',
+      loadOrgsFailed: 'Failed to load organizations',
+      noOrgs: 'You are not a member of any organization yet.',
+      currentOrgBadge: 'Current',
+      orgMembersTitle: 'Members of Current Organization',
+      orgMembersHint: 'Read-only view. Invite, remove, and role changes live under Settings \u2192 Organization.',
+      orgMembersManageHint: 'Tip: manage members from Settings \u2192 Organization to invite, change roles, or remove users.',
+      loadingMembers: 'Loading members\u2026',
+      loadMembersFailed: 'Failed to load members',
+      noMembers: 'No members found in the current organization.',
+      joinedOn: 'joined {when}',
+      invitedOn: 'invited {when}',
       moduleRegistry: 'Module Registry',
       moduleRegistryHint: 'Enable or disable platform modules',
       loadingModules: 'Loading modules...',
@@ -2343,7 +2366,71 @@ export default {
     resume: 'Resume autoplay',
     loading: 'Loading...',
   },
+  infoTooltip: {
+    // Sprint 8 R4 Bucket C F09: label for the "Take a guided tour" button
+    // that appears on UInfoTooltip when a tourId is provided.
+    takeGuidedTour: 'Take a guided tour',
+  },
   tours: {
+    // Sprint 8 F09 — three inline page explainers
+    devicesOverview: {
+      name: 'Devices Overview',
+      description: 'Quick walkthrough of the Devices page',
+      steps: {
+        intro: {
+          title: 'Your device fleet',
+          text: 'This page lists everything connected to HubEx — hardware sensors, API services, bridges, and software agents. Each row shows the current health and status at a glance.',
+        },
+        addDevice: {
+          title: 'Add a new device',
+          text: 'Click the "Add Device" button to start the pairing wizard. You can connect hardware (ESP32, ESP8266), services (API), bridges (MQTT), or custom agents.',
+        },
+        rowIndicator: {
+          title: 'Row health',
+          text: 'The pulsing dot shows online state. The health badge flags stale/dead devices — click any row for full details and live telemetry.',
+        },
+        done: {
+          title: 'You are all set',
+          text: 'You can always reopen this tour from the info icon next to the page title.',
+        },
+      },
+    },
+    automationsOverview: {
+      name: 'Automations Overview',
+      description: 'Quick walkthrough of the Automations page',
+      steps: {
+        intro: {
+          title: 'If-then rules',
+          text: 'Automations react to variable changes, device events, or schedules and run actions like sending alerts, hitting webhooks, or writing variables.',
+        },
+        create: {
+          title: 'Create your first rule',
+          text: 'Click the create button to define a trigger, an optional condition, and an action. Cooldowns prevent a rule from firing too often.',
+        },
+        list: {
+          title: 'Fire log',
+          text: 'Each automation shows when it last fired and how many times. Click into a rule to see execution history and linked devices.',
+        },
+      },
+    },
+    variablesOverview: {
+      name: 'Variables Overview',
+      description: 'Quick walkthrough of the Variables page',
+      steps: {
+        intro: {
+          title: 'The data layer',
+          text: 'Variables are every data point your devices send or receive — sensor readings, states, configuration values. The table shows current value, source, and freshness.',
+        },
+        filters: {
+          title: 'Filter and search',
+          text: 'Use the filters at the top to scope by device or source, or the search box to find a variable by key. Click any row to see the full history and live stream.',
+        },
+        done: {
+          title: 'Tip',
+          text: 'Variables power dashboards, automations, alerts, and CMS pages. Assign semantic types (like temperature or GPS) to unlock smart widgets.',
+        },
+      },
+    },
     onboarding: {
       name: 'Getting Started',
       description: 'Quick tour through the main features',
@@ -2490,6 +2577,10 @@ export default {
     subtitle: 'Create guided tours for your setup',
     newTour: 'New Tour',
     editTour: 'Edit Tour',
+    helperTitle: 'How tours work',
+    helperBullet1: 'Give the tour a name and description, then add steps that will be shown in order.',
+    helperBullet2: 'Each step highlights a page element with a short explanation. Use the CSS selector field to target buttons, panels, or entire routes.',
+    helperBullet3: 'Tours can autoplay at a fixed interval, or let the user click through manually. Test with "Preview" before saving.',
     tourSettings: 'Tour Settings',
     tourName: 'Name',
     tourNamePlaceholder: 'e.g. Energy Dashboard Tour',

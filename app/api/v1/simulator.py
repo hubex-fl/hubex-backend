@@ -154,6 +154,117 @@ _TEMPLATES: dict[str, TemplateInfo] = {
             ),
         ],
     ),
+    # Sprint 8 R4 Bucket C F19: new simulator templates that line up with
+    # the expanded Sprint 5b component catalog (BME280, BH1750, HC-SR04,
+    # servo, LED PWM, door contact). These round out the "hardware demo"
+    # story so the Sandbox looks alive after a fresh register.
+    "bme280": TemplateInfo(
+        key="bme280",
+        name="BME280 Environmental",
+        description="BME280 I2C sensor — temperature, humidity, pressure, and gas resistance (IAQ)",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="temperature",
+                pattern="sine",
+                config={"min": 19.0, "max": 24.5, "period_seconds": 86400},
+            ),
+            VariablePattern(
+                variable_key="humidity",
+                pattern="sine",
+                config={"min": 42.0, "max": 58.0, "period_seconds": 86400, "phase_offset": 3.14159},
+            ),
+            VariablePattern(
+                variable_key="pressure",
+                pattern="noise",
+                config={"center": 1013.25, "amplitude": 3.5},
+            ),
+            VariablePattern(
+                variable_key="gas_resistance_kohm",
+                pattern="random_walk",
+                config={"center": 150.0, "volatility": 12.0, "min_bound": 50.0, "max_bound": 400.0},
+            ),
+        ],
+    ),
+    "bh1750": TemplateInfo(
+        key="bh1750",
+        name="BH1750 Light Sensor",
+        description="BH1750 ambient light meter — day/night lux cycle with curtain noise",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="lux",
+                pattern="sine",
+                config={"min": 0.0, "max": 1200.0, "period_seconds": 86400},
+            ),
+        ],
+    ),
+    "ultrasonic": TemplateInfo(
+        key="ultrasonic",
+        name="HC-SR04 Distance",
+        description="HC-SR04 ultrasonic distance sensor — ping-pong distance with presence spikes",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="distance_cm",
+                pattern="random_walk",
+                config={"center": 85.0, "volatility": 18.0, "min_bound": 4.0, "max_bound": 200.0},
+            ),
+            VariablePattern(
+                variable_key="object_detected",
+                pattern="step",
+                config={"values": [False, False, True, False, False, False, True, False], "interval_seconds": 15},
+            ),
+        ],
+    ),
+    "servo": TemplateInfo(
+        key="servo",
+        name="Servo Motor",
+        description="Servo actuator — angle sweeps between two set-points on schedule",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="angle_deg",
+                pattern="sine",
+                config={"min": 0.0, "max": 180.0, "period_seconds": 120},
+            ),
+            VariablePattern(
+                variable_key="target_angle_deg",
+                pattern="step",
+                config={"values": [0, 45, 90, 135, 180, 135, 90, 45], "interval_seconds": 15},
+            ),
+        ],
+    ),
+    "led_pwm": TemplateInfo(
+        key="led_pwm",
+        name="LED Dimmer (PWM)",
+        description="PWM LED channel — brightness ramps up and fades through the day",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="brightness_pct",
+                pattern="sine",
+                config={"min": 0.0, "max": 100.0, "period_seconds": 300},
+            ),
+            VariablePattern(
+                variable_key="duty_cycle",
+                pattern="ramp",
+                config={"start": 0.0, "end": 255.0, "duration_seconds": 600, "loop": True},
+            ),
+        ],
+    ),
+    "door_contact": TemplateInfo(
+        key="door_contact",
+        name="Door/Window Contact",
+        description="Reed-switch contact sensor — open/closed events with battery drain",
+        variable_patterns=[
+            VariablePattern(
+                variable_key="contact_closed",
+                pattern="step",
+                config={"values": [True, True, True, False, True, True, False, True], "interval_seconds": 45},
+            ),
+            VariablePattern(
+                variable_key="battery_pct",
+                pattern="ramp",
+                config={"start": 100.0, "end": 0.0, "duration_seconds": 86400 * 30, "loop": True},
+            ),
+        ],
+    ),
     "custom": TemplateInfo(
         key="custom",
         name="Custom",

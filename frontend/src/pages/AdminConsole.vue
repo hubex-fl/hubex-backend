@@ -3,6 +3,9 @@ import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
+import { useAuthStore } from "../stores/auth";
+import { useCapabilities } from "../lib/capabilities";
+import { fmtDateTime } from "../lib/relativeTime";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
@@ -10,6 +13,8 @@ import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const toast = useToastStore();
 const { t, tm, rt } = useI18n();
+const authStore = useAuthStore();
+const caps = useCapabilities();
 
 const CAP_LABEL_KEYS: Record<string, string> = {
   "devices.read": "devicesRead", "devices.write": "devicesWrite",
@@ -107,9 +112,87 @@ const totalCaps = computed(() => {
   return all.size;
 });
 
+// ── Sprint 8 R4 Bucket C F22: Admin Console MVP ────────────────────────────
+// The Admin Console used to show only Module Registry + System Info, so the
+// user said "irgendwie ohne Funktion, genau wie System Health". This adds
+// three real sections: current-user capability set, list of accessible
+// organizations, and members of the currently active organization.
+//
+// These are READ-ONLY panels for this release — invite/remove/role-change
+// actions stay in the per-org settings flow. That keeps the blast radius
+// small for dev-stable-v1 while still giving admins a real overview pane.
+
+type OrgSummary = {
+  id: number;
+  name: string;
+  slug?: string;
+  edition?: string;
+  created_at?: string;
+  role?: string;
+};
+
+type OrgMember = {
+  user_id: number;
+  email: string;
+  role: string;
+  invited_at?: string | null;
+  joined_at?: string | null;
+};
+
+const orgs = ref<OrgSummary[]>([]);
+const orgsLoading = ref(true);
+const orgsError = ref<string | null>(null);
+
+const members = ref<OrgMember[]>([]);
+const membersLoading = ref(true);
+const membersError = ref<string | null>(null);
+
+async function loadOrgs() {
+  orgsLoading.value = true;
+  orgsError.value = null;
+  try {
+    const res = await apiFetch<OrgSummary[] | { orgs: OrgSummary[] }>("/api/v1/orgs");
+    // Backend may return a bare array OR a dict with .orgs; accept both.
+    orgs.value = Array.isArray(res) ? res : (res?.orgs ?? []);
+  } catch (e: any) {
+    orgsError.value = e?.message || t('pages.admin.loadOrgsFailed');
+  } finally {
+    orgsLoading.value = false;
+  }
+}
+
+async function loadMembers() {
+  const currentOrgId = authStore.orgId;
+  if (!currentOrgId) {
+    membersLoading.value = false;
+    return;
+  }
+  membersLoading.value = true;
+  membersError.value = null;
+  try {
+    members.value = await apiFetch<OrgMember[]>(`/api/v1/orgs/${currentOrgId}/members`);
+  } catch (e: any) {
+    membersError.value = e?.message || t('pages.admin.loadMembersFailed');
+  } finally {
+    membersLoading.value = false;
+  }
+}
+
+const sortedCaps = computed(() => {
+  return Array.from(caps.caps).sort();
+});
+
+function roleBadgeStatus(role: string): "ok" | "warn" | "neutral" {
+  if (role === "owner") return "warn";
+  if (role === "admin") return "ok";
+  return "neutral";
+}
+
 onMounted(() => {
   loadModules();
   loadHealth();
+  loadOrgs();
+  loadMembers();
 });
 </script>
 
@@ -202,6 +285,88 @@ onMounted(() => {
           </button>
         </div>
       </div>
+    </UCard>
+
+    <!-- Sprint 8 R4 Bucket C F22: Your Capabilities -->
+    <UCard>
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.yourCapsTitle') }}</h3>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('pages.admin.yourCapsCount', { n: sortedCaps.length }) }}</span>
+        </div>
+      </template>
+      <div v-if="caps.status !== 'ready'" class="text-xs text-[var(--text-muted)] py-2">
+        {{ t('pages.admin.yourCapsLoading') }}
+      </div>
+      <div v-else-if="sortedCaps.length === 0" class="text-xs text-[var(--text-muted)] py-2">
+        {{ t('pages.admin.yourCapsEmpty') }}
+      </div>
+      <div v-else class="flex flex-wrap gap-1.5">
+        <span
+          v-for="cap in sortedCaps"
+          :key="cap"
+          :title="capLabel(cap)"
+          class="text-[10px] px-2 py-1 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-secondary)]"
+        >{{ cap }}</span>
+      </div>
+    </UCard>
+
+    <!-- Sprint 8 R4 Bucket C F22: Your Organizations -->
+    <UCard>
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.yourOrgsTitle') }}</h3>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('pages.admin.yourOrgsHint') }}</span>
+        </div>
+      </template>
+      <div v-if="orgsLoading" class="text-xs text-[var(--text-muted)] py-2">{{ t('pages.admin.loadingOrgs') }}</div>
+      <div v-else-if="orgsError" class="text-xs text-[var(--status-bad)] py-2">{{ orgsError }}</div>
+      <div v-else-if="!orgs.length" class="text-xs text-[var(--text-muted)] py-2">{{ t('pages.admin.noOrgs') }}</div>
+      <div v-else class="divide-y divide-[var(--border)]">
+        <div v-for="org in orgs" :key="org.id" class="flex items-center gap-4 py-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-[var(--text-primary)]">{{ org.name }}</span>
+              <UBadge
+                v-if="authStore.orgId === org.id"
+                status="ok"
+                size="sm"
+              >{{ t('pages.admin.currentOrgBadge') }}</UBadge>
+              <UBadge v-if="org.edition" status="neutral" size="sm">{{ org.edition }}</UBadge>
+            </div>
+            <p v-if="org.slug" class="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{{ org.slug }}</p>
+          </div>
+          <span v-if="org.role" class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ org.role }}</span>
+        </div>
+      </div>
+    </UCard>
+
+    <!-- Sprint 8 R4 Bucket C F22: Members of current organization -->
+    <UCard v-if="authStore.orgId">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.orgMembersTitle') }}</h3>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('pages.admin.orgMembersHint') }}</span>
+        </div>
+      </template>
+      <div v-if="membersLoading" class="text-xs text-[var(--text-muted)] py-2">{{ t('pages.admin.loadingMembers') }}</div>
+      <div v-else-if="membersError" class="text-xs text-[var(--status-bad)] py-2">{{ membersError }}</div>
+      <div v-else-if="!members.length" class="text-xs text-[var(--text-muted)] py-2">{{ t('pages.admin.noMembers') }}</div>
+      <div v-else class="divide-y divide-[var(--border)]">
+        <div v-for="m in members" :key="m.user_id" class="flex items-center gap-4 py-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-[var(--text-primary)]">{{ m.email }}</span>
+              <UBadge :status="roleBadgeStatus(m.role)" size="sm">{{ m.role }}</UBadge>
+            </div>
+            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+              <template v-if="m.joined_at">{{ t('pages.admin.joinedOn', { when: fmtDateTime(m.joined_at) }) }}</template>
+              <template v-else-if="m.invited_at">{{ t('pages.admin.invitedOn', { when: fmtDateTime(m.invited_at) }) }}</template>
+            </p>
+          </div>
+        </div>
+      </div>
+      <p class="text-[10px] text-[var(--text-muted)] mt-3 italic">{{ t('pages.admin.orgMembersManageHint') }}</p>
     </UCard>
 
     <!-- System Info -->

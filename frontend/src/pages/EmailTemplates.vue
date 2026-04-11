@@ -5,6 +5,9 @@ import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
+// Sprint 8 R4 Bucket C F13: TipTap-based visual editor for email body.
+// Reuses the CMS RichTextEditor component.
+import RichTextEditor from "../components/cms/RichTextEditor.vue";
 
 const toast = useToastStore();
 const { t, te, tm, rt } = useI18n();
@@ -65,7 +68,10 @@ const previewSubject = ref("");
 const previewHtml = ref("");
 
 // Inline editor preview (live WYSIWYG)
-const editorView = ref<"code" | "preview" | "split" | "simple">("split");
+// Sprint 8 R4 Bucket C F13: added "visual" (TipTap WYSIWYG) mode as the new
+// default. Authors can still drop down to code/split/preview if they need
+// raw HTML, but the first impression is now a proper rich editor.
+const editorView = ref<"visual" | "code" | "preview" | "split" | "simple">("visual");
 const debouncedHtml = ref("");
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -385,7 +391,7 @@ onMounted(loadTemplates);
             <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldHtmlBody') }}</label>
             <div class="flex rounded-lg border border-[var(--border)] overflow-hidden">
               <button
-                v-for="view in (['simple', 'code', 'split', 'preview'] as const)"
+                v-for="view in (['visual', 'simple', 'code', 'split', 'preview'] as const)"
                 :key="view"
                 :class="[
                   'px-2 py-0.5 text-[10px] font-medium transition-colors',
@@ -441,6 +447,31 @@ onMounted(loadTemplates);
                 style="min-height: 120px"
                 :title="t('pages.emailTemplates.preview')"
               />
+            </div>
+          </div>
+
+          <!-- Sprint 8 R4 F13: Visual WYSIWYG mode (TipTap). Drops users straight
+               into a formatted editor with bold/italic/headings/lists/links/etc.
+               Variables panel on the right still lets them insert {{token}}
+               placeholders at the caret. -->
+          <div v-else-if="editorView === 'visual'" class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+            <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] overflow-hidden">
+              <RichTextEditor v-model="editBodyHtml" min-height="260px" />
+            </div>
+            <div class="border border-[var(--border)] rounded-lg bg-[var(--bg-raised)] p-2 h-fit">
+              <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">{{ t('pages.emailTemplates.insertVariable') }}</p>
+              <div class="space-y-1">
+                <button
+                  v-for="v in TEMPLATE_VARIABLES"
+                  :key="v.token"
+                  class="w-full text-left px-2 py-1 rounded text-[10px] font-mono text-[var(--text-primary)] hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors"
+                  :title="v.desc"
+                  @click="insertVariable(v.token)"
+                >{{ v.token }}</button>
+              </div>
+              <p class="text-[10px] text-[var(--text-muted)] mt-3 leading-snug">
+                {{ t('pages.emailTemplates.visualHint') }}
+              </p>
             </div>
           </div>
 

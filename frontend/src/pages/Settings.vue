@@ -276,6 +276,24 @@ const sectionDefs: Section[] = [
 ];
 const sections = computed(() => sectionDefs.map(s => ({ ...s, label: t(s.labelKey), description: t(s.descKey) })));
 
+// Sprint 8 R4 Bucket C F20: Settings search.
+// Filters the accordion sections by matching the query against the
+// translated label AND description. When a search is active we
+// auto-expand ALL matching sections so the user can immediately see
+// the content, reverting to single-expanded mode when the query is cleared.
+const settingsQuery = ref("");
+const filteredSections = computed(() => {
+  const q = settingsQuery.value.trim().toLowerCase();
+  if (!q) return sections.value;
+  return sections.value.filter(s =>
+    s.label.toLowerCase().includes(q) ||
+    (s.description && s.description.toLowerCase().includes(q))
+  );
+});
+function clearSettingsQuery() {
+  settingsQuery.value = "";
+}
+
 /** Map resource keys to i18n keys for the edition limits table. */
 const editionResourceLabels: Record<LimitResource, string> = {
   users: 'edition.resourceUsers',
@@ -398,10 +416,46 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Sprint 8 R4 F20: Settings search box (filters accordion sections). -->
+    <div class="relative mb-4">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+      </svg>
+      <input
+        v-model="settingsQuery"
+        type="search"
+        :placeholder="t('settings.searchPlaceholder')"
+        class="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] py-2.5 pl-10 pr-10 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)]/60 transition-colors"
+      />
+      <button
+        v-if="settingsQuery"
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        :aria-label="t('common.clear')"
+        :title="t('common.clear')"
+        @click="clearSettingsQuery"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Sprint 8 F20: empty-state when nothing matches the search query -->
+    <div
+      v-if="settingsQuery && filteredSections.length === 0"
+      class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)]/60 px-5 py-8 text-center mb-4"
+    >
+      <p class="text-sm text-[var(--text-muted)]">{{ t('settings.searchNoResults', { query: settingsQuery }) }}</p>
+      <button
+        class="mt-3 text-xs text-[var(--primary)] hover:underline"
+        @click="clearSettingsQuery"
+      >{{ t('common.clear') }}</button>
+    </div>
+
     <!-- Accordion sections -->
     <div class="space-y-2">
       <!-- ── Profile & Account ─────────────────────────────────────────── -->
-      <template v-for="section in sections" :key="section.key">
+      <template v-for="section in filteredSections" :key="section.key">
         <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
           <!-- Section header (always visible, clickable) -->
           <button
@@ -423,8 +477,10 @@ onMounted(async () => {
             </div>
           </button>
 
-          <!-- Section content -->
-          <div v-if="expandedSection === section.key" class="border-t border-[var(--border)] px-4 py-4 space-y-4">
+          <!-- Section content — Sprint 8 F20: when searching, all matching
+               sections are auto-expanded so the user sees content without
+               an extra click. -->
+          <div v-if="expandedSection === section.key || !!settingsQuery" class="border-t border-[var(--border)] px-4 py-4 space-y-4">
 
             <!-- Edition & Limits content -->
             <template v-if="section.key === 'edition'">

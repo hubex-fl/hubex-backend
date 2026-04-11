@@ -403,12 +403,153 @@ export const alertInvestigationTour: TourDefinition = {
  * Registration
  * ────────────────────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 5. Devices Overview  ("devices-overview")
+ *
+ * Sprint 8 R4 Bucket C F09: short inline tour that fires from the
+ * UInfoTooltip on /devices. Explains the category filter, the row
+ * indicators, and the add-device wizard.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const devicesOverviewSteps: TourStep[] = [
+  {
+    id: "intro",
+    page: "/devices",
+    action: "info",
+    position: "center",
+    title: "tours.devicesOverview.steps.intro.title",
+    text: "tours.devicesOverview.steps.intro.text",
+  },
+  {
+    id: "add-device",
+    page: "/devices",
+    target: "[data-tour='add-device']",
+    action: "spotlight+pulse",
+    position: "left",
+    title: "tours.devicesOverview.steps.addDevice.title",
+    text: "tours.devicesOverview.steps.addDevice.text",
+  },
+  {
+    id: "row-indicator",
+    page: "/devices",
+    target: "tbody tr:first-child",
+    action: "spotlight",
+    position: "top",
+    title: "tours.devicesOverview.steps.rowIndicator.title",
+    text: "tours.devicesOverview.steps.rowIndicator.text",
+  },
+  {
+    id: "done",
+    action: "info",
+    position: "center",
+    title: "tours.devicesOverview.steps.done.title",
+    text: "tours.devicesOverview.steps.done.text",
+  },
+];
+
+export const devicesOverviewTour: TourDefinition = {
+  id: "devices-overview",
+  name: "tours.devicesOverview.name",
+  description: "tours.devicesOverview.description",
+  icon: "cpu",
+  steps: devicesOverviewSteps,
+  category: "builtin",
+  autoplay: false,
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 6. Automations Overview  ("automations-overview")
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const automationsOverviewSteps: TourStep[] = [
+  {
+    id: "intro",
+    page: "/automations",
+    action: "info",
+    position: "center",
+    title: "tours.automationsOverview.steps.intro.title",
+    text: "tours.automationsOverview.steps.intro.text",
+  },
+  {
+    id: "create",
+    page: "/automations",
+    target: "[data-tour='create-automation'], button:has(+ span)",
+    action: "spotlight+pulse",
+    position: "left",
+    title: "tours.automationsOverview.steps.create.title",
+    text: "tours.automationsOverview.steps.create.text",
+  },
+  {
+    id: "list",
+    page: "/automations",
+    action: "info",
+    position: "center",
+    title: "tours.automationsOverview.steps.list.title",
+    text: "tours.automationsOverview.steps.list.text",
+  },
+];
+
+export const automationsOverviewTour: TourDefinition = {
+  id: "automations-overview",
+  name: "tours.automationsOverview.name",
+  description: "tours.automationsOverview.description",
+  icon: "zap",
+  steps: automationsOverviewSteps,
+  category: "builtin",
+  autoplay: false,
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 7. Variables Overview  ("variables-overview")
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const variablesOverviewSteps: TourStep[] = [
+  {
+    id: "intro",
+    page: "/variables",
+    action: "info",
+    position: "center",
+    title: "tours.variablesOverview.steps.intro.title",
+    text: "tours.variablesOverview.steps.intro.text",
+  },
+  {
+    id: "filters",
+    page: "/variables",
+    action: "info",
+    position: "center",
+    title: "tours.variablesOverview.steps.filters.title",
+    text: "tours.variablesOverview.steps.filters.text",
+  },
+  {
+    id: "done",
+    page: "/variables",
+    action: "info",
+    position: "center",
+    title: "tours.variablesOverview.steps.done.title",
+    text: "tours.variablesOverview.steps.done.text",
+  },
+];
+
+export const variablesOverviewTour: TourDefinition = {
+  id: "variables-overview",
+  name: "tours.variablesOverview.name",
+  description: "tours.variablesOverview.description",
+  icon: "database",
+  steps: variablesOverviewSteps,
+  category: "builtin",
+  autoplay: false,
+};
+
 /** All static built-in tour definitions (excluding dynamic dashboard-present). */
 export const builtinTours: TourDefinition[] = [
   onboardingTour,
   dataPathTour,
   dashboardPresentTour,
   alertInvestigationTour,
+  // Sprint 8 F09: inline "Erklärung" tours for the top-level pages.
+  devicesOverviewTour,
+  automationsOverviewTour,
+  variablesOverviewTour,
 ];
 
 /**

@@ -90,6 +90,12 @@ const templateIcons: Record<string, string> = {
   activity: "\uD83D\uDD32",
   "cloud-sun": "\uD83C\uDF24\uFE0F",
   wrench: "\uD83D\uDD27",
+  // Sprint 8 R4 Bucket C F19: icons for the new hardware-catalog templates
+  sun: "\u2600\uFE0F",
+  ruler: "\uD83D\uDCCF",
+  "rotate-cw": "\uD83D\uDD04",
+  lightbulb: "\uD83D\uDCA1",
+  "door-open": "\uD83D\uDEAA",
 };
 
 function templateEmoji(icon: string): string {

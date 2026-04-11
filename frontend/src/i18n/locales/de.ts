@@ -842,6 +842,9 @@ export default {
   },
   settings: {
     title: 'Einstellungen',
+    // Sprint 8 R4 F20: Suche
+    searchPlaceholder: 'Einstellungen durchsuchen\u2026',
+    searchNoResults: 'Keine Einstellungen gefunden f\u00fcr "{query}"',
     // Sprint 3.6 — Features tab i18n
     runtimeFeatureFlags: 'Runtime Feature Flags',
     toggleSubsystems: 'Subsysteme ohne Neustart an/aus schalten. {enabled} / {total} aktiviert.',
@@ -1296,7 +1299,8 @@ export default {
       subtitle: 'Vorlagen f\u00fcr Automations-E-Mails, Alarme und Berichte',
       preview: 'Vorschau',
       previewEmpty: 'HTML eingeben um eine Live-Vorschau zu sehen',
-      editorView: { code: 'Code', split: 'Geteilt', preview: 'Vorschau', simple: 'Einfach' },
+      editorView: { visual: 'Visuell', code: 'Code', split: 'Geteilt', preview: 'Vorschau', simple: 'Einfach' },
+      visualHint: 'Variablen aus der Liste einfügen und den Text mit der Leiste formatieren. Jederzeit auf Code umschalten für volle HTML-Kontrolle.',
       linkAutomations: 'Automationen',
       linkReports: 'Berichte',
       newTemplate: '+ Neue Vorlage',
@@ -1538,6 +1542,25 @@ export default {
       modulesEnabled: 'Module aktiviert',
       activeCapabilities: 'Aktive Fähigkeiten',
       systemStatus: 'Systemstatus',
+      // Sprint 8 R4 Bucket C F22: MVP Admin-Panels
+      yourCapsTitle: 'Deine Berechtigungen',
+      yourCapsCount: '{n} aktiv',
+      yourCapsLoading: 'Berechtigungen werden geprüft\u2026',
+      yourCapsEmpty: 'Dein aktuelles Token enthält keine Berechtigungen.',
+      yourOrgsTitle: 'Deine Organisationen',
+      yourOrgsHint: 'Organisationen, auf die du mit diesem Konto zugreifen kannst',
+      loadingOrgs: 'Organisationen werden geladen\u2026',
+      loadOrgsFailed: 'Organisationen konnten nicht geladen werden',
+      noOrgs: 'Du bist noch kein Mitglied einer Organisation.',
+      currentOrgBadge: 'Aktuell',
+      orgMembersTitle: 'Mitglieder der aktuellen Organisation',
+      orgMembersHint: 'Nur-Lese-Ansicht. Einladen, entfernen und Rollenwechsel findest du unter Einstellungen \u2192 Organisation.',
+      orgMembersManageHint: 'Tipp: Mitglieder verwaltest du unter Einstellungen \u2192 Organisation \u2014 dort kannst du einladen, Rollen ändern oder entfernen.',
+      loadingMembers: 'Mitglieder werden geladen\u2026',
+      loadMembersFailed: 'Mitglieder konnten nicht geladen werden',
+      noMembers: 'Keine Mitglieder in der aktuellen Organisation gefunden.',
+      joinedOn: 'beigetreten am {when}',
+      invitedOn: 'eingeladen am {when}',
       moduleRegistry: 'Modul-Registrierung',
       moduleRegistryHint: 'Plattform-Module aktivieren oder deaktivieren',
       loadingModules: 'Module werden geladen...',
@@ -2318,7 +2341,68 @@ export default {
     resume: 'Autoplay fortsetzen',
     loading: 'Wird geladen...',
   },
+  infoTooltip: {
+    takeGuidedTour: 'Geführte Tour starten',
+  },
   tours: {
+    devicesOverview: {
+      name: 'Geräte-Überblick',
+      description: 'Kurze Tour durch die Geräte-Seite',
+      steps: {
+        intro: {
+          title: 'Deine Geräteflotte',
+          text: 'Diese Seite listet alles, was an HubEx angebunden ist — Hardware-Sensoren, API-Dienste, Bridges und Software-Agenten. Jede Zeile zeigt den aktuellen Zustand auf einen Blick.',
+        },
+        addDevice: {
+          title: 'Neues Gerät hinzufügen',
+          text: 'Klicke auf "Gerät hinzufügen", um den Koppel-Wizard zu starten. Du kannst Hardware (ESP32, ESP8266), Dienste (API), Bridges (MQTT) oder eigene Agenten anbinden.',
+        },
+        rowIndicator: {
+          title: 'Zeilen-Zustand',
+          text: 'Der pulsierende Punkt zeigt den Online-Status. Das Zustands-Abzeichen markiert veraltete oder tote Geräte — klick auf eine Zeile für Details und Live-Telemetrie.',
+        },
+        done: {
+          title: 'Geschafft',
+          text: 'Du kannst diese Tour jederzeit wieder über das Info-Symbol neben dem Seitentitel öffnen.',
+        },
+      },
+    },
+    automationsOverview: {
+      name: 'Automationen-Überblick',
+      description: 'Kurze Tour durch die Automatisierungen-Seite',
+      steps: {
+        intro: {
+          title: 'Wenn-Dann-Regeln',
+          text: 'Automationen reagieren auf Variablen-Änderungen, Geräte-Events oder Zeitpläne und führen Aktionen aus — zum Beispiel Alarme senden, Webhooks aufrufen oder Variablen schreiben.',
+        },
+        create: {
+          title: 'Erste Regel erstellen',
+          text: 'Klicke auf den Erstellen-Button, um einen Trigger, eine optionale Bedingung und eine Aktion zu definieren. Cooldowns verhindern, dass eine Regel zu oft feuert.',
+        },
+        list: {
+          title: 'Ausführungsverlauf',
+          text: 'Jede Automation zeigt, wann sie zuletzt gefeuert hat und wie oft. Klick in eine Regel, um den vollständigen Verlauf und verknüpfte Geräte zu sehen.',
+        },
+      },
+    },
+    variablesOverview: {
+      name: 'Variablen-Überblick',
+      description: 'Kurze Tour durch die Variablen-Seite',
+      steps: {
+        intro: {
+          title: 'Die Datenschicht',
+          text: 'Variablen sind alle Datenpunkte, die deine Geräte senden oder empfangen — Sensorwerte, Zustände, Konfigurationen. Die Tabelle zeigt aktuellen Wert, Quelle und Aktualität.',
+        },
+        filters: {
+          title: 'Filtern und suchen',
+          text: 'Nutze die Filter oben, um nach Gerät oder Quelle einzuschränken, oder die Suche, um eine Variable am Schlüssel zu finden. Klick auf eine Zeile für Verlauf und Live-Stream.',
+        },
+        done: {
+          title: 'Tipp',
+          text: 'Variablen befeuern Dashboards, Automationen, Alarme und CMS-Seiten. Weise semantische Typen (z.B. Temperatur oder GPS) zu, um smarte Widgets freizuschalten.',
+        },
+      },
+    },
     onboarding: {
       name: 'Erste Schritte',
       description: 'Schnelle Tour durch die wichtigsten Funktionen',
@@ -2465,6 +2549,10 @@ export default {
     subtitle: 'Erstelle geführte Touren für dein Setup',
     newTour: 'Neue Tour',
     editTour: 'Tour bearbeiten',
+    helperTitle: 'So funktionieren Touren',
+    helperBullet1: 'Gib der Tour einen Namen und eine Beschreibung, dann füge Schritte hinzu, die in dieser Reihenfolge gezeigt werden.',
+    helperBullet2: 'Jeder Schritt hebt ein Seitenelement mit einer kurzen Erklärung hervor. Mit dem CSS-Selektor-Feld kannst du Buttons, Panels oder ganze Routen ansprechen.',
+    helperBullet3: 'Touren können automatisch in einem festen Intervall abspielen oder manuell durchgeklickt werden. Teste die Tour vor dem Speichern mit "Vorschau".',
     tourSettings: 'Tour-Einstellungen',
     tourName: 'Name',
     tourNamePlaceholder: 'z.B. Energie-Dashboard Tour',

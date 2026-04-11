@@ -299,6 +299,71 @@ export const BUILTIN_TEMPLATES: SimulatorTemplate[] = [
       { variable_key: "wind_speed", pattern: "noise", config: { center: 12, amplitude: 8 } },
     ],
   },
+  // Sprint 8 R4 Bucket C F19: new templates that line up with the
+  // expanded Sprint 5b hardware component catalog (BME280 / BH1750 /
+  // HC-SR04 / servo / LED PWM / door contact). These round out the
+  // hardware-demo story in the Sandbox.
+  {
+    id: "bme280",
+    name: "BME280 Environmental",
+    description: "BME280 I2C sensor — temperature, humidity, pressure, and IAQ gas resistance",
+    icon: "thermometer",
+    variable_patterns: [
+      { variable_key: "temperature", pattern: "sine", config: { min: 19, max: 24.5, period: 300 } },
+      { variable_key: "humidity", pattern: "sine", config: { min: 42, max: 58, period: 300, phase_offset: 3.14159 } },
+      { variable_key: "pressure", pattern: "noise", config: { center: 1013.25, amplitude: 3.5 } },
+      { variable_key: "gas_resistance_kohm", pattern: "random_walk", config: { center: 150, volatility: 12, min_bound: 50, max_bound: 400 } },
+    ],
+  },
+  {
+    id: "bh1750",
+    name: "BH1750 Light Sensor",
+    description: "BH1750 ambient light meter with a day/night lux cycle",
+    icon: "sun",
+    variable_patterns: [
+      { variable_key: "lux", pattern: "sine", config: { min: 0, max: 1200, period: 300 } },
+    ],
+  },
+  {
+    id: "ultrasonic",
+    name: "HC-SR04 Distance",
+    description: "Ultrasonic distance sensor with presence spikes on top of a random-walk baseline",
+    icon: "ruler",
+    variable_patterns: [
+      { variable_key: "distance_cm", pattern: "random_walk", config: { center: 85, volatility: 18, min_bound: 4, max_bound: 200 } },
+      { variable_key: "object_detected", pattern: "step", config: { values: "0,0,1,0,0,0,1,0", interval: 15 } },
+    ],
+  },
+  {
+    id: "servo",
+    name: "Servo Motor",
+    description: "Servo actuator sweeping between set-points with a matching target channel",
+    icon: "rotate-cw",
+    variable_patterns: [
+      { variable_key: "angle_deg", pattern: "sine", config: { min: 0, max: 180, period: 120 } },
+      { variable_key: "target_angle_deg", pattern: "step", config: { values: "0,45,90,135,180,135,90,45", interval: 15 } },
+    ],
+  },
+  {
+    id: "led_pwm",
+    name: "LED Dimmer (PWM)",
+    description: "PWM LED channel — brightness ramps and duty-cycle pulses",
+    icon: "lightbulb",
+    variable_patterns: [
+      { variable_key: "brightness_pct", pattern: "sine", config: { min: 0, max: 100, period: 300 } },
+      { variable_key: "duty_cycle", pattern: "ramp", config: { start: 0, end: 255, duration: 600, loop: true } },
+    ],
+  },
+  {
+    id: "door_contact",
+    name: "Door/Window Contact",
+    description: "Reed-switch contact sensor — open/closed events plus battery drain",
+    icon: "door-open",
+    variable_patterns: [
+      { variable_key: "contact_closed", pattern: "step", config: { values: "1,1,1,0,1,1,0,1", interval: 45 } },
+      { variable_key: "battery_pct", pattern: "ramp", config: { start: 100, end: 0, duration: 2592000, loop: true } },
+    ],
+  },
   {
     id: "custom",
     name: "Custom",
