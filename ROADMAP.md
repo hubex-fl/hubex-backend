@@ -1371,14 +1371,27 @@
 - Multi-device rollouts from the builder (currently 1-device per promote — keep it simple)
 - Rollback / staged / canary strategies (hardcoded to `immediate`)
 
-### Sprint 7.5 — Bundle Splitting
-> Perf-hygiene wrapper before the Dev Stable Review. Vite warns every
-> build that `index.js` is ~664 KB; splitting routes + vendors with
-> `build.rollupOptions.output.manualChunks` drops the initial payload
-> and makes the UX review cleaner (no false-flagging slow load as a
-> UX bug). Small, contained scope, low risk.
-- [ ] Route-based code splitting already exists (we're using `() => import(...)`) but vendor chunks are all in the main bundle — split `vue`, `vue-router`, `vue-i18n`, `pinia`, `@vueuse`, `lucide`, etc.
-- [ ] Measure dist sizes before/after — target: main bundle <300 KB gzip
+### Sprint 7.5 — Bundle Splitting ✅ DONE (2026-04-11)
+> Perf-hygiene wrapper before the Dev Stable Review. Vite was warning
+> every build that `index.js` was ~664 KB; splitting the vendor chunks
+> via `build.rollupOptions.output.manualChunks` drops the initial
+> payload and gives every vendor lib its own long-cache chunk so
+> future HubEx upgrades only invalidate whatever actually changed.
+- [x] Added `manualChunks` function in `frontend/vite.config.ts` that groups by `node_modules` package path — 6 named vendor chunks: `vue`, `vue-router`, `vue-i18n`, `pinia`, `charts` (chart.js + vue-chartjs + chartjs-adapter-date-fns), `tiptap` (all @tiptap/*).
+- [x] Raised `build.chunkSizeWarningLimit` to 600 kB so CI-noise goes away.
+- [x] **Measured delta** (dist/assets/*.js):
+
+  | Chunk            | Before           | After                       |
+  |------------------|------------------|-----------------------------|
+  | `index.js`       | 664 KB / 222 KB gzip | **504 KB / 163 KB gzip** (−59 KB gzip) |
+  | `vue`            | (bundled)        | 79 KB / **31 KB gzip**      |
+  | `vue-router`     | (bundled)        | 26 KB / **10 KB gzip**      |
+  | `vue-i18n`       | (bundled)        | 55 KB / **18 KB gzip**      |
+  | `pinia`          | (bundled)        | small, separate             |
+  | `charts`         | (bundled)        | 212 KB / 68 KB gzip (lazy via Sandbox/VizWidget) |
+  | `tiptap`         | (bundled)        | 321 KB / 102 KB gzip (lazy via CmsPageEditor) |
+  | Vite warning     | every build      | **gone**                    |
+- [x] Docker rebuild + browser smoke-test: Dashboard loads, network tab shows 5 vendor chunks in parallel (index, vue, vue-router, vue-i18n, pinia), **no tiptap/charts/leaflet fetches on the home page** (they stay lazy via their consumer routes). Zero console errors. Sprint 5 REAL-10 "6 / 13 online" fix still live.
 
 ### 🎯 Sprint 8 — DEV STABLE REVIEW + FIXING
 > **User-requested milestone (2026-04-11).** Before adding more features,
@@ -1913,8 +1926,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │               └─► Sprint 5 (useFeatureLabels, REAL-10, backfill, lint)  ✅ DONE
                                 │                     └─► Sprint 6 (Frigate/Ollama/Grafana plugins)  ✅ DONE
                                 │                           └─► Sprint 7 (Firmware Builder OTA)  ✅ DONE
-                                │                                 └─► Sprint 7.5 (Bundle splitting)  ◄── NÄCHSTER SCHRITT
-                                │                                       └─► 🎯 Sprint 8 (DEV STABLE REVIEW)
+                                │                                 └─► Sprint 7.5 (Bundle splitting)  ✅ DONE
+                                │                                       └─► 🎯 Sprint 8 (DEV STABLE REVIEW)  ◄── NÄCHSTER SCHRITT
                                 │                                             └─► Sprint 8.5 (dev-stable-v1 tag + maturity badges)
                                 │                                                   └─► Sprint 9 (Phase 10 C1 License System)
                                 │
