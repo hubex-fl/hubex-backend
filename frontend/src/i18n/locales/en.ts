@@ -396,6 +396,19 @@ export default {
     colTrend: 'Trend',
     colUpdated: 'Updated',
   },
+  actionBar: {
+    // Sprint 3.5 — DeviceDetail "Suggested Next Steps" panel was 100% hardcoded English
+    title: 'Suggested next steps',
+    dismiss: 'Dismiss suggestions',
+    nameLabel: 'Name this device',
+    nameDesc: 'Give it a recognizable name',
+    variablesLabel: 'Send telemetry',
+    variablesDesc: 'Variables appear automatically',
+    alertsLabel: 'Set up alerts',
+    alertsDesc: 'Get notified when conditions are met',
+    automationsLabel: 'Automate actions',
+    automationsDesc: 'React to device events automatically',
+  },
   alerts: {
     title: 'Alerts',
     subtitle: 'Monitor and manage alert rules and events',
@@ -479,6 +492,17 @@ export default {
     severityHigh: 'high',
     severityCritical: 'critical',
     alertMessagePlaceholder: 'Alert: automation rule fired',
+    // Sprint 3.5 — operators kept separate from existing triggerTypes
+    // (which live further down in this file under automations.triggerTypes
+    // with snake_case keys).
+    operators: {
+      greaterThan: 'greater than',
+      greaterEqual: 'greater or equal',
+      lessThan: 'less than',
+      lessEqual: 'less or equal',
+      equal: 'equal',
+      notEqual: 'not equal',
+    },
     createRule: 'New Rule',
     trigger: 'Trigger',
     action: 'Action',

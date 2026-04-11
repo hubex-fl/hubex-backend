@@ -6,9 +6,26 @@ export interface AlertItem {
   id: number;
   rule_id: number;
   status: string;
-  severity: "critical" | "warning" | "info";
+  // Sprint 3.5 bugfix: backend response actually doesn't include
+  // `severity` on AlertEvent — it lives on AlertRule. For the dashboard
+  // widget we accept either shape (events that happen to include it,
+  // or fall back to "warning" as a visually-neutral default).
+  severity?: "critical" | "warning" | "info";
   message: string;
-  fired_at: string;
+  // Sprint 3.5 bugfix: backend returns `triggered_at`, not `fired_at`.
+  // Keep `fired_at` as a fallback so the dashboard widget doesn't render
+  // NaN times when the backend shape changes again. `relativeTime` in
+  // the template should read from `firedAtFor(alert)` helper below.
+  triggered_at?: string;
+  fired_at?: string;
+}
+
+/**
+ * Resolve the timestamp for an alert event regardless of backend naming.
+ * Sprint 3.5: backend returns `triggered_at`, old code read `fired_at`.
+ */
+export function firedAtFor(a: AlertItem): string {
+  return a.triggered_at || a.fired_at || "";
 }
 
 export function severityStatus(sev: string): "bad" | "warn" | "info" {
@@ -18,7 +35,10 @@ export function severityStatus(sev: string): "bad" | "warn" | "info" {
 }
 
 export function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr).getTime();
+  if (isNaN(parsed)) return "";
+  const diff = Date.now() - parsed;
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
   const days = Math.floor(hours / 24);

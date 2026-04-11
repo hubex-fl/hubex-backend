@@ -2,17 +2,47 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { apiFetch } from "../lib/api";
 import { createPoller } from "../lib/poller";
 
+/**
+ * Backend event shape — as of Sprint 3.5 the actual payload from
+ * `GET /api/v1/events` is:
+ *   { stream, cursor, next_cursor, items: [{ cursor, ts, type, payload, trace_id }] }
+ * (not a bare array of {id, stream, event_type, payload, created_at} as
+ * the old interface claimed). This caused two P0 runtime errors on
+ * every Dashboard load — one for .slice() on a dict, then one for
+ * .startsWith() on undefined event_type. Fixed here by matching the
+ * real backend shape, and keeping legacy field names as optional for
+ * forward/backward compat.
+ */
 export interface StreamEvent {
-  id: number;
-  stream: string;
-  event_type: string;
+  cursor?: number;
+  id?: number;
+  stream?: string;
+  /** Canonical field name since the refactor. */
+  type?: string;
+  /** Legacy field name, kept for forward compat. */
+  event_type?: string;
   payload: Record<string, unknown>;
-  created_at: string;
+  /** Canonical timestamp field. */
+  ts?: string;
+  /** Legacy timestamp field. */
+  created_at?: string;
+  trace_id?: string | null;
+}
+
+/** Resolve the event type regardless of field naming. */
+export function eventTypeOf(e: StreamEvent): string {
+  return e.type || e.event_type || "";
+}
+
+/** Resolve the event timestamp regardless of field naming. */
+export function eventTimestampOf(e: StreamEvent): string {
+  return e.ts || e.created_at || "";
 }
 
 export function eventBadgeStatus(
-  eventType: string
+  eventType: string | undefined | null
 ): "info" | "bad" | "ok" | "warn" | "neutral" {
+  if (!eventType) return "neutral";
   if (eventType.startsWith("device.")) return "info";
   if (eventType.startsWith("alert.")) return "bad";
   if (eventType.startsWith("task.")) return "ok";
@@ -38,7 +68,24 @@ export function useEventStream(intervalMs = 10_000) {
   async function fetchEvents(): Promise<void> {
     if (paused.value) return;
     try {
-      events.value = await apiFetch<StreamEvent[]>("/api/v1/events?limit=20");
+      // Sprint 3.5 bugfix: backend returns {stream, cursor, next_cursor, items}
+      // not a bare array. The old code assigned the dict directly to
+      // events.value, and then visibleEvents.computed's .slice() threw
+      // "TypeError: h.value.slice is not a function" on every Dashboard
+      // load — the entire "Aktuelle Alarme / activity feed" widget was
+      // broken. Fixed by unwrapping .items, with a fallback to [] if the
+      // backend ever changes shape back (and accepting bare arrays for
+      // forward-compat).
+      const resp = await apiFetch<StreamEvent[] | { items?: StreamEvent[] }>(
+        "/api/v1/events?limit=20"
+      );
+      if (Array.isArray(resp)) {
+        events.value = resp;
+      } else if (resp && Array.isArray((resp as { items?: StreamEvent[] }).items)) {
+        events.value = (resp as { items: StreamEvent[] }).items;
+      } else {
+        events.value = [];
+      }
       error.value = null;
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : "Failed to load events";

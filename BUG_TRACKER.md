@@ -162,6 +162,92 @@
 
 ---
 
+## 🔴 Sprint 3.5 — Real browser walkthrough findings
+
+> **Methodology:** Sprint 3.5 I actually drove Chrome via the MCP extension
+> (I had wrongly assumed I didn't have browser access in 3.4). Each finding
+> below was seen with my own eyes in a live browser session on 2026-04-11,
+> not code-inspected. Screenshots captured for evidence. This is the kind
+> of pass Sprint 3.4 should have had.
+
+### 🔴 REAL-3 P0 — Dashboard: TypeError "h.value.slice is not a function" on every load — **FIXED 3.5**
+- **Root cause:** `useEventStream.ts` was `events.value = await apiFetch<StreamEvent[]>(...)` but backend `GET /api/v1/events` returns `{stream, cursor, next_cursor, items}` NOT a bare array. `events.value` became a dict, then `visibleEvents.computed` called `.slice()` on it and threw. Whole Activity Feed widget was invisible (the `<template v-else-if>` branch broke render).
+- **Fix:** unwrap `.items` with forward-compat for bare arrays + empty fallback
+- **File:** `frontend/src/composables/useEventStream.ts`
+
+### 🔴 REAL-7 P0 — DashboardPage: TypeError "startsWith of undefined" after 3 fix — **FIXED 3.5**
+- **Root cause:** Second wave of same pattern. After fixing `.items`, the code then called `event.event_type.startsWith(...)` in `eventIcon()`/`eventIconColor()` — but the backend events use `type` not `event_type`, and `ts` not `created_at`. Interface was totally wrong.
+- **Fix:** Added `eventTypeOf(event)`, `eventTimestampOf(event)` helpers + safety-null checks in `eventBadgeStatus` + null-safe `eventRelativeTime`
+- **File:** `frontend/src/composables/useEventStream.ts`, `frontend/src/pages/DashboardPage.vue`
+
+### 🔴 REAL-4 P0 — Dashboard alert widget: every alert shows "gerade eben" regardless of age — **FIXED 3.5**
+- **Root cause:** `useRecentAlerts.ts` interface said `fired_at: string` but backend returns `triggered_at`. `relativeTime(alert.fired_at)` got undefined → `NaN` → fell through to the final `return "gerade eben"` in the if-chain. Users saw "gerade eben" for alerts from 42 minutes ago.
+- **Fix:** Added optional `triggered_at` + `fired_at` both; `firedAtFor(a)` helper resolves; `relativeTime` now returns "" on empty/NaN input instead of "gerade eben"
+- **File:** `frontend/src/composables/useRecentAlerts.ts`, `frontend/src/pages/DashboardPage.vue`
+- **Verified:** alert now shows "vor 19m" ✓
+
+### 🔴 REAL-17/REAL-28/REAL-26 P0 — Automations + DeviceDetail ActionBar: hardcoded English despite DE locale — **FIXED 3.5**
+- **Symptom:** User's original report: "in den Modals teilweise Englisch, zum Beispiel bei Automatisierungen oder create alert"
+- **Root cause A — DeviceDetail "Suggested Next Steps" (ActionBar.vue):** every label + description was a hardcoded English string in an `Action[]` array at module level. 100% of users saw "Set up alerts", "Automate actions", etc.
+- **Root cause B — Automations quick-start templates:** `quickTemplates: AutomationTemplate[]` was a static module-level array of English strings ("Alert when variable exceeds threshold", etc.)
+- **Root cause C — Automations create-modal grid:** `TRIGGER_TYPES` and `ACTION_TYPES` and `OPERATOR_OPTIONS` were ALL static English arrays. Every trigger + action card in the Create Rule modal was English.
+- **Discovery:** when fixing C, found that the de.ts + en.ts files already contained `automations.triggerTypes.*`, `automations.actionTypes.*`, `automations.templates.*` keys with full German translations. **They were just never wired to the Vue code.** Dead i18n code.
+- **Fix:** Wire Vue code to existing keys by wrapping the arrays in `computed(() => [... t(...)])`. Update `.find()` callers to `.value.find()`. New `operators.*` keys in en+de. Add `actionBar.*` key block in en+de (ActionBar had no pre-existing keys).
+- **Files:** `frontend/src/components/ActionBar.vue`, `frontend/src/pages/Automations.vue`, `frontend/src/i18n/locales/{en,de}.ts`
+- **Verified live:** Automations empty-state cards now say "Alarm bei Schwellwertüberschreitung", Create modal shows "Variablen-Schwellwert / Wenn eine Variable einen Wert über- oder unterschreitet", etc. ✓
+
+### 🟠 REAL-10 P1 — Dashboard "Großer Ausfall" label confusing next to "6 online"
+- **Symptom:** User sees "6 GERÄTE ONLINE / Großer Ausfall" which looks contradictory (6 is plural, looks healthy)
+- **Root cause:** `onlinePct` = online / total. With 6/13 = 46%, the `< 50` branch hits and shows "majorOutage" label. Semantically correct but visually jarring when the big number is positive-looking.
+- **Status:** ☐ deferred — design decision needed (separate warn banner? redesign the KPI card? drop the label entirely?)
+
+### 🔴 REAL-18/REAL-19 P0 — DeviceDetail: giant blank area after scroll + Chrome renderer freeze
+- **Symptom:** Navigate to /devices/{id}, scroll down — above-fold ~70% blank. Then chrome `Page.captureScreenshot` timed out after 30s ("renderer may be frozen").
+- **Root cause:** Unknown — not investigated. Likely a flex/viewport height calculation interacting badly with the collapsible "Technische Details" panel.
+- **Status:** ☐ deferred — needs proper devtools performance trace to diagnose
+
+### 🟠 REAL-37 P1 — Top-bar page titles in English (router meta.title)
+- **Symptom:** Every page has its top header in German (e.g. "Geräte") but the top-bar shows "Devices", "Variables", "Automations", "Plugins", "Settings" in English. Visual inconsistency on every page.
+- **Root cause:** `router.ts` routes have static `meta: { title: "Devices" }` etc. and `document.title` gets set from that. Not i18n'd.
+- **Status:** ☐ deferred — mechanical fix, one-line per route, plus a locale-aware wrapper in main.ts beforeEach
+
+### 🟡 P2 findings (english strings not yet i18n'd)
+
+- **REAL-1** Dashboard alert: "variable 'temperature' value 20.3 gt 20" is backend-generated english in `app/core/alert_worker.py` line 196. Needs i18n at backend.
+- **REAL-6** Backend alert_worker.py hardcoded English format string
+- **REAL-11/12/13/14/15** Devices page: top-bar "Devices", section header duplicate, "Unclaim mode"/"Select all"/"Last seen"/"Open" buttons, column headers DEVICE/TYPE/HEALTH/STATE/ONLINE/LAST SEEN/ACTIONS, status badges `ok`/`ready`/`online`/`Simuliert` — all hardcoded english
+- **REAL-20/21/22/23/24** Variables page: top-bar "Variables", variable descriptions "CPU usage"/"Battery level" etc. (backend seed-data english), tag labels (`actuator`/`power`/`system`), status badges (`device`/`float`)
+- **REAL-25** Automations top-bar "Automations" vs header "Automatisierungen"
+- **REAL-29/30** Automations create modal: Name placeholder "e.g. High temperature alert" + Description placeholder "What does this rule do?" — keys exist in en.ts but template doesn't use them
+- **REAL-31** Alerts filter buttons: "Firing"/"Acknowledged"/"Resolved" english
+- **REAL-32** Alerts status badges: "CRITICAL"/"FIRING"/"RESOLVED" english
+- **REAL-33** Same as REAL-1 (backend alert message format)
+- **REAL-34** Plugin catalog descriptions: `plugin_catalog.py` has English `description=` fields. Should be i18n-aware (serve-time translation or per-locale map).
+- **REAL-35** Settings → Features "Runtime Feature Flags" / "Toggle subsystems" / "Open Setup Wizard" english
+- **REAL-36** `features.py` FEATURE registry descriptions all English — surfaces in Settings → Features UI
+
+### 🔵 Minor / observation
+- **REAL-2** Dashboard "Großer Ausfall" sub-label under a number is confusing (see REAL-10)
+- **REAL-5** Backend AlertEvent response shape has `status` not `severity` field — the `severity` comes from joined AlertRule. Dashboard widget used to error out from this. Fixed implicitly by REAL-4 fix making severity optional.
+- **REAL-8** Dashboard "Aktivitäten" widget has a green dot without explanation. Is it "live"?
+- **REAL-9** Activity feed events rendered as "Org Created", "Device Paired" (English) — should come through an event-type-to-label mapping
+- **REAL-27** Clicking an empty-state template card in Automations doesn't always open modal — might be dead-zone around card border
+
+---
+
+## ✅ Verified still working in Sprint 3.5 real-browser pass
+
+- ✅ Sprint 3.1 configure modal: rich intro, "API-Key holen ↗" link, provider hint, visible help text, lock icon privacy line, "Speichern & schließen" button
+- ✅ Sprint 3.2 Settings deep-link: `/settings?section=features&highlight=orchestrator` auto-expands Features section
+- ✅ Sprint 3.3 Plugins: n8n shows "Öffnen ↗" external-tab icon button (allow_iframe=false honored); Claude in installed list shows "braucht Setup" badge + "Einrichten" CTA; plugin icons render (🌀 🧠 ✨)
+- ✅ Sprint 3.4 Hardware: exactly 4 boards (ESP32 V1/C3/S3 + Pi Pico W), no duplicates
+- ✅ Sprint 3.4 Automations IF/THEN labels DE
+- ✅ Sprint 3.4 Alerts severity DE
+- ✅ Sprint 3.4 Devices > Groups: visited device 2, no visible flicker on refresh (though the page has other bugs REAL-18/19)
+- ✅ Sprint 3.5 Dashboard: no console errors, activity feed now visible, alert timestamps correct
+
+---
+
 ## ✅ Fixed in Sprint 3.4 (this session)
 
 | Bug | Fix | File |

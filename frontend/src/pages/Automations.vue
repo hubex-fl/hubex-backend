@@ -217,34 +217,42 @@ const actAlertMessage = ref("");
 const actEventType = ref("");
 const actEventPayload = ref("{}");
 
-const TRIGGER_TYPES = [
-  { value: "variable_threshold", label: "Variable Threshold", desc: "When a variable exceeds or drops below a value", icon: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" },
-  { value: "variable_geofence", label: "Variable Geofence", desc: "When a GPS variable leaves or enters a zone", icon: "M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" },
-  { value: "device_offline", label: "Device Offline", desc: "When a device goes offline", icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" },
-  { value: "telemetry_received", label: "Telemetry Received", desc: "When telemetry data arrives", icon: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" },
-  { value: "variable_change", label: "Variable Change", desc: "When any variable value changes", icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" },
-  { value: "device_online", label: "Device Online", desc: "When a device comes back online", icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-  { value: "schedule", label: "Schedule (Cron)", desc: "Run on a time-based schedule", icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" },
-];
+// Sprint 3.5 bugfix: trigger/action/operator labels + descriptions were
+// all hardcoded English in static module-level arrays. Inside the Create
+// modal (the user clicks "Neue Regel" or a template card) the WHOLE
+// trigger+action grid appeared in English regardless of locale. Moved
+// to computed so they rebuild on locale change.
+// Sprint 3.5 — use the existing automations.triggerTypes / actionTypes
+// i18n keys (snake_case, already present in en.ts/de.ts) instead of
+// creating a parallel camelCase set.
+const TRIGGER_TYPES = computed(() => [
+  { value: "variable_threshold", label: t("automations.triggerTypes.variable_threshold.label"), desc: t("automations.triggerTypes.variable_threshold.desc"), icon: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" },
+  { value: "variable_geofence", label: t("automations.triggerTypes.variable_geofence.label"), desc: t("automations.triggerTypes.variable_geofence.desc"), icon: "M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" },
+  { value: "device_offline", label: t("automations.triggerTypes.device_offline.label"), desc: t("automations.triggerTypes.device_offline.desc"), icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" },
+  { value: "telemetry_received", label: t("automations.triggerTypes.telemetry_received.label"), desc: t("automations.triggerTypes.telemetry_received.desc"), icon: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" },
+  { value: "variable_change", label: t("automations.triggerTypes.variable_change.label"), desc: t("automations.triggerTypes.variable_change.desc"), icon: "M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" },
+  { value: "device_online", label: t("automations.triggerTypes.device_online.label"), desc: t("automations.triggerTypes.device_online.desc"), icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { value: "schedule", label: t("automations.triggerTypes.schedule.label"), desc: t("automations.triggerTypes.schedule.desc"), icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" },
+]);
 
-const ACTION_TYPES = [
-  { value: "set_variable", label: "Set Variable", desc: "Update a variable value", icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" },
-  { value: "call_webhook", label: "Call Webhook", desc: "Send HTTP request to external URL", icon: "M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" },
-  { value: "create_alert_event", label: "Create Alert", desc: "Generate an alert event", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
-  { value: "emit_system_event", label: "Emit System Event", desc: "Broadcast a system event", icon: "M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0 0a3 3 0 00-3-3H7.5a3 3 0 00-3 3m13.5 0v-6.75a3 3 0 00-3-3H7.5a3 3 0 00-3 3v6.75" },
-  { value: "send_notification", label: "Send Notification", desc: "Create an in-app notification", icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
-  { value: "log_to_audit", label: "Log to Audit", desc: "Write an entry to the audit log", icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" },
-  { value: "send_email", label: "Send Email", desc: "Send an email using a template", icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
-];
+const ACTION_TYPES = computed(() => [
+  { value: "set_variable", label: t("automations.actionTypes.set_variable.label"), desc: t("automations.actionTypes.set_variable.desc"), icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" },
+  { value: "call_webhook", label: t("automations.actionTypes.call_webhook.label"), desc: t("automations.actionTypes.call_webhook.desc"), icon: "M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" },
+  { value: "create_alert_event", label: t("automations.actionTypes.create_alert_event.label"), desc: t("automations.actionTypes.create_alert_event.desc"), icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
+  { value: "emit_system_event", label: t("automations.actionTypes.emit_system_event.label"), desc: t("automations.actionTypes.emit_system_event.desc"), icon: "M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0 0a3 3 0 00-3-3H7.5a3 3 0 00-3 3m13.5 0v-6.75a3 3 0 00-3-3H7.5a3 3 0 00-3 3v6.75" },
+  { value: "send_notification", label: t("automations.actionTypes.send_notification.label"), desc: t("automations.actionTypes.send_notification.desc"), icon: "M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" },
+  { value: "log_to_audit", label: t("automations.actionTypes.log_to_audit.label"), desc: t("automations.actionTypes.log_to_audit.desc"), icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" },
+  { value: "send_email", label: t("automations.actionTypes.send_email.label"), desc: t("automations.actionTypes.send_email.desc"), icon: "M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" },
+]);
 
-const OPERATOR_OPTIONS = [
-  { value: "gt",  label: "> greater than" },
-  { value: "gte", label: "≥ greater or equal" },
-  { value: "lt",  label: "< less than" },
-  { value: "lte", label: "≤ less or equal" },
-  { value: "eq",  label: "= equal" },
-  { value: "ne",  label: "≠ not equal" },
-];
+const OPERATOR_OPTIONS = computed(() => [
+  { value: "gt",  label: `> ${t("automations.operators.greaterThan")}` },
+  { value: "gte", label: `≥ ${t("automations.operators.greaterEqual")}` },
+  { value: "lt",  label: `< ${t("automations.operators.lessThan")}` },
+  { value: "lte", label: `≤ ${t("automations.operators.lessEqual")}` },
+  { value: "eq",  label: `= ${t("automations.operators.equal")}` },
+  { value: "ne",  label: `≠ ${t("automations.operators.notEqual")}` },
+]);
 
 const OPERATOR_SYMBOLS: Record<string, string> = {
   gt: ">", gte: "≥", lt: "<", lte: "≤", eq: "=", ne: "≠",
@@ -342,10 +350,16 @@ interface AutomationTemplate {
   prefill?: () => void;
 }
 
-const quickTemplates: AutomationTemplate[] = [
+// Sprint 3.5 bugfix: the three empty-state quick-start template cards
+// were hardcoded English ("Alert when variable exceeds threshold", etc.)
+// — visible to EVERY new user on the Automations page before they have
+// any rules. Moved to a computed so {{ t(...) }} rebuilds when the
+// locale changes. This was the biggest visible offender for the user's
+// "modals are in English even in German" complaint.
+const quickTemplates = computed<AutomationTemplate[]>(() => [
   {
-    name: "Alert when variable exceeds threshold",
-    description: "Fires when a numeric variable goes above a set value",
+    name: t("automations.templates.thresholdAlert.name"),
+    description: t("automations.templates.thresholdAlert.desc"),
     icon: "M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z",
     color: "var(--primary)",
     triggerType: "variable_threshold",
@@ -356,8 +370,8 @@ const quickTemplates: AutomationTemplate[] = [
     },
   },
   {
-    name: "Notify when device goes offline",
-    description: "Sends a webhook when a device becomes unreachable",
+    name: t("automations.templates.deviceOffline.name"),
+    description: t("automations.templates.deviceOffline.desc"),
     icon: "M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z",
     color: "var(--status-bad)",
     triggerType: "device_offline",
@@ -365,15 +379,15 @@ const quickTemplates: AutomationTemplate[] = [
     prefill: () => {},
   },
   {
-    name: "Set variable on event",
-    description: "Updates a variable value when a custom event fires",
+    name: t("automations.templates.setVariable.name"),
+    description: t("automations.templates.setVariable.desc"),
     icon: "M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75.125v-1.5",
     color: "var(--accent)",
     triggerType: "event_received",
     actionType: "set_variable",
     prefill: () => {},
   },
-];
+]);
 
 function openFromTemplate(tpl: AutomationTemplate) {
   modalMode.value = "create";
@@ -623,8 +637,10 @@ async function handleSave() {
   }
 }
 
-const triggerTypeLabel = computed(() => TRIGGER_TYPES.find((t) => t.value === formTriggerType.value)?.label ?? "");
-const actionTypeLabel = computed(() => ACTION_TYPES.find((t) => t.value === formActionType.value)?.label ?? "");
+// Sprint 3.5: TRIGGER_TYPES / ACTION_TYPES are now computed refs (not
+// static arrays) so .find() needs to go through .value.
+const triggerTypeLabel = computed(() => TRIGGER_TYPES.value.find((tt) => tt.value === formTriggerType.value)?.label ?? "");
+const actionTypeLabel = computed(() => ACTION_TYPES.value.find((tt) => tt.value === formActionType.value)?.label ?? "");
 
 const inputClass = "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] transition-colors";
 const labelClass = "text-xs font-medium text-[var(--text-muted)]";

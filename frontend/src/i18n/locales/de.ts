@@ -396,6 +396,19 @@ export default {
     colTrend: 'Trend',
     colUpdated: 'Aktualisiert',
   },
+  actionBar: {
+    // Sprint 3.5 — DeviceDetail "Suggested Next Steps" panel war 100% hardcoded English
+    title: 'Empfohlene n\u00e4chste Schritte',
+    dismiss: 'Vorschl\u00e4ge ausblenden',
+    nameLabel: 'Ger\u00e4t benennen',
+    nameDesc: 'Gib ihm einen erkennbaren Namen',
+    variablesLabel: 'Telemetrie senden',
+    variablesDesc: 'Variablen erscheinen automatisch',
+    alertsLabel: 'Alarme einrichten',
+    alertsDesc: 'Benachrichtigungen bei bestimmten Bedingungen',
+    automationsLabel: 'Aktionen automatisieren',
+    automationsDesc: 'Automatisch auf Ger\u00e4te-Events reagieren',
+  },
   alerts: {
     title: 'Alarme',
     subtitle: 'Alarmregeln und Ereignisse überwachen und verwalten',
@@ -479,6 +492,16 @@ export default {
     severityHigh: 'hoch',
     severityCritical: 'kritisch',
     alertMessagePlaceholder: 'Alarm: Automatisierungsregel ausgel\u00f6st',
+    // Sprint 3.5 — operators kept separate (existing triggerTypes/actionTypes/
+    // templates use snake_case keys below; we wire the TS code to those).
+    operators: {
+      greaterThan: 'gr\u00f6\u00dfer als',
+      greaterEqual: 'gr\u00f6\u00dfer oder gleich',
+      lessThan: 'kleiner als',
+      lessEqual: 'kleiner oder gleich',
+      equal: 'gleich',
+      notEqual: 'ungleich',
+    },
     createRule: 'Neue Regel',
     trigger: 'Ausl\u00f6ser',
     action: 'Aktion',

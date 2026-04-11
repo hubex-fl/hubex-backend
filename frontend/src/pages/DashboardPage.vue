@@ -9,8 +9,8 @@ import UButton from "../components/ui/UButton.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import { useMetrics } from "../composables/useMetrics";
-import { useRecentAlerts, severityStatus, relativeTime } from "../composables/useRecentAlerts";
-import { useEventStream, eventBadgeStatus } from "../composables/useEventStream";
+import { useRecentAlerts, severityStatus, relativeTime, firedAtFor } from "../composables/useRecentAlerts";
+import { useEventStream, eventBadgeStatus, eventTypeOf, eventTimestampOf, type StreamEvent } from "../composables/useEventStream";
 
 const router = useRouter();
 const onboardingDismissed = ref(localStorage.getItem('hubex_onboarding_dismissed') === 'true');
@@ -39,16 +39,22 @@ const onlinePct = computed(() => {
 });
 
 // ── Event description helper ─────────────────────────────────────────────────
-function eventDescription(event: { event_type: string; stream: string; payload: Record<string, unknown> }): string {
+function eventDescription(event: StreamEvent): string {
   const parts: string[] = [];
-  // Make event_type human readable: "device.online" -> "Device Online"
-  parts.push(event.event_type.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+  // Make event type human readable: "device.online" -> "Device Online"
+  const type = eventTypeOf(event);
+  if (type) {
+    parts.push(type.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+  }
   if (event.stream) parts.push(`[${event.stream}]`);
   return parts.join(' ');
 }
 
-function eventRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+function eventRelativeTime(dateStr: string | undefined | null): string {
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr).getTime();
+  if (isNaN(parsed)) return "";
+  const diff = Date.now() - parsed;
   const secs = Math.floor(diff / 1000);
   const mins = Math.floor(secs / 60);
   const hours = Math.floor(mins / 60);
@@ -253,7 +259,7 @@ function eventIconColor(eventType: string): string {
             {{ alert.severity }}
           </UBadge>
           <p class="text-sm text-[var(--text-primary)] truncate flex-1 min-w-0">{{ alert.message }}</p>
-          <span class="text-xs text-[var(--text-muted)] shrink-0">{{ relativeTime(alert.fired_at) }}</span>
+          <span class="text-xs text-[var(--text-muted)] shrink-0">{{ relativeTime(firedAtFor(alert)) }}</span>
         </div>
       </div>
     </UCard>
@@ -296,8 +302,8 @@ function eventIconColor(eventType: string): string {
         >
           <!-- Icon -->
           <div class="shrink-0 p-1.5 rounded-lg bg-[var(--bg-raised)]">
-            <svg :class="['h-3.5 w-3.5', eventIconColor(event.event_type)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" :d="eventIcon(event.event_type)" />
+            <svg :class="['h-3.5 w-3.5', eventIconColor(eventTypeOf(event))]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="eventIcon(eventTypeOf(event))" />
             </svg>
           </div>
           <!-- Description -->
@@ -306,7 +312,7 @@ function eventIconColor(eventType: string): string {
           </p>
           <!-- Time -->
           <span class="text-xs text-[var(--text-muted)] shrink-0 font-mono">
-            {{ eventRelativeTime(event.created_at) }}
+            {{ eventRelativeTime(eventTimestampOf(event)) }}
           </span>
         </div>
 
