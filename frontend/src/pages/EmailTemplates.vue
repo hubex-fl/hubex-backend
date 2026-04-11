@@ -6,7 +6,7 @@ import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
 
 const toast = useToastStore();
-const { t } = useI18n();
+const { t, te } = useI18n();
 
 type Template = {
   id: number;
@@ -21,6 +21,17 @@ type Template = {
   updated_at: string;
 };
 
+/**
+ * Sprint 8 R1-F15 — client-side i18n lookup for backend-seeded
+ * built-in email template names. Custom user templates fall back
+ * to the raw backend string.
+ */
+function localizedTemplateName(tpl: Template): string {
+  if (!tpl.is_builtin) return tpl.name;
+  const key = `pages.emailTemplates.seedNames.${tpl.name}`;
+  return te(key) ? t(key) : tpl.name;
+}
+
 const templates = ref<Template[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -28,11 +39,11 @@ const categoryFilter = ref<string>("all");
 
 const filteredTemplates = computed(() => {
   if (categoryFilter.value === "all") return templates.value;
-  return templates.value.filter(t => t.category === categoryFilter.value);
+  return templates.value.filter(tp => tp.category === categoryFilter.value);
 });
 
 const categories = computed(() => {
-  const cats = new Set(templates.value.map(t => t.category));
+  const cats = new Set(templates.value.map(tp => tp.category));
   return ["all", ...Array.from(cats)];
 });
 
@@ -58,17 +69,17 @@ const debouncedHtml = ref("");
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Template variable reference
-const TEMPLATE_VARIABLES = [
-  { token: "{{alert.name}}", desc: "Alert rule name" },
-  { token: "{{alert.severity}}", desc: "Alert severity level" },
-  { token: "{{device.name}}", desc: "Device display name" },
-  { token: "{{device.uid}}", desc: "Device unique ID" },
-  { token: "{{variable.key}}", desc: "Variable key" },
-  { token: "{{variable.value}}", desc: "Current variable value" },
-  { token: "{{timestamp}}", desc: "Event timestamp" },
-  { token: "{{user.name}}", desc: "Recipient user name" },
-  { token: "{{org.name}}", desc: "Organization name" },
-];
+const TEMPLATE_VARIABLES = computed(() => [
+  { token: "{{alert.name}}", desc: t('pages.emailTemplates.varDescAlertName') },
+  { token: "{{alert.severity}}", desc: t('pages.emailTemplates.varDescAlertSeverity') },
+  { token: "{{device.name}}", desc: t('pages.emailTemplates.varDescDeviceName') },
+  { token: "{{device.uid}}", desc: t('pages.emailTemplates.varDescDeviceUid') },
+  { token: "{{variable.key}}", desc: t('pages.emailTemplates.varDescVariableKey') },
+  { token: "{{variable.value}}", desc: t('pages.emailTemplates.varDescVariableValue') },
+  { token: "{{timestamp}}", desc: t('pages.emailTemplates.varDescTimestamp') },
+  { token: "{{user.name}}", desc: t('pages.emailTemplates.varDescUserName') },
+  { token: "{{org.name}}", desc: t('pages.emailTemplates.varDescOrgName') },
+]);
 
 // Simple editor fields
 const simpleHeader = ref("");
@@ -138,12 +149,12 @@ watch(editBodyHtml, (val) => {
   }, 300);
 }, { immediate: true });
 
-const CATEGORY_LABELS: Record<string, string> = {
-  alert: "Alert",
-  report: "Report",
-  system: "System",
-  custom: "Custom",
-};
+const CATEGORY_LABELS = computed<Record<string, string>>(() => ({
+  alert: t('pages.emailTemplates.categoryAlert'),
+  report: t('pages.emailTemplates.categoryReport'),
+  system: t('pages.emailTemplates.categorySystem'),
+  custom: t('pages.emailTemplates.categoryCustom'),
+}));
 
 const CATEGORY_COLORS: Record<string, string> = {
   alert: "var(--status-bad)",
@@ -158,7 +169,7 @@ async function loadTemplates() {
   try {
     templates.value = await apiFetch<Template[]>("/api/v1/email-templates");
   } catch {
-    error.value = "Failed to load templates";
+    error.value = t('pages.emailTemplates.loadError');
   } finally {
     loading.value = false;
   }
@@ -199,7 +210,7 @@ async function handleSave() {
           variables: vars.length ? vars : null,
         }),
       });
-      toast.addToast(t('toast.created', { item: 'Template' }), "success");
+      toast.addToast(t('toast.created', { item: t('nav.emailTemplates') }), "success");
     } else {
       await apiFetch(`/api/v1/email-templates/${editId.value}`, {
         method: "PATCH",
@@ -209,25 +220,25 @@ async function handleSave() {
           variables: vars.length ? vars : null,
         }),
       });
-      toast.addToast("Template updated", "success");
+      toast.addToast(t('pages.emailTemplates.updated'), "success");
     }
     editOpen.value = false;
     await loadTemplates();
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Save failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t('pages.emailTemplates.saveFailed'), "error");
   } finally {
     editSaving.value = false;
   }
 }
 
 async function handleDelete(id: number) {
-  if (!confirm("Delete this template?")) return;
+  if (!confirm(t('pages.emailTemplates.deleteConfirm'))) return;
   try {
     await apiFetch(`/api/v1/email-templates/${id}`, { method: "DELETE" });
-    toast.addToast("Template deleted", "success");
+    toast.addToast(t('pages.emailTemplates.deleted'), "success");
     await loadTemplates();
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Delete failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t('pages.emailTemplates.deleteFailed'), "error");
   }
 }
 
@@ -241,7 +252,7 @@ async function handlePreview(tpl: Template) {
     previewHtml.value = res.body_html;
     previewOpen.value = true;
   } catch {
-    toast.addToast("Preview failed", "error");
+    toast.addToast(t('pages.emailTemplates.previewFailed'), "error");
   }
 }
 
@@ -255,29 +266,29 @@ onMounted(loadTemplates);
         <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.emailTemplates.title') }}</h1>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           {{ t('pages.emailTemplates.subtitle') }}.
-          <router-link to="/automations" class="text-[var(--primary)] hover:underline ml-1">Automations</router-link> ·
-          <router-link to="/reports" class="text-[var(--primary)] hover:underline">Reports</router-link>
+          <router-link to="/automations" class="text-[var(--primary)] hover:underline ml-1">{{ t('pages.emailTemplates.linkAutomations') }}</router-link> ·
+          <router-link to="/reports" class="text-[var(--primary)] hover:underline">{{ t('pages.emailTemplates.linkReports') }}</router-link>
         </p>
       </div>
       <button
         class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)]"
         @click="openCreate"
       >
-        + New Template
+        {{ t('pages.emailTemplates.newTemplate') }}
       </button>
     </div>
 
-    <div v-if="loading" class="text-xs text-[var(--text-muted)]">Loading...</div>
+    <div v-if="loading" class="text-xs text-[var(--text-muted)]">{{ t('pages.emailTemplates.loading') }}</div>
 
     <div v-else-if="error" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400">
       <p>{{ error }}</p>
-      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="loadTemplates">Retry</button>
+      <button class="mt-2 px-2.5 py-1 rounded text-xs font-medium border border-red-500/30 hover:bg-red-500/10" @click="loadTemplates">{{ t('pages.emailTemplates.retry') }}</button>
     </div>
 
     <template v-else-if="!templates.length">
       <div class="text-center py-8">
-        <p class="text-sm text-[var(--text-muted)]">No templates yet</p>
-        <button class="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">Create your first template</button>
+        <p class="text-sm text-[var(--text-muted)]">{{ t('pages.emailTemplates.emptyTitle') }}</p>
+        <button class="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black" @click="openCreate">{{ t('pages.emailTemplates.createFirst') }}</button>
       </div>
     </template>
 
@@ -294,7 +305,7 @@ onMounted(loadTemplates);
               : 'text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--primary)]/40',
           ]"
           @click="categoryFilter = cat"
-        >{{ cat === 'all' ? 'All' : (CATEGORY_LABELS[cat] || cat) }}</button>
+        >{{ cat === 'all' ? t('pages.emailTemplates.filterAll') : (CATEGORY_LABELS[cat] || cat) }}</button>
       </div>
 
     <div class="space-y-3">
@@ -310,8 +321,8 @@ onMounted(loadTemplates);
                 class="text-[10px] px-1.5 py-0.5 rounded font-medium"
                 :style="{ background: CATEGORY_COLORS[tpl.category] + '20', color: CATEGORY_COLORS[tpl.category] }"
               >{{ CATEGORY_LABELS[tpl.category] || tpl.category }}</span>
-              <span class="text-sm font-medium text-[var(--text-primary)]">{{ tpl.name }}</span>
-              <span v-if="tpl.is_builtin" class="text-[10px] text-[var(--text-muted)]">built-in</span>
+              <span class="text-sm font-medium text-[var(--text-primary)]">{{ localizedTemplateName(tpl) }}</span>
+              <span v-if="tpl.is_builtin" class="text-[10px] text-[var(--text-muted)]">{{ t('pages.emailTemplates.builtin') }}</span>
             </div>
             <p class="text-xs text-[var(--text-secondary)] font-mono truncate">{{ tpl.subject }}</p>
             <div v-if="tpl.variables?.length" class="flex flex-wrap gap-1 mt-2">
@@ -325,14 +336,14 @@ onMounted(loadTemplates);
           <div class="flex items-center gap-1.5 shrink-0">
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-              title="Preview"
+              :title="t('pages.emailTemplates.previewTooltip')"
               @click="handlePreview(tpl)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
             <button
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
-              title="Edit"
+              :title="t('pages.emailTemplates.editTooltip')"
               @click="openEdit(tpl)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
@@ -340,7 +351,7 @@ onMounted(loadTemplates);
             <button
               v-if="!tpl.is_builtin"
               class="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Delete"
+              :title="t('pages.emailTemplates.deleteTooltip')"
               @click="handleDelete(tpl.id)"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
@@ -352,19 +363,19 @@ onMounted(loadTemplates);
     </template>
 
     <!-- Edit/Create Modal -->
-    <UModal :open="editOpen" :title="editMode === 'create' ? 'New Template' : 'Edit Template'" size="lg" @close="editOpen = false">
+    <UModal :open="editOpen" :title="editMode === 'create' ? t('pages.emailTemplates.modalCreateTitle') : t('pages.emailTemplates.modalEditTitle')" size="lg" @close="editOpen = false">
       <div class="space-y-3">
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Name *</label>
-          <input v-model="editName" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Alert Notification" />
+          <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldName') }}</label>
+          <input v-model="editName" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" :placeholder="t('pages.emailTemplates.fieldNamePlaceholder')" />
         </div>
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Subject *</label>
-          <input v-model="editSubject" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" placeholder="[HUBEX] Alert: {alert_name}" />
+          <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldSubject') }}</label>
+          <input v-model="editSubject" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" :placeholder="t('pages.emailTemplates.fieldSubjectPlaceholder')" />
         </div>
         <div>
           <div class="flex items-center justify-between mb-1">
-            <label class="text-[10px] font-medium text-[var(--text-muted)]">HTML Body</label>
+            <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldHtmlBody') }}</label>
             <div class="flex rounded-lg border border-[var(--border)] overflow-hidden">
               <button
                 v-for="view in (['simple', 'code', 'split', 'preview'] as const)"
@@ -376,7 +387,7 @@ onMounted(loadTemplates);
                     : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
                 ]"
                 @click="editorView = view; if (view === 'simple') parseHtmlToSimple();"
-              >{{ view === 'simple' ? 'Simple' : t(`pages.emailTemplates.editorView.${view}`) }}</button>
+              >{{ t(`pages.emailTemplates.editorView.${view}`) }}</button>
             </div>
           </div>
 
@@ -385,21 +396,21 @@ onMounted(loadTemplates);
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div class="md:col-span-2 space-y-3">
                 <div>
-                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Header Text</label>
-                  <input v-model="simpleHeader" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Alert Notification" />
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.simpleHeader') }}</label>
+                  <input v-model="simpleHeader" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" :placeholder="t('pages.emailTemplates.simpleHeaderPlaceholder')" />
                 </div>
                 <div>
-                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Body Text</label>
-                  <textarea v-model="simpleBody" @input="buildHtmlFromSimple" rows="4" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Device {{device.name}} triggered alert {{alert.name}} with severity {{alert.severity}}." />
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.simpleBody') }}</label>
+                  <textarea v-model="simpleBody" @input="buildHtmlFromSimple" rows="4" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" :placeholder="t('pages.emailTemplates.simpleBodyPlaceholder')" />
                 </div>
                 <div>
-                  <label class="text-[10px] font-medium text-[var(--text-muted)]">Footer Text</label>
-                  <input v-model="simpleFooter" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" placeholder="Sent by HUBEX" />
+                  <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.simpleFooter') }}</label>
+                  <input v-model="simpleFooter" @input="buildHtmlFromSimple" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]" :placeholder="t('pages.emailTemplates.simpleFooterPlaceholder')" />
                 </div>
               </div>
               <!-- Variable panel in simple mode -->
               <div class="border border-[var(--border)] rounded-lg bg-[var(--bg-raised)] p-2">
-                <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">Insert Variable</p>
+                <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">{{ t('pages.emailTemplates.insertVariable') }}</p>
                 <div class="space-y-1">
                   <button
                     v-for="v in TEMPLATE_VARIABLES"
@@ -435,7 +446,7 @@ onMounted(loadTemplates);
                 v-model="editBodyHtml"
                 rows="8"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono resize-y"
-                placeholder="<h2>Alert</h2><p>{{variable.key}} = {{variable.value}}</p>"
+                :placeholder="t('pages.emailTemplates.fieldHtmlPlaceholder')"
               />
               <div
                 v-if="editorView !== 'code'"
@@ -455,7 +466,7 @@ onMounted(loadTemplates);
             </div>
             <!-- Variable reference panel -->
             <div v-if="editorView !== 'preview'" class="w-40 shrink-0 border border-[var(--border)] rounded-lg bg-[var(--bg-raised)] p-2 hidden md:block">
-              <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">Variables</p>
+              <p class="text-[10px] font-semibold text-[var(--text-muted)] mb-2">{{ t('pages.emailTemplates.variables') }}</p>
               <div class="space-y-1">
                 <button
                   v-for="v in TEMPLATE_VARIABLES"
@@ -469,31 +480,31 @@ onMounted(loadTemplates);
           </div>
         </div>
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Text Body (fallback)</label>
-          <textarea v-model="editBodyText" rows="3" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" placeholder="Alert: {alert_name}" />
+          <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldTextBody') }}</label>
+          <textarea v-model="editBodyText" rows="3" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" :placeholder="t('pages.emailTemplates.fieldTextBodyPlaceholder')" />
         </div>
         <div>
-          <label class="text-[10px] font-medium text-[var(--text-muted)]">Variables (comma-separated)</label>
-          <input v-model="editVariables" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" placeholder="alert_name, device_name, value" />
+          <label class="text-[10px] font-medium text-[var(--text-muted)]">{{ t('pages.emailTemplates.fieldVariables') }}</label>
+          <input v-model="editVariables" class="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono" :placeholder="t('pages.emailTemplates.fieldVariablesPlaceholder')" />
         </div>
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <button class="px-3 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)]" @click="editOpen = false">Cancel</button>
+          <button class="px-3 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)]" @click="editOpen = false">{{ t('pages.emailTemplates.cancel') }}</button>
           <button
             :disabled="editSaving || !editName.trim() || !editSubject.trim()"
             class="px-3 py-2 rounded-lg text-xs font-medium bg-[var(--primary)] text-black disabled:opacity-50"
             @click="handleSave"
-          >{{ editSaving ? 'Saving...' : editMode === 'create' ? 'Create' : 'Save' }}</button>
+          >{{ editSaving ? t('pages.emailTemplates.saving') : editMode === 'create' ? t('pages.emailTemplates.create') : t('pages.emailTemplates.save') }}</button>
         </div>
       </template>
     </UModal>
 
     <!-- Preview Modal -->
-    <UModal :open="previewOpen" title="Email Preview" size="lg" @close="previewOpen = false">
+    <UModal :open="previewOpen" :title="t('pages.emailTemplates.previewModalTitle')" size="lg" @close="previewOpen = false">
       <div class="space-y-3">
         <div class="text-xs">
-          <span class="text-[var(--text-muted)]">Subject: </span>
+          <span class="text-[var(--text-muted)]">{{ t('pages.emailTemplates.previewSubject') }}</span>
           <span class="font-medium text-[var(--text-primary)]">{{ previewSubject }}</span>
         </div>
         <div class="border border-[var(--border)] rounded-lg bg-white overflow-hidden">
@@ -501,7 +512,7 @@ onMounted(loadTemplates);
             :srcdoc="previewHtml"
             sandbox=""
             class="w-full min-h-[200px] border-0"
-            title="Email preview"
+            :title="t('pages.emailTemplates.previewIframeTitle')"
           />
         </div>
       </div>
