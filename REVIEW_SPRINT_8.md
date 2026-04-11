@@ -5,15 +5,15 @@
 
 ## Quick-Status
 - **Started:** 2026-04-11
-- **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings
-- **Round 1 Fixes:** ✅ **ALL 36 FINDINGS FIXED** in 10 commits
-- **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, 8 fixed inline (commit `fe953fa`), 3 flagged
-- **Round 3 (Persona):** ⏸ pending (human-driven)
+- **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings, **36/36 fixed**
+- **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, **8/11 fixed**, 3 flagged
+- **Round 3 (Persona):** ✅ **WALK COMPLETE** — user-driven, 25 findings documented, **0 fixed yet** (paused for priorization)
 - **Round 4 (Perf + A11y):** ⏸ pending
 - **Round 5 (Fixing):** ✅ merged into Round 1 + Round 2 fix phases
 - **Round 6 (Release):** ⏸ pending (after Rounds 3-4)
 - **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
-- **Findings R2:** 11 total — **0 P0 / 1 P1 / 7 P2 / 3 P3** — **8/11 fixed, 3 flagged-for-future**
+- **Findings R2:** 11 total — **0 P0 / 1 P1 / 7 P2 / 3 P3** — **8/11 fixed**
+- **Findings R3:** 25 total — **0 P0 / 6 P1 / 11 P2 / 7 P3 / 1 clarification** — **0/25 fixed (awaiting priorization)**
 
 ### Round 1 Fix Commits
 
@@ -301,9 +301,251 @@ The same bug class (hardcoded "X ago" English literals) appeared in 9 files — 
 
 ---
 
-## Persona Findings (Runde 3)
+## Persona Findings (Runde 3) — IN PROGRESS
 
-*(Runde 3 not started — human-driven)*
+### Method
+User (human reviewer) walked the app live on their own machine and provided findings verbally with 2 screenshots attached. I documented each finding and spot-verified a subset on my own running instance.
+
+### Screenshots provided by user
+1. **Dashboard close-up** — shows `GERÄTE ONLINE` / `Teilausfall` subtitle (number not visible in crop) + `34437 EREIGNISSE HEUTE` + `2 AUTOMATIONEN AKTIV` + `Aktuelle Alarme` header
+2. **Dashboard wider** — shows number `5` in green with `Teilausfall` subtitle, legacy alert format `variable 'temperature' value 20.7 gt 20`
+
+**Cache-check:** On my live running instance (after the Sprint 8 R2 rebuild) the Dashboard renders `6 / 13 online` as subtitle, not `Teilausfall` — my Sprint 5.b REAL-10 fix IS active. User's screenshots are likely stale browser cache from before the latest frontend rebuild. A hard reload (Ctrl+Shift+R) should show the same state as mine.
+
+---
+
+### Round 3 Findings
+
+#### Dashboard / Home
+
+**R3-F01 — P2 (cache artefact, but confirm)** — Dashboard KPI sub-label shows "Teilausfall" instead of "6 / 13 online"
+- **User quote:** "Da sind irgendwie, obwohl da steht 'Device online', die Zahl rot und das macht irgendwie wenig Sinn."
+- **What I see live:** `6 / 13 online` subtitle — Sprint 5.b fix active, not Teilausfall.
+- **Likely cause:** Stale browser cache from before the last frontend rebuild. Verify with hard reload.
+- **Action:** None yet, wait for user to confirm after hard-reload.
+
+**R3-F02 — P2 (design iteration)** — Red number color next to "Geräte online" label is confusing
+- **User quote:** "die Zahl rot und das macht irgendwie wenig Sinn"
+- **Design context:** Sprint 5.b intentionally encoded health via number color (>=80% ok/green, 50-79% warn/amber, <50% bad/red). But user is now saying the red number next to a "Geräte **online**" label reads as a contradiction (the label sounds positive, the color says negative).
+- **Decision needed:** Drop the color encoding and keep the ratio as neutral text? Or different fix?
+
+**R3-F03 — P2** — Legacy alert format on Dashboard alert widget (`variable 'temperature' value 20.7 gt 20`)
+- **Root cause:** Pre-existing DB rows from before Sprint 3.6. Sprint 5.c backfill script ready but not run on production DB.
+- **Options:**
+  1. Admin runs `python -m scripts.backfill_alert_format --commit` on prod DB
+  2. Frontend regex-parses legacy format on display (covers both old rows AND prevents future leaks from any other source)
+- **Decision needed:** which option?
+
+---
+
+#### DeviceDetail
+
+**R3-F04 — P1 CRITICAL** — System Context section flickers badly on refresh
+- **User quote:** "Nur wenn man auf dem Device drauf ist, dann haben wir unten diese Ansicht 'Zu Gruppe hinzufügen', noch keine Gruppe, und rechts neben den Variablen 'verbunden', keine Automation und so was beim Refresh flackern die. Das ist ganz schlimm."
+- **Affected sections:** Entity memberships ("Zu Gruppe hinzufügen" / "Keine Gruppe"), linked automations + linked alerts in the System Context graph on DeviceDetail
+- **Difference from Sprint 3.4 fix:** Sprint 3.4 fixed the /devices MAIN PAGE refresh flicker. This is on /devices/{id} — different code path, different data loaders, different flicker root cause. Most likely cause: multiple parallel fetches that don't arrive at the same tick, so the sections mount/unmount independently on each refresh.
+
+**R3-F05 — Ignored per user** — Device action bar "Empfohlene nächste Schritte" inconsistency
+- **User quote:** "der einzige Wizard, den wir so haben, in der Form, der eigentlich okay ist, aber da ist dafür an OK, lass den drin"
+- **Action:** User explicitly said ignore. No action.
+
+---
+
+#### Dashboards / Variables
+
+**R3-F06 — P1** — GPS view widget broken
+- **User quote:** "Bei Dashboards und bei der Variablenansicht haben wir noch Probleme mit GPS-Ansicht"
+- **Needs investigation:** What is the GPS view widget? Probably `VizMap` or similar — uses Leaflet. Might be a lat/lng variable binding issue or Leaflet chunk not loading on-demand correctly after Sprint 7.5 bundle splitting.
+
+**R3-F07 — P2 (needs clarification)** — "Einrichtungen als Dashboard" broken
+- **User quote:** "Probleme mit GPS-Ansicht und Einrichtungen als Dashboard"
+- **Unclear what exactly:** "Einrichtungen" could mean "setups / installations" or could be a widget type name. Needs user clarification: is it the SetupWizard rendered as a Dashboard widget? Or a specific widget type that shows saved device setups?
+
+---
+
+#### Info-Icon pattern
+
+**R3-F08 — P2** — Info-icon tooltip inconsistent across pages
+- **User quote:** "Das Info-Icon neben den Seiten mit den kleinen Informationen ist noch inkonsistent. Das haben wir zum Beispiel bei Geräten und Dashboards. Bei Variablen, aber bei Entitäten haben wir es wieder nicht."
+- **Pattern:** `UInfoTooltip` component is present on /devices, /dashboards, /variables but missing on /entities, /reports (R3-F12), /hardware (R3-F16), and probably several more.
+- **Fix:** Audit all page headers, add UInfoTooltip consistently to every route that has a meaningful "what is this page" description.
+
+**R3-F09 — P2 (new feature)** — Info-icon tooltip should have "Erklärung" button launching an inline tour
+- **User quote:** "Außerdem hatte ich mal gesagt, das wurde nicht umgesetzt, dass ich neben dem, also wenn das Info-Icon aufgeht mit der kleinen Beschreibung, was es ja auch teilweise tut, dass da aber noch so ein Knopf sein soll für Erklärung, dass für jede Erklärung eine kleine Tour geschrieben wird, die dann da abrufbar ist."
+- **Translation:** When the info-icon opens its tooltip, there should be a button "Explain" that triggers a small tour. Each page would have such a pre-authored tour.
+- **Scope:** Requires: (1) `UInfoTooltip` gains an optional `tourId` prop with a button in the body, (2) a small tour is written per page, (3) clicking launches the existing tour infrastructure.
+- **Status:** User said this was requested earlier and not implemented — flag as carry-over from before Sprint 8.
+
+---
+
+#### Automations
+
+**R3-F10 — P2** — Automation creation wizard not perfect enough
+- **User quote:** "Automatisierung finde ich immer noch den Erstellungs Wizard nicht perfekt genug. Der ist ein bisschen komisch."
+- **Unclear what exactly is "komisch":** Needs user to elaborate or needs a closer review of the modal UX. Probably: field ordering, conditional visibility of fields, unclear trigger/condition/action flow, missing help text.
+
+---
+
+#### Webhooks
+
+**R3-F11 — P1 BUG** — "Zu viele Anfragen, bitte einen Moment warten" rate-limit message appearing spuriously
+- **User quote:** "Bei Webhooks gibt es eine Meldung 'zu viele Anfragen bitte einen Moment warten'. Keine Ahnung was das soll."
+- **Root cause suspect:** A polling loop hits the per-user rate limiter because the page's load/refresh + background polling pile up. Or the rate limiter bucket is tuned too tight for this endpoint.
+- **Investigation:** Find where this message is emitted (errors.ts 429 path from Batch 6), then trace back: which fetch, how often, why does it hit rate limit?
+
+---
+
+#### Reports
+
+**R3-F12 — P3 (info-icon)** — Info-icon missing on /reports
+- Same class as R3-F08. Covered by that finding.
+
+---
+
+#### Email Templates
+
+**R3-F13 — P2 (feature)** — WYSIWYG editor not sufficient
+- **User quote:** "E-Mail-Vorlagen, das ist noch kein ausreichender What you see is what you get Editor."
+- **Current state:** Simple textarea for HTML body. Needs a TipTap-based (already in deps) visual editor with formatting toolbar, variable insertion, preview pane, maybe inline template variable autocomplete.
+- **Scope:** Medium — replace current textarea with `RichTextEditor` component from `components/cms/` (already exists, TipTap-based). Or an e-mail-specific variant.
+
+---
+
+#### CMS
+
+**R3-F14 — P1 CRITICAL** — CMS creation flows visually very buggy
+- **User quote:** "Seite erstellen bei CMS ist total grafisch verbuggt. Also nicht nur Seite erstellen, eigentlich alles was unter CMS mit Erstellung zu tun hat, ist im UI sehr verbuggt."
+- **Scope:** /cms/:id/edit (CmsPageEditor.vue — 1144 lines, the TipTap-based one), /cms/forms/:id/edit (CmsFormEditor.vue), /cms/menus/:id/edit (CmsMenuEditor.vue)
+- **What exactly "verbuggt" means:** Needs user screenshots OR a live walkthrough session because "UI buggy" could mean many things: overflow, broken layout, z-index issues, modal misalignment, drag-drop glitches, button misplacement, flicker, render failures, etc.
+- **Action:** Request screenshots OR pair-review the 3 editor pages with user.
+
+---
+
+#### System / Observability
+
+**R3-F15 — P2 (design)** — System/Observability-like section 4-column layout squeezed with many variables
+- **User quote:** "System Part ist immer noch nicht schön dargestellt. Da haben wir immer noch diese vier Spalten und alles wirkt etwas gequetscht, weil wir ganz viele Variablen haben, geht das so weit nach unten. Das sollte irgendwie umgesetzt werden, dass das bisschen die Fade nachvollziehbar sind, weil so ist das viel zu nah beieinander und man kann die Sachen nicht wirklich gut auseinander halten."
+- **Needs clarification:** "System Part" — which page? Options:
+  - /system-health (Systemstatus) — does have 4 KPI columns
+  - /system-stage (System-Bühne)
+  - /observability (Observability)
+  - System Context section on /devices/{id}
+- **Probable:** /system-stage (variables list per entity gets long). Needs a design rework with better visual grouping, fade separators between sections, or accordion-style collapsible groups.
+
+---
+
+#### Hardware Boards / Plugins
+
+**R3-F16 — P1 CRITICAL** — /hardware page scroll broken
+- **User quote:** "Bei Hardware Boards klappt der Scroll auch nicht, also die Seite geht nach unten weiter, aber man kann nicht weiter runter gucken."
+- **Symptom:** Page has content below the fold but scrolling doesn't reach it
+- **Suspected cause:** Same class as REAL-18/19 DeviceDetail (fixed 3.8-hotfix). Could be: (1) unresolved component taking up invisible DOM space, (2) CSS overflow:hidden on an ancestor, (3) fixed-position element blocking scroll events.
+- **Also:** Hardware Boards has no explanation / info-icon + tour (R3-F08 + R3-F09).
+
+**R3-F17 — P1** — /plugins scroll possibly broken (same pattern)
+- **User quote:** "Bei Plugins dasselbe, scheinbar. Bin mir nicht sicher."
+- **Investigation:** Verify by loading /plugins with >6 plugins (currently has 6 marketplace + 2 installed, may already exceed fold).
+
+---
+
+#### Tour Builder
+
+**R3-F18 — P3** — Tour creation modal a bit cluttered, needs inline helper info
+- **User quote:** "Tour erstellen Editor ist auch ein bisschen unübersichtlich; sollten paar kleine Infos in dem Tour erstellen Model sein."
+- **Fix:** Add inline helper paragraphs / tooltips in the TourBuilder creation modal explaining: what a tour is, how to add steps, how to select target elements.
+
+---
+
+#### Sandbox
+
+**R3-F19 — P3 (feature)** — Need more simulators for new catalog
+- **User quote:** "Sandbox muss angepasst werden, dass wir noch mehr Simulatoren haben zu den neuen passenden Dingen."
+- **Context:** The `simulator_engine.py` backend supports N simulator templates. Currently seeded: Temperature Sensor, GPS Tracker, Weather Station, Motion Sensor, Energy Meter, Custom. Need to add new ones that match the expanded Component Catalog from Sprint 5b (BME280, BH1750, DHT22, HC-SR04, PIR, buzzer, relay, servo, led_pwm, etc.).
+- **Scope:** Backend seed data + maybe frontend icons.
+
+---
+
+#### Settings
+
+**R3-F20 — P3 (feature)** — Settings needs a search
+- **User quote:** "Einstellungen sollte eine Suche erhalten."
+- **Fix:** Add a top-of-page search input that filters the collapsible sections (Profile, MFA, Sessions, Features, Branding, etc.) and expands any section containing a match.
+
+---
+
+#### API Docs (Developer)
+
+**R3-F21 — P2** — Redoc tab shows "Could not load Redoc" initially, then loads with lag
+- **User quote:** "Bei API-Dokumentation gibt es den Tab Redock, aber wenn ich den aufklicke, dann kommt erst mal so 'Could not load Redock'. Dann passiert trotzdem aber irgendwas, ist ein bisschen laggy."
+- **Root cause suspect:** Redoc script loaded async from CDN or lazy-imported, initial render happens before the script is ready → error shows, then script loads and re-renders.
+- **Fix:** Show a proper loading spinner instead of "Could not load", or pre-load the Redoc bundle, or use a suspense boundary.
+
+---
+
+#### Admin Console
+
+**R3-F22 — P1** — Admin Console empty / same as System Health
+- **User quote:** "Admin-Konsole ist irgendwie noch ohne Funktion, also ist das gleiche wie system health geführt."
+- **Context:** Sprint 8 Batch 3 swept AdminConsole.vue for i18n but the PAGE itself has very limited functionality — only Module Registry (mostly empty) + System Status (same data as /system-health). Needs actual admin features: user management, org management, capability overview, license info, session management.
+- **Fix:** This is a product decision — what SHOULD be in Admin Console that's currently in Settings? User / org / cap management at minimum. This is a feature request more than a bug fix.
+
+---
+
+#### Sidebar / Navigation
+
+**R3-F23 — P2 (visual)** — Horizontal scroll bar in sidebar looks bad
+- **User quote:** "Ich will in der Sidebar keine Navigationsbar für rechts-links haben. Das sieht scheiße aus."
+- **Translation:** I don't want a horizontal scroll bar in the sidebar. Looks shit.
+- **Root cause:** The sidebar content (nav item labels with long German translations) overflows horizontally at narrow widths or when certain items have long labels.
+- **Fix:** Add `overflow-x: hidden` + `white-space: nowrap` + `text-overflow: ellipsis` on nav item labels, OR widen the sidebar, OR shorten the longest labels.
+
+**R3-F24 — P2 (visual)** — Sidebar vertical scroll bar should only appear when content actually overflows
+- **User quote:** "Ich will, dass die Scrollleiste in der Navigationsbar auch nur dann auftritt, wenn man nicht die gesamte Seite scrollen kann, wie es zum Beispiel bei der System Map ist. Nur da eigentlich oder bei vergleichbaren Sachen."
+- **Current behavior:** Sidebar always shows a scroll track even when all nav items fit in the viewport
+- **Fix:** Change `overflow-y: auto` to `overflow-y: auto` with `scrollbar-gutter: stable` OR use `overflow-y: hidden` + JS check for overflow. Or just use CSS `overflow-y: auto` correctly — modern browsers auto-hide the track when there's nothing to scroll.
+
+---
+
+#### Meta
+
+**R3-F25 — clarification needed** — "4 neue Personas" user expected in UI but can't find
+- **User quote:** "Die vier neuen Personas sehe ich zum Beispiel gar nicht. Keine Ahnung, was es damit jetzt auf sich hat."
+- **My understanding:** In my Round 3 description (the review process), I mentioned 4 personas (new user / operator / admin / viewer) as archetypal users that the HUMAN reviewer walks through to test the app from different role perspectives. **They are review method, NOT UI features.**
+- **User's expectation:** Probably interpreted "4 neue Personas" as a new UI feature to be implemented (maybe: a persona-switcher in settings, or role-based UI variants, or something like that).
+- **Action:** Clarify with user which interpretation they meant. If they want persona-switching as a product feature, that's a Sprint 9+ scope discussion.
+
+---
+
+### Round 3 Summary Stats
+- **Findings:** 25 total
+- **Severity:** 6 P1 / 11 P2 / 7 P3 / 1 clarification
+- **Verified live on my instance:** R3-F01 (cache artefact), F02 (confirmed red number rendering), F04 (not yet — need to refresh device detail)
+- **Needs user clarification:** R3-F07 ("Einrichtungen als Dashboard"), R3-F14 (what exactly in CMS is "verbuggt"), R3-F15 (which "System Part"), R3-F25 (personas)
+- **Carry-over from earlier requests:** R3-F09 (info-icon tour button — user said this was requested before and not implemented)
+
+### 🚦 Kontrollpunkt 3 — Pause for User
+
+**User needs to decide:**
+
+1. **Which findings to fix for dev-stable-v1 tag:**
+   - All 25? That's a big batch.
+   - Only the P1s (6 items)? More focused.
+   - Only the P1s + cleanup the easy P2s?
+   - Skip the feature-request P3s to a Sprint 9+ backlog?
+
+2. **Clarifications needed:**
+   - R3-F07 "Einrichtungen als Dashboard" — what exactly?
+   - R3-F14 CMS creation visually buggy — which specific bugs? Screenshots?
+   - R3-F15 "System Part" — /system-health, /system-stage, /observability, or something else?
+   - R3-F25 "4 Personas" — feature request or review terminology misunderstanding?
+
+3. **Design decisions:**
+   - R3-F02 Dashboard number color — drop the health encoding?
+   - R3-F03 legacy alert format — admin script OR frontend regex fix?
+
+---
+
+*(Round 3 walk complete per user's feedback on 2026-04-11. Paused for priorization.)*
 
 ---
 
