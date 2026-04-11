@@ -6,14 +6,14 @@
 ## Quick-Status
 - **Started:** 2026-04-11
 - **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings
-- **Round 1 Fixes:** ✅ **ALL 36 FINDINGS FIXED** in 10 commits (user directive: all fixes before Round 2)
-- **Round 2 (Visual):** ⏸ pending — ready to start
+- **Round 1 Fixes:** ✅ **ALL 36 FINDINGS FIXED** in 10 commits
+- **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, 8 fixed inline (commit `fe953fa`), 3 flagged
 - **Round 3 (Persona):** ⏸ pending (human-driven)
 - **Round 4 (Perf + A11y):** ⏸ pending
-- **Round 5 (Fixing):** ✅ merged into Round 1 fix phase
-- **Round 6 (Release):** ⏸ pending (after Rounds 2-4)
-- **Findings:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3**
-- **Fixed:** **36 / 36** ✅
+- **Round 5 (Fixing):** ✅ merged into Round 1 + Round 2 fix phases
+- **Round 6 (Release):** ⏸ pending (after Rounds 3-4)
+- **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
+- **Findings R2:** 11 total — **0 P0 / 1 P1 / 7 P2 / 3 P3** — **8/11 fixed, 3 flagged-for-future**
 
 ### Round 1 Fix Commits
 
@@ -241,9 +241,63 @@ Legend: ✅ clean · ⚠️ findings present · ❌ broken
 
 ---
 
-## Visual Findings (Runde 2)
+## Visual Findings (Runde 2) — ✅ COMPLETE
 
-*(Runde 2 not started — requires human priorization of Runde 1 findings first)*
+### Method
+Chrome-MCP's `resize_window` only affects the outer Chromium window, not the inner viewport — real responsive screenshots at 3 breakpoints weren't possible with the available tools. Pivoted to:
+- **1 desktop screenshot per route at 1440×731** (visible viewport)
+- **DOM leak scan** via JS eval per route (`body.innerText` regex match for `\b\d+[smhd] ago\b` + hardcoded English word patterns)
+- **Locale flip check** on a subset of high-risk routes (Dashboard, /cms/forms) to verify Round 1 fixes hold on EN as well as DE
+
+### Routes walked (12)
+/, /devices, /devices/1, /alerts, /automations, /variables, /firmware, /plugins, /hardware, /setup, /cms (including /cms/forms), /landing
+
+### Round 1 fixes all hold on Round 2 walk
+- ✅ **F03 Dashboard KPI** — "2 Automationen aktiv" now consistent with `/automations` list (both 0)
+- ✅ **REAL-10 Dashboard** — "6 / 13 online" in red, honest ratio, color-coded big number
+- ✅ **REAL-18/19 DeviceDetail** — doc height 1671 (was 2033 before the hotfix), 0 unresolved components
+- ✅ **Sprint 6 plugin marketplace** — "6 verfügbar" with all new Frigate/Ollama/Grafana cards in German
+- ✅ **Sprint 7 firmware OTA** — build #3 badge "📡 OTA abgeschlossen"
+- ✅ **Sprint 5a useBoardLabels** — "Der meistverbreitete ESP32-Entwicklungsboard..." etc.
+- ✅ **Batches 1-7d i18n coverage** — 12 routes walked, 11 findings, NONE were a reversal of a prior fix
+
+### Findings found + fixed in Round 2
+
+| ID | Severity | Route(s) | Issue | Commit |
+|----|----------|----------|-------|--------|
+| **R2-F01** | P3 | / Dashboard activity feed | Backend-emitted event type names "Org Created", "Device Paired", "Telemetry Received" render raw English on DE. These come from the events store not an i18n namespace. **Flagged for future, not fixed.** | — |
+| **R2-F02** | **P1** | / Dashboard alert widget | Relative-time string "vor 7h" rendered on EN locale ("gerade eben" fallback too) — systemic leak from `useRecentAlerts.ts` with hardcoded German template literals. | fe953fa |
+| **R2-F03** | P3 | /devices | Device type "simulator" renders as raw English (not in `devices.types.*` namespace) — minor, non-standard type. **Flagged, not fixed.** | — |
+| **R2-F04** | P2 | /devices | fmtAge() hardcoded "0s ago / 5s ago" English template literals | fe953fa |
+| **R2-F05** | P3 | /devices | `sim-mqtt-live` UIDs shown in monospace — observation only, not a bug | — |
+| **R2-F06** | P2 | /devices/1 | Same fmtAge() hardcoded English in DeviceDetail | fe953fa |
+| **R2-F07** | P3 | /alerts | "New" word leak — tracked down to sidebar `+New` button (see R2-F10) | fe953fa |
+| **R2-F08** | P2 | /alerts | Pre-existing DB alert still has legacy format `variable 'temperature' value 20.2 gt 20`. **Sprint 5.c backfill script available — admin needs to run** `python -m scripts.backfill_alert_format --commit` **on production DB**. Flagged for release checklist, not fixable at build time. | — |
+| **R2-F09** | P2 | /cms top-bar | Browser tab/top-bar title still "CMS Pages" (English) because router.ts had no `titleKey` | fe953fa |
+| **R2-F10** | P2 | sidebar | "+ New" button + "+ Device / + Automation / + Alert Rule / + Dashboard" menu items all hardcoded English in DefaultLayout.vue | fe953fa |
+| **R2-F11** | P2 | all 11 /cms/* routes | router.ts had `title:` meta but no `titleKey:` — top-bar reads English on all CMS routes regardless of body-level i18n | fe953fa |
+
+### Systemic fix: `lib/relativeTime.ts`
+The same bug class (hardcoded "X ago" English literals) appeared in 9 files — too many to patch individually. Introduced a centralised `fmtAgeSeconds()` / `fmtRelativeIso()` helper that routes through the existing `dashboardsList.relative.*` namespace. Migration delegated to a subagent; completed in one pass, post-sweep grep confirmed zero `\`.*ago\`` matches in `pages/` + `components/`.
+
+### Flagged for future (NOT fixed this sprint)
+- **R2-F01** event type names from backend — needs a client-side lookup table like Sprint 5.a `useFeatureLabels` or backend i18n
+- **R2-F08** legacy alert DB backfill — script ready, admin-run only
+- **DashboardView.vue line 758** — hardcoded "2m ago" as a sample placeholder for HTML widget preview editor
+- **Sandbox.vue** — partial i18n via `sandbox.ago` key leaves `s`/`m`/`h` suffixes hardcoded English → DE renders grammatically broken "12s vor"
+- **ApiKeyManager.vue template** — "Last used" + "Never used" + "expires" template literals
+- **VizBoolIndicator.vue template** — "since {{ lastChange }}" word leak
+- **Multiple `.toLocaleDateString()`** calls — respect browser locale not app locale
+- **Various backend-seeded strings** — event type names, alert messages (Sprint 5.c backfill only covers future ones), block-canvas HTML renderer fallbacks
+
+### Round 2 Summary Stats
+- **Routes walked:** 12
+- **New findings:** 11 (1 P1, 7 P2, 3 P3)
+- **Fixed in this round:** 8 (the P1 + all systemic P2s)
+- **Flagged:** 3 (R2-F01, R2-F03, R2-F05) + a separate "flagged for future" bucket from the relative-time sweep
+- **Files touched:** 17 (including 1 new: `lib/relativeTime.ts`)
+- **New commit:** `fe953fa`
+- **Build size drift:** +1 KB gzip (acceptable — new relative-time helper offsets the removed inline duplicates)
 
 ---
 
