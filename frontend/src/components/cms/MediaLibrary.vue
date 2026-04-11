@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   listMedia,
   uploadFile,
@@ -10,6 +11,8 @@ import {
   type MediaKind,
   type MediaKindCategory,
 } from "../../lib/media";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   // When set, shows a modal-style picker. Click on an asset emits `select`.
@@ -72,7 +75,7 @@ async function handleFiles(files: FileList | File[] | null) {
     }
     await loadAssets();
   } catch (e: any) {
-    uploadError.value = e?.message || "Upload failed";
+    uploadError.value = e?.message || t('cms.media.uploadFailed');
   } finally {
     uploading.value = false;
   }
@@ -91,12 +94,12 @@ function onFileInput(e: Event) {
 }
 
 async function remove(asset: MediaAsset) {
-  if (!confirm(`Delete "${asset.filename}"?`)) return;
+  if (!confirm(t('cms.media.confirmDelete', { filename: asset.filename }))) return;
   try {
     await deleteMedia(asset.id);
     await loadAssets();
   } catch (e: any) {
-    alert(e?.message || "Delete failed");
+    alert(e?.message || t('cms.media.deleteFailed'));
   }
 }
 
@@ -147,8 +150,8 @@ onMounted(loadAssets);
   <div class="media-library" :class="{ picker: pickerMode }">
     <header class="ml-header">
       <div class="ml-title">
-        <h3>Media Library</h3>
-        <span class="ml-count">{{ total }} items</span>
+        <h3>{{ t('cms.media.title') }}</h3>
+        <span class="ml-count">{{ t('cms.media.itemsCount', { n: total }) }}</span>
       </div>
       <div class="ml-actions">
         <button
@@ -157,7 +160,7 @@ onMounted(loadAssets);
           type="button"
           @click="emit('close')"
         >
-          Close
+          {{ t('cms.media.closeButton') }}
         </button>
       </div>
     </header>
@@ -166,7 +169,7 @@ onMounted(loadAssets);
       <input
         v-model="search"
         type="search"
-        placeholder="Search filename…"
+        :placeholder="t('cms.media.searchPlaceholder')"
         class="ml-search"
       />
       <div class="ml-filters" v-if="!props.restrictKind">
@@ -176,7 +179,7 @@ onMounted(loadAssets);
           :class="{ active: !kindFilter }"
           @click="kindFilter = undefined"
         >
-          All
+          {{ t('cms.media.filters.all') }}
         </button>
         <button
           type="button"
@@ -184,7 +187,7 @@ onMounted(loadAssets);
           :class="{ active: kindFilter === 'images' }"
           @click="kindFilter = 'images'"
         >
-          Images
+          {{ t('cms.media.filters.images') }}
         </button>
         <button
           type="button"
@@ -192,7 +195,7 @@ onMounted(loadAssets);
           :class="{ active: kindFilter === 'videos' }"
           @click="kindFilter = 'videos'"
         >
-          Videos
+          {{ t('cms.media.filters.videos') }}
         </button>
         <button
           type="button"
@@ -200,7 +203,7 @@ onMounted(loadAssets);
           :class="{ active: kindFilter === 'audio' }"
           @click="kindFilter = 'audio'"
         >
-          Audio
+          {{ t('cms.media.filters.audio') }}
         </button>
         <button
           type="button"
@@ -208,7 +211,7 @@ onMounted(loadAssets);
           :class="{ active: kindFilter === 'documents' }"
           @click="kindFilter = 'documents'"
         >
-          Documents
+          {{ t('cms.media.filters.documents') }}
         </button>
         <button
           type="button"
@@ -216,7 +219,7 @@ onMounted(loadAssets);
           :class="{ active: kindFilter === 'archives' }"
           @click="kindFilter = 'archives'"
         >
-          Archives
+          {{ t('cms.media.filters.archives') }}
         </button>
       </div>
       <button
@@ -225,7 +228,7 @@ onMounted(loadAssets);
         :disabled="uploading"
         @click="fileInput?.click()"
       >
-        {{ uploading ? "Uploading…" : "Upload" }}
+        {{ uploading ? t('cms.media.uploading') : t('cms.media.uploadButton') }}
       </button>
       <input
         ref="fileInput"
@@ -246,7 +249,7 @@ onMounted(loadAssets);
     >
       <div v-if="uploadError" class="ml-error">{{ uploadError }}</div>
       <div class="ml-dz-text">
-        Drop files here or click Upload to add to your library
+        {{ t('cms.media.dropzoneText') }}
       </div>
     </div>
 
@@ -308,16 +311,16 @@ onMounted(loadAssets);
           type="button"
           class="ml-delete"
           @click.stop="remove(a)"
-          title="Delete"
+          :title="t('cms.media.deleteTitle')"
         >
           ×
         </button>
       </div>
       <div v-if="assets.length === 0" class="ml-empty">
-        No media yet. Upload your first file!
+        {{ t('cms.media.emptyText') }}
       </div>
     </div>
-    <div v-else class="ml-empty">Loading…</div>
+    <div v-else class="ml-empty">{{ t('cms.media.loading') }}</div>
 
     <div class="ml-pager" v-if="totalPages > 1">
       <button
@@ -326,16 +329,16 @@ onMounted(loadAssets);
         :disabled="page <= 1"
         @click="page--; loadAssets()"
       >
-        Prev
+        {{ t('cms.media.pagerPrev') }}
       </button>
-      <span>Page {{ page }} of {{ totalPages }}</span>
+      <span>{{ t('cms.media.pagerOf', { page, total: totalPages }) }}</span>
       <button
         type="button"
         class="btn-ghost"
         :disabled="page >= totalPages"
         @click="page++; loadAssets()"
       >
-        Next
+        {{ t('cms.media.pagerNext') }}
       </button>
     </div>
   </div>

@@ -110,7 +110,7 @@ function onSearchInput() {
       );
       searchResults.value = res.results || [];
     } catch (e: any) {
-      toast.show(e.message || "Search failed", "error");
+      toast.show(e.message || t('cms.pages.searchFailed'), "error");
     } finally {
       searchLoading.value = false;
     }
@@ -135,9 +135,9 @@ async function exportPage(p: CmsPageSummary) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast.show("Page exported", "success");
+    toast.show(t('cms.pages.exportedToast'), "success");
   } catch (e: any) {
-    toast.show(e.message || "Export failed", "error");
+    toast.show(e.message || t('cms.pages.exportFailed'), "error");
   }
 }
 
@@ -157,10 +157,10 @@ async function onImportFile(ev: Event) {
       method: "POST",
       body: JSON.stringify(data),
     });
-    toast.show(`Imported as /${created.slug}`, "success");
+    toast.show(t('cms.pages.importedToast', { slug: created.slug }), "success");
     await loadPages();
   } catch (e: any) {
-    toast.show(e.message || "Import failed", "error");
+    toast.show(e.message || t('cms.pages.importFailed'), "error");
   }
 }
 
@@ -176,7 +176,7 @@ async function loadPages() {
       await loadTree();
     }
   } catch (e: any) {
-    error.value = e.message || "Failed to load pages";
+    error.value = e.message || t('cms.pages.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -190,7 +190,7 @@ async function loadTree() {
       expandedIds.value.add(node.id);
     }
   } catch (e: any) {
-    error.value = e.message || "Failed to load tree";
+    error.value = e.message || t('cms.pages.loadTreeFailed');
   }
 }
 
@@ -245,10 +245,10 @@ async function onDrop(ev: DragEvent, target: CmsPageTreeNode) {
         menu_order: (target.menu_order || 0) + 1,
       }),
     });
-    toast.show(t('cms.moved') || "Page moved", "success");
+    toast.show(t('cms.moved'), "success");
     await loadTree();
   } catch (e: any) {
-    toast.show(e.message || "Move failed", "error");
+    toast.show(e.message || t('cms.pages.moveFailed'), "error");
   }
 }
 
@@ -261,7 +261,7 @@ async function openTemplatePicker() {
       const res = await apiFetch<{ templates: CmsTemplate[] }>("/api/v1/cms/templates");
       templates.value = res.templates || [];
     } catch (e: any) {
-      toast.show(e.message || "Failed to load templates", "error");
+      toast.show(e.message || t('cms.pages.templatesLoadFailed'), "error");
     } finally {
       templatesLoading.value = false;
     }
@@ -336,7 +336,7 @@ async function createPage() {
     selectedTemplate.value = null;
     router.push(`/cms/${page.id}/edit`);
   } catch (e: any) {
-    toast.show(e.message || "Failed to create", "error");
+    toast.show(e.message || t('cms.pages.createFailed'), "error");
   } finally {
     saving.value = false;
   }
@@ -397,7 +397,7 @@ onMounted(loadPages);
         <p class="page-sub">{{ t('cms.subtitle') }}</p>
       </div>
       <div class="head-actions">
-        <button class="btn-secondary" @click="triggerImport">Import</button>
+        <button class="btn-secondary" @click="triggerImport">{{ t('cms.pages.importButton') }}</button>
         <input
           ref="importFileInput"
           type="file"
@@ -420,20 +420,24 @@ onMounted(loadPages);
         v-model="searchQuery"
         type="search"
         class="search-input"
-        placeholder="Search pages by title, description or content…"
+        :placeholder="t('cms.pages.searchPlaceholder')"
         @input="onSearchInput"
       />
-      <button v-if="searchQuery" class="search-clear" @click="clearSearch" title="Clear">×</button>
+      <button v-if="searchQuery" class="search-clear" @click="clearSearch" :title="t('cms.pages.searchClearTitle')">×</button>
     </div>
 
     <!-- Search results -->
     <div v-if="searchQuery.trim()" class="search-results-wrap">
-      <div v-if="searchLoading" class="state-msg small">Searching…</div>
+      <div v-if="searchLoading" class="state-msg small">{{ t('cms.pages.searching') }}</div>
       <div v-else-if="searchResults.length === 0" class="state-msg small">
-        No results for "{{ searchQuery }}"
+        {{ t('cms.pages.searchNoResults', { query: searchQuery }) }}
       </div>
       <div v-else class="search-results">
-        <div class="search-count">{{ searchResults.length }} result<span v-if="searchResults.length !== 1">s</span></div>
+        <div class="search-count">
+          {{ searchResults.length === 1
+            ? t('cms.pages.searchResultCountSingle', { n: searchResults.length })
+            : t('cms.pages.searchResultCountPlural', { n: searchResults.length }) }}
+        </div>
         <button
           v-for="r in searchResults"
           :key="r.id"
@@ -465,18 +469,18 @@ onMounted(loadPages);
           :class="{ active: viewMode === 'grid' }"
           @click="switchView('grid')"
           type="button"
-          title="Grid view"
+          :title="t('cms.pages.viewGridTitle')"
         >
-          ▤ Grid
+          ▤ {{ t('cms.pages.viewGrid') }}
         </button>
         <button
           class="view-btn"
           :class="{ active: viewMode === 'tree' }"
           @click="switchView('tree')"
           type="button"
-          title="Tree view"
+          :title="t('cms.pages.viewTreeTitle')"
         >
-          ▸ Tree
+          ▸ {{ t('cms.pages.viewTree') }}
         </button>
       </div>
     </div>
@@ -526,12 +530,12 @@ onMounted(loadPages);
           <div class="card-slug">/{{ p.slug }}</div>
           <p v-if="p.description" class="card-desc">{{ p.description }}</p>
           <div class="card-meta">
-            <span v-if="p.published" class="pub-tag">✓ {{ t('cms.published') }}</span>
-            <span v-else-if="p.status === 'scheduled'" class="sched-tag">⏰ Scheduled</span>
-            <span v-else-if="p.status === 'archived'" class="arch-tag">Archived</span>
+            <span v-if="p.published" class="pub-tag">{{ t('cms.pages.publishedCheck', { label: t('cms.published') }) }}</span>
+            <span v-else-if="p.status === 'scheduled'" class="sched-tag">⏰ {{ t('cms.pages.tagScheduled') }}</span>
+            <span v-else-if="p.status === 'archived'" class="arch-tag">{{ t('cms.pages.tagArchived') }}</span>
             <span v-else class="draft-tag">{{ t('cms.draft') }}</span>
-            <span v-if="(p.view_count ?? 0) > 0" class="views-tag" title="Total views">
-              👁 {{ p.view_count }} views
+            <span v-if="(p.view_count ?? 0) > 0" class="views-tag" :title="t('cms.pages.viewsTitle')">
+              👁 {{ t('cms.pages.viewsLabel', { n: p.view_count }) }}
             </span>
           </div>
         </div>
@@ -542,7 +546,7 @@ onMounted(loadPages);
           </button>
           <button class="a-btn" @click="sharePage(p)">{{ t('cms.share') }}</button>
           <button class="a-btn" @click="clonePage(p.id)">{{ t('cms.clone') }}</button>
-          <button class="a-btn" @click="exportPage(p)" title="Download as JSON">Export</button>
+          <button class="a-btn" @click="exportPage(p)" :title="t('cms.pages.exportTitle')">{{ t('cms.pages.exportButton') }}</button>
           <button class="a-btn danger" @click="deletePage(p.id, p.title)">{{ t('common.delete') }}</button>
         </div>
       </div>
@@ -552,17 +556,17 @@ onMounted(loadPages);
     <div v-if="templatePickerOpen" class="modal-overlay" @click.self="templatePickerOpen = false">
       <div class="modal tpl-modal">
         <div class="tpl-head">
-          <h2>Start from a template</h2>
+          <h2>{{ t('cms.pages.templatePickerTitle') }}</h2>
           <button class="close-x" @click="templatePickerOpen = false">×</button>
         </div>
-        <p class="tpl-sub">Pick a starting layout or begin from a blank page.</p>
-        <div v-if="templatesLoading" class="state-msg">Loading templates…</div>
+        <p class="tpl-sub">{{ t('cms.pages.templatePickerSubtitle') }}</p>
+        <div v-if="templatesLoading" class="state-msg">{{ t('cms.pages.templatesLoading') }}</div>
         <div v-else class="tpl-grid">
           <button class="tpl-card blank" @click="selectTemplate(null)">
             <div class="tpl-thumb blank-thumb">+</div>
             <div class="tpl-body">
-              <h3>Blank Page</h3>
-              <p>Start from scratch</p>
+              <h3>{{ t('cms.pages.templateBlankTitle') }}</h3>
+              <p>{{ t('cms.pages.templateBlankSubtitle') }}</p>
             </div>
           </button>
           <button
@@ -589,7 +593,7 @@ onMounted(loadPages);
       <div class="modal">
         <h2>
           {{ t('cms.createPage') }}
-          <span v-if="selectedTemplate" class="tpl-tag">from {{ selectedTemplate.name }}</span>
+          <span v-if="selectedTemplate" class="tpl-tag">{{ t('cms.pages.createFromTemplate', { name: selectedTemplate.name }) }}</span>
         </h2>
         <label class="field">
           <span>{{ t('cms.fields.title') }}</span>
@@ -609,9 +613,9 @@ onMounted(loadPages);
           </select>
         </label>
         <label v-if="!selectedTemplate" class="field">
-          <span>Parent page (optional)</span>
+          <span>{{ t('cms.pages.parentPageOptional') }}</span>
           <select v-model="newParentId">
-            <option :value="null">— none (top-level) —</option>
+            <option :value="null">{{ t('cms.pages.parentNoneOption') }}</option>
             <option v-for="p in pages" :key="p.id" :value="p.id">
               {{ p.title }}
             </option>

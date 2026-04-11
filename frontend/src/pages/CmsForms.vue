@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
 const router = useRouter();
 const toast = useToastStore();
+const { t } = useI18n();
 
 type FormSummary = {
   id: number;
@@ -43,7 +45,7 @@ async function loadForms() {
   try {
     forms.value = await apiFetch<FormSummary[]>("/api/v1/cms/forms");
   } catch (e: any) {
-    error.value = e.message || "Failed to load forms";
+    error.value = e.message || t('cms.forms.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -63,7 +65,7 @@ function onNameInput() {
 
 async function createForm() {
   if (!newName.value.trim() || !newSlug.value.trim()) {
-    toast.show("Name and slug are required", "error");
+    toast.show(t('cms.forms.nameAndSlugRequired'), "error");
     return;
   }
   saving.value = true;
@@ -74,21 +76,21 @@ async function createForm() {
         name: newName.value.trim(),
         slug: newSlug.value.trim(),
         fields: [
-          { id: "name", type: "text", label: "Name", required: true, placeholder: "Your name" },
-          { id: "email", type: "email", label: "Email", required: true, placeholder: "you@example.com" },
-          { id: "message", type: "textarea", label: "Message", required: true, placeholder: "How can we help?" },
+          { id: "name", type: "text", label: t('cms.forms.defaults.fieldNameLabel'), required: true, placeholder: t('cms.forms.defaults.fieldNamePlaceholder') },
+          { id: "email", type: "email", label: t('cms.forms.defaults.fieldEmailLabel'), required: true, placeholder: t('cms.forms.defaults.fieldEmailPlaceholder') },
+          { id: "message", type: "textarea", label: t('cms.forms.defaults.fieldMessageLabel'), required: true, placeholder: t('cms.forms.defaults.fieldMessagePlaceholder') },
         ],
-        submit_button_text: "Submit",
-        success_message: "Thank you!",
+        submit_button_text: t('cms.forms.defaults.submitButtonText'),
+        success_message: t('cms.forms.defaults.successMessage'),
         action: "store",
         enabled: true,
       }),
     });
-    toast.show("Form created", "success");
+    toast.show(t('cms.forms.created'), "success");
     createOpen.value = false;
     router.push(`/cms/forms/${form.id}/edit`);
   } catch (e: any) {
-    toast.show(e.message || "Failed to create form", "error");
+    toast.show(e.message || t('cms.forms.createFailed'), "error");
   } finally {
     saving.value = false;
   }
@@ -100,7 +102,7 @@ async function toggleEnabled(f: FormSummary) {
       method: "PUT",
       body: JSON.stringify({ enabled: !f.enabled }),
     });
-    toast.show(f.enabled ? "Form disabled" : "Form enabled", "success");
+    toast.show(f.enabled ? t('cms.forms.disabled') : t('cms.forms.enabled'), "success");
     await loadForms();
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -108,10 +110,10 @@ async function toggleEnabled(f: FormSummary) {
 }
 
 async function deleteForm(id: number, name: string) {
-  if (!confirm(`Delete form '${name}' and all its submissions? This cannot be undone.`)) return;
+  if (!confirm(t('cms.forms.confirmDelete', { name }))) return;
   try {
     await apiFetch(`/api/v1/cms/forms/${id}`, { method: "DELETE" });
-    toast.show("Form deleted", "success");
+    toast.show(t('cms.forms.deleted'), "success");
     await loadForms();
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -125,16 +127,16 @@ onMounted(loadForms);
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">Forms</h1>
-        <p class="page-sub">Build contact forms, surveys, and lead capture.</p>
+        <h1 class="page-title">{{ t('cms.forms.title') }}</h1>
+        <p class="page-sub">{{ t('cms.forms.subtitle') }}</p>
       </div>
-      <button class="btn-primary" @click="openCreate">+ Create Form</button>
+      <button class="btn-primary" @click="openCreate">{{ t('cms.forms.createFormLong') }}</button>
     </header>
 
-    <div v-if="loading" class="state-msg">Loading…</div>
+    <div v-if="loading" class="state-msg">{{ t('cms.forms.loading') }}</div>
     <div v-else-if="error" class="state-msg error">{{ error }}</div>
     <div v-else-if="forms.length === 0" class="state-msg">
-      <p>No forms yet. Click “Create Form” to build your first one.</p>
+      <p>{{ t('cms.forms.emptyTitle') }}</p>
     </div>
     <div v-else class="forms-grid">
       <div
@@ -155,43 +157,43 @@ onMounted(loadForms);
         <p v-if="f.description" class="card-desc">{{ f.description }}</p>
         <div class="card-stats">
           <div class="stat">
-            <div class="stat-label">Submissions</div>
+            <div class="stat-label">{{ t('cms.forms.stats.submissions') }}</div>
             <div class="stat-value">{{ f.submission_count }}</div>
           </div>
           <div class="stat">
-            <div class="stat-label">Action</div>
+            <div class="stat-label">{{ t('cms.forms.stats.action') }}</div>
             <div class="stat-value stat-text">{{ f.action }}</div>
           </div>
         </div>
         <div class="card-actions">
-          <button class="a-btn" @click="router.push(`/cms/forms/${f.id}/edit`)">Edit</button>
+          <button class="a-btn" @click="router.push(`/cms/forms/${f.id}/edit`)">{{ t('cms.forms.actionEdit') }}</button>
           <button class="a-btn" @click="router.push(`/cms/forms/${f.id}/submissions`)">
-            View Submissions
+            {{ t('cms.forms.actionViewSubmissions') }}
           </button>
-          <button class="a-btn danger" @click="deleteForm(f.id, f.name)">Delete</button>
+          <button class="a-btn danger" @click="deleteForm(f.id, f.name)">{{ t('cms.forms.actionDelete') }}</button>
         </div>
       </div>
     </div>
 
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
       <div class="modal">
-        <h2>Create Form</h2>
+        <h2>{{ t('cms.forms.modal.title') }}</h2>
         <label class="field">
-          <span>Name</span>
-          <input v-model="newName" @input="onNameInput" type="text" placeholder="Contact Form" />
+          <span>{{ t('cms.forms.modal.nameLabel') }}</span>
+          <input v-model="newName" @input="onNameInput" type="text" :placeholder="t('cms.forms.modal.namePlaceholder')" />
         </label>
         <label class="field">
-          <span>Slug</span>
-          <input v-model="newSlug" type="text" placeholder="contact-form" />
+          <span>{{ t('cms.forms.modal.slugLabel') }}</span>
+          <input v-model="newSlug" type="text" :placeholder="t('cms.forms.modal.slugPlaceholder')" />
         </label>
         <p class="hint">
-          Your form will be available at
-          <code>/api/v1/cms/forms/public/{{ newSlug || "your-slug" }}/submit</code>.
+          {{ t('cms.forms.modal.hintPrefix') }}
+          <code>/api/v1/cms/forms/public/{{ newSlug || t('cms.forms.modal.yourSlug') }}/submit</code>.
         </p>
         <div class="modal-actions">
-          <button class="btn-secondary" @click="createOpen = false">Cancel</button>
+          <button class="btn-secondary" @click="createOpen = false">{{ t('cms.forms.modal.cancel') }}</button>
           <button class="btn-primary" :disabled="saving" @click="createForm">
-            {{ saving ? "Creating…" : "Create" }}
+            {{ saving ? t('cms.forms.modal.creating') : t('cms.forms.modal.create') }}
           </button>
         </div>
       </div>

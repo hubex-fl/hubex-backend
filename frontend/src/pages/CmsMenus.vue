@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
 const router = useRouter();
 const toast = useToastStore();
+const { t } = useI18n();
 
 type MenuItem = {
   id?: string;
@@ -51,7 +53,7 @@ async function load() {
   try {
     menus.value = await apiFetch<Menu[]>("/api/v1/cms/menus");
   } catch (e: any) {
-    error.value = e.message || "Failed to load menus";
+    error.value = e.message || t('cms.menus.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -65,7 +67,7 @@ function openCreate() {
 
 async function createMenu() {
   if (!newName.value.trim() || !newLocation.value.trim()) {
-    toast.show("Name and location are required", "error");
+    toast.show(t('cms.menus.nameAndLocationRequired'), "error");
     return;
   }
   saving.value = true;
@@ -78,21 +80,21 @@ async function createMenu() {
         items: [],
       }),
     });
-    toast.show("Menu created", "success");
+    toast.show(t('cms.menus.created'), "success");
     createOpen.value = false;
     router.push(`/cms/menus/${menu.id}/edit`);
   } catch (e: any) {
-    toast.show(e.message || "Create failed", "error");
+    toast.show(e.message || t('cms.menus.createFailed'), "error");
   } finally {
     saving.value = false;
   }
 }
 
 async function deleteMenu(id: number, name: string) {
-  if (!confirm(`Delete menu "${name}"?`)) return;
+  if (!confirm(t('cms.menus.confirmDelete', { name }))) return;
   try {
     await apiFetch(`/api/v1/cms/menus/${id}`, { method: "DELETE" });
-    toast.show("Menu deleted", "success");
+    toast.show(t('cms.menus.deleted'), "success");
     await load();
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -106,16 +108,16 @@ onMounted(load);
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">CMS Menus</h1>
-        <p class="page-sub">Navigation menus composed of pages, external links, sections and dividers.</p>
+        <h1 class="page-title">{{ t('cms.menus.title') }}</h1>
+        <p class="page-sub">{{ t('cms.menus.subtitle') }}</p>
       </div>
-      <button class="btn-primary" @click="openCreate">+ New menu</button>
+      <button class="btn-primary" @click="openCreate">{{ t('cms.menus.newMenuLong') }}</button>
     </header>
 
-    <div v-if="loading" class="state-msg">Loading…</div>
+    <div v-if="loading" class="state-msg">{{ t('cms.menus.loading') }}</div>
     <div v-else-if="error" class="state-msg error">{{ error }}</div>
     <div v-else-if="menus.length === 0" class="state-msg">
-      No menus yet. Create one to build a navigation bar for your CMS pages.
+      {{ t('cms.menus.empty') }}
     </div>
     <div v-else class="menu-grid">
       <div
@@ -127,36 +129,36 @@ onMounted(load);
           <h3 class="card-title" @click="router.push(`/cms/menus/${m.id}/edit`)">{{ m.name }}</h3>
           <span class="badge">{{ m.location }}</span>
         </div>
-        <div class="card-meta">{{ countItems(m.items) }} items</div>
+        <div class="card-meta">{{ t('cms.menus.itemsCount', { n: countItems(m.items) }) }}</div>
         <div class="card-actions">
-          <button class="a-btn" @click="router.push(`/cms/menus/${m.id}/edit`)">Edit</button>
-          <button class="a-btn danger" @click="deleteMenu(m.id, m.name)">Delete</button>
+          <button class="a-btn" @click="router.push(`/cms/menus/${m.id}/edit`)">{{ t('cms.menus.edit') }}</button>
+          <button class="a-btn danger" @click="deleteMenu(m.id, m.name)">{{ t('cms.menus.delete') }}</button>
         </div>
       </div>
     </div>
 
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
       <div class="modal">
-        <h2>New menu</h2>
+        <h2>{{ t('cms.menus.modal.titleNew') }}</h2>
         <label class="field">
-          <span>Name</span>
-          <input v-model="newName" type="text" placeholder="Main header" />
+          <span>{{ t('cms.menus.modal.nameLabel') }}</span>
+          <input v-model="newName" type="text" :placeholder="t('cms.menus.modal.namePlaceholder')" />
         </label>
         <label class="field">
-          <span>Location</span>
+          <span>{{ t('cms.menus.modal.locationLabel') }}</span>
           <select v-model="newLocation">
-            <option value="">— choose —</option>
-            <option value="header">header</option>
-            <option value="footer">footer</option>
-            <option value="sidebar">sidebar</option>
+            <option value="">{{ t('cms.menus.modal.locationChoose') }}</option>
+            <option value="header">{{ t('cms.menus.modal.locationHeader') }}</option>
+            <option value="footer">{{ t('cms.menus.modal.locationFooter') }}</option>
+            <option value="sidebar">{{ t('cms.menus.modal.locationSidebar') }}</option>
           </select>
-          <small class="hint">Or type a custom value:</small>
-          <input v-model="newLocation" type="text" placeholder="custom-slot" />
+          <small class="hint">{{ t('cms.menus.modal.locationCustomHint') }}</small>
+          <input v-model="newLocation" type="text" :placeholder="t('cms.menus.modal.locationCustomPlaceholder')" />
         </label>
         <div class="modal-actions">
-          <button class="btn-secondary" @click="createOpen = false">Cancel</button>
+          <button class="btn-secondary" @click="createOpen = false">{{ t('cms.menus.modal.cancel') }}</button>
           <button class="btn-primary" :disabled="saving" @click="createMenu">
-            {{ saving ? 'Saving…' : 'Create' }}
+            {{ saving ? t('cms.menus.modal.saving') : t('cms.menus.modal.create') }}
           </button>
         </div>
       </div>

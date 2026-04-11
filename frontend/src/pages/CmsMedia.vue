@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import MediaLibrary from "../components/cms/MediaLibrary.vue";
+
+const { t } = useI18n();
 </script>
 
 <template>
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">Media Library</h1>
-        <p class="page-sub">
-          Manage images, videos, audio, documents and archives used in your CMS pages.
-        </p>
+        <h1 class="page-title">{{ t('cms.media.title') }}</h1>
+        <p class="page-sub">{{ t('cms.media.subtitle') }}</p>
       </div>
     </header>
     <MediaLibrary />

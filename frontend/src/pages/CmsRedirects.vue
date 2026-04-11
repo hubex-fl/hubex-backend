@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
@@ -14,6 +15,7 @@ type Redirect = {
   created_at: string;
 };
 
+const { t } = useI18n();
 const toast = useToastStore();
 const items = ref<Redirect[]>([]);
 const loading = ref(true);
@@ -36,7 +38,7 @@ async function load() {
   try {
     items.value = await apiFetch<Redirect[]>("/api/v1/cms/redirects");
   } catch (e: any) {
-    error.value = e.message || "Failed to load";
+    error.value = e.message || t('cms.redirects.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -61,7 +63,7 @@ function openEdit(r: Redirect) {
 
 async function save() {
   if (!form.value.from_path.trim() || !form.value.to_path.trim()) {
-    toast.show("Both from and to paths are required", "error");
+    toast.show(t('cms.redirects.fromToRequired'), "error");
     return;
   }
   saving.value = true;
@@ -71,31 +73,31 @@ async function save() {
         method: "PUT",
         body: JSON.stringify(form.value),
       });
-      toast.show("Redirect updated", "success");
+      toast.show(t('cms.redirects.updated'), "success");
     } else {
       await apiFetch("/api/v1/cms/redirects", {
         method: "POST",
         body: JSON.stringify(form.value),
       });
-      toast.show("Redirect created", "success");
+      toast.show(t('cms.redirects.created'), "success");
     }
     createOpen.value = false;
     await load();
   } catch (e: any) {
-    toast.show(e.message || "Failed to save", "error");
+    toast.show(e.message || t('cms.redirects.saveFailed'), "error");
   } finally {
     saving.value = false;
   }
 }
 
 async function remove(r: Redirect) {
-  if (!confirm(`Delete redirect ${r.from_path} → ${r.to_path}?`)) return;
+  if (!confirm(t('cms.redirects.confirmDelete', { from: r.from_path, to: r.to_path }))) return;
   try {
     await apiFetch(`/api/v1/cms/redirects/${r.id}`, { method: "DELETE" });
-    toast.show("Deleted", "success");
+    toast.show(t('cms.redirects.deleted'), "success");
     await load();
   } catch (e: any) {
-    toast.show(e.message || "Failed to delete", "error");
+    toast.show(e.message || t('cms.redirects.deleteFailed'), "error");
   }
 }
 
@@ -112,7 +114,7 @@ async function toggleEnabled(r: Redirect) {
     });
     await load();
   } catch (e: any) {
-    toast.show(e.message || "Failed to toggle", "error");
+    toast.show(e.message || t('cms.redirects.toggleFailed'), "error");
   }
 }
 
@@ -132,29 +134,29 @@ onMounted(load);
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">URL Redirects</h1>
+        <h1 class="page-title">{{ t('cms.redirects.title') }}</h1>
         <p class="page-sub">
-          Redirect old URLs to new ones. Useful for SEO-safe page migrations.
+          {{ t('cms.redirects.subtitle') }}
         </p>
       </div>
-      <button class="btn-primary" @click="openCreate">+ New redirect</button>
+      <button class="btn-primary" @click="openCreate">{{ t('cms.redirects.newRedirectLong') }}</button>
     </header>
 
-    <div v-if="loading" class="state-msg">Loading…</div>
+    <div v-if="loading" class="state-msg">{{ t('cms.redirects.loading') }}</div>
     <div v-else-if="error" class="state-msg error">{{ error }}</div>
     <div v-else-if="items.length === 0" class="state-msg">
-      No redirects yet. Create one to begin.
+      {{ t('cms.redirects.empty') }}
     </div>
     <div v-else class="table-wrap">
       <table class="redirect-table">
         <thead>
           <tr>
-            <th>From</th>
-            <th>To</th>
-            <th>Code</th>
-            <th>Enabled</th>
-            <th>Hits</th>
-            <th>Last hit</th>
+            <th>{{ t('cms.redirects.columns.from') }}</th>
+            <th>{{ t('cms.redirects.columns.to') }}</th>
+            <th>{{ t('cms.redirects.columns.code') }}</th>
+            <th>{{ t('cms.redirects.columns.enabled') }}</th>
+            <th>{{ t('cms.redirects.columns.hits') }}</th>
+            <th>{{ t('cms.redirects.columns.lastHit') }}</th>
             <th></th>
           </tr>
         </thead>
@@ -167,14 +169,14 @@ onMounted(load);
             </td>
             <td>
               <button class="toggle" :class="{ on: r.enabled }" @click="toggleEnabled(r)">
-                {{ r.enabled ? "On" : "Off" }}
+                {{ r.enabled ? t('cms.redirects.toggle.on') : t('cms.redirects.toggle.off') }}
               </button>
             </td>
             <td>{{ r.hit_count }}</td>
             <td class="muted">{{ formatDate(r.last_hit_at) }}</td>
             <td class="actions">
-              <button class="a-btn" @click="openEdit(r)">Edit</button>
-              <button class="a-btn danger" @click="remove(r)">Delete</button>
+              <button class="a-btn" @click="openEdit(r)">{{ t('cms.redirects.actions.edit') }}</button>
+              <button class="a-btn danger" @click="remove(r)">{{ t('cms.redirects.actions.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -184,30 +186,30 @@ onMounted(load);
     <!-- Create/Edit modal -->
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
       <div class="modal">
-        <h2>{{ editing ? "Edit redirect" : "New redirect" }}</h2>
+        <h2>{{ editing ? t('cms.redirects.modal.titleEdit') : t('cms.redirects.modal.titleNew') }}</h2>
         <label class="field">
-          <span>From path</span>
-          <input v-model="form.from_path" type="text" placeholder="/old-url" />
+          <span>{{ t('cms.redirects.modal.fromLabel') }}</span>
+          <input v-model="form.from_path" type="text" :placeholder="t('cms.redirects.modal.fromPlaceholder')" />
         </label>
         <label class="field">
-          <span>To path</span>
-          <input v-model="form.to_path" type="text" placeholder="/new-url" />
+          <span>{{ t('cms.redirects.modal.toLabel') }}</span>
+          <input v-model="form.to_path" type="text" :placeholder="t('cms.redirects.modal.toPlaceholder')" />
         </label>
         <label class="field">
-          <span>Status code</span>
+          <span>{{ t('cms.redirects.modal.statusLabel') }}</span>
           <select v-model.number="form.status_code">
-            <option :value="301">301 Moved Permanently</option>
-            <option :value="302">302 Found (Temporary)</option>
+            <option :value="301">{{ t('cms.redirects.modal.status301') }}</option>
+            <option :value="302">{{ t('cms.redirects.modal.status302') }}</option>
           </select>
         </label>
         <label class="field checkbox">
           <input type="checkbox" v-model="form.enabled" />
-          <span>Enabled</span>
+          <span>{{ t('cms.redirects.modal.enabledLabel') }}</span>
         </label>
         <div class="modal-actions">
-          <button class="btn-secondary" @click="createOpen = false">Cancel</button>
+          <button class="btn-secondary" @click="createOpen = false">{{ t('cms.redirects.modal.cancel') }}</button>
           <button class="btn-primary" :disabled="saving" @click="save">
-            {{ saving ? "Saving…" : (editing ? "Update" : "Create") }}
+            {{ saving ? t('cms.redirects.modal.saving') : (editing ? t('cms.redirects.modal.update') : t('cms.redirects.modal.create')) }}
           </button>
         </div>
       </div>

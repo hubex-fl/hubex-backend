@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
+const { t } = useI18n();
 const toast = useToastStore();
 
 type Settings = {
@@ -55,7 +57,7 @@ async function loadSettings() {
     settings.value = await apiFetch<Settings>("/api/v1/site/settings");
     if (!settings.value.footer_links) settings.value.footer_links = [];
   } catch (e: any) {
-    toast.show(e.message || "Failed to load settings", "error");
+    toast.show(e.message || t('cms.siteSettings.loadFailed'), "error");
   } finally {
     loading.value = false;
   }
@@ -91,9 +93,9 @@ async function saveSettings() {
       body: JSON.stringify(body),
     });
     if (!settings.value.footer_links) settings.value.footer_links = [];
-    toast.show("Settings saved", "success");
+    toast.show(t('cms.siteSettings.saved'), "success");
   } catch (e: any) {
-    toast.show(e.message || "Failed to save", "error");
+    toast.show(e.message || t('cms.siteSettings.saveFailed'), "error");
   } finally {
     saving.value = false;
   }
@@ -102,7 +104,7 @@ async function saveSettings() {
 function addFooterLink() {
   if (!settings.value) return;
   if (!settings.value.footer_links) settings.value.footer_links = [];
-  settings.value.footer_links.push({ text: "Link", url: "/" });
+  settings.value.footer_links.push({ text: t('cms.siteSettings.footer.defaultLinkText'), url: "/" });
 }
 
 function removeFooterLink(idx: number) {
@@ -117,71 +119,71 @@ onMounted(loadSettings);
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">Site Settings</h1>
+        <h1 class="page-title">{{ t('cms.siteSettings.title') }}</h1>
         <p class="page-sub">
-          Branding, SEO, analytics, and footer for your public site and CMS pages.
+          {{ t('cms.siteSettings.subtitle') }}
         </p>
       </div>
       <button class="btn-primary" :disabled="saving" @click="saveSettings">
-        {{ saving ? "Saving…" : "Save" }}
+        {{ saving ? t('cms.siteSettings.saving') : t('cms.siteSettings.saveButton') }}
       </button>
     </header>
 
-    <div v-if="loading" class="state-msg">Loading…</div>
+    <div v-if="loading" class="state-msg">{{ t('cms.siteSettings.loading') }}</div>
     <div v-else-if="settings" class="settings-wrap">
       <!-- BRANDING -->
       <section class="accordion" :class="{ open: openSections.branding }">
         <button class="accordion-head" @click="toggle('branding')">
-          <span>Branding</span>
+          <span>{{ t('cms.siteSettings.sections.branding') }}</span>
           <span class="chev">{{ openSections.branding ? "▾" : "▸" }}</span>
         </button>
         <div v-if="openSections.branding" class="accordion-body">
           <div class="grid-2">
             <label class="field">
-              <span>Site Title</span>
-              <input v-model="settings.site_title" type="text" placeholder="HUBEX" />
+              <span>{{ t('cms.siteSettings.branding.siteTitleLabel') }}</span>
+              <input v-model="settings.site_title" type="text" :placeholder="t('cms.siteSettings.branding.siteTitlePlaceholder')" />
             </label>
             <label class="field">
-              <span>Tagline</span>
-              <input v-model="settings.site_tagline" type="text" placeholder="Short catchphrase" />
+              <span>{{ t('cms.siteSettings.branding.taglineLabel') }}</span>
+              <input v-model="settings.site_tagline" type="text" :placeholder="t('cms.siteSettings.branding.taglinePlaceholder')" />
             </label>
           </div>
           <div class="grid-2">
             <label class="field">
-              <span>Logo URL</span>
-              <input v-model="settings.logo_url" type="text" placeholder="https://…/logo.png" />
+              <span>{{ t('cms.siteSettings.branding.logoUrlLabel') }}</span>
+              <input v-model="settings.logo_url" type="text" :placeholder="t('cms.siteSettings.branding.logoUrlPlaceholder')" />
             </label>
             <label class="field">
-              <span>Favicon URL</span>
-              <input v-model="settings.favicon_url" type="text" placeholder="https://…/favicon.ico" />
+              <span>{{ t('cms.siteSettings.branding.faviconUrlLabel') }}</span>
+              <input v-model="settings.favicon_url" type="text" :placeholder="t('cms.siteSettings.branding.faviconUrlPlaceholder')" />
             </label>
           </div>
 
-          <h4 class="subsection">Colors</h4>
+          <h4 class="subsection">{{ t('cms.siteSettings.branding.colorsSubsection') }}</h4>
           <div class="grid-4">
             <label class="field">
-              <span>Primary</span>
+              <span>{{ t('cms.siteSettings.branding.primaryLabel') }}</span>
               <div class="color-input">
                 <input type="color" v-model="settings.primary_color" />
                 <input type="text" v-model="settings.primary_color" />
               </div>
             </label>
             <label class="field">
-              <span>Accent</span>
+              <span>{{ t('cms.siteSettings.branding.accentLabel') }}</span>
               <div class="color-input">
                 <input type="color" v-model="settings.accent_color" />
                 <input type="text" v-model="settings.accent_color" />
               </div>
             </label>
             <label class="field">
-              <span>Background</span>
+              <span>{{ t('cms.siteSettings.branding.backgroundLabel') }}</span>
               <div class="color-input">
                 <input type="color" v-model="settings.bg_color" />
                 <input type="text" v-model="settings.bg_color" />
               </div>
             </label>
             <label class="field">
-              <span>Text</span>
+              <span>{{ t('cms.siteSettings.branding.textLabel') }}</span>
               <div class="color-input">
                 <input type="color" v-model="settings.text_color" />
                 <input type="text" v-model="settings.text_color" />
@@ -191,12 +193,12 @@ onMounted(loadSettings);
 
           <div class="preview-strip" :style="{ background: settings.bg_color, color: settings.text_color }">
             <strong :style="{ color: settings.primary_color }">{{ settings.site_title }}</strong>
-            <span :style="{ color: settings.text_color }">{{ settings.site_tagline || "—" }}</span>
+            <span :style="{ color: settings.text_color }">{{ settings.site_tagline || t('cms.siteSettings.branding.previewEmpty') }}</span>
             <button :style="{ background: settings.primary_color, color: settings.bg_color }">
-              Primary
+              {{ t('cms.siteSettings.branding.previewPrimary') }}
             </button>
             <button :style="{ background: settings.accent_color, color: settings.bg_color }">
-              Accent
+              {{ t('cms.siteSettings.branding.previewAccent') }}
             </button>
           </div>
         </div>
@@ -205,37 +207,37 @@ onMounted(loadSettings);
       <!-- SEO -->
       <section class="accordion" :class="{ open: openSections.seo }">
         <button class="accordion-head" @click="toggle('seo')">
-          <span>SEO Defaults</span>
+          <span>{{ t('cms.siteSettings.sections.seo') }}</span>
           <span class="chev">{{ openSections.seo ? "▾" : "▸" }}</span>
         </button>
         <div v-if="openSections.seo" class="accordion-body">
           <label class="field">
-            <span>Default Meta Title</span>
+            <span>{{ t('cms.siteSettings.seo.metaTitleLabel') }}</span>
             <input
               v-model="settings.default_meta_title"
               type="text"
-              placeholder="Used when a page doesn't set its own"
+              :placeholder="t('cms.siteSettings.seo.metaTitlePlaceholder')"
             />
           </label>
           <label class="field">
-            <span>Default Meta Description</span>
+            <span>{{ t('cms.siteSettings.seo.metaDescriptionLabel') }}</span>
             <textarea
               v-model="settings.default_meta_description"
               rows="3"
-              placeholder="What your site is about"
+              :placeholder="t('cms.siteSettings.seo.metaDescriptionPlaceholder')"
             ></textarea>
           </label>
           <label class="field">
-            <span>Default OG Image</span>
+            <span>{{ t('cms.siteSettings.seo.ogImageLabel') }}</span>
             <input
               v-model="settings.default_og_image"
               type="text"
-              placeholder="https://…/og-image.png"
+              :placeholder="t('cms.siteSettings.seo.ogImagePlaceholder')"
             />
           </label>
           <label class="field">
-            <span>Twitter Handle</span>
-            <input v-model="settings.twitter_handle" type="text" placeholder="@yourhandle" />
+            <span>{{ t('cms.siteSettings.seo.twitterHandleLabel') }}</span>
+            <input v-model="settings.twitter_handle" type="text" :placeholder="t('cms.siteSettings.seo.twitterHandlePlaceholder')" />
           </label>
         </div>
       </section>
@@ -243,17 +245,17 @@ onMounted(loadSettings);
       <!-- ANALYTICS -->
       <section class="accordion" :class="{ open: openSections.analytics }">
         <button class="accordion-head" @click="toggle('analytics')">
-          <span>Analytics</span>
+          <span>{{ t('cms.siteSettings.sections.analytics') }}</span>
           <span class="chev">{{ openSections.analytics ? "▾" : "▸" }}</span>
         </button>
         <div v-if="openSections.analytics" class="accordion-body">
           <label class="field">
-            <span>Google Analytics ID</span>
-            <input v-model="settings.google_analytics_id" type="text" placeholder="G-XXXXXXXXXX" />
+            <span>{{ t('cms.siteSettings.analytics.googleAnalyticsLabel') }}</span>
+            <input v-model="settings.google_analytics_id" type="text" :placeholder="t('cms.siteSettings.analytics.googleAnalyticsPlaceholder')" />
           </label>
           <label class="field">
-            <span>Plausible Domain</span>
-            <input v-model="settings.plausible_domain" type="text" placeholder="example.com" />
+            <span>{{ t('cms.siteSettings.analytics.plausibleLabel') }}</span>
+            <input v-model="settings.plausible_domain" type="text" :placeholder="t('cms.siteSettings.analytics.plausiblePlaceholder')" />
           </label>
         </div>
       </section>
@@ -261,63 +263,63 @@ onMounted(loadSettings);
       <!-- FOOTER -->
       <section class="accordion" :class="{ open: openSections.footer }">
         <button class="accordion-head" @click="toggle('footer')">
-          <span>Footer</span>
+          <span>{{ t('cms.siteSettings.sections.footer') }}</span>
           <span class="chev">{{ openSections.footer ? "▾" : "▸" }}</span>
         </button>
         <div v-if="openSections.footer" class="accordion-body">
           <label class="field">
-            <span>Footer Text</span>
+            <span>{{ t('cms.siteSettings.footer.textLabel') }}</span>
             <textarea
               v-model="settings.footer_text"
               rows="2"
-              placeholder="© 2026 My Company"
+              :placeholder="t('cms.siteSettings.footer.textPlaceholder')"
             ></textarea>
           </label>
-          <h4 class="subsection">Footer Links</h4>
+          <h4 class="subsection">{{ t('cms.siteSettings.footer.linksSubsection') }}</h4>
           <div
             v-for="(link, idx) in settings.footer_links || []"
             :key="idx"
             class="link-row"
           >
-            <input v-model="link.text" type="text" placeholder="Text" />
-            <input v-model="link.url" type="text" placeholder="URL" />
+            <input v-model="link.text" type="text" :placeholder="t('cms.siteSettings.footer.linkTextPlaceholder')" />
+            <input v-model="link.url" type="text" :placeholder="t('cms.siteSettings.footer.linkUrlPlaceholder')" />
             <button class="mini-btn danger" @click="removeFooterLink(idx)">×</button>
           </div>
-          <button class="mini-btn" @click="addFooterLink">+ Add Link</button>
+          <button class="mini-btn" @click="addFooterLink">{{ t('cms.siteSettings.footer.addLinkButton') }}</button>
         </div>
       </section>
 
       <!-- ADVANCED -->
       <section class="accordion" :class="{ open: openSections.advanced }">
         <button class="accordion-head" @click="toggle('advanced')">
-          <span>Advanced (Custom CSS/HTML)</span>
+          <span>{{ t('cms.siteSettings.sections.advanced') }}</span>
           <span class="chev">{{ openSections.advanced ? "▾" : "▸" }}</span>
         </button>
         <div v-if="openSections.advanced" class="accordion-body">
           <label class="field">
-            <span>Custom CSS</span>
+            <span>{{ t('cms.siteSettings.advanced.cssLabel') }}</span>
             <textarea
               v-model="settings.custom_css"
               rows="6"
-              placeholder="/* Injected into every public CMS page */"
+              :placeholder="t('cms.siteSettings.advanced.cssPlaceholder')"
               class="mono"
             ></textarea>
           </label>
           <label class="field">
-            <span>Custom &lt;head&gt; HTML</span>
+            <span>{{ t('cms.siteSettings.advanced.headHtmlLabel') }}</span>
             <textarea
               v-model="settings.custom_head_html"
               rows="6"
-              placeholder="<script …>…</script>"
+              :placeholder="t('cms.siteSettings.advanced.headHtmlPlaceholder')"
               class="mono"
             ></textarea>
           </label>
           <label class="field">
-            <span>Custom Footer HTML</span>
+            <span>{{ t('cms.siteSettings.advanced.footerHtmlLabel') }}</span>
             <textarea
               v-model="settings.custom_footer_html"
               rows="6"
-              placeholder="<div>…</div>"
+              :placeholder="t('cms.siteSettings.advanced.footerHtmlPlaceholder')"
               class="mono"
             ></textarea>
           </label>
