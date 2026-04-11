@@ -262,13 +262,39 @@ own sprint), but all the high-frequency ones users bumped into got wired.
 
 ### Still open after Sprint 3.6
 
-- REAL-14/15 Devices page column headers (DEVICE/TYPE/HEALTH/STATE/...) and status badges (ok/ready/online/Simuliert)
-- REAL-21 Variables page backend-seeded descriptions ("CPU usage", "Battery level", "Auto-discovered from telemetry") — these live in backend seed/auto-discovery code, needs backend change
-- REAL-22/23/24 Variables tag labels (actuator/power/system) and type badges (device/float)
 - REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — still needs devtools perf trace
 - REAL-10 Dashboard "Großer Ausfall" semantic mismatch — design decision
-- Devices Unclaim mode button text truncation ("Entkopplungs-") — tailwind fixed-width button cuts off "Entkopplungs-Modus"; needs css width fix
 - SetupWizard — the biggest remaining offender per Sprint 3.4 audit, punted to Sprint 3.7
+
+---
+
+## ✅ Fixed in Sprint 3.7 (polish pass)
+
+Small-but-visible follow-up to the Sprint 3.6 i18n sweep. Covered
+the REAL-* findings that Sprint 3.6 consciously left for a second pass
+because they needed per-page template surgery rather than just moving
+existing keys around.
+
+| Area | REAL-# | Fix |
+|---|---|---|
+| **Devices table column headers** | REAL-14 | All 7 `<th>` labels (Device/Type/Health/State/Online/Last Seen/Actions) wrapped in `t('devices.colXxx')`. Added 7 new keys en+de. Verified live: headers now read GERÄT/TYP/ZUSTAND/STATUS/VERBINDUNG/ZULETZT GESEHEN/AKTIONEN. |
+| **Devices status badges** | REAL-15 | `{{ d.health }}` → `healthLabel(d.health)` helper with `devices.healthLabels.<key>` lookup + raw fallback; `{{ d.state }}` → `stateLabel()` extended with `devices.stateLabels.<key>` lookup; `{{ d.online ? "online" : "offline" }}` → `t('devices.statusOnline'/'statusOffline')`. Second render site in card-view also fixed. |
+| **Devices row action buttons** | REAL-15 | `rowActionLabel()` now returns `t('devices.rowActionOpen'/'rowActionBusy'/'rowActionUseUid')` instead of raw English. Verified: table shows "Öffnen" now. |
+| **Devices section header "Devices"** | REAL-11 | Hardcoded `<span>Devices</span>` in UCard header → `{{ t('devices.title') }}`. Section now reads "Geräte" matching the page title. |
+| **Devices "Entkopplungs-Modus" button truncation** | REAL-38 | The `<USelect>` had `class="w-28"` which is 7rem — not wide enough for the 17-char German label. Changed to `min-w-[11rem]` so it grows with content. Verified live. |
+| **Devices "Clear filters" button + empty-state description** | REAL-11 | `"Clear filters"` and `"Try adjusting your search or filter."` wrapped in `t()`. |
+| **Devices delete-permanently button title** | REAL-11 | `title="Delete device permanently"` → `:title="t('devices.deletePermanently')"` |
+| **Variables scope badge** | REAL-24 | `{{ def.scope }}` → `scopeLabel(scope)` helper with `variables.scopeLabels.<key>` lookup. Verified: badge now shows "Gerät" instead of "device". |
+| **Variables category tag** | REAL-23 | `{{ def.category }}` → `categoryLabel(cat)` helper with `variables.categoryLabels.<key>` lookup. Pre-seeded 15 common categories (actuator→Aktor, power→Strom, sensor.temperature→Temperatur, etc.). Verified live: Aktor/Strom/System visible. |
+| **Variables backend-seeded descriptions** | REAL-21 | `{{ def.description }}` → `descriptionLabel(desc)` helper with `variables.descriptionMap.<raw>` lookup. Added 5 common backend-English-strings → German map entries ("CPU usage" → "CPU-Auslastung", "Battery level" → "Akkustand", "Disk usage" → "Festplatten-Auslastung", "Servo Motor (servo)" → "Servomotor (servo)", "Auto-discovered from telemetry" → "Automatisch aus Telemetrie erkannt"). Backend stays English so seed/auto-discovery code is untouched; frontend translates at render time. Verified live. |
+
+### Still open after Sprint 3.7
+
+- REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — needs devtools perf trace (P0, but scope-heavy)
+- REAL-10 Dashboard "Großer Ausfall" semantic mismatch — design decision
+- SetupWizard — 20+ hardcoded strings per Sprint 3.4 audit, needs own sprint
+- Devices `DEVICE_TYPE_META` labels (ESP32/API Device/MQTT Bridge/Agent/...) in `useDevices.ts` composable — these were not touched, require composable-level refactor
+- Pre-existing DB alert events still carry old "variable 'X' value N gt M" format; only NEW alerts use the Sprint 3.6 symbol format
 
 ---
 

@@ -380,6 +380,15 @@ function healthStatus(h: Device["health"]): "ok" | "warn" | "bad" {
   return h === "ok" ? "ok" : h === "stale" ? "warn" : "bad";
 }
 
+// Sprint 3.7 — raw backend health/state values (ok/stale/dead/claimed/busy/...)
+// get translated to user-facing strings via i18n. Unknown values fall through
+// to the raw string (device types may evolve faster than translations).
+function healthLabel(h: Device["health"]): string {
+  const key = `devices.healthLabels.${h}`;
+  const translated = t(key);
+  return translated && translated !== key ? translated : h;
+}
+
 function stateStatus(s: Device["state"]): "ok" | "warn" | "bad" | "neutral" {
   if (s === "claimed") return "ok";
   if (s === "busy" || s === "unprovisioned") return "bad";
@@ -388,14 +397,19 @@ function stateStatus(s: Device["state"]): "ok" | "warn" | "bad" | "neutral" {
 }
 
 function stateLabel(d: Device) {
-  if (!includeUnclaimed.value && d.state === "claimed") return "ready";
-  return d.state.replace(/_/g, " ");
+  // Pairing-filtered view collapses "claimed" to the friendlier "ready"
+  const raw = !includeUnclaimed.value && d.state === "claimed" ? "ready" : d.state;
+  const key = `devices.stateLabels.${raw}`;
+  const translated = t(key);
+  if (translated && translated !== key) return translated;
+  // Fallback: humanise the snake_case state
+  return raw.replace(/_/g, " ");
 }
 
 function rowActionLabel(d: Device) {
-  if (d.state === "claimed") return "Open";
-  if (d.state === "busy") return "Busy";
-  return "Use UID";
+  if (d.state === "claimed") return t("devices.rowActionOpen");
+  if (d.state === "busy") return t("devices.rowActionBusy");
+  return t("devices.rowActionUseUid");
 }
 
 function isSelected(id: number) {
@@ -819,7 +833,7 @@ onUnmounted(() => {
           <svg class="h-4 w-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25zm.75-12h9v9h-9v-9z" />
           </svg>
-          <span class="text-sm font-semibold text-[var(--text-primary)]">Devices</span>
+          <span class="text-sm font-semibold text-[var(--text-primary)]">{{ t('devices.title') }}</span>
         </div>
       </template>
       <template #actions>
@@ -881,7 +895,7 @@ onUnmounted(() => {
         v-if="caps.status === 'ready' && hasCap('cap.admin') && (canShowPurge || hasCap('devices.unclaim'))"
         class="px-4 py-1.5 border-b border-[var(--border)] flex items-center gap-3 text-xs text-[var(--text-muted)]"
       >
-        <USelect v-model="selectMode" :options="selectModeOptions" class="w-28 text-xs" />
+        <USelect v-model="selectMode" :options="selectModeOptions" class="min-w-[11rem] text-xs" />
         <label class="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -904,25 +918,25 @@ onUnmounted(() => {
             <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
               <th class="w-10 px-4 py-3" />
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
-                Device
+                {{ t('devices.colDevice') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-32">
-                Type
+                {{ t('devices.colType') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-24">
-                Health
+                {{ t('devices.colHealth') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-36">
-                State
+                {{ t('devices.colState') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left w-24">
-                Online
+                {{ t('devices.colOnline') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[180px]">
-                Last Seen
+                {{ t('devices.colLastSeen') }}
               </th>
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[140px]">
-                Actions
+                {{ t('devices.colActions') }}
               </th>
             </tr>
           </thead>
@@ -964,10 +978,10 @@ onUnmounted(() => {
                 <UEmpty
                   v-if="hasActiveFilter"
                   :title="t('devices.emptyState.title')"
-                  description="Try adjusting your search or filter."
+                  :description="t('devices.adjustSearchFilter')"
                   icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
                 >
-                  <UButton size="sm" variant="secondary" @click="clearFilters">Clear filters</UButton>
+                  <UButton size="sm" variant="secondary" @click="clearFilters">{{ t('devices.clearFilters') }}</UButton>
                 </UEmpty>
                 <UEmpty
                   v-else-if="!fetchError"
@@ -1035,7 +1049,7 @@ onUnmounted(() => {
 
                 <!-- Health -->
                 <td class="px-4 py-3">
-                  <UBadge :status="healthStatus(d.health)">{{ d.health }}</UBadge>
+                  <UBadge :status="healthStatus(d.health)">{{ healthLabel(d.health) }}</UBadge>
                 </td>
 
                 <!-- State -->
@@ -1046,7 +1060,7 @@ onUnmounted(() => {
                 <!-- Online -->
                 <td class="px-4 py-3">
                   <UBadge :status="d.online ? 'ok' : 'bad'" :pulse="d.online">
-                    {{ d.online ? "online" : "offline" }}
+                    {{ d.online ? t('devices.statusOnline') : t('devices.statusOffline') }}
                   </UBadge>
                 </td>
 
@@ -1077,7 +1091,7 @@ onUnmounted(() => {
                       size="sm"
                       variant="ghost"
                       class="text-[var(--text-muted)] hover:text-[var(--status-bad)]"
-                      title="Delete device permanently"
+                      :title="t('devices.deletePermanently')"
                       @click.stop="openSinglePurgeModal(d)"
                     >
                       <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
@@ -1225,7 +1239,7 @@ onUnmounted(() => {
 
             <!-- Badges -->
             <div class="flex gap-2 flex-wrap">
-              <UBadge :status="healthStatus(d.health)">{{ d.health }}</UBadge>
+              <UBadge :status="healthStatus(d.health)">{{ healthLabel(d.health) }}</UBadge>
               <UBadge :status="stateStatus(d.state)">{{ stateLabel(d) }}</UBadge>
               <UBadge v-if="d.is_simulated" status="warn" size="sm">{{ t('devices.simulatedBadge') }}</UBadge>
             </div>

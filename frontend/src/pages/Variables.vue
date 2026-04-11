@@ -205,6 +205,30 @@ function scopeStatus(scope: string): "info" | "neutral" {
   return scope === "global" ? "info" : "neutral";
 }
 
+// Sprint 3.7 — translate scope/category labels (raw backend enum strings
+// like "device"/"global"/"org" or auto-generated category names like
+// "sensor.temperature"/"power"/"system"). Fall back to the raw string so
+// new categories don't render blank.
+function scopeLabel(scope: string): string {
+  const key = `variables.scopeLabels.${scope}`;
+  const translated = t(key);
+  return translated && translated !== key ? translated : scope;
+}
+function categoryLabel(cat: string | null): string {
+  if (!cat) return "";
+  const key = `variables.categoryLabels.${cat}`;
+  const translated = t(key);
+  return translated && translated !== key ? translated : cat;
+}
+// Translate backend-seeded descriptions ("CPU usage", "Battery level", etc.)
+// via a key lookup. Matches by the raw description string itself — the
+// backend seed script can stay English, the frontend remaps on render.
+function descriptionLabel(desc: string): string {
+  const key = `variables.descriptionMap.${desc}`;
+  const translated = t(key);
+  return translated && translated !== key ? translated : desc;
+}
+
 function typeStatus(vt: string): "ok" | "warn" | "info" | "neutral" {
   const map: Record<string, "ok" | "warn" | "info" | "neutral"> = {
     int: "ok", float: "ok", bool: "warn", string: "info", json: "neutral",
@@ -696,13 +720,13 @@ onMounted(async () => {
                 <div class="key-wrap">
                   <span v-if="categoryIcon(def.category)" class="key-icon">{{ categoryIcon(def.category) }}</span>
                   <span class="key-name">{{ def.key }}</span>
-                  <span v-if="def.category" class="key-cat">{{ def.category }}</span>
+                  <span v-if="def.category" class="key-cat">{{ categoryLabel(def.category) }}</span>
                 </div>
-                <span v-if="def.description" class="key-desc">{{ def.description }}</span>
+                <span v-if="def.description" class="key-desc">{{ descriptionLabel(def.description) }}</span>
               </td>
 
               <!-- Scope -->
-              <td><UBadge :status="scopeStatus(def.scope)" size="sm">{{ def.scope }}</UBadge></td>
+              <td><UBadge :status="scopeStatus(def.scope)" size="sm">{{ scopeLabel(def.scope) }}</UBadge></td>
 
               <!-- Type -->
               <td>
