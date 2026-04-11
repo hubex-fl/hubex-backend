@@ -7,13 +7,14 @@
 - **Started:** 2026-04-11
 - **Round 1 (Smoke Pass):** ✅ **COMPLETE** — 48 routes walked, 36 findings, **36/36 fixed**
 - **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, **8/11 fixed**, 3 flagged
-- **Round 3 (Persona):** ✅ **WALK COMPLETE** — user-driven, 25 findings documented, **0 fixed yet** (paused for priorization)
+- **Round 3 (Persona):** 🔁 **IN PROGRESS** — user's initial walk done (25 findings), Option A fix batch done, Neuer-User walk done
 - **Round 4 (Perf + A11y):** ⏸ pending
-- **Round 5 (Fixing):** ✅ merged into Round 1 + Round 2 fix phases
-- **Round 6 (Release):** ⏸ pending (after Rounds 3-4)
+- **Round 5 (Fixing):** ✅ merged into per-round fix phases
+- **Round 6 (Release):** ⏸ pending (after Round 3 walks complete + Round 4)
 - **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
 - **Findings R2:** 11 total — **0 P0 / 1 P1 / 7 P2 / 3 P3** — **8/11 fixed**
-- **Findings R3:** 25 total — **0 P0 / 6 P1 / 11 P2 / 7 P3 / 1 clarification** — **0/25 fixed (awaiting priorization)**
+- **Findings R3 (user walk):** 25 total — **0 P0 / 6 P1 / 11 P2 / 7 P3 / 1 clarification** — **11/25 Option A fixed** (commit `7d169b2`)
+- **Findings R3 (NU walk):** 6 total — **0 P0 / 2 P1 / 3 P2 / 1 P3** — **2/6 fixed** (commit `3c5d28b`)
 
 ### Round 1 Fix Commits
 
@@ -545,7 +546,123 @@ User (human reviewer) walked the app live on their own machine and provided find
 
 ---
 
-*(Round 3 walk complete per user's feedback on 2026-04-11. Paused for priorization.)*
+*(Round 3 user walk complete per user's feedback on 2026-04-11. Paused for priorization.)*
+
+---
+
+## Option A Fix Batch — Round 3 user walk findings
+
+User directive: "Option A und wenn fertig, starte dann mit dem Neuer-User-Flow. mach soweit wie es geht ohne stop"
+
+Scope: all 6 P1 + 5 "quick P2" findings from the Round 3 user walk,
+fixed in sequence without pausing between items. Committed as
+`7d169b2` (21 files, +616/-84, 1 new helper lib).
+
+| Finding | Sev | What it was | Fix |
+|---|---|---|---|
+| R3-F01 | P2 | Dashboard "Teilausfall" label | Cache artefact — no-op on my instance (Sprint 5.b fix holds) |
+| R3-F02 | P2 | Dashboard red number contradicts "online" label | Dropped color encoding, number now neutral text-primary |
+| R3-F03 | P2 | Legacy alert format on Dashboard ("variable 'X' value N gt M") | New `frontend/src/lib/alertMessage.ts` regex-converts on display, wired into Dashboard + Alerts page |
+| R3-F04 | **P1** | DeviceDetail System Context flickers on refresh | Race-guarded parallel `Promise.allSettled` for `loadLinkedRules()` + skeleton only on first load (both entity-memberships render sites) |
+| R3-F06 | **P1** | GPS view widget broken | `viz-resolve.ts` now auto-detects `{lat,lng}` shape and switches to map widget when `display_hint='auto'` |
+| R3-F08 | P2 | Info-icon inconsistent across pages | UInfoTooltip added to 10 previously-missing pages + 10 × en/de `infoTooltips.*` entries with real bullet-point descriptions (via subagent) |
+| R3-F11 | **P1** | Webhooks "Too many requests" spurious | `/api/v1/webhooks` + `/api/v1/ota` rate limit bumped 30→300/min (matching polled-endpoints group) |
+| R3-F14 | **P1** | CMS Page Editor renders as blank black pane | **Root cause: vue-i18n v11 parser crashes on `{{x.y}}` double-brace syntax inside message values.** Three CMS/EmailTemplate placeholder strings had `{{variable.key}}` / `{{device.name}}` as example content. The `.` in parameter names is illegal → SyntaxError → entire compiled i18n bundle fails to load → CmsPageEditor blank. Replaced with descriptive copy (no braces). Browser-verified: /cms/2/edit now fully functional. |
+| R3-F16 | **P1** | /hardware/wizard scroll broken | Route has `meta.fullscreen:true` → `<main>` overflow:hidden. Wizard wrap claimed `min-height:100vh` with no scroll. Changed to `height:100vh` + `overflow-y:auto`. |
+| R3-F17 | P1 | /plugins scroll possibly same | No-op — not an actual bug, confirmed via DOM measurement |
+| R3-F21 | P2 | API Docs Redoc tab "Could not load" flash | Added loading spinner state + container ref `nextTick()` guard, error banner hidden while still loading |
+| R3-F23/F24 | P2 | Sidebar scrollbars (horizontal + vertical-always-visible) | `overflow-x:hidden` + `min-w-0` on nav, custom slim `.sidebar-nav` scrollbar class with auto-hide thumb |
+
+**Also fixed (side effects while working in the affected files):**
+- Line 2615 de.ts / 2638 en.ts `editorPlaceholder` for Dashboards HTML widget had the same `{{variable:key}}` crash pattern — would have killed Dashboards too. Fixed preemptively.
+- HardwareBoards `boardBadge` + `wizard-hint` CTAs i18n'd as part of F06 cleanup.
+
+**Not fixed (judgment / deferred / clarification-needed):**
+- R3-F05 User explicitly said ignore
+- R3-F07 "Einrichtungen als Dashboard" — still needs user clarification
+- R3-F10 Automations wizard "komisch" — needs user to elaborate
+- R3-F12 Reports info-icon → covered by R3-F08 audit fix
+- R3-F13 Email Templates WYSIWYG — feature request, Sprint 9+
+- R3-F15 "System Part" — still needs user clarification
+- R3-F18 Tour Builder modal helper — feature request, Sprint 9+
+- R3-F19 Sandbox more simulators — feature request, Sprint 9+
+- R3-F20 Settings search — feature request, Sprint 9+
+- R3-F22 Admin Console empty/same as System Health — product decision, Sprint 9+
+- R3-F25 "4 Personas" — review-method misunderstanding, no action
+
+---
+
+## Neuer-User-Flow Walk (Round 3 continuation)
+
+After Option A landed, continued the review by simulating a brand-new
+user signing up from scratch. Logged out fully, registered a new test
+account, and clicked through the initial experience with a fresh pair
+of eyes.
+
+### NU Findings
+
+**NU-F01 — P3** — /login missing "Forgot password?" link
+- Observation: fresh login page has email/password/login/register. No recovery link.
+- Action: deferred (dev build, password-reset flow not implemented yet)
+
+**NU-F02 — P2** — /login has no marketing/demo link
+- Observation: brand-new visitor lands on a bare login form with zero context about what HubEx is
+- Suggested fix: add a small "What is HubEx? →" secondary link or "View demo →" below the register link
+- Action: deferred to Sprint 9+ (product-level UX decision)
+
+**NU-F03 — P1 FIXED** — Metrics endpoint leaked counts across orgs
+- **Symptom:** fresh user with 0 devices saw Dashboard KPI "1 aktive Alarme / 1 Regel aktiv / 61,840 Ereignisse heute"
+- **Root cause:** Sprint 8 Batch 1 only org-scoped `automations_active`. All other metric fields (alerts.firing, events_24h, entities_total, webhooks_active) were still counting globally across all orgs.
+- **Fix:** systematically org-scoped every metric. AlertEvent joins through AlertRule.org_id (AlertEvent has no direct org_id). EventV1 filters by user's own device UIDs via the stream column (EventV1 has no org_id/device_id schema columns). Entity/Webhook use direct org_id.
+- **Verified:** new user's metrics endpoint now returns all zeros correctly.
+- **Commit:** `3c5d28b`
+
+**NU-F04 — P1 FIXED** — WelcomeScreen 100% English on DE locale
+- **Symptom:** The first-login Teleport overlay (`components/WelcomeScreen.vue`) had all strings hardcoded English even on DE locale: "Welcome to HubEx / What would you like to connect first? / Hardware / Service / Bridge / Agent / or / Just look around → / Load demo data →"
+- **Fix:** New `welcomeScreen.*` i18n namespace (12 keys × en/de). Categories array converted from static module-level data to computed() so it re-runs on locale change. Icons + colors stay static (they don't need translation).
+- **Verified live on DE:** "Willkommen bei HubEx / Was möchtest du zuerst anbinden? / Hardware / Dienst / Bridge / Agent / oder / Nur umschauen → / Demo-Daten laden →"
+- **Commit:** `3c5d28b`
+
+**NU-F05 — P2** — Activity Feed shows cross-org events on fresh-user Dashboard
+- **Symptom:** After the NU-F03 metrics fix, KPI counts all read 0 correctly. BUT the Dashboard "Aktivitäten" widget still shows "Org Created / Device Paired / Telemetry Received" events from other (seed data) orgs.
+- **Root cause:** `/api/v1/events` is a global append-only log stream, not org-scoped. The Activity Feed widget on Dashboard pulls from it without any org filter.
+- **Deferred:** bigger scope change — affects both the Events page (which is supposed to show system-wide events for admins?) and the Dashboard widget (which should show only your-org events). Needs product decision about whether Events is a user view or an admin view.
+
+**NU-F06 — P2** — Empty-dashboard UX gap for fresh users
+- **Symptom:** After dismissing WelcomeScreen with "Nur umschauen", fresh user lands on Dashboard showing 4 grey zeros ("Geräte online / Aktive Alarme / Ereignisse heute / Automationen aktiv") with no obvious next step. The WelcomeScreen never comes back.
+- **Suggested fix:** When all KPIs are 0 AND user has no devices, show a prominent "Erste Schritte" banner with "Gerät hinzufügen" / "Demo-Daten laden" / "Tour starten" CTAs. Alternatively, resurrect the WelcomeScreen on any empty dashboard visit (not just first-login).
+- **Deferred:** UX improvement, not blocking dev-stable-v1. Could be a quick fix in a follow-up batch.
+
+### NU Summary Stats
+- **Findings:** 6 total (NU-F01 through NU-F06)
+- **Severity:** 0 P0 / 2 P1 / 3 P2 / 1 P3
+- **Fixed:** 2 / 6 (the P1s — NU-F03 metrics org-scope + NU-F04 WelcomeScreen i18n)
+- **Deferred:** 4 / 6 (NU-F01 feature request, NU-F02 feature request, NU-F05 product decision, NU-F06 UX improvement)
+- **Commit:** `3c5d28b`
+
+---
+
+## 🚦 Kontrollpunkt after NU walk
+
+Round 3 is partially done — I've fixed everything that was blocking
+and have 4 Neuer-User items flagged for the user's decision:
+
+1. **NU-F01** /login "Forgot password?" — part of a bigger auth flow (password reset, email verification), not blocking
+2. **NU-F02** /login marketing link — UX copy decision
+3. **NU-F05** Activity Feed cross-org events — product decision on whether `/events` is admin-view or user-view
+4. **NU-F06** Empty dashboard CTA — small UX improvement, could fold into next fix batch
+
+Remaining Round 3 items that STILL need user input (from the initial walk, not the NU walk):
+- R3-F07 "Einrichtungen als Dashboard" clarification
+- R3-F10 Automations wizard "komisch" — what specifically
+- R3-F15 "System Part" — which page
+- R3-F25 "4 Personas" — confirm it was review-terminology misunderstanding
+
+**Next round options:**
+- **Round 4 Perf + A11y** — agent-driven, doesn't need user input, can start now
+- **Continue Round 3 walks** — Operator / Admin / Viewer personas still pending
+- **Close out Round 3 pending clarifications** — user answers the 4 questions above, then final Round 3 fix batch
+- **Skip directly to Round 6 release prep** — if we're confident enough
 
 ---
 
