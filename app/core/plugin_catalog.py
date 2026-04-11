@@ -195,6 +195,11 @@ CATALOG: tuple[CatalogEntry, ...] = (
         kind="service",
         category="automation",
         manifest=_N8N_MANIFEST,
+        # Sprint 3.4 — inline icons so catalog cards have visual identity
+        # without an extra HTTP round-trip or CDN dependency. Emoji are
+        # used as a pragmatic v1; Sprint 3.5 can swap to SVG paths if the
+        # design system settles on a monochrome icon set.
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U0001F300</text></svg>",
         docs_url="https://docs.n8n.io",
         adopt_container_name="hubex-n8n",
         tags=("workflow", "automation", "low-code"),
@@ -209,6 +214,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
         kind="connector",
         category="ai",
         manifest=_CLAUDE_MANIFEST,
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U0001F9E0</text></svg>",
         docs_url="https://docs.anthropic.com",
         tags=("ai", "llm", "chat"),
     ),
@@ -222,6 +228,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
         kind="connector",
         category="ai",
         manifest=_OPENAI_MANIFEST,
+        icon_url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>\U00002728</text></svg>",
         docs_url="https://platform.openai.com/docs",
         tags=("ai", "llm", "embeddings"),
     ),

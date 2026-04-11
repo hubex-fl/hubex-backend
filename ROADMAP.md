@@ -1257,6 +1257,49 @@
 - [x] 2-col marketplace frontend + iframe embed + `orchestrator` feature flag
 - [x] 25/25 e2e + 11/11 Claude smoke assertions against real Portainer 2.39
 
+### Sprint 3.1/3.2/3.3 — Plugin Manager UX polish [done] ✅
+> commits `602880c`, `1dc59a4`, `e5e7092` · nachfix nach user-browser-test
+- [x] 3.1: Rich configure modal (intro box, "Get your API key" link, per-field help,
+      already-configured notice, connector status badges in installed list,
+      provider-specific hints for Claude + OpenAI)
+- [x] 3.2: iframe hostname rewrite (localhost → window.location.hostname) +
+      "Go to Settings → Features" deep-link CTA with amber pulse highlight animation
+- [x] 3.3: nginx reverse-proxy infrastructure `/plugins-embed/n8n/` (strips
+      X-Frame-Options + CSP + COOP + CORP + COEP) as infrastructure for FUTURE
+      iframe-friendly plugins. For n8n specifically: `allow_iframe: false` +
+      honest "Open in new tab" fallback with friendly placeholder. 7/7 e2e green.
+
+### Sprint 3.4 — Bug sweep + new-user code audit [done] ✅
+> TBD commit · user reported multiple bugs after browser click-through
+**Direct fixes:**
+- [x] Hardware boards duplicate entries (every ESP shown twice) — race-condition
+      in `_ensure_builtins` rewritten with per-name existence check
+- [x] Camera zoom broken (every previous fix-attempt failed) — math-based rewrite
+      with transform-origin 0 0 + computed translate from boundingRect
+- [x] MCP alert encoding → "kryptische Zeichen" — legacy `/tools/call` was using
+      `str(result)` (python repr) instead of `json.dumps`. Fixed + added
+      `ensure_ascii=False` to SSE transport too so umlauts pass through.
+- [x] Devices > Variables > Groups zittert bei refresh — race-guarded parallel
+      fetch + stable sort by entity_id so v-for keys don't shuffle
+- [x] Hardcoded English in Automations + Alerts modals (IF/THEN labels, severity
+      options, Headers/Payload labels, Entity ID) → i18n'd with new en + de keys
+- [x] Plugin icons added to catalog (data-URL SVG emoji) + marketplace cards render them
+- [x] BUG_TRACKER.md created with all findings, methodology, severity system
+- [x] Agent-driven code audit across 10 pages (Login, SetupWizard, DashboardPage,
+      Devices, DeviceDetail, Variables, Automations, Alerts, Dashboards, Plugins,
+      Settings) — ~50 findings catalogued
+
+**Deferred to Sprint 3.5 (still-open bugs from BUG_TRACKER.md):**
+- [ ] Sweep all remaining hardcoded English strings across pages
+- [ ] Replace `confirm()` dialogs with `UConfirmModal` component (9+ pages)
+- [ ] Loading-state audit: all async buttons get `:disabled="busy"` + text swap
+- [ ] Form validation pass: SetupWizard, Dashboards, Settings, Automations
+- [ ] Index-based v-for keys → stable id keys (Automations condition groups)
+- [ ] Silent error handling audit → error toasts everywhere
+- [ ] SetupWizard: biggest offender, 20+ hardcoded strings
+- [ ] MCP communication speed profiling → polling interval, db query-per-call
+- [ ] Post-login onboarding: "you have 0 devices, let's add one" flow
+
 ### Sprint 4 — Firmware Builder [up-next] 🎯
 > Follows same pattern as Sprint 3: feature-flag-gated Docker sidecar via
 > existing `portainer_client`. Enables server-side firmware compilation

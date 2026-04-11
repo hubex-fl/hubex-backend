@@ -199,7 +199,10 @@ async def _handle_jsonrpc(
                 "user_id": user_id,
             })
             return _jsonrpc_response(req_id, {
-                "content": [{"type": "text", "text": json.dumps(result)}],
+                # ensure_ascii=False so unicode (German umlauts, emoji) passes
+                # through as-is instead of \uNNNN escapes that confuse some
+                # MCP clients. default=str handles datetime/Decimal/UUID safely.
+                "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, default=str)}],
                 "isError": is_error,
             })
         except Exception as e:
@@ -370,8 +373,14 @@ async def call_tool(
             "duration_ms": duration_ms,
             "user_id": current_user.id,
         })
+        # Sprint 3.4 bugfix: was using str(result) which produces Python
+        # repr() output (single quotes, \xNN-escaped umlauts) instead of
+        # valid JSON. MCP clients received "kryptische Zeichen" for alerts
+        # with German text. Fixed to match the SSE transport which uses
+        # json.dumps(result) with ensure_ascii=False so unicode passes
+        # through as-is (ä not \u00e4).
         return ToolCallResponse(
-            content=[{"type": "text", "text": str(result)}],
+            content=[{"type": "text", "text": json.dumps(result, ensure_ascii=False, default=str)}],
             isError=is_error,
         )
     except Exception as e:

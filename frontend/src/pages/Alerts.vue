@@ -856,14 +856,14 @@ const statusClass: Record<string, string> = {
                 v-model="form.severity"
                 class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] transition-colors"
               >
-                <option value="info">info</option>
-                <option value="warning">warning</option>
-                <option value="critical">critical</option>
+                <option value="info">{{ t('alerts.severityInfo') }}</option>
+                <option value="warning">{{ t('alerts.severityWarning') }}</option>
+                <option value="critical">{{ t('alerts.severityCritical') }}</option>
               </select>
             </div>
 
             <!-- Entity ID -->
-            <UEntitySelect v-model="form.entity_id" entity-type="entity" label="Entity ID" :optional="true" />
+            <UEntitySelect v-model="form.entity_id" entity-type="entity" :label="t('alerts.entityIdLabel')" :optional="true" />
 
             <!-- Cooldown -->
             <div class="space-y-1">

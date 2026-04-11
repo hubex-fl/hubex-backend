@@ -159,13 +159,52 @@ class PinConfigUpdateIn(BaseModel):
 # ── Seed Builtins ────────────────────────────────────────────────────────────
 
 async def _ensure_builtins(db: AsyncSession) -> None:
-    result = await db.execute(select(BoardProfile).where(BoardProfile.is_builtin == True).limit(1))
-    if result.scalar_one_or_none():
-        return
+    """Idempotent seed of builtin boards + shields.
+
+    Sprint 3.4 bugfix: the previous implementation had a race condition —
+    the check-then-create pattern allowed parallel requests to each find an
+    empty table and both insert the full catalog, yielding duplicate rows
+    (every ESP appeared twice). Fixed by:
+      1. Checking existence PER ROW by name (idempotent even on races)
+      2. Cleaning up pre-existing duplicates on first call after upgrade
+
+    The `name` column is not UNIQUE in the schema (existing data may have
+    dupes), so we de-dup by keeping the lowest id per name.
+    """
+    from sqlalchemy import func, delete as sa_delete
+
+    # Step 1: de-dup existing rows by (name, is_builtin=True). Keep min(id).
+    dedup_sql = (
+        "DELETE FROM board_profiles WHERE is_builtin = true AND id NOT IN "
+        "(SELECT MIN(id) FROM board_profiles WHERE is_builtin = true GROUP BY name)"
+    )
+    from sqlalchemy import text as sa_text
+    await db.execute(sa_text(dedup_sql))
+    dedup_shield_sql = (
+        "DELETE FROM shield_profiles WHERE is_builtin = true AND id NOT IN "
+        "(SELECT MIN(id) FROM shield_profiles WHERE is_builtin = true GROUP BY name)"
+    )
+    await db.execute(sa_text(dedup_shield_sql))
+
+    # Step 2: insert any builtin that doesn't exist yet (by name).
+    existing_board_names = {
+        row[0] for row in (
+            await db.execute(select(BoardProfile.name).where(BoardProfile.is_builtin == True))
+        ).all()
+    }
     for b in _BUILTIN_BOARDS:
-        db.add(BoardProfile(**b, is_builtin=True))
+        if b["name"] not in existing_board_names:
+            db.add(BoardProfile(**b, is_builtin=True))
+
+    existing_shield_names = {
+        row[0] for row in (
+            await db.execute(select(ShieldProfile.name).where(ShieldProfile.is_builtin == True))
+        ).all()
+    }
     for s in _BUILTIN_SHIELDS:
-        db.add(ShieldProfile(**s, is_builtin=True))
+        if s["name"] not in existing_shield_names:
+            db.add(ShieldProfile(**s, is_builtin=True))
+
     await db.flush()
 
 

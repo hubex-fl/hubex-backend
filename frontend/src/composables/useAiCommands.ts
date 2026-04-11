@@ -117,6 +117,33 @@ function spotlightElement(selector: string, message?: string, durationSec = 3) {
 
 // ---- Camera zoom/pan handler ----
 
+/**
+ * Zoom a viewport element so a target child element lands centered on screen
+ * at the requested scale factor.
+ *
+ * Sprint 3.4 bugfix — the previous implementation had multiple fundamental
+ * issues that made every previous "camera zoom fix" commit unreliable:
+ *
+ *   1. It called `el.scrollIntoView()` BEFORE applying scale. scroll gives
+ *      the element a position in the pre-scale layout. Then transform:scale
+ *      was applied with origin "center center" — but "center center" is
+ *      the center of the VIEWPORT, not of the element, so the element
+ *      ends up off-center (sometimes off-screen entirely).
+ *   2. Setting overflow:hidden on the viewport after the scale prevents
+ *      the user from ever scrolling away from the zoomed area — brittle.
+ *   3. No reset of transform/overflow/transition on subsequent zoom calls
+ *      leaked state between invocations.
+ *
+ * New approach (math-based, reliable):
+ *   - Compute the target element's center in the viewport's coordinate
+ *     space BEFORE any transform (via getBoundingClientRect of both).
+ *   - Compute the translation needed to move that center to the viewport
+ *     center.
+ *   - Compose `translate(...) scale(N)` with `transform-origin: 0 0` so the
+ *     math is predictable (scale around top-left, translate to position).
+ *   - Do it all in one transform update so the CSS transition animates
+ *     the element straight to the focused position, smoothly.
+ */
 function handleCamera(payload: Record<string, unknown>) {
   const action = payload.action as string;
   const duration = (payload.duration as number) || 800;
@@ -125,7 +152,10 @@ function handleCamera(payload: Record<string, unknown>) {
   const vp = (document.getElementById("camera-viewport") ||
     document.querySelector("main") || document.body) as HTMLElement;
 
-  vp.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+  // Single easing curve for all camera actions
+  const easing = "cubic-bezier(0.22, 1, 0.36, 1)"; // easeOutQuint feels cinematic
+  vp.style.transition = `transform ${duration}ms ${easing}`;
+  vp.style.transformOrigin = "0 0";
 
   if (action === "zoom_to" && payload.selector) {
     const selectors = (payload.selector as string).split(",").map((s) => s.trim());
@@ -134,28 +164,55 @@ function handleCamera(payload: Record<string, unknown>) {
       el = document.querySelector(sel);
       if (el) break;
     }
-    if (el) {
-      const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 5.0);
-
-      // Step 1: Scroll element to center of viewport (instant, no animation)
-      el.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
-
-      // Step 2: After scroll settles, zoom from center
-      requestAnimationFrame(() => {
-        vp.style.transformOrigin = "center center";
-        vp.style.transform = `scale(${zoom})`;
-        vp.style.overflow = "hidden";
-      });
+    if (!el) {
+      console.warn("[camera] zoom_to: no element matched selector", payload.selector);
+      return;
     }
+
+    const zoom = Math.min(Math.max((payload.zoom as number) || 2.0, 1.0), 5.0);
+
+    // Reset any existing transform so getBoundingClientRect measures the
+    // un-transformed layout. The browser paints one frame of identity,
+    // which is fine — the eased transition from there is invisible.
+    vp.style.transform = "";
+
+    // Next frame: measure + apply new transform
+    requestAnimationFrame(() => {
+      const vpRect = vp.getBoundingClientRect();
+      const elRect = (el as HTMLElement).getBoundingClientRect();
+
+      // Center of the target element in viewport-local coordinates
+      const elCenterInVp = {
+        x: elRect.left - vpRect.left + elRect.width / 2,
+        y: elRect.top - vpRect.top + elRect.height / 2,
+      };
+
+      // Where we want that center to land: the center of the visible viewport
+      const vpCenter = { x: vpRect.width / 2, y: vpRect.height / 2 };
+
+      // With transform-origin at (0,0), a scale(z) maps a point (x,y) to (x*z, y*z).
+      // We want elCenter * z + tx = vpCenter  =>  tx = vpCenter - elCenter * z
+      const tx = vpCenter.x - elCenterInVp.x * zoom;
+      const ty = vpCenter.y - elCenterInVp.y * zoom;
+
+      vp.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom})`;
+    });
   } else if (action === "pan_to") {
     const x = (payload.x as number) || 0;
     const y = (payload.y as number) || 0;
-    vp.style.transform = `translate(${x}px, ${y}px)`;
+    // pan_to accumulates on top of any current scale
+    const current = window.getComputedStyle(vp).transform;
+    const scaleMatch = /matrix\(([-\d.]+),/.exec(current);
+    const currentScale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+    vp.style.transform = `translate(${x}px, ${y}px) scale(${currentScale})`;
   } else if (action === "reset") {
     vp.style.transform = "";
-    vp.style.transformOrigin = "";
-    vp.style.overflow = "";
-    setTimeout(() => { vp.style.transition = ""; }, duration);
+    // Clear transition AFTER the reset animation finishes so the next
+    // direct style assignment doesn't re-animate from zero
+    setTimeout(() => {
+      vp.style.transition = "";
+      vp.style.transformOrigin = "";
+    }, duration + 50);
   }
 }
 

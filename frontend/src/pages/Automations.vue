@@ -760,12 +760,12 @@ function toggleRuleExpand(id: number) {
 
           <!-- IF→THEN one-liner -->
           <span class="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-mono truncate flex-1 min-w-0">
-            <span class="text-blue-400">IF</span>
+            <span class="text-blue-400">{{ t('automations.ifLabel') }}</span>
             <span class="truncate">{{ triggerSummary(rule) }}</span>
             <svg class="h-3 w-3 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
-            <span class="text-[var(--primary)]">THEN</span>
+            <span class="text-[var(--primary)]">{{ t('automations.thenLabel') }}</span>
             <span class="truncate">{{ actionSummary(rule) }}</span>
           </span>
 
@@ -797,14 +797,14 @@ function toggleRuleExpand(id: number) {
           <!-- IF → THEN detail (visible on mobile too) -->
           <div class="flex items-center gap-2 flex-wrap mt-2">
             <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
-              IF {{ rule.trigger_type.replace(/_/g, " ") }}
+              {{ t('automations.ifLabel') }} {{ rule.trigger_type.replace(/_/g, " ") }}
             </span>
             <span class="text-xs text-[var(--text-muted)] font-mono">{{ triggerSummary(rule) }}</span>
             <svg class="h-3.5 w-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
             <span class="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
-              THEN {{ rule.action_type.replace(/_/g, " ") }}
+              {{ t('automations.thenLabel') }} {{ rule.action_type.replace(/_/g, " ") }}
             </span>
             <span class="text-xs text-[var(--text-muted)] font-mono">{{ actionSummary(rule) }}</span>
           </div>
@@ -1125,11 +1125,11 @@ function toggleRuleExpand(id: number) {
                 </select>
               </div>
               <div class="space-y-1">
-                <label :class="labelClass" :title="t('automations.webhookHeadersTooltip')">Headers (JSON)</label>
+                <label :class="labelClass" :title="t('automations.webhookHeadersTooltip')">{{ t('automations.headersJsonLabel') }}</label>
                 <textarea v-model="actWebhookHeaders" rows="2" placeholder='{"Authorization": "Bearer ..."}' :class="[inputClass, 'font-mono text-[10px]']" />
               </div>
               <div class="space-y-1">
-                <label :class="labelClass" :title="t('automations.webhookPayloadTooltip')">Payload Template (JSON)</label>
+                <label :class="labelClass" :title="t('automations.webhookPayloadTooltip')">{{ t('automations.payloadJsonLabel') }}</label>
                 <textarea v-model="actWebhookPayload" rows="3" placeholder='{"key": "value"}' :class="[inputClass, 'font-mono text-[10px]']" />
               </div>
             </template>
@@ -1139,16 +1139,16 @@ function toggleRuleExpand(id: number) {
               <div class="space-y-1">
                 <label :class="labelClass">{{ t('automations.severityLabel') }}</label>
                 <select v-model="actAlertSeverity" :class="inputClass">
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="warning">warning</option>
-                  <option value="high">high</option>
-                  <option value="critical">critical</option>
+                  <option value="low">{{ t('automations.severityLow') }}</option>
+                  <option value="medium">{{ t('automations.severityMedium') }}</option>
+                  <option value="warning">{{ t('automations.severityWarning') }}</option>
+                  <option value="high">{{ t('automations.severityHigh') }}</option>
+                  <option value="critical">{{ t('automations.severityCritical') }}</option>
                 </select>
               </div>
               <div class="space-y-1">
                 <label :class="labelClass">{{ t('automations.messageTemplate') }}</label>
-                <textarea v-model="actAlertMessage" rows="2" placeholder="Alert: automation rule fired" :class="inputClass" />
+                <textarea v-model="actAlertMessage" rows="2" :placeholder="t('automations.alertMessagePlaceholder')" :class="inputClass" />
               </div>
             </template>
 

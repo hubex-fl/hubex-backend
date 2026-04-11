@@ -455,8 +455,22 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
             ]"
           >
             <div class="flex items-start justify-between gap-3">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
+              <div class="flex-1 min-w-0 flex items-start gap-3">
+                <!-- Sprint 3.4 — plugin icon (data-URL SVG from catalog) -->
+                <img
+                  v-if="entry.icon_url"
+                  :src="entry.icon_url"
+                  :alt="entry.name"
+                  class="h-8 w-8 shrink-0 rounded"
+                />
+                <div
+                  v-else
+                  class="h-8 w-8 shrink-0 rounded bg-[var(--bg-raised)] flex items-center justify-center text-[var(--text-muted)] text-xs font-semibold"
+                >
+                  {{ entry.name.charAt(0) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
                   <span class="text-sm font-medium text-[var(--text-primary)]">
                     {{ entry.name }}
                   </span>
@@ -482,6 +496,7 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
                     {{ tag }}
                   </span>
                 </div>
+                </div><!-- /inner text column -->
               </div>
               <div class="shrink-0">
                 <!-- Service plugin, orchestrator disabled: show "Go to Settings" instead of disabled Install -->

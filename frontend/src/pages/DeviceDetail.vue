@@ -228,34 +228,63 @@ const restrictUnclaimed = computed(() => isUnclaimed.value && !canAdmin.value);
 type EntityMembership = { entity_id: string; role: string; enabled: boolean; entity_name?: string };
 const entityMemberships = ref<EntityMembership[]>([]);
 const entityMembershipsLoading = ref(false);
+/**
+ * Sprint 3.4 bugfix — "Groups panel zittert bei refresh":
+ * The previous implementation fired an N+1 request pattern (GET /entities,
+ * then sequentially per entity GET /entities/{id}/devices). Each refresh
+ * cleared the list, waited for ALL requests, then wrote a brand-new array
+ * — Vue re-mounted every row, causing a visible flicker/shift. Worse, if
+ * the user triggered another refresh while one was in flight, both races
+ * would write back and either clobber each other or show stale data.
+ *
+ * This counter implements a "latest wins" race guard: each loadEntityMemberships
+ * call bumps the counter; when the request returns it only writes if it's
+ * still the latest. Combined with the template's v-for using entity_id as
+ * key + stable sort, the list no longer re-mounts on refresh.
+ */
+let _entityMembershipsLoadSeq = 0;
 
 async function loadEntityMemberships(): Promise<void> {
   if (!deviceInfo.value) return;
+  const mySeq = ++_entityMembershipsLoadSeq;
   entityMembershipsLoading.value = true;
   try {
     const entities = await apiFetch<Array<{ entity_id: string; name?: string; description?: string }>>(
       "/api/v1/entities"
     );
-    const memberships: EntityMembership[] = [];
-    for (const entity of entities) {
-      try {
-        const bindings = await apiFetch<Array<{ device_id: number; role: string; enabled: boolean }>>(
-          `/api/v1/entities/${entity.entity_id}/devices`
-        );
-        const binding = bindings.find((b) => b.device_id === deviceInfo.value?.id);
-        if (binding) {
-          memberships.push({
+    // Parallel fetch of bindings — not sequential (previously N serial roundtrips
+    // made every refresh take seconds on instances with many entities).
+    const deviceId = deviceInfo.value.id;
+    const bindingResults = await Promise.all(
+      entities.map(async (entity) => {
+        try {
+          const bindings = await apiFetch<Array<{ device_id: number; role: string; enabled: boolean }>>(
+            `/api/v1/entities/${entity.entity_id}/devices`
+          );
+          const binding = bindings.find((b) => b.device_id === deviceId);
+          if (!binding) return null;
+          return {
             entity_id: entity.entity_id,
             role: binding.role,
             enabled: binding.enabled,
             entity_name: entity.name || entity.entity_id,
-          });
+          } satisfies EntityMembership;
+        } catch {
+          return null;
         }
-      } catch { /* ignore per-entity errors */ }
-    }
-    entityMemberships.value = memberships;
+      })
+    );
+    // Race guard: if a newer load started while we were waiting, drop ours
+    if (mySeq !== _entityMembershipsLoadSeq) return;
+    // Stable sort by entity_id so v-for keys don't shuffle between refreshes
+    const fresh = bindingResults
+      .filter((m): m is EntityMembership => m !== null)
+      .sort((a, b) => a.entity_id.localeCompare(b.entity_id));
+    entityMemberships.value = fresh;
   } catch { /* ignore */ }
-  entityMembershipsLoading.value = false;
+  if (mySeq === _entityMembershipsLoadSeq) {
+    entityMembershipsLoading.value = false;
+  }
 }
 
 // ── Entity Management (UX-G) ────────────────────────────────────────────────

@@ -399,6 +399,11 @@ export default {
   alerts: {
     title: 'Alarme',
     subtitle: 'Alarmregeln und Ereignisse überwachen und verwalten',
+    // Sprint 3.4 — severity option labels + entity id label
+    severityInfo: 'info',
+    severityWarning: 'warnung',
+    severityCritical: 'kritisch',
+    entityIdLabel: 'Entit\u00e4ts-ID',
     rules: 'Regeln',
     events: 'Ereignisse',
     createRule: 'Regel erstellen',
@@ -463,6 +468,17 @@ export default {
   automations: {
     title: 'Automatisierungen',
     subtitle: 'Wenn-dann-Regeln f\u00fcr automatisierte Aktionen',
+    // Sprint 3.4 — IF/THEN labels, severity options, placeholders
+    ifLabel: 'WENN',
+    thenLabel: 'DANN',
+    headersJsonLabel: 'Header (JSON)',
+    payloadJsonLabel: 'Payload-Vorlage (JSON)',
+    severityLow: 'niedrig',
+    severityMedium: 'mittel',
+    severityWarning: 'warnung',
+    severityHigh: 'hoch',
+    severityCritical: 'kritisch',
+    alertMessagePlaceholder: 'Alarm: Automatisierungsregel ausgel\u00f6st',
     createRule: 'Neue Regel',
     trigger: 'Ausl\u00f6ser',
     action: 'Aktion',
