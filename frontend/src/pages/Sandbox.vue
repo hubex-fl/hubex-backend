@@ -30,8 +30,15 @@ import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import VizSparkline from "../components/viz/VizSparkline.vue";
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const router = useRouter();
+
+// Inline helper — translates backend-seeded simulator names via
+// `sandbox.seedNames.*` when a match exists, otherwise returns the raw name.
+function localizedSimulatorName(sim: { name: string }): string {
+  const key = `sandbox.seedNames.${sim.name}`;
+  return te(key) ? t(key) : sim.name;
+}
 const toast = useToastStore();
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -451,7 +458,7 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <span class="text-2xl">{{ templateEmoji(detailSim.template ? templates.find(t => t.id === detailSim!.template)?.icon ?? 'wrench' : 'wrench') }}</span>
               <div>
-                <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ detailSim.name }}</h2>
+                <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ localizedSimulatorName(detailSim) }}</h2>
                 <p v-if="detailSim.description" class="text-xs text-[var(--text-muted)]">{{ detailSim.description }}</p>
               </div>
               <UBadge :status="detailSim.is_active ? 'ok' : 'neutral'" :pulse="detailSim.is_active">
@@ -574,7 +581,7 @@ onUnmounted(() => {
             <div class="flex items-center gap-2 min-w-0">
               <span class="text-lg shrink-0">{{ templateEmoji(sim.template ? templates.find(t => t.id === sim.template)?.icon ?? 'wrench' : 'wrench') }}</span>
               <div class="min-w-0">
-                <p class="text-sm font-semibold text-[var(--text-primary)] truncate">{{ sim.name }}</p>
+                <p class="text-sm font-semibold text-[var(--text-primary)] truncate">{{ localizedSimulatorName(sim) }}</p>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">

@@ -1,51 +1,24 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const currentYear = new Date().getFullYear();
 
 interface Feature {
   icon: string;
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
 }
 
 const features: Feature[] = [
-  {
-    icon: "signal",
-    title: "Universal Devices",
-    description:
-      "ESP32, Raspberry Pi, Linux agents, Windows services, REST APIs, MQTT bridges — all through one unified protocol.",
-  },
-  {
-    icon: "chart",
-    title: "Real-time Variable Streams",
-    description:
-      "Grafana-style monitoring with sparklines, gauges, line charts. Auto-bridges telemetry into typed variables.",
-  },
-  {
-    icon: "bolt",
-    title: "Native Automations",
-    description:
-      "If-Then rules with variable thresholds, geofence triggers, device offline detection. No Lambda required.",
-  },
-  {
-    icon: "workflow",
-    title: "n8n Integration",
-    description:
-      "Custom n8n nodes connect HUBEX to 1000+ services. Alert fires, variable changes, device events — all trigger workflows.",
-  },
-  {
-    icon: "shield",
-    title: "Enterprise Security",
-    description:
-      "Multi-tenant organizations, 69 granular capabilities, JWT + HMAC device tokens, rate limiting, audit trails.",
-  },
-  {
-    icon: "rocket",
-    title: "One-Click Deploy",
-    description:
-      "Docker Compose with Traefik, SSL, PostgreSQL, Redis. Production-ready in under 1 hour on any Linux server.",
-  },
+  { icon: "signal", titleKey: "landing.features.universalTitle", descKey: "landing.features.universalDesc" },
+  { icon: "chart", titleKey: "landing.features.streamsTitle", descKey: "landing.features.streamsDesc" },
+  { icon: "bolt", titleKey: "landing.features.automationsTitle", descKey: "landing.features.automationsDesc" },
+  { icon: "workflow", titleKey: "landing.features.n8nTitle", descKey: "landing.features.n8nDesc" },
+  { icon: "shield", titleKey: "landing.features.securityTitle", descKey: "landing.features.securityDesc" },
+  { icon: "rocket", titleKey: "landing.features.deployTitle", descKey: "landing.features.deployDesc" },
 ];
 
 interface Competitor {
@@ -57,10 +30,10 @@ interface Competitor {
   ota: boolean;
   multiTenant: boolean;
   openSource: boolean | string;
-  pricing: string;
+  pricingKey: string;
 }
 
-const competitors: Competitor[] = [
+const competitors = computed<Competitor[]>(() => [
   {
     name: "HUBEX",
     selfHosted: true,
@@ -70,40 +43,40 @@ const competitors: Competitor[] = [
     ota: true,
     multiTenant: true,
     openSource: true,
-    pricing: "Free / $29/mo",
+    pricingKey: "landing.comparison.pricingHubex",
   },
   {
     name: "AWS IoT Core",
     selfHosted: false,
     apiFirst: false,
     allDevices: false,
-    automations: "Lambda",
+    automations: "lambda",
     ota: false,
     multiTenant: true,
     openSource: false,
-    pricing: "Pay-per-msg",
+    pricingKey: "landing.comparison.valPayPerMsg",
   },
   {
     name: "ThingsBoard",
-    selfHosted: "Complex",
+    selfHosted: "complex",
     apiFirst: false,
     allDevices: false,
     automations: true,
     ota: false,
     multiTenant: true,
-    openSource: "CE only",
-    pricing: "Free / $3K+",
+    openSource: "ceOnly",
+    pricingKey: "landing.comparison.pricingThingsboard",
   },
   {
     name: "Home Assistant",
     selfHosted: true,
     apiFirst: false,
     allDevices: false,
-    automations: "YAML",
+    automations: "yaml",
     ota: false,
     multiTenant: false,
     openSource: true,
-    pricing: "Free",
+    pricingKey: "landing.comparison.valFree",
   },
   {
     name: "Datacake",
@@ -114,70 +87,88 @@ const competitors: Competitor[] = [
     ota: false,
     multiTenant: true,
     openSource: false,
-    pricing: "$2-5/device",
+    pricingKey: "landing.comparison.pricingDatacake",
   },
-];
+]);
+
+function compareLabel(value: boolean | string, trueKey = "landing.comparison.valYes"): string {
+  if (value === true) return t(trueKey);
+  if (value === false) return t("landing.comparison.valNo");
+  // String literal: look up variant
+  const variantKey: Record<string, string> = {
+    lambda: "landing.comparison.valLambda",
+    complex: "landing.comparison.valComplex",
+    yaml: "landing.comparison.valYaml",
+    ceOnly: "landing.comparison.valCeOnly",
+  };
+  const k = variantKey[value];
+  return k ? t(k) : value;
+}
 
 interface PricingTier {
-  name: string;
-  price: string;
-  period: string;
-  description: string;
-  features: string[];
+  key: "free" | "pro" | "ent";
+  nameKey: string;
+  priceKey: string;
+  periodKey: string;
+  descKey: string;
+  ctaKey: string;
+  featureKeys: string[];
   highlight: boolean;
-  cta: string;
 }
 
 const pricingTiers: PricingTier[] = [
   {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "All core features. Self-hosted. No credit card.",
-    features: [
-      "5 devices",
-      "1 organization",
-      "7-day history",
-      "5 automation rules",
-      "REST API access",
-      "Community support",
+    key: "free",
+    nameKey: "landing.pricing.freeName",
+    priceKey: "landing.pricing.freePrice",
+    periodKey: "landing.pricing.freePeriod",
+    descKey: "landing.pricing.freeDesc",
+    ctaKey: "landing.pricing.freeCta",
+    featureKeys: [
+      "landing.pricing.freeFeature1",
+      "landing.pricing.freeFeature2",
+      "landing.pricing.freeFeature3",
+      "landing.pricing.freeFeature4",
+      "landing.pricing.freeFeature5",
+      "landing.pricing.freeFeature6",
     ],
     highlight: false,
-    cta: "Get Started",
   },
   {
-    name: "Pro",
-    price: "$29",
-    period: "/month per org",
-    description: "Extended limits, pro features, priority support.",
-    features: [
-      "50 devices",
-      "3 organizations",
-      "90-day history",
-      "Unlimited automations",
-      "Geofence triggers",
-      "n8n templates",
-      "Priority support",
+    key: "pro",
+    nameKey: "landing.pricing.proName",
+    priceKey: "landing.pricing.proPrice",
+    periodKey: "landing.pricing.proPeriod",
+    descKey: "landing.pricing.proDesc",
+    ctaKey: "landing.pricing.proCta",
+    featureKeys: [
+      "landing.pricing.proFeature1",
+      "landing.pricing.proFeature2",
+      "landing.pricing.proFeature3",
+      "landing.pricing.proFeature4",
+      "landing.pricing.proFeature5",
+      "landing.pricing.proFeature6",
+      "landing.pricing.proFeature7",
     ],
     highlight: true,
-    cta: "Start Free Trial",
   },
   {
-    name: "Enterprise",
-    price: "Custom",
-    period: "contact us",
-    description: "Unlimited scale, SSO, SLA, white-label.",
-    features: [
-      "Unlimited devices",
-      "Unlimited orgs",
-      "1-year+ history",
-      "SSO / SAML",
-      "White-label option",
-      "Dedicated support",
-      "Custom deployment",
+    key: "ent",
+    nameKey: "landing.pricing.entName",
+    priceKey: "landing.pricing.entPrice",
+    periodKey: "landing.pricing.entPeriod",
+    descKey: "landing.pricing.entDesc",
+    ctaKey: "landing.pricing.entCta",
+    featureKeys: [
+      "landing.pricing.entFeature1",
+      "landing.pricing.entFeature2",
+      "landing.pricing.entFeature3",
+      "landing.pricing.entFeature4",
+      "landing.pricing.entFeature5",
+      "landing.pricing.entFeature6",
+      "landing.pricing.entFeature7",
     ],
     highlight: false,
-    cta: "Contact Sales",
   },
 ];
 
@@ -207,34 +198,34 @@ const mobileMenuOpen = ref(false);
               />
             </svg>
             <span class="text-xl font-bold font-mono tracking-widest"
-              >HUBEX</span
+              >{{ t('landing.nav.brand') }}</span
             >
           </div>
           <div class="hidden md:flex items-center gap-8">
             <a
               href="#features"
               class="text-sm text-gray-400 hover:text-white transition-colors"
-              >Features</a
+              >{{ t('landing.nav.features') }}</a
             >
             <a
               href="#architecture"
               class="text-sm text-gray-400 hover:text-white transition-colors"
-              >Architecture</a
+              >{{ t('landing.nav.architecture') }}</a
             >
             <a
               href="#comparison"
               class="text-sm text-gray-400 hover:text-white transition-colors"
-              >Compare</a
+              >{{ t('landing.nav.compare') }}</a
             >
             <a
               href="#pricing"
               class="text-sm text-gray-400 hover:text-white transition-colors"
-              >Pricing</a
+              >{{ t('landing.nav.pricing') }}</a
             >
             <router-link
               to="/login"
               class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 transition-colors"
-              >Sign In</router-link
+              >{{ t('landing.nav.signIn') }}</router-link
             >
           </div>
           <button
@@ -272,30 +263,30 @@ const mobileMenuOpen = ref(false);
             href="#features"
             class="text-sm text-gray-400 hover:text-white"
             @click="mobileMenuOpen = false"
-            >Features</a
+            >{{ t('landing.nav.features') }}</a
           >
           <a
             href="#architecture"
             class="text-sm text-gray-400 hover:text-white"
             @click="mobileMenuOpen = false"
-            >Architecture</a
+            >{{ t('landing.nav.architecture') }}</a
           >
           <a
             href="#comparison"
             class="text-sm text-gray-400 hover:text-white"
             @click="mobileMenuOpen = false"
-            >Compare</a
+            >{{ t('landing.nav.compare') }}</a
           >
           <a
             href="#pricing"
             class="text-sm text-gray-400 hover:text-white"
             @click="mobileMenuOpen = false"
-            >Pricing</a
+            >{{ t('landing.nav.pricing') }}</a
           >
           <router-link
             to="/login"
             class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 text-gray-950 text-center"
-            >Sign In</router-link
+            >{{ t('landing.nav.signIn') }}</router-link
           >
         </div>
       </div>
@@ -318,26 +309,24 @@ const mobileMenuOpen = ref(false);
           class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-xs font-medium mb-8"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          Open Source &middot; Self-Hosted &middot; API-First
+          {{ t('landing.hero.badge') }}
         </div>
 
         <h1
           class="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight leading-tight"
         >
-          The Universal
+          {{ t('landing.hero.titleLine1') }}
           <br />
           <span
             class="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent"
-            >IoT Device Hub</span
+            >{{ t('landing.hero.titleLine2') }}</span
           >
         </h1>
 
         <p
           class="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
         >
-          From ESP32 to enterprise server — one platform for device management,
-          real-time telemetry, automations, and OTA updates. Deploy in under 1
-          hour.
+          {{ t('landing.hero.subtitle') }}
         </p>
 
         <div
@@ -354,13 +343,13 @@ const mobileMenuOpen = ref(false);
                 d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"
               />
             </svg>
-            Get Started
+            {{ t('landing.hero.ctaGetStarted') }}
           </a>
           <router-link
             to="/login"
             class="inline-flex items-center gap-2 px-8 py-3 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-semibold text-lg transition-colors"
           >
-            View Demo
+            {{ t('landing.hero.ctaViewDemo') }}
             <svg
               class="w-4 h-4"
               fill="none"
@@ -383,21 +372,21 @@ const mobileMenuOpen = ref(false);
         >
           <div>
             <div class="text-2xl sm:text-3xl font-bold text-cyan-400">150+</div>
-            <div class="text-sm text-gray-500 mt-1">API Endpoints</div>
+            <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statApiEndpoints') }}</div>
           </div>
           <div>
             <div class="text-2xl sm:text-3xl font-bold text-cyan-400">17</div>
-            <div class="text-sm text-gray-500 mt-1">UI Components</div>
+            <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statUiComponents') }}</div>
           </div>
           <div>
             <div class="text-2xl sm:text-3xl font-bold text-cyan-400">69</div>
-            <div class="text-sm text-gray-500 mt-1">Capabilities</div>
+            <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statCapabilities') }}</div>
           </div>
           <div>
             <div class="text-2xl sm:text-3xl font-bold text-cyan-400">
               &lt;1h
             </div>
-            <div class="text-sm text-gray-500 mt-1">To Deploy</div>
+            <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statToDeploy') }}</div>
           </div>
         </div>
       </div>
@@ -408,18 +397,17 @@ const mobileMenuOpen = ref(false);
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl sm:text-4xl font-bold">
-            Everything You Need to Ship IoT
+            {{ t('landing.features.heading') }}
           </h2>
           <p class="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
-            A complete device management platform — not a collection of separate
-            tools stitched together.
+            {{ t('landing.features.subheading') }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
             v-for="feature in features"
-            :key="feature.title"
+            :key="feature.titleKey"
             class="group p-6 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-cyan-500/30 transition-all duration-300"
           >
             <!-- Icons -->
@@ -517,9 +505,9 @@ const mobileMenuOpen = ref(false);
                 />
               </svg>
             </div>
-            <h3 class="text-lg font-semibold mb-2">{{ feature.title }}</h3>
+            <h3 class="text-lg font-semibold mb-2">{{ t(feature.titleKey) }}</h3>
             <p class="text-sm text-gray-400 leading-relaxed">
-              {{ feature.description }}
+              {{ t(feature.descKey) }}
             </p>
           </div>
         </div>
@@ -531,10 +519,10 @@ const mobileMenuOpen = ref(false);
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl sm:text-4xl font-bold">
-            How It All Connects
+            {{ t('landing.architecture.heading') }}
           </h2>
           <p class="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
-            Devices send data, HUBEX processes it, automations react, integrations extend.
+            {{ t('landing.architecture.subheading') }}
           </p>
         </div>
 
@@ -550,9 +538,9 @@ const mobileMenuOpen = ref(false);
             >
               1
             </div>
-            <h4 class="font-semibold text-sm mb-1">Devices</h4>
+            <h4 class="font-semibold text-sm mb-1">{{ t('landing.architecture.step1Title') }}</h4>
             <p class="text-xs text-gray-500">
-              ESP32, RPi, APIs, MQTT, Agents
+              {{ t('landing.architecture.step1Desc') }}
             </p>
           </div>
           <div
@@ -563,9 +551,9 @@ const mobileMenuOpen = ref(false);
             >
               2
             </div>
-            <h4 class="font-semibold text-sm mb-1">HUBEX Core</h4>
+            <h4 class="font-semibold text-sm mb-1">{{ t('landing.architecture.step2Title') }}</h4>
             <p class="text-xs text-gray-500">
-              FastAPI + PostgreSQL + Redis
+              {{ t('landing.architecture.step2Desc') }}
             </p>
           </div>
           <div
@@ -576,9 +564,9 @@ const mobileMenuOpen = ref(false);
             >
               3
             </div>
-            <h4 class="font-semibold text-sm mb-1">Automations</h4>
+            <h4 class="font-semibold text-sm mb-1">{{ t('landing.architecture.step3Title') }}</h4>
             <p class="text-xs text-gray-500">
-              If-Then rules, alerts, OTA rollouts
+              {{ t('landing.architecture.step3Desc') }}
             </p>
           </div>
           <div
@@ -589,9 +577,9 @@ const mobileMenuOpen = ref(false);
             >
               4
             </div>
-            <h4 class="font-semibold text-sm mb-1">Integrations</h4>
+            <h4 class="font-semibold text-sm mb-1">{{ t('landing.architecture.step4Title') }}</h4>
             <p class="text-xs text-gray-500">
-              n8n, webhooks, MCP, email
+              {{ t('landing.architecture.step4Desc') }}
             </p>
           </div>
         </div>
@@ -646,10 +634,10 @@ const mobileMenuOpen = ref(false);
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl sm:text-4xl font-bold">
-            How HUBEX Compares
+            {{ t('landing.comparison.heading') }}
           </h2>
           <p class="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
-            One platform to replace fragmented tools. See how we stack up.
+            {{ t('landing.comparison.subheading') }}
           </p>
         </div>
 
@@ -660,7 +648,7 @@ const mobileMenuOpen = ref(false);
             <thead>
               <tr class="border-b border-gray-800">
                 <th class="text-left py-3 px-3 text-gray-500 font-medium">
-                  Feature
+                  {{ t('landing.comparison.colFeature') }}
                 </th>
                 <th
                   v-for="c in competitors"
@@ -674,7 +662,7 @@ const mobileMenuOpen = ref(false);
             </thead>
             <tbody>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">Self-hosted</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowSelfHosted') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
@@ -683,40 +671,40 @@ const mobileMenuOpen = ref(false);
                   <span
                     v-if="c.selfHosted === true"
                     class="text-green-400"
-                    >Yes</span
+                    >{{ t('landing.comparison.valYes') }}</span
                   >
                   <span
                     v-else-if="c.selfHosted === false"
                     class="text-red-400"
-                    >No</span
+                    >{{ t('landing.comparison.valNo') }}</span
                   >
-                  <span v-else class="text-yellow-400">{{ c.selfHosted }}</span>
+                  <span v-else class="text-yellow-400">{{ compareLabel(c.selfHosted) }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">API-first</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowApiFirst') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 text-center"
                 >
-                  <span v-if="c.apiFirst" class="text-green-400">Yes</span>
-                  <span v-else class="text-red-400">No</span>
+                  <span v-if="c.apiFirst" class="text-green-400">{{ t('landing.comparison.valYes') }}</span>
+                  <span v-else class="text-red-400">{{ t('landing.comparison.valNo') }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">All device types</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowAllDevices') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 text-center"
                 >
-                  <span v-if="c.allDevices" class="text-green-400">Yes</span>
-                  <span v-else class="text-red-400">No</span>
+                  <span v-if="c.allDevices" class="text-green-400">{{ t('landing.comparison.valYes') }}</span>
+                  <span v-else class="text-red-400">{{ t('landing.comparison.valNo') }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">Automations</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowAutomations') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
@@ -725,40 +713,40 @@ const mobileMenuOpen = ref(false);
                   <span
                     v-if="c.automations === true"
                     class="text-green-400"
-                    >Native</span
+                    >{{ t('landing.comparison.valNative') }}</span
                   >
                   <span
                     v-else-if="c.automations === false"
                     class="text-red-400"
-                    >No</span
+                    >{{ t('landing.comparison.valNo') }}</span
                   >
-                  <span v-else class="text-yellow-400">{{ c.automations }}</span>
+                  <span v-else class="text-yellow-400">{{ compareLabel(c.automations) }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">OTA updates</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowOta') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 text-center"
                 >
-                  <span v-if="c.ota" class="text-green-400">Yes</span>
-                  <span v-else class="text-red-400">No</span>
+                  <span v-if="c.ota" class="text-green-400">{{ t('landing.comparison.valYes') }}</span>
+                  <span v-else class="text-red-400">{{ t('landing.comparison.valNo') }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">Multi-tenant</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowMultiTenant') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 text-center"
                 >
-                  <span v-if="c.multiTenant" class="text-green-400">Yes</span>
-                  <span v-else class="text-red-400">No</span>
+                  <span v-if="c.multiTenant" class="text-green-400">{{ t('landing.comparison.valYes') }}</span>
+                  <span v-else class="text-red-400">{{ t('landing.comparison.valNo') }}</span>
                 </td>
               </tr>
               <tr class="border-b border-gray-800/50">
-                <td class="py-3 px-3 text-gray-400">Open source</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowOpenSource') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
@@ -767,24 +755,24 @@ const mobileMenuOpen = ref(false);
                   <span
                     v-if="c.openSource === true"
                     class="text-green-400"
-                    >Yes</span
+                    >{{ t('landing.comparison.valYes') }}</span
                   >
                   <span
                     v-else-if="c.openSource === false"
                     class="text-red-400"
-                    >No</span
+                    >{{ t('landing.comparison.valNo') }}</span
                   >
-                  <span v-else class="text-yellow-400">{{ c.openSource }}</span>
+                  <span v-else class="text-yellow-400">{{ compareLabel(c.openSource) }}</span>
                 </td>
               </tr>
               <tr>
-                <td class="py-3 px-3 text-gray-400">Pricing</td>
+                <td class="py-3 px-3 text-gray-400">{{ t('landing.comparison.rowPricing') }}</td>
                 <td
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 text-center text-gray-300 text-xs"
                 >
-                  {{ c.pricing }}
+                  {{ t(c.pricingKey) }}
                 </td>
               </tr>
             </tbody>
@@ -797,9 +785,9 @@ const mobileMenuOpen = ref(false);
     <section id="pricing" class="py-20 sm:py-28 bg-gray-900/30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl sm:text-4xl font-bold">Simple, Transparent Pricing</h2>
+          <h2 class="text-3xl sm:text-4xl font-bold">{{ t('landing.pricing.heading') }}</h2>
           <p class="mt-4 text-gray-400 text-lg max-w-2xl mx-auto">
-            Start free. Scale when you need to. All tiers can be self-hosted.
+            {{ t('landing.pricing.subheading') }}
           </p>
         </div>
 
@@ -808,7 +796,7 @@ const mobileMenuOpen = ref(false);
         >
           <div
             v-for="tier in pricingTiers"
-            :key="tier.name"
+            :key="tier.key"
             class="rounded-xl p-6 sm:p-8 flex flex-col"
             :class="
               tier.highlight
@@ -820,24 +808,24 @@ const mobileMenuOpen = ref(false);
               v-if="tier.highlight"
               class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-cyan-500 text-gray-950 text-xs font-bold"
             >
-              Most Popular
+              {{ t('landing.pricing.mostPopular') }}
             </div>
             <div class="mb-6">
-              <h3 class="text-lg font-semibold">{{ tier.name }}</h3>
+              <h3 class="text-lg font-semibold">{{ t(tier.nameKey) }}</h3>
               <div class="mt-2 flex items-baseline gap-1">
                 <span class="text-3xl sm:text-4xl font-extrabold">{{
-                  tier.price
+                  t(tier.priceKey)
                 }}</span>
-                <span class="text-sm text-gray-500">{{ tier.period }}</span>
+                <span class="text-sm text-gray-500">{{ t(tier.periodKey) }}</span>
               </div>
               <p class="mt-2 text-sm text-gray-400">
-                {{ tier.description }}
+                {{ t(tier.descKey) }}
               </p>
             </div>
             <ul class="flex-1 space-y-3 mb-8">
               <li
-                v-for="f in tier.features"
-                :key="f"
+                v-for="fKey in tier.featureKeys"
+                :key="fKey"
                 class="flex items-start gap-2 text-sm"
               >
                 <svg
@@ -853,7 +841,7 @@ const mobileMenuOpen = ref(false);
                     d="M4.5 12.75l6 6 9-13.5"
                   />
                 </svg>
-                <span class="text-gray-300">{{ f }}</span>
+                <span class="text-gray-300">{{ t(fKey) }}</span>
               </li>
             </ul>
             <button
@@ -864,7 +852,7 @@ const mobileMenuOpen = ref(false);
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
               "
             >
-              {{ tier.cta }}
+              {{ t(tier.ctaKey) }}
             </button>
           </div>
         </div>
@@ -875,11 +863,10 @@ const mobileMenuOpen = ref(false);
     <section class="py-20 sm:py-28">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-3xl sm:text-4xl font-bold">
-          Start Building in 5 Minutes
+          {{ t('landing.finalCta.heading') }}
         </h2>
         <p class="mt-4 text-gray-400 text-lg max-w-xl mx-auto">
-          Clone the repo, run Docker Compose, pair your first device. It really
-          is that simple.
+          {{ t('landing.finalCta.subheading') }}
         </p>
         <div
           class="mt-8 p-4 rounded-lg bg-gray-900 border border-gray-800 max-w-lg mx-auto text-left"
@@ -889,8 +876,7 @@ const mobileMenuOpen = ref(false);
             https://github.com/hubex-iot/hubex.git<br />
             <span class="text-gray-500">$</span> cd hubex<br />
             <span class="text-gray-500">$</span> docker compose up -d<br />
-            <span class="text-gray-500">#</span>
-            <span class="text-gray-500"> Open http://localhost:5173</span>
+            <span class="text-gray-500">{{ t('landing.finalCta.openComment') }}</span>
           </code>
         </div>
         <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -905,7 +891,7 @@ const mobileMenuOpen = ref(false);
                 d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"
               />
             </svg>
-            GitHub
+            {{ t('landing.finalCta.ctaGithub') }}
           </a>
           <a
             href="https://github.com/hubex-iot/hubex/blob/main/docs/GETTING_STARTED.md"
@@ -913,7 +899,7 @@ const mobileMenuOpen = ref(false);
             rel="noopener"
             class="inline-flex items-center gap-2 px-8 py-3 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-semibold transition-colors"
           >
-            Read the Docs
+            {{ t('landing.finalCta.ctaReadDocs') }}
           </a>
         </div>
       </div>
@@ -938,7 +924,7 @@ const mobileMenuOpen = ref(false);
               d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-13.5 0v-1.5m13.5 1.5v-1.5m0 0a3 3 0 00-3-3H7.5a3 3 0 00-3 3m13.5 0v-6.75a3 3 0 00-3-3H7.5a3 3 0 00-3 3v6.75"
             />
           </svg>
-          HUBEX &copy; {{ currentYear }}. Open Source under MIT License.
+          {{ t('landing.footer.copyright', { year: currentYear }) }}
         </div>
         <div class="flex items-center gap-6">
           <a
@@ -946,13 +932,13 @@ const mobileMenuOpen = ref(false);
             target="_blank"
             rel="noopener"
             class="text-gray-500 hover:text-gray-300 text-sm"
-            >GitHub</a
+            >{{ t('landing.finalCta.ctaGithub') }}</a
           >
           <a href="#features" class="text-gray-500 hover:text-gray-300 text-sm"
-            >Features</a
+            >{{ t('landing.nav.features') }}</a
           >
           <a href="#pricing" class="text-gray-500 hover:text-gray-300 text-sm"
-            >Pricing</a
+            >{{ t('landing.nav.pricing') }}</a
           >
         </div>
       </div>

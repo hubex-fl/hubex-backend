@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import { branding } from "../lib/branding";
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -10,7 +13,7 @@ import { branding } from "../lib/branding";
         <img v-if="branding.logoUrl" :src="branding.logoUrl" :alt="branding.productName" class="h-6" />
         <span v-else class="text-xs font-bold text-[var(--primary)] tracking-widest">{{ branding.productName }}</span>
       </div>
-      <span class="text-[10px] text-[var(--text-muted)]">Kiosk Mode</span>
+      <span class="text-[10px] text-[var(--text-muted)]">{{ t('kiosk.slideshow.title') }}</span>
     </div>
     <!-- Full-width content -->
     <main class="flex-1 overflow-auto">

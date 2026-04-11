@@ -16,9 +16,9 @@ const canReadEffects = computed(() => hasCap("effects.read"));
 const activeTab = ref<"events" | "effects">("events");
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t("caps.loading");
+  if (caps.status === "error") return `${t("caps.error")}: ${caps.error ?? t("common.unknown")}`;
+  return t("caps.unavailable");
 }
 </script>
 
@@ -31,25 +31,25 @@ function capsStatusMessage(): string {
       </div>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
+    <p v-if="caps.status === 'unavailable'" class="muted">{{ t('caps.unavailable') }}</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">{{ t('caps.loading') }}</p>
+    <p v-else-if="caps.status === 'error'" class="error">{{ t('caps.error') }}: {{ caps.error }}</p>
 
     <div v-else class="card">
       <div class="form-row">
-        <button class="btn secondary" :disabled="!capsReady" @click="activeTab = 'events'">Events</button>
-        <button class="btn secondary" :disabled="!capsReady" @click="activeTab = 'effects'">Effects</button>
+        <button class="btn secondary" :disabled="!capsReady" @click="activeTab = 'events'">{{ t('traceHub.tabEvents') }}</button>
+        <button class="btn secondary" :disabled="!capsReady" @click="activeTab = 'effects'">{{ t('traceHub.tabEffects') }}</button>
       </div>
 
       <div v-if="activeTab === 'events'">
         <div v-if="!capsReady" class="muted">{{ capsStatusMessage() }}</div>
-        <div v-else-if="!canReadEvents" class="muted">Missing capability: events.read</div>
+        <div v-else-if="!canReadEvents" class="muted">{{ t('traceHub.missingEvents') }}</div>
         <Events v-else />
       </div>
 
       <div v-else>
         <div v-if="!capsReady" class="muted">{{ capsStatusMessage() }}</div>
-        <div v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
+        <div v-else-if="!canReadEffects" class="muted">{{ t('traceHub.missingEffects') }}</div>
         <Effects v-else />
       </div>
     </div>

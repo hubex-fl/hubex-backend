@@ -1,3 +1,14 @@
+import { i18n } from "../i18n";
+
+function tr(key: string, fallback: string): string {
+  try {
+    const result = i18n.global.t(key);
+    return result === key ? fallback : result;
+  } catch {
+    return fallback;
+  }
+}
+
 export type ApiErrorInfo = {
   httpStatus?: number;
   code?: string;
@@ -108,7 +119,7 @@ export function mapErrorToUserText(
   if (info.httpStatus === 404) return "The requested resource was not found.";
   if (info.httpStatus === 409) return "Conflict — this item may already exist.";
   if (info.httpStatus === 422) return "Please check your input — some fields are invalid.";
-  if (info.httpStatus === 429) return "Too many requests. Please wait a moment.";
+  if (info.httpStatus === 429) return tr("common.rateLimitTooMany", "Too many requests. Please wait a moment.");
   if (info.httpStatus === 500) return "Server error. Please try again later.";
   if (info.httpStatus === 502) return "Server temporarily unavailable.";
   if (info.httpStatus === 503) return "Service temporarily unavailable.";

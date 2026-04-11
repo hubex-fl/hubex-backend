@@ -443,7 +443,7 @@ onMounted(() => {
     <div class="page-header">
       <div>
         <div class="flex items-center">
-          <h1 class="page-title">{{ t('tourBuilder.title') }}</h1>
+          <h1 class="page-title">{{ t('nav.tourBuilder') }}</h1>
           <UInfoTooltip
             :title="t('tourBuilder.infoTitle')"
             :items="[t('tourBuilder.infoItem1'), t('tourBuilder.infoItem2'), t('tourBuilder.infoItem3')]"

@@ -42,7 +42,7 @@
           <div class="db-card-icon">&#128202;</div>
           <div class="db-card-badges">
             <UBadge v-if="db.is_default" color="amber" size="xs">{{ t('dashboardsList.defaultBadge') }}</UBadge>
-            <UBadge :color="sharingColor(db.sharing_mode)" size="xs">{{ db.sharing_mode }}</UBadge>
+            <UBadge :color="sharingColor(db.sharing_mode)" size="xs">{{ sharingLabel(db.sharing_mode) }}</UBadge>
           </div>
         </div>
         <h3 class="db-card-name">{{ db.name }}</h3>
@@ -311,12 +311,19 @@ function sharingColor(mode: string) {
   return "default";
 }
 
+function sharingLabel(mode: string): string {
+  if (mode === "public") return t("dashboardsList.visibilityPublic");
+  if (mode === "org") return t("dashboardsList.visibilityOrg");
+  return t("dashboardsList.visibilityPrivate");
+}
+
 function relativeTime(ts: string): string {
   const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 10) return t("dashboardsList.relative.justNow");
+  if (diff < 60) return t("dashboardsList.relative.secondsAgo", { n: diff });
+  if (diff < 3600) return t("dashboardsList.relative.minutesAgo", { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t("dashboardsList.relative.hoursAgo", { n: Math.floor(diff / 3600) });
+  return t("dashboardsList.relative.daysAgo", { n: Math.floor(diff / 86400) });
 }
 
 // ── Clone ──────────────────────────────────────────────────────────────────

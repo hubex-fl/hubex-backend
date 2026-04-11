@@ -37,7 +37,7 @@ const expIso = computed(() => {
 const remaining = computed(() => {
   if (!expSec.value) return "-";
   const ms = expSec.value * 1000 - Date.now();
-  if (ms <= 0) return "expired";
+  if (ms <= 0) return t("tokenInspector.expired");
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
@@ -54,35 +54,35 @@ const caps = computed(() => {
   <div class="card">
     <h2>{{ t('pages.tokenInspector.title') }}</h2>
 
-    <div v-if="!token" class="muted">Token missing</div>
-    <div v-else-if="invalid" class="error">Invalid token format</div>
+    <div v-if="!token" class="muted">{{ t('tokenInspector.tokenMissing') }}</div>
+    <div v-else-if="invalid" class="error">{{ t('tokenInspector.invalidFormat') }}</div>
 
     <div v-else class="info-grid">
       <div class="info-item">
-        <div class="info-label">sub</div>
+        <div class="info-label">{{ t('tokenInspector.labelSub') }}</div>
         <div class="info-value cell-mono">{{ sub }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">iss</div>
+        <div class="info-label">{{ t('tokenInspector.labelIss') }}</div>
         <div class="info-value cell-mono">{{ iss }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">jti</div>
+        <div class="info-label">{{ t('tokenInspector.labelJti') }}</div>
         <div class="info-value cell-mono">{{ jti }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">exp (ISO)</div>
+        <div class="info-label">{{ t('tokenInspector.labelExpIso') }}</div>
         <div class="info-value cell-mono">{{ expIso }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">expires in</div>
+        <div class="info-label">{{ t('tokenInspector.labelExpiresIn') }}</div>
         <div class="info-value cell-mono">{{ remaining }}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">caps</div>
+        <div class="info-label">{{ t('tokenInspector.labelCaps') }}</div>
         <div class="info-value">
           <span v-if="caps.length" class="cell-mono">{{ caps.join(", ") }}</span>
-          <span v-else>caps: none</span>
+          <span v-else>{{ t('tokenInspector.capsNone') }}</span>
         </div>
       </div>
     </div>

@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useFeaturesStore } from "../stores/features";
 
 const route = useRoute();
 const router = useRouter();
 const features = useFeaturesStore();
+const { t } = useI18n();
 
 const featureKey = computed(() => (route.query.feature as string) || "");
 const fromPath = computed(() => (route.query.from as string) || "/");
 
 const featureName = computed(() => {
   const f = features.flags[featureKey.value];
-  return f?.name || featureKey.value || "This feature";
+  return f?.name || featureKey.value || t("featureDisabled.defaultFeatureName");
 });
 
 const featureDescription = computed(() => {
@@ -48,19 +50,19 @@ function goToSettings() {
           />
         </svg>
       </div>
-      <h1 class="title">Feature disabled</h1>
+      <h1 class="title">{{ t('featureDisabled.title') }}</h1>
       <p class="feature-name">{{ featureName }}</p>
       <p v-if="featureDescription" class="feature-desc">{{ featureDescription }}</p>
       <p class="hint">
-        This feature is currently turned off. You can enable it from
-        <strong>Settings → Features</strong>.
+        {{ t('featureDisabled.hint') }}
+        <strong>{{ t('featureDisabled.hintSettings') }}</strong>.
       </p>
       <p v-if="fromPath !== '/'" class="from-path">
-        You tried to access <code>{{ fromPath }}</code>
+        {{ t('featureDisabled.triedToAccess') }} <code>{{ fromPath }}</code>
       </p>
       <div class="actions">
-        <button class="btn-primary" @click="goToSettings">Open Settings</button>
-        <button class="btn-secondary" @click="goHome">Back to Dashboard</button>
+        <button class="btn-primary" @click="goToSettings">{{ t('featureDisabled.openSettings') }}</button>
+        <button class="btn-secondary" @click="goHome">{{ t('featureDisabled.backToDashboard') }}</button>
       </div>
     </div>
   </div>

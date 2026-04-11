@@ -89,7 +89,7 @@ async function copyToken() {
           style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px;"
         />
         <button @click="startPairing" style="padding: 10px 16px;">
-          Start
+          {{ t('common.start') }}
         </button>
       </div>
 

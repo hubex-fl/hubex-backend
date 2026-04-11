@@ -343,8 +343,8 @@ onMounted(async () => {
       <div class="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 space-y-3">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-sm font-semibold text-[var(--text-primary)]">Demo Presenter</h2>
-            <p class="text-xs text-[var(--text-muted)] mt-0.5">Automatische Demo-Pr&auml;sentation mit Kamera-Zoom, Navigation und Highlights.</p>
+            <h2 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('mcp.demo.title') }}</h2>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('mcp.demo.subtitle') }}</p>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -352,16 +352,16 @@ onMounted(async () => {
             v-model="demoSequence"
             class="px-3 py-1.5 rounded-lg text-xs bg-[var(--bg-raised)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
           >
-            <option value="teaser">Teaser (~30s)</option>
-            <option value="short">Short (~60s)</option>
-            <option value="full">Full (~2min)</option>
+            <option value="teaser">{{ t('mcp.demo.presetTeaser') }}</option>
+            <option value="short">{{ t('mcp.demo.presetShort') }}</option>
+            <option value="full">{{ t('mcp.demo.presetFull') }}</option>
           </select>
           <button
             class="px-4 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)] transition-colors disabled:opacity-50"
             :disabled="demoRunning"
             @click="runDemoPresenter"
           >
-            {{ demoRunning ? 'Running...' : 'Run Demo' }}
+            {{ demoRunning ? t('common.running') : t('mcp.demo.runDemo') }}
           </button>
         </div>
       </div>
