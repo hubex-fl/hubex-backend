@@ -10,8 +10,10 @@
 - **Round 3 (Persona):** 🔁 **IN PROGRESS** — user's initial walk done (25 findings), Option A fix batch done, Neuer-User walk done
 - **Round 4 (Perf + A11y):** ✅ **COMPLETE** — 5 routes measured, 5 a11y sweeps, 6 findings, **5/6 fixed** (1 P3 deferred)
 - **Round 4 extended Quick-Fix batch:** ✅ **COMPLETE** — 1 extra flicker bug + 6 approved cleanups (B1/B2/B3/D2/D3/D4), **7/7 delivered**
+- **Round 4 CMS A3 spot-check:** ✅ **COMPLETE** — `.modal` vs global-`.modal` collision fixed across 5 CMS files, create-page flow verified end-to-end (commit `1f25866`)
+- **Round 4 Bucket C (pulled from Sprint 9):** ✅ **COMPLETE** — all 6 features landed (F18/F20/F19/F13/F09/F22), commit `f28e1b4`
 - **Round 5 (Fixing):** ✅ merged into per-round fix phases
-- **Round 6 (Release):** ⏸ pending (after Round 3 walks complete + Round 4)
+- **Round 6 (Release):** 🚦 **IN PROGRESS** — final checklist + tag `dev-stable-v1`
 - **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
 - **Findings R2:** 11 total — **0 P0 / 1 P1 / 7 P2 / 3 P3** — **8/11 fixed**
 - **Findings R3 (user walk):** 25 total — **0 P0 / 6 P1 / 11 P2 / 7 P3 / 1 clarification** — **11/25 Option A fixed** (commit `7d169b2`)
@@ -938,9 +940,186 @@ Build + i18n parity + unit tests all green.
 
 ---
 
+## Round 4 CMS A3 spot-check (2026-04-11)
+
+After Round 4 Batch 2 committed (`91d8ff9`), user did the A3 spot-check
+on `/cms → Neue Seite` and reported the template picker + create form
+were totally broken visually, and the "Erstellen" button didn't work.
+
+**Root cause:** `style.css` line 509 has a GLOBAL `.modal` rule (part of
+a newer overlay pattern) that applies `position:fixed inset:0 display:flex
+backdrop-filter:blur` to any element with class `modal`. The CMS pages
+use an OLDER pattern where `.modal-overlay` is the overlay and `.modal`
+is the CARD. Scoped CSS overrides only background/border/padding/
+min-width/max-width so the global `position:fixed inset:0` leaked onto
+the card → card becomes full-viewport fixed overlay → content inside
+flex-centers as siblings in a row → layout collapses.
+
+**Fix:** renamed `.modal` → `.cms-modal` in all 5 CMS pages:
+- `CmsPages.vue` (template picker + create form)
+- `CmsPageEditor.vue`
+- `CmsRedirects.vue`
+- `CmsMenus.vue`
+- `CmsForms.vue`
+
+**Live-verified end-to-end** on `/cms → + Seite erstellen`:
+1. Template picker modal centered (720×585 in 1440×731 viewport)
+2. Template grid renders correctly (2 columns)
+3. Click "Landing Page" → create form centered (420×337)
+4. Fill title + slug → Erstellen button fires
+5. `POST /api/v1/cms/pages/from-template/landing?slug=...&title=...`
+   returns 201 Created
+6. Router navigates to `/cms/{new-id}/edit`
+7. List refresh shows the new page card
+
+A3 closed. **Commit `1f25866`.**
+
+---
+
+## Round 4 Bucket C (Sprint 9 features pulled in) — 2026-04-11
+
+User directive after the CMS fix: **"alles"** (pull ALL 6 Sprint 9
+Bucket C features into dev-stable-v1). Each scoped to a realistic MVP
+and committed together as `f28e1b4`.
+
+### F18 — Tour Builder modal helper
+Inline 3-bullet helper panel at the top of the tour editor modal
+explaining "what is a tour / what is a step / how does autoplay work".
+Addresses the "unübersichtlich" complaint without restructuring the
+editor. 3 new `tourBuilder.helper*` i18n keys per locale.
+
+### F20 — Settings search
+Search box above the Settings accordion with live filtering by
+label + description. When the query is non-empty, ALL matching sections
+auto-expand (no second click needed) and an empty-state renders when
+nothing matches. 2 new `settings.search*` i18n keys per locale.
+
+### F19 — Sandbox simulators (6 new templates)
+Backend `_TEMPLATES` dict in `app/api/v1/simulator.py` + frontend
+`BUILTIN_TEMPLATES` fallback in `lib/simulator.ts` both extended with:
+- **BME280 Environmental** (temp + humidity + pressure + gas resistance)
+- **BH1750 Light Sensor** (lux day/night cycle)
+- **HC-SR04 Distance** (random-walk baseline + presence spikes)
+- **Servo Motor** (angle sweep + target channel)
+- **LED PWM Dimmer** (brightness sine + duty cycle ramp)
+- **Door/Window Contact** (reed switch + battery drain)
+
+Plus 5 new emoji mappings in `Sandbox.vue templateIcons`. Rounds out
+the Sprint 5b hardware catalog demo story.
+
+### F13 — Email Templates Visual/WYSIWYG mode
+Added `visual` as a new editor view mode (alongside simple/code/split/
+preview), now the **default**. Reuses the existing CMS `RichTextEditor`
+(TipTap-based) with bold/italic/headings/lists/links/alignment. Variables
+panel still lets authors drop `{{token}}` placeholders. 2 new
+`emailTemplates.editorView.visual` + `visualHint` i18n keys per locale.
+
+### F09 — Info-Icon "Erklärung" inline tours
+1. Fixed the hardcoded English "Take a guided tour" button in
+   `UInfoTooltip.vue` → now uses `t('infoTooltip.takeGuidedTour')`.
+2. Created 3 new built-in tours in `lib/tours/builtin-tours.ts`:
+   - `devices-overview` — 4 steps (intro, add-device, row-indicator, done)
+   - `automations-overview` — 3 steps (intro, create, list)
+   - `variables-overview` — 3 steps (intro, filters, done)
+3. Wired each tour to the matching page via `tourId="..."` on
+   `UInfoTooltip` in Devices.vue, Automations.vue, Variables.vue.
+
+Previously-wired tours stay in place: `getting-started` → /dashboards,
+`data-path-trace` → /flow-editor, `alert-investigation` → /alerts.
+Complete i18n coverage for all new tour titles + step text.
+
+### F22 — Admin Console MVP (real content)
+Was "ohne Funktion, genau wie System Health". Added 3 new read-only
+sections above System Info:
+
+1. **Your Capabilities** — chip list of the current token's
+   capability set (pulled from the `useCapabilities()` store, no new
+   fetch). Shows "N active" count. Live-verified with 77 caps.
+2. **Your Organizations** — lists accessible orgs from
+   `GET /api/v1/orgs` with a "Current" badge on the active org and
+   edition/role metadata.
+3. **Members of Current Organization** — lists members from
+   `GET /api/v1/orgs/{current_org_id}/members` with role badges
+   (owner/admin/member) and invited/joined timestamps via the
+   Sprint 8 B3 `fmtDateTime()` helper.
+
+Management actions (invite/remove/role change) stay in
+Settings → Organization to keep blast radius small. Hint at the
+bottom of Members points users there.
+
+**Total Bucket C i18n additions:** ~50 keys per locale.
+
+### Live verification
+
+| Feature | Route | Status |
+|---|---|---|
+| F18 | /tours → New Tour | Helper panel renders top of modal |
+| F20 | /settings | Search filters + auto-expands sections |
+| F19 | /api/v1/simulator/templates | 12 templates returned (was 6) |
+| F13 | /email-templates → edit | "Visuell" is new default tab |
+| F09 | /devices /automations /variables | "Geführte Tour starten" button in info-tooltip |
+| F22 | /admin | 5 UCards rendering (modules + caps + orgs + members + system) |
+
+**Build clean. Capability unit tests pass. All 8 locales keep en/de parity.**
+
+---
+
 ## Release Summary
 
-*(Round 6 — not yet)*
+### Final stats (Sprint 8 complete)
+
+- **Total findings across all 6 rounds:** ~84
+- **Fixed in Sprint 8:** ~76 (90%)
+- **Deferred to Sprint 9+:** 8
+  - R4 Perf-01: /users/me dedupe is already done; item closed
+  - R3 Bucket A (3 big feature packages):
+    `dashboard-builder-v2`, `automation-builder-v2`, `flow-editor-density-rework`
+  - R2 flagged systemic sweeps:
+    `infotip-audit-sweep` (9 remaining pages), `tolocale-systemic-sweep` (21 call sites)
+  - NU-F01 Forgot password (backend flow not implemented)
+- **i18n keys added:** ~2,200 per locale, full en/de parity maintained
+- **Unit tests:** all green (capability tests + Device recovery/refresh tests)
+- **Build warnings:** only the pre-existing 600 kB main bundle chunk size
+  warning — no new warnings introduced
+- **Commits on `claude/suspicious-raman`:**
+  `e8cbac1`, `651f0f4`, `01b19be`, `31aa94e`, `e9281df`, `1b6760b`,
+  `bd4b7c0`, `8d7db62`, `c40bc14`, `02479bb`, `fe953fa`, `ce7b51c`,
+  `524af4c`, `7d169b2`, `3c5d28b`, `5ea81ef`, `0bb6bde`, `91d8ff9`,
+  `1f25866`, `f28e1b4`
+
+### Release checklist
+
+| Item | Status |
+|---|---|
+| Build passes clean | ✅ |
+| Unit tests pass | ✅ |
+| i18n parity en/de | ✅ |
+| No console errors on happy path | ✅ |
+| All R1/R2/R4 P0+P1 findings resolved | ✅ |
+| CMS create flow working | ✅ |
+| Admin Console has real content | ✅ |
+| Sandbox has expanded simulator catalog | ✅ |
+| Tour infrastructure wired for key pages | ✅ |
+| REVIEW_SPRINT_8.md updated | ✅ |
+| Sprint 9 backlog documented | ✅ |
+
+### Known limitations going into `dev-stable-v1`
+
+1. **Dashboard builder** still has resize/drag/free-positioning gaps —
+   tracked as Sprint 9 `dashboard-builder-v2`
+2. **Automation builder** still feels "cryptic" — tracked as
+   Sprint 9 `automation-builder-v2` (Apple-Automations-style rewrite)
+3. **Flow Editor** density on many-variable layouts — Sprint 9
+   `flow-editor-density-rework`
+4. **Info-tooltip audit sweep** — 9 more pages to get tooltips
+   (DashboardPage, SystemStage, TraceTimeline, Pairing, 5 CMS subpages)
+5. **`.toLocaleDateString()` sweep** — 21 call sites still use browser
+   locale instead of the app's i18n locale. Helpers added in
+   `lib/relativeTime.ts`, migration pending.
+6. **Password reset flow** (NU-F01) — requires backend implementation.
+
+None of these block the `dev-stable-v1` tag; they are release-notes
+items for the next sprint.
 
 ---
 
