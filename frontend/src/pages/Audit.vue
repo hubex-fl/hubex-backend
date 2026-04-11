@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
@@ -112,6 +112,26 @@ watch(() => selectedId.value, (val) => {
   detailError.value = null;
   if (val !== null) refreshDetail(val).catch(() => undefined);
 });
+
+// Sprint 8 review R1-F07 — the page had no initial auto-load, so it
+// permanently showed the "Keine Audit-Einträge" empty state even
+// though /api/v1/audit?limit=5 returned rows. refreshList only ran
+// when the user manually clicked Apply/Refresh. Now: auto-load on
+// mount once capabilities have settled, and auto-retry when caps
+// flip from loading → ready.
+onMounted(() => {
+  if (capsReady.value && canReadAudit.value) {
+    refreshList().catch(() => undefined);
+  }
+});
+watch(
+  () => ({ ready: capsReady.value, canRead: canReadAudit.value }),
+  ({ ready, canRead }) => {
+    if (ready && canRead && entries.value.length === 0 && !loadingList.value) {
+      refreshList().catch(() => undefined);
+    }
+  },
+);
 
 onUnmounted(() => { selectedId.value = null; });
 </script>

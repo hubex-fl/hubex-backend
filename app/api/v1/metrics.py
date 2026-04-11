@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
+from app.api.deps_org import get_current_org_id
 from app.db.models.alerts import AlertEvent
 from app.db.models.device import Device
 from app.db.models.entities import Entity
@@ -52,6 +53,7 @@ class MetricsOut(BaseModel):
 async def get_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    org_id: int | None = Depends(get_current_org_id),
 ):
     now = datetime.now(timezone.utc)
 
@@ -121,14 +123,18 @@ async def get_metrics(
         )
     ).scalar_one()
 
-    # Automations (enabled rules)
-    automations_active = (
-        await db.execute(
-            select(func.count()).select_from(AutomationRule).where(
-                AutomationRule.enabled.is_(True)
-            )
-        )
-    ).scalar_one()
+    # Automations (enabled rules) — Sprint 8 review R1-F03 fix:
+    # scope the count to the caller's org_id so the Dashboard KPI
+    # matches what /api/v1/automations actually lists. Before, metrics
+    # counted ALL enabled rules globally across orgs, which could
+    # report "2 active" while the user's org had none visible in
+    # the Automations page.
+    _auto_stmt = select(func.count()).select_from(AutomationRule).where(
+        AutomationRule.enabled.is_(True)
+    )
+    if org_id is not None:
+        _auto_stmt = _auto_stmt.where(AutomationRule.org_id == org_id)
+    automations_active = (await db.execute(_auto_stmt)).scalar_one()
 
     return MetricsOut(
         devices=DeviceMetrics(
