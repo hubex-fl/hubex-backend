@@ -10,6 +10,7 @@ import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import { useMetrics } from "../composables/useMetrics";
 import { useRecentAlerts, severityStatus, relativeTime, firedAtFor } from "../composables/useRecentAlerts";
+import { formatAlertMessage } from "../lib/alertMessage";
 import { useEventStream, eventBadgeStatus, eventTypeOf, eventTimestampOf, type StreamEvent } from "../composables/useEventStream";
 
 const router = useRouter();
@@ -153,25 +154,18 @@ function eventIconColor(eventType: string): string {
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p
-            class="kpi-number"
-            :class="
-              metrics.devices.total === 0
-                ? 'text-[var(--text-muted)]'
-                : onlinePct >= 80
-                  ? 'text-[var(--status-ok)]'
-                  : onlinePct >= 50
-                    ? 'text-[var(--status-warn)]'
-                    : 'text-[var(--status-bad)]'
-            "
-          >{{ metrics.devices.online }}</p>
-          <p class="kpi-label">{{ t('dashboard.devicesOnline') }}</p>
           <!--
-            Sprint 5 REAL-10 fix: replaced vague "Major outage" label
-            (which clashed with the positive-looking big number "6") with
-            an honest "6 / 13 online" ratio. Number color also now
-            encodes health so users get the warn signal visually.
+            Sprint 5 REAL-10 → Sprint 8 R3-F02 revision:
+            Sprint 5 replaced the vague "Major outage" label with an
+            honest "6 / 13 online" ratio AND color-encoded the big
+            number via status colors. User feedback (Round 3) flagged
+            the red number next to a positive "Devices online" label
+            as a visual contradiction. Now: number stays the neutral
+            text-primary color; the RATIO string stays as the only
+            health indicator. Removed the status-{ok,warn,bad} branching.
           -->
+          <p class="kpi-number text-[var(--text-primary)]">{{ metrics.devices.online }}</p>
+          <p class="kpi-label">{{ t('dashboard.devicesOnline') }}</p>
           <p class="kpi-sub">
             <template v-if="metrics.devices.total === 0">
               {{ t('dashboard.noDevices') }}
@@ -283,7 +277,7 @@ function eventIconColor(eventType: string): string {
           <UBadge :status="severityStatus(alert.severity)" class="shrink-0">
             {{ alert.severity }}
           </UBadge>
-          <p class="text-sm text-[var(--text-primary)] truncate flex-1 min-w-0">{{ alert.message }}</p>
+          <p class="text-sm text-[var(--text-primary)] truncate flex-1 min-w-0">{{ formatAlertMessage(alert.message) }}</p>
           <span class="text-xs text-[var(--text-muted)] shrink-0">{{ relativeTime(firedAtFor(alert)) }}</span>
         </div>
       </div>

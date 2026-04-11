@@ -14,6 +14,12 @@ const redocContainer = ref<HTMLElement | null>(null);
 const swaggerLoaded = ref(false);
 const redocLoaded = ref(false);
 const loadError = ref("");
+// Sprint 8 R3-F21 fix: track in-flight script loads so the UI can
+// show a proper loading spinner instead of briefly flashing the
+// error banner ("Could not load ReDoc") before the CDN script
+// finishes fetching.
+const swaggerLoading = ref(false);
+const redocLoading = ref(false);
 
 // Use relative URL so it works behind any reverse proxy
 const openapiUrl = "/openapi.json";
@@ -57,8 +63,14 @@ function loadCSS(href: string): void {
 }
 
 async function initSwagger() {
-  if (swaggerLoaded.value || !swaggerContainer.value) return;
+  if (swaggerLoaded.value) return;
+  // Sprint 8 R3-F21 fix: same container-race guard as Redoc below.
+  if (!swaggerContainer.value) {
+    await nextTick();
+    if (!swaggerContainer.value) return;
+  }
   loadError.value = "";
+  swaggerLoading.value = true;
   try {
     loadCSS("https://unpkg.com/swagger-ui-dist@5/swagger-ui.css");
     await loadScript("https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js");
@@ -83,12 +95,23 @@ async function initSwagger() {
     injectSwaggerDarkMode();
   } catch (err: any) {
     loadError.value = `Could not load Swagger UI: ${err.message}. Try opening /docs in a new tab instead.`;
+  } finally {
+    swaggerLoading.value = false;
   }
 }
 
 async function initRedoc() {
-  if (redocLoaded.value || !redocContainer.value) return;
+  if (redocLoaded.value) return;
+  // Sprint 8 R3-F21 fix: container may not be in the DOM on first
+  // click because the parent <div v-show="activeTab === 'redoc'">
+  // flips at the same tick as initRedoc() runs. Wait one more tick
+  // so the container ref resolves before we try to mount Redoc into it.
+  if (!redocContainer.value) {
+    await nextTick();
+    if (!redocContainer.value) return;
+  }
   loadError.value = "";
+  redocLoading.value = true;
   try {
     await loadScript("https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js");
 
@@ -119,6 +142,8 @@ async function initRedoc() {
     redocLoaded.value = true;
   } catch (err: any) {
     loadError.value = `Could not load ReDoc: ${err.message}. Try opening /redoc in a new tab instead.`;
+  } finally {
+    redocLoading.value = false;
   }
 }
 
@@ -401,9 +426,14 @@ const sections: ApiSection[] = [
       </div>
     </div>
 
-    <!-- Error message -->
+    <!--
+      Error message — Sprint 8 R3-F21 fix: only show when there's
+      actually an error. Hidden while the script is still loading
+      so users don't see a brief "Could not load ReDoc" flash
+      between tab-click and script-ready.
+    -->
     <div
-      v-if="loadError"
+      v-if="loadError && !swaggerLoading && !redocLoading"
       class="p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-sm text-amber-300"
     >
       {{ loadError }}
@@ -411,6 +441,14 @@ const sections: ApiSection[] = [
 
     <!-- Swagger UI Tab -->
     <div v-show="activeTab === 'swagger'">
+      <!-- Loading state for Swagger UI -->
+      <div
+        v-if="swaggerLoading && !swaggerLoaded"
+        class="flex items-center justify-center gap-3 py-12 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] text-sm text-[var(--text-muted)]"
+      >
+        <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" /></svg>
+        {{ t('pages.apiDocs.loadingSwagger') }}
+      </div>
       <div
         ref="swaggerContainer"
         id="swagger-ui-embed"
@@ -420,6 +458,14 @@ const sections: ApiSection[] = [
 
     <!-- ReDoc Tab -->
     <div v-show="activeTab === 'redoc'">
+      <!-- Loading state for ReDoc -->
+      <div
+        v-if="redocLoading && !redocLoaded"
+        class="flex items-center justify-center gap-3 py-12 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] text-sm text-[var(--text-muted)]"
+      >
+        <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="60" stroke-dashoffset="20" /></svg>
+        {{ t('pages.apiDocs.loadingRedoc') }}
+      </div>
       <div
         ref="redocContainer"
         class="redoc-wrapper rounded-xl border border-[var(--border)] overflow-hidden min-h-[400px]"

@@ -44,8 +44,13 @@ _ROUTE_RULES: list[Tuple[str, int, str]] = [
     ("/api/v1/auth/refresh", 10, "ip"),
     ("/api/v1/telemetry", 60, "device_uid"),
     ("/api/v1/edge", 60, "device_uid"),
-    ("/api/v1/webhooks", 30, "user_id"),
-    ("/api/v1/ota", 30, "user_id"),
+    # Sprint 8 R3-F11 fix: /webhooks + /ota were 30/min but the
+    # frontend polls them on Navigation, list refresh, and sometimes
+    # background polling from other tabs — 30/min exhausted in normal
+    # usage and the user saw spurious "Zu viele Anfragen" banners.
+    # Bumped to match the polled-endpoints group (300/min per user).
+    ("/api/v1/webhooks", 300, "user_id"),
+    ("/api/v1/ota", 300, "user_id"),
     # Polled endpoints need higher limits (SPA polls every 10s)
     ("/api/v1/alerts", 300, "user_id"),
     ("/api/v1/notifications", 300, "user_id"),

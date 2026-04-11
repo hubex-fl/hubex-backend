@@ -207,8 +207,12 @@ function handleControlChange(val: unknown) {
 const TIME_RANGES: TimeRange[] = ["1h", "6h", "24h", "7d", "30d"];
 const currentRange = ref<TimeRange>(props.timeRange ?? "1h");
 
+// Sprint 8 R3-F06: pass currentValue so auto-detect can switch
+// a json-typed variable to the map widget when the value shape is
+// {lat, lng}. Without this the GPS widget never rendered unless
+// the user manually set display_hint='map' on the variable.
 const resolvedType = computed(() =>
-  resolveVizType(props.valueType, props.displayHint, props.compact)
+  resolveVizType(props.valueType, props.displayHint, props.compact, props.currentValue)
 );
 
 const showTimeRange = computed(() =>

@@ -9,6 +9,7 @@ import type { AlertRule, AlertEvent } from "../composables/useAlerts";
 import { useToastStore } from "../stores/toast";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { relativeTime } from "../composables/useRecentAlerts";
+import { formatAlertMessage } from "../lib/alertMessage";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 import { apiFetch } from "../lib/api";
@@ -550,7 +551,7 @@ const statusClass: Record<string, string> = {
                   <span class="text-xs text-[var(--text-muted)]">{{ ruleNameFor(ev.rule_id) }}</span>
                   <span class="text-xs text-[var(--text-muted)] ml-auto">{{ relativeTime(ev.triggered_at) }}</span>
                 </div>
-                <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ ev.message }}</p>
+                <p class="text-sm text-[var(--text-primary)] line-clamp-2">{{ formatAlertMessage(ev.message) }}</p>
                 <!-- Clickable device name link -->
                 <router-link
                   v-if="ev.device_id"

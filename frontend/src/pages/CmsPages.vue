@@ -5,10 +5,11 @@ import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import TreeNode from "../components/cms/CmsPageTreeNode.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const router = useRouter();
 const toast = useToastStore();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 type CmsPageSummary = {
   id: number;
@@ -393,7 +394,13 @@ onMounted(loadPages);
   <div class="page-wrap">
     <header class="page-head">
       <div>
-        <h1 class="page-title">{{ t('cms.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="page-title">{{ t('cms.title') }}</h1>
+          <UInfoTooltip
+            :title="t('infoTooltips.cmsPages.title')"
+            :items="tm('infoTooltips.cmsPages.items').map((i: any) => rt(i))"
+          />
+        </div>
         <p class="page-sub">{{ t('cms.subtitle') }}</p>
       </div>
       <div class="head-actions">

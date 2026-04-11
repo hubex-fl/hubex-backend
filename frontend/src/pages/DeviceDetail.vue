@@ -368,30 +368,54 @@ async function quickCreateAndBind() {
 }
 
 // ── Linked Automations + Alerts (System Context) ────────────────────────────
+// Sprint 8 R3-F04 fix: race-guarded parallel loader. Previously did
+// two sequential fetches, each clearing its ref before writing, which
+// caused a flicker on refresh (empty state showed briefly between
+// the two loads). Now: Promise.all both fetches, guard with a
+// sequence counter against stale writes, and assign atomically only
+// if this caller is still the latest loader. Matches the pattern
+// used for entityMemberships above.
 type LinkedRule = { id: number; name: string; trigger_type: string; enabled: boolean };
 type LinkedAlert = { id: number; name: string; condition_type: string };
 const linkedAutomations = ref<LinkedRule[]>([]);
 const linkedAlerts = ref<LinkedAlert[]>([]);
+let _linkedRulesLoadSeq = 0;
 
 async function loadLinkedRules() {
   if (!deviceInfo.value) return;
   const uid = deviceInfo.value.device_uid;
-  try {
-    // Load automations that reference this device
-    const rules = await apiFetch<LinkedRule[]>("/api/v1/automations");
-    linkedAutomations.value = rules.filter(r =>
-      r.trigger_type && (
-        (r as any).trigger_config?.device_uid === uid ||
-        (r as any).action_config?.device_uid === uid
-      )
-    );
-  } catch { linkedAutomations.value = []; }
+  const mySeq = ++_linkedRulesLoadSeq;
 
-  try {
-    // Load alert rules
-    const alerts = await apiFetch<LinkedAlert[]>("/api/v1/alerts/rules");
-    linkedAlerts.value = alerts.filter(a => (a as any).entity_id === uid || (a as any).condition_config?.device_uid === uid);
-  } catch { linkedAlerts.value = []; }
+  const [rulesResult, alertsResult] = await Promise.allSettled([
+    apiFetch<LinkedRule[]>("/api/v1/automations"),
+    apiFetch<LinkedAlert[]>("/api/v1/alerts/rules"),
+  ]);
+
+  // A newer call arrived while we were waiting — drop our results.
+  if (mySeq !== _linkedRulesLoadSeq) return;
+
+  const nextAutomations: LinkedRule[] =
+    rulesResult.status === "fulfilled"
+      ? rulesResult.value.filter(r =>
+          r.trigger_type && (
+            (r as any).trigger_config?.device_uid === uid ||
+            (r as any).action_config?.device_uid === uid
+          )
+        )
+      : [];
+
+  const nextAlerts: LinkedAlert[] =
+    alertsResult.status === "fulfilled"
+      ? alertsResult.value.filter(a =>
+          (a as any).entity_id === uid ||
+          (a as any).condition_config?.device_uid === uid
+        )
+      : [];
+
+  // Atomic write: both arrays update in the same microtask tick, so
+  // Vue re-renders the connected section exactly once instead of twice.
+  linkedAutomations.value = nextAutomations;
+  linkedAlerts.value = nextAlerts;
 }
 
 // ── {{ t('devices.sendTask') }} (PR-1) ────────────────────────────────────────────────────────
@@ -2209,10 +2233,19 @@ onUnmounted(() => {
 
           <!-- RIGHT: Connected Alerts + Automations -->
           <div class="space-y-3">
-            <!-- Entity memberships -->
+            <!--
+              Entity memberships
+              Sprint 8 R3-F04 fix: the skeleton used to show on EVERY
+              refresh, not just the first load, which caused a flicker
+              between skeleton and rendered list. Now: skeleton only
+              shows on the FIRST load (loading + list is empty). On
+              subsequent refreshes the old list stays rendered until
+              the new one arrives (which, thanks to the race-guard
+              above, either drops or overwrites atomically).
+            -->
             <div v-if="entityMembershipsLoading || entityMemberships.length" style="min-height: 2rem">
               <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold mb-1.5">{{ t('devices.groups') }}</p>
-              <div v-if="entityMembershipsLoading" class="flex items-center gap-2">
+              <div v-if="entityMembershipsLoading && !entityMemberships.length" class="flex items-center gap-2">
                 <USkeleton width="4rem" height="1rem" rounded="lg" />
                 <USkeleton width="5rem" height="1rem" rounded="lg" />
               </div>
@@ -2279,8 +2312,9 @@ onUnmounted(() => {
 
       <!-- Entity memberships + capabilities bar -->
       <div class="border-t border-[var(--border)] bg-[var(--bg-raised)] px-5 py-3 flex flex-wrap items-center gap-4" style="min-height: 2.75rem">
-        <!-- Entity chips -->
-        <div v-if="entityMembershipsLoading" class="flex items-center gap-2" style="min-height: 1.5rem">
+        <!-- Entity chips — Sprint 8 R3-F04 fix: skeleton only on
+             first load, not every refresh. -->
+        <div v-if="entityMembershipsLoading && !entityMemberships.length" class="flex items-center gap-2" style="min-height: 1.5rem">
           <USkeleton width="4rem" height="1.25rem" rounded="full" />
           <USkeleton width="5rem" height="1.25rem" rounded="full" />
         </div>

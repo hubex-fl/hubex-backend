@@ -7,8 +7,9 @@ import { useBoardLabels } from "../composables/useBoardLabels";
 import { useShieldLabels } from "../composables/useShieldLabels";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const router = useRouter();
 const { boardName, boardDescription } = useBoardLabels();
 const { shieldName, shieldDescription } = useShieldLabels();
@@ -75,7 +76,13 @@ onMounted(loadAll);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('hardware.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('hardware.title') }}</h1>
+          <UInfoTooltip
+            :title="t('infoTooltips.hardware.title')"
+            :items="tm('infoTooltips.hardware.items').map((i: any) => rt(i))"
+          />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('hardware.subtitle') }}</p>
       </div>
       <button class="wizard-cta-btn" @click="openWizard">

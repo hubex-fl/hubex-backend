@@ -1301,11 +1301,26 @@ export default {
       fieldSubject: 'Subject *',
       fieldSubjectPlaceholder: '[HUBEX] Alert: {alert_name}',
       fieldHtmlBody: 'HTML Body',
-      fieldHtmlPlaceholder: '<h2>Alert</h2><p>{{variable.key}} = {{variable.value}}</p>',
+      // Sprint 8 R3-F14 CRITICAL FIX: these placeholders used to
+      // contain `{{variable.key}}` style double-brace template syntax
+      // inside their values. vue-i18n v11's message compiler parses
+      // `{xxx}` as a parameter reference and crashed with
+      // SyntaxError at runtime — taking down the entire CMS Page
+      // Editor (render was blank because <CmsPageEditor> imports
+      // the email-template locale keys indirectly via the shared
+      // compiled bundle).
+      //
+      // Fix: use the literal-brace form. Instead of embedding
+      // example-syntax text in the placeholder, we skip the braces
+      // altogether and show the user a descriptive placeholder.
+      // The actual template-variable instructions live in the
+      // FEATURES panel + the variable-picker dropdown next to the
+      // textarea, not in this placeholder.
+      fieldHtmlPlaceholder: '<h2>Alert</h2><p>Use the Variables panel to insert dynamic values.</p>',
       simpleHeader: 'Header Text',
       simpleHeaderPlaceholder: 'Alert Notification',
       simpleBody: 'Body Text',
-      simpleBodyPlaceholder: 'Device {{device.name}} triggered alert {{alert.name}} with severity {{alert.severity}}.',
+      simpleBodyPlaceholder: 'Device triggered alert with severity. (Use the Variables panel to insert dynamic tokens.)',
       simpleFooter: 'Footer Text',
       simpleFooterPlaceholder: 'Sent by HUBEX',
       insertVariable: 'Insert Variable',
@@ -1426,7 +1441,15 @@ export default {
         generic_number: 'Generic Number',
       },
     },
-    apiDocs: { title: 'API Documentation', subtitle: 'HUBEX exposes a RESTful API. Explore interactively via Swagger or ReDoc, or use the OpenAPI spec directly.' },
+    apiDocs: {
+      title: 'API Documentation',
+      subtitle: 'HUBEX exposes a RESTful API. Explore interactively via Swagger or ReDoc, or use the OpenAPI spec directly.',
+      // Sprint 8 R3-F21 fix: loading spinners for CDN-fetched
+      // script tabs so there is no brief "Could not load" flash
+      // between tab click and Redoc/Swagger ready.
+      loadingSwagger: 'Loading Swagger UI...',
+      loadingRedoc: 'Loading ReDoc...',
+    },
     flowEditor: {
       title: 'System Map', subtitle: 'Visual map of all devices, variables, automations, alerts, and webhooks',
       loading: 'Loading system graph...', emptyCanvas: 'No system elements found',
@@ -2009,6 +2032,96 @@ export default {
         'Configure a URL, select which events to listen for, and optionally add authentication',
         'View delivery logs to debug failed deliveries',
         'Test webhooks to verify your endpoint is reachable',
+      ],
+    },
+    entities: {
+      title: 'Logical groups of devices — rooms, machines, systems, sites.',
+      items: [
+        'Bundle related devices into a parent entity for easier management',
+        'Build hierarchies: site → building → room → device',
+        'Scope dashboards, automations and permissions to an entity',
+        'Use entity context to generate dashboard sets per device',
+      ],
+    },
+    reports: {
+      title: 'Scheduled reports sent by email with device data and metrics.',
+      items: [
+        'Create a template with the content and time range you need',
+        'Schedule daily, weekly or monthly delivery to email recipients',
+        'Reports reuse Email Templates for branding and layout',
+        'Trigger a run manually to preview the output',
+      ],
+    },
+    hardware: {
+      title: 'Your saved hardware board projects (ESP32, ESP8266, etc.).',
+      items: [
+        'Each board is a reusable hardware profile with components and pins',
+        'Start the Hardware Wizard to create a new board project',
+        'Compile firmware from a board via the Firmware Builder',
+        'Boards feed the device setup flow for pairing real devices',
+      ],
+    },
+    emailTemplates: {
+      title: 'Reusable email layouts used by reports, automations and alerts.',
+      items: [
+        'Edit HTML and plain-text versions with variable placeholders',
+        'Preview how the email will render before sending',
+        'Reference templates from automations (action: send email)',
+        'Manage branding like logo, colors and footer in one place',
+      ],
+    },
+    admin: {
+      title: 'System administration — modules, capabilities and health.',
+      items: [
+        'Enable or disable optional feature modules',
+        'See active capabilities exposed by the backend',
+        'Monitor overall system health at a glance',
+        'Admin-only: changes affect every user in the organization',
+      ],
+    },
+    plugins: {
+      title: 'Install plugins from the marketplace to extend HUBEX.',
+      items: [
+        'Browse the marketplace and install with one click',
+        'Each plugin adds devices, widgets, automations or UI pages',
+        'Enable or disable installed plugins anytime',
+        'Manage feature flags via the linked Features page',
+      ],
+    },
+    firmware: {
+      title: 'Compile and flash firmware for your hardware boards.',
+      items: [
+        'Pick a saved board project to start a new firmware build',
+        'Select framework (PlatformIO / Arduino) and components',
+        'Download the compiled binary or flash over USB',
+        'Builds are versioned so you can roll back safely',
+      ],
+    },
+    semanticTypes: {
+      title: 'Define what a variable means (temperature, humidity, GPS, ...).',
+      items: [
+        'Semantic types carry units, value ranges and visualization hints',
+        'Filter built-in types or create your own custom types',
+        'Assigning a type to a variable unlocks smart widgets and triggers',
+        'Shared across the whole organization',
+      ],
+    },
+    hardwareWizard: {
+      title: 'Step-by-step wizard to create a new hardware board project.',
+      items: [
+        'Pick a chip (ESP32, ESP8266, ...) and framework',
+        'Add sensors, actuators and other components',
+        'Wizard suggests safe pin assignments automatically',
+        'Finishes by saving a reusable board you can flash',
+      ],
+    },
+    cmsPages: {
+      title: 'Build public CMS pages embedded into HUBEX.',
+      items: [
+        'Create pages with HTML, variables and device data',
+        'Pages can be private, public or behind a login',
+        'Use layouts for landing, minimal or fullscreen presentation',
+        'Link CMS pages from menus and dashboards',
       ],
     },
   },
@@ -2620,7 +2733,8 @@ export default {
     templateVars: 'Template Variables',
     starters: 'Starter Blocks',
     clickToInsert: 'Click to insert at cursor',
-    editorPlaceholder: 'Write HTML here. Use {{variable:key}} for dynamic values.',
+    // Sprint 8 R3-F14 fix: double-brace syntax crashed vue-i18n v11 parser
+    editorPlaceholder: 'Write HTML here. Insert dynamic values via the Variables panel.',
     shareCopied: 'Share URL copied to clipboard',
     slugTitleRequired: 'Slug and title are required',
     defaultContent: 'Start editing your page here.',

@@ -7,8 +7,9 @@ import { downloadProjectZip, CodegenError } from "../lib/codegen";
 import { useToastStore } from "../stores/toast";
 import { useBoardLabels } from "../composables/useBoardLabels";
 import { useComponentLabels } from "../composables/useComponentLabels";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const { boardName, boardDescription } = useBoardLabels();
 const { componentName, componentDescription } = useComponentLabels();
 
@@ -189,7 +190,13 @@ function resetWizard() {
     <div class="wizard-card">
       <!-- Header -->
       <header class="wiz-head">
-        <div class="wiz-title"><span class="brand">HUBEX</span> · {{ t('hardwareWizard.brandTitle') }}</div>
+        <div class="wiz-title">
+          <span class="brand">HUBEX</span> · {{ t('hardwareWizard.brandTitle') }}
+          <UInfoTooltip
+            :title="t('infoTooltips.hardwareWizard.title')"
+            :items="tm('infoTooltips.hardwareWizard.items').map((i: any) => rt(i))"
+          />
+        </div>
         <div class="wiz-step">{{ t('hardwareWizard.stepOfTotal', { current: currentStep, total: totalSteps }) }}</div>
       </header>
       <div class="progress-track">
@@ -454,8 +461,20 @@ function resetWizard() {
 </template>
 
 <style scoped>
+/*
+ * Sprint 8 R3-F16 fix: this route has `meta.fullscreen: true` so
+ * the layout's <main> gets `overflow: hidden`. Previously the
+ * wizard-wrap claimed `min-height: 100vh` which made tall
+ * content (Step 3 component catalog with all 15 components) clip
+ * against the bottom edge with no way to scroll. Now: wrap
+ * claims the full viewport height and handles its OWN scrolling
+ * via `overflow-y: auto`. The wizard content can be as tall as
+ * it needs and users can scroll within the wizard pane.
+ */
 .hw-wizard-wrap {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
   padding: 32px 16px;
   display: flex;
   justify-content: center;

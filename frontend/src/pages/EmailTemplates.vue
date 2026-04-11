@@ -4,9 +4,10 @@ import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 import UModal from "../components/ui/UModal.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const toast = useToastStore();
-const { t, te } = useI18n();
+const { t, te, tm, rt } = useI18n();
 
 type Template = {
   id: number;
@@ -263,7 +264,13 @@ onMounted(loadTemplates);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.emailTemplates.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.emailTemplates.title') }}</h1>
+          <UInfoTooltip
+            :title="t('infoTooltips.emailTemplates.title')"
+            :items="tm('infoTooltips.emailTemplates.items').map((i: any) => rt(i))"
+          />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           {{ t('pages.emailTemplates.subtitle') }}.
           <router-link to="/automations" class="text-[var(--primary)] hover:underline ml-1">{{ t('pages.emailTemplates.linkAutomations') }}</router-link> ·

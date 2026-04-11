@@ -6,9 +6,10 @@ import { useToastStore } from "../stores/toast";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const toast = useToastStore();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 const CAP_LABEL_KEYS: Record<string, string> = {
   "devices.read": "devicesRead", "devices.write": "devicesWrite",
@@ -115,7 +116,13 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.admin.title') }}</h1>
+      <div class="flex items-center">
+        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.admin.title') }}</h1>
+        <UInfoTooltip
+          :title="t('infoTooltips.admin.title')"
+          :items="tm('infoTooltips.admin.items').map((i: any) => rt(i))"
+        />
+      </div>
       <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.admin.subtitle') }}</p>
     </div>
 

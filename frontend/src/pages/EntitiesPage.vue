@@ -14,8 +14,9 @@ import UEmpty from "../components/ui/UEmpty.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const { entities, loading, error, reload } = useEntities();
 
@@ -359,7 +360,13 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     <!-- ── Page Header ──────────────────────────────────────────────────────── -->
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.entities.title') }}</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.entities.title') }}</h1>
+          <UInfoTooltip
+            :title="t('infoTooltips.entities.title')"
+            :items="tm('infoTooltips.entities.items').map((i: any) => rt(i))"
+          />
+        </div>
         <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">

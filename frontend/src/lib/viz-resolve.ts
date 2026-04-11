@@ -32,15 +32,40 @@ const DEFAULT_BY_TYPE: Record<ValueType, VizType> = {
 };
 
 /**
+ * Sprint 8 R3-F06 helper: detect GPS shape `{lat, lng}` (or
+ * `{latitude, longitude}` or `{lat, lon}`) inside a JSON current
+ * value so we can auto-pick the map widget without the user having
+ * to manually set display_hint='map'.
+ */
+function looksLikeGps(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  const lat = obj.lat ?? obj.latitude;
+  const lng = obj.lng ?? obj.longitude ?? obj.lon;
+  const latN = Number(lat);
+  const lngN = Number(lng);
+  return (
+    !Number.isNaN(latN) &&
+    !Number.isNaN(lngN) &&
+    latN >= -90 &&
+    latN <= 90 &&
+    lngN >= -180 &&
+    lngN <= 180
+  );
+}
+
+/**
  * Resolve which visualization to use.
  * @param valueType  - backend value_type ("int", "float", "bool", "string", "json")
  * @param displayHint - optional backend display_hint string
  * @param compact    - when true, prefer inline variants (sparkline over line_chart)
+ * @param currentValue - optional current value for auto-detection (e.g. GPS shape)
  */
 export function resolveVizType(
   valueType: ValueType,
   displayHint?: string | null,
-  compact = false
+  compact = false,
+  currentValue?: unknown,
 ): VizType {
   // 1. Explicit valid hint → use it
   if (displayHint && displayHint !== "auto") {
@@ -48,7 +73,17 @@ export function resolveVizType(
     if (mapped && mapped !== "auto") return mapped;
   }
 
-  // 2. Compact override: never show large chart in compact mode
+  // 2. Sprint 8 R3-F06: auto-detect GPS shape for JSON values.
+  // If display_hint is "auto" or unset AND value_type is json AND
+  // the current value parses as a valid lat/lng pair, switch to
+  // the map widget. Previously GPS variables defaulted to the
+  // json-tree viewer which is technically correct but useless
+  // when a map is what the user wants.
+  if (valueType === "json" && looksLikeGps(currentValue)) {
+    return "map";
+  }
+
+  // 3. Compact override: never show large chart in compact mode
   const base = DEFAULT_BY_TYPE[valueType] ?? "log";
   if (compact && base === "line_chart") return "sparkline";
 

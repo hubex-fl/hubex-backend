@@ -19,11 +19,12 @@ import UBadge from "../components/ui/UBadge.vue";
 import USelect from "../components/ui/USelect.vue";
 import UInput from "../components/ui/UInput.vue";
 import UModal from "../components/ui/UModal.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 /* ------------------------------------------------------------------ */
 /* State                                                               */
 /* ------------------------------------------------------------------ */
-const { t, te } = useI18n();
+const { t, te, tm, rt } = useI18n();
 
 /**
  * Sprint 8 R1-F27 — client-side i18n lookup for backend-seeded
@@ -246,7 +247,13 @@ onMounted(fetchTypes);
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.semanticTypes.title') }}</h2>
+        <div class="flex items-center">
+          <h2 class="text-lg font-semibold text-[var(--text-primary)]">{{ t('pages.semanticTypes.title') }}</h2>
+          <UInfoTooltip
+            :title="t('infoTooltips.semanticTypes.title')"
+            :items="tm('infoTooltips.semanticTypes.items').map((i: any) => rt(i))"
+          />
+        </div>
         <p class="text-sm text-[var(--text-muted)] mt-0.5">
           {{ t('pages.semanticTypes.subtitle') }}
         </p>

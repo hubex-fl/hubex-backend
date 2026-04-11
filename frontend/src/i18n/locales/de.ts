@@ -1294,11 +1294,13 @@ export default {
       fieldSubject: 'Betreff *',
       fieldSubjectPlaceholder: '[HUBEX] Alarm: {alert_name}',
       fieldHtmlBody: 'HTML-Inhalt',
-      fieldHtmlPlaceholder: '<h2>Alarm</h2><p>{{variable.key}} = {{variable.value}}</p>',
+      // Sprint 8 R3-F14 CRITICAL FIX — siehe en.ts gleiche Stelle:
+      // vue-i18n v11 parser crasht bei {{xxx}} double-brace Werten.
+      fieldHtmlPlaceholder: '<h2>Alarm</h2><p>Nutze das Variablen-Panel um dynamische Werte einzuf\u00fcgen.</p>',
       simpleHeader: '\u00dcberschrift',
       simpleHeaderPlaceholder: 'Alarmbenachrichtigung',
       simpleBody: 'Textinhalt',
-      simpleBodyPlaceholder: 'Ger\u00e4t {{device.name}} hat Alarm {{alert.name}} mit Schweregrad {{alert.severity}} ausgel\u00f6st.',
+      simpleBodyPlaceholder: 'Ger\u00e4t hat Alarm ausgel\u00f6st. (Nutze das Variablen-Panel um dynamische Tokens einzuf\u00fcgen.)',
       simpleFooter: 'Fu\u00dfzeile',
       simpleFooterPlaceholder: 'Gesendet von HUBEX',
       insertVariable: 'Variable einf\u00fcgen',
@@ -1416,7 +1418,13 @@ export default {
         generic_number: 'Allgemeiner Wert',
       },
     },
-    apiDocs: { title: 'API-Dokumentation', subtitle: 'HUBEX bietet eine RESTful API. Erkunden Sie sie interaktiv via Swagger oder ReDoc, oder nutzen Sie die OpenAPI-Spezifikation direkt.' },
+    apiDocs: {
+      title: 'API-Dokumentation',
+      subtitle: 'HUBEX bietet eine RESTful API. Erkunden Sie sie interaktiv via Swagger oder ReDoc, oder nutzen Sie die OpenAPI-Spezifikation direkt.',
+      // Sprint 8 R3-F21 fix
+      loadingSwagger: 'Swagger UI wird geladen\u2026',
+      loadingRedoc: 'ReDoc wird geladen\u2026',
+    },
     flowEditor: {
       title: 'Systemkarte', subtitle: 'Visuelle Karte aller Geräte, Variablen, Automatisierungen, Alarmregeln und Webhooks',
       loading: 'Systemgraph wird geladen...', emptyCanvas: 'Keine Systemelemente gefunden',
@@ -1999,6 +2007,96 @@ export default {
         'URL konfigurieren, Events auswählen und optional Authentifizierung hinzufügen',
         'Zustellungsprotokolle ansehen um fehlgeschlagene Zustellungen zu debuggen',
         'Webhooks testen um die Erreichbarkeit des Endpunkts zu prüfen',
+      ],
+    },
+    entities: {
+      title: 'Logische Gruppen von Geräten — Räume, Maschinen, Systeme, Standorte.',
+      items: [
+        'Verwandte Geräte unter einer übergeordneten Entität bündeln',
+        'Hierarchien bauen: Standort → Gebäude → Raum → Gerät',
+        'Dashboards, Automatisierungen und Rechte auf Entitäten beschränken',
+        'Entitäts-Kontext nutzen um Dashboard-Sets je Gerät zu erzeugen',
+      ],
+    },
+    reports: {
+      title: 'Zeitgesteuerte Berichte per E-Mail mit Gerätedaten und Metriken.',
+      items: [
+        'Vorlage mit Inhalt und Zeitraum nach Bedarf erstellen',
+        'Täglichen, wöchentlichen oder monatlichen Versand planen',
+        'Berichte nutzen E-Mail-Vorlagen für Branding und Layout',
+        'Lauf manuell auslösen um eine Vorschau zu erhalten',
+      ],
+    },
+    hardware: {
+      title: 'Deine gespeicherten Hardware-Board-Projekte (ESP32, ESP8266 usw.).',
+      items: [
+        'Jedes Board ist ein wiederverwendbares Profil mit Komponenten und Pins',
+        'Hardware-Wizard öffnen um ein neues Projekt anzulegen',
+        'Firmware aus einem Board über den Firmware Builder kompilieren',
+        'Boards dienen als Basis für die Inbetriebnahme echter Geräte',
+      ],
+    },
+    emailTemplates: {
+      title: 'Wiederverwendbare E-Mail-Layouts für Reports, Automatisierungen und Alarme.',
+      items: [
+        'HTML- und Textversion mit Variablen-Platzhaltern bearbeiten',
+        'Vorschau vor dem Versand ansehen',
+        'Vorlagen aus Automatisierungen referenzieren (Aktion: E-Mail senden)',
+        'Branding wie Logo, Farben und Footer zentral verwalten',
+      ],
+    },
+    admin: {
+      title: 'Systemverwaltung — Module, Capabilities und Health.',
+      items: [
+        'Optionale Feature-Module aktivieren oder deaktivieren',
+        'Aktive Capabilities des Backends einsehen',
+        'Gesamtsystem-Status auf einen Blick überwachen',
+        'Nur Admins: Änderungen wirken sich auf alle Benutzer der Organisation aus',
+      ],
+    },
+    plugins: {
+      title: 'Plugins aus dem Marketplace installieren um HUBEX zu erweitern.',
+      items: [
+        'Marketplace durchstöbern und mit einem Klick installieren',
+        'Plugins liefern Geräte, Widgets, Automatisierungen oder UI-Seiten',
+        'Installierte Plugins jederzeit aktivieren oder deaktivieren',
+        'Feature-Flags über die verlinkte Features-Seite verwalten',
+      ],
+    },
+    firmware: {
+      title: 'Firmware für deine Hardware-Boards kompilieren und flashen.',
+      items: [
+        'Ein gespeichertes Board-Projekt wählen um einen Build zu starten',
+        'Framework (PlatformIO / Arduino) und Komponenten auswählen',
+        'Fertige Binary herunterladen oder per USB flashen',
+        'Builds werden versioniert — sicheres Zurückrollen möglich',
+      ],
+    },
+    semanticTypes: {
+      title: 'Definiert was eine Variable bedeutet (Temperatur, Feuchte, GPS, ...).',
+      items: [
+        'Semantische Typen tragen Einheit, Wertebereich und Visualisierungs-Hinweise',
+        'Built-in-Typen filtern oder eigene Typen erstellen',
+        'Typzuweisung aktiviert passende Widgets und Trigger',
+        'Gilt organisationsweit',
+      ],
+    },
+    hardwareWizard: {
+      title: 'Schritt-für-Schritt-Assistent für neue Hardware-Board-Projekte.',
+      items: [
+        'Chip (ESP32, ESP8266, ...) und Framework wählen',
+        'Sensoren, Aktoren und weitere Komponenten hinzufügen',
+        'Assistent schlägt sichere Pinbelegung automatisch vor',
+        'Am Ende entsteht ein wiederverwendbares Board zum Flashen',
+      ],
+    },
+    cmsPages: {
+      title: 'Öffentliche CMS-Seiten innerhalb von HUBEX bauen.',
+      items: [
+        'Seiten mit HTML, Variablen und Gerätedaten erstellen',
+        'Seiten können privat, öffentlich oder login-geschützt sein',
+        'Layouts für Landing, Minimal oder Vollbild nutzen',
+        'CMS-Seiten aus Menüs und Dashboards verlinken',
       ],
     },
   },
@@ -2610,7 +2708,8 @@ export default {
     templateVars: 'Template-Variablen',
     starters: 'Vorlagen-Blöcke',
     clickToInsert: 'Zum Einfügen an der Cursorposition klicken',
-    editorPlaceholder: 'HTML hier schreiben. Verwende {{variable:key}} für dynamische Werte.',
+    // Sprint 8 R3-F14 fix: double-brace syntax crashed vue-i18n v11 parser
+    editorPlaceholder: 'HTML hier schreiben. Dynamische Werte \u00fcber das Variablen-Panel einf\u00fcgen.',
     shareCopied: 'Freigabe-URL in die Zwischenablage kopiert',
     slugTitleRequired: 'Slug und Titel sind erforderlich',
     defaultContent: 'Bearbeite hier deine Seite.',

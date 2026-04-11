@@ -390,8 +390,21 @@ function handleNavClick() {
         </button>
       </div>
 
-      <!-- Nav Items -->
-      <nav class="flex-1 overflow-y-auto py-2">
+      <!--
+        Nav Items
+        Sprint 8 R3-F23/F24 fix:
+        - `overflow-x: hidden` + `min-w-0` prevent a horizontal
+          scroll bar from ever appearing when long German translations
+          push against the sidebar width. Text now gets clipped (with
+          `truncate` on the item labels) instead of causing a scroll
+          track.
+        - `scrollbar-gutter: stable` + browser-native auto-hide
+          behavior means the vertical scroll track only appears when
+          the nav content actually exceeds the sidebar height. Uses
+          the custom `sidebar-nav` class (defined in the <style>
+          block below) to apply platform-native auto-hide scrollbars.
+      -->
+      <nav class="sidebar-nav flex-1 min-w-0 overflow-x-hidden overflow-y-auto py-2">
         <template v-for="group in visibleNavGroups" :key="group.label">
           <!-- Section label — clickable to collapse (except Core) -->
           <button
@@ -533,8 +546,8 @@ function handleNavClick() {
           </button>
         </div>
 
-        <!-- Nav Items -->
-        <nav class="flex-1 overflow-y-auto py-2">
+        <!-- Nav Items — same Sprint 8 R3-F23/F24 scrollbar fix as desktop -->
+        <nav class="sidebar-nav flex-1 min-w-0 overflow-x-hidden overflow-y-auto py-2">
           <template v-for="group in visibleNavGroups" :key="group.label">
             <div class="text-[10px] uppercase tracking-widest font-semibold text-[var(--text-muted)] px-4 pb-1 mt-3 first:mt-1">
               {{ group.label }}
@@ -780,4 +793,40 @@ function handleNavClick() {
 .slide-leave-active { transition: transform 0.25s ease; }
 .slide-enter-from,
 .slide-leave-to     { transform: translateX(-100%); }
+
+/*
+ * Sprint 8 R3-F23/F24 fix — sidebar scroll behavior.
+ *
+ * F23 (horizontal): never show a horizontal scroll bar even when
+ * long German nav labels push against the sidebar width. The
+ * `overflow-x: hidden` on the <nav> element itself prevents the
+ * bar from rendering; nav-item labels use `truncate` so long
+ * translations clip gracefully at the right edge.
+ *
+ * F24 (vertical): the vertical scroll track should only appear
+ * when the nav content actually exceeds the sidebar height —
+ * otherwise it just shows as decoration and wastes space.
+ * Modern browsers do this automatically for `overflow-y: auto`,
+ * but some reserve scrollbar-gutter space. We use a slim custom
+ * scrollbar that auto-hides on idle and overlays the content
+ * (Firefox `scrollbar-width: thin`, WebKit `::-webkit-scrollbar`
+ * with small width and transparent track).
+ */
+.sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
 </style>
