@@ -186,6 +186,20 @@ export default {
       bridge: 'Bridge',
       agent: 'Agent',
     },
+    // Sprint 3.8 — Ger\u00e4tetypen (DEVICE_TYPE_META refactor). Vorher als statische
+    // englische Map auf Modul-Ebene in useDevices.ts.
+    types: {
+      esp32: 'ESP32',
+      hardware: 'Hardware',
+      api_device: 'API-Ger\u00e4t',
+      service: 'Dienst',
+      mqtt_bridge: 'MQTT-Bridge',
+      bridge: 'Bridge',
+      software_agent: 'Software-Agent',
+      agent: 'Agent',
+      standard_device: 'Standard-Ger\u00e4t',
+      unknown: 'Unbekannt',
+    },
     wizard: {
       title: 'Gerät hinzufügen — Schritt {step} von {total}',
       whatToConnect: 'Was möchtest du anbinden?',
@@ -2127,5 +2141,85 @@ export default {
       open_new_tab: 'In neuem Tab öffnen',
     },
     open_new_tab_title: 'Öffnet in neuem Browser-Tab weil dieses Plugin sich nicht einbetten lässt',
+  },
+  // Sprint 3.8 — SetupWizard Deutsch. Zuvor 30+ hardcoded englische Strings.
+  setupWizard: {
+    title: 'Einrichtung',
+    stepXofY: 'Schritt {current} von {total}',
+    step1: {
+      title: 'Wof\u00fcr wirst du HubEx nutzen?',
+      subtitle: 'W\u00e4hle eine Voreinstellung — im n\u00e4chsten Schritt kannst du jedes Feature einzeln anpassen.',
+    },
+    step2: {
+      title: 'Features fein abstimmen',
+      subtitle: '{enabled} von {total} Features aktiv. Kern-Features (Auth, Ger\u00e4te, Dashboards, Alerts) sind immer an.',
+      requiresPrefix: 'ben\u00f6tigt:',
+    },
+    step3: {
+      title: 'Plugins & Branding',
+      subtitle: 'Optionale Extras — sp\u00e4ter jederzeit konfigurierbar.',
+      pluginsTitle: 'Plugin-Marktplatz',
+      pluginsBody: 'Container-basierte Dienste wie n8n (Workflow-Automatisierung), Ollama (lokale KI), Frigate (Kamera-ML) sowie Connectors f\u00fcr Claude, OpenAI und Slack installieren.',
+      pluginsNow: 'Verf\u00fcgbar auf der Plugins-Seite',
+      brandingTitle: 'Branding',
+      brandingBody: 'Produktname, Logo, Farben und Footer-Inhalte festlegen. Jetzt verf\u00fcgbar unter {path}.',
+      brandingPath: 'CMS → Einstellungen',
+      brandingOpen: 'Site-Einstellungen \u00f6ffnen →',
+    },
+    step4: {
+      title: 'Fast fertig',
+      subtitle: 'Alles ist bereit, um deine Konfiguration anzuwenden.',
+      adminTitle: 'Admin-Konto',
+      adminBody: 'Du bist angemeldet als {email}.',
+      adminMuted: 'Alle \u00c4nderungen werden im Audit-Log unter deinem Benutzer protokolliert.',
+      summaryUseCase: 'Voreinstellung',
+      summaryCustom: 'Benutzerdefiniert',
+      summaryFeatures: 'Features aktiv',
+    },
+    step5: {
+      title: 'Bereit zum Start',
+      subtitle: 'Klicke auf {action}, um die Konfiguration zu speichern und HubEx zu betreten.',
+      actionRef: '\u00dcbernehmen & starten',
+      launchMuted: 'Konfiguration ist bereit. Keine Ger\u00e4te oder Daten werden gel\u00f6scht.',
+    },
+    footer: {
+      skip: 'Wizard \u00fcberspringen',
+      back: 'Zur\u00fcck',
+      next: 'Weiter',
+      apply: '\u00dcbernehmen & starten',
+      applying: 'Wird angewendet…',
+    },
+    useCases: {
+      industrial: {
+        label: 'Industrie-IoT',
+        description: 'Ger\u00e4te, Alerts, OTA, Bridges, Protokolle',
+      },
+      smart_home: {
+        label: 'Smart Home',
+        description: 'Consumer-Ger\u00e4te, Dashboards, Automatisierungen',
+      },
+      saas_backend: {
+        label: 'SaaS-Backend',
+        description: 'Custom API, Webhooks, Multi-Tenant',
+      },
+      showcase: {
+        label: 'Showcase / Demo',
+        description: 'CMS, \u00f6ffentliche Seiten, Kiosk-Modus',
+      },
+      enterprise: {
+        label: 'Enterprise',
+        description: 'MFA, Audit, Compliance, erweitert',
+      },
+      everything: {
+        label: 'Alles',
+        description: 'Alle Features aktiviert',
+      },
+    },
+    toasts: {
+      noChanges: 'Keine \u00c4nderungen — alles ist bereits aktuell',
+      applied: '{count} \u00c4nderungen \u00fcbernommen',
+      applyFailed: '{key}: {message}',
+      applyFailedFallback: 'fehlgeschlagen',
+    },
   },
 };

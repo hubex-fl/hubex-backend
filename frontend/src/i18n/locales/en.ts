@@ -186,6 +186,20 @@ export default {
       bridge: 'Bridge',
       agent: 'Agent',
     },
+    // Sprint 3.8 — Device type labels (DEVICE_TYPE_META refactor). Previously
+    // these lived as a static English module-level map in useDevices.ts.
+    types: {
+      esp32: 'ESP32',
+      hardware: 'Hardware',
+      api_device: 'API Device',
+      service: 'Service',
+      mqtt_bridge: 'MQTT Bridge',
+      bridge: 'Bridge',
+      software_agent: 'Software Agent',
+      agent: 'Agent',
+      standard_device: 'Standard Device',
+      unknown: 'Unknown',
+    },
     wizard: {
       title: 'Add Device — Step {step} of {total}',
       whatToConnect: 'What do you want to connect?',
@@ -2133,5 +2147,96 @@ export default {
       open_new_tab: 'Open in new tab',
     },
     open_new_tab_title: 'Opens in a new browser tab because this plugin cannot be embedded',
+  },
+  // Sprint 3.8 — SetupWizard (Phase 5b deferred). Previously 30+ hardcoded
+  // English strings per Sprint 3.4 audit. Namespace mirrors the UI flow:
+  // header / progress / step 1 / step 2 / step 3 / step 4 / step 5 / footer
+  // / use-case presets / toasts.
+  setupWizard: {
+    title: 'Setup',
+    stepXofY: 'Step {current} of {total}',
+    // Step 1 — Use case
+    step1: {
+      title: 'What will you use HubEx for?',
+      subtitle: 'Pick a preset — you can fine-tune every feature in the next step.',
+    },
+    // Step 2 — Feature fine-tuning
+    step2: {
+      title: 'Fine-tune features',
+      subtitle: '{enabled} of {total} features enabled. Core features (auth, devices, dashboards, alerts) are always on.',
+      requiresPrefix: 'requires:',
+    },
+    // Step 3 — Plugins & Branding
+    step3: {
+      title: 'Plugins & Branding',
+      subtitle: 'Optional extras — you can configure these later.',
+      pluginsTitle: 'Plugins Marketplace',
+      pluginsBody: 'Install container-based services like n8n (workflow automation), Ollama (local AI), Frigate (camera ML) and connectors for Claude, OpenAI, and Slack.',
+      pluginsNow: 'Available in the Plugins page',
+      brandingTitle: 'Branding',
+      brandingBody: 'Set your product name, logo, colors and footer content. Available now at {path}.',
+      brandingPath: 'CMS → Settings',
+      brandingOpen: 'Open Site Settings →',
+    },
+    // Step 4 — Almost there
+    step4: {
+      title: 'Almost there',
+      subtitle: "You're all set to apply your configuration.",
+      adminTitle: 'Admin Account',
+      adminBody: 'You are signed in as {email}.',
+      adminMuted: 'All changes will be recorded in the Audit Log under your user.',
+      summaryUseCase: 'Use case preset',
+      summaryCustom: 'Custom',
+      summaryFeatures: 'Features enabled',
+    },
+    // Step 5 — Ready to launch
+    step5: {
+      title: 'Ready to launch',
+      subtitle: 'Click {action} to save your configuration and enter HubEx.',
+      actionRef: 'Apply and start',
+      launchMuted: 'Configuration is ready. No device or data will be deleted.',
+    },
+    // Footer actions
+    footer: {
+      skip: 'Skip wizard',
+      back: 'Back',
+      next: 'Next',
+      apply: 'Apply and start',
+      applying: 'Applying…',
+    },
+    // Use-case preset cards
+    useCases: {
+      industrial: {
+        label: 'Industrial IoT',
+        description: 'Devices, alerts, OTA, bridges, protocols',
+      },
+      smart_home: {
+        label: 'Smart Home',
+        description: 'Consumer devices, dashboards, automations',
+      },
+      saas_backend: {
+        label: 'SaaS Backend',
+        description: 'Custom API, webhooks, multi-tenant',
+      },
+      showcase: {
+        label: 'Showcase / Demo',
+        description: 'CMS, public pages, kiosk mode',
+      },
+      enterprise: {
+        label: 'Enterprise',
+        description: 'MFA, audit, compliance, advanced',
+      },
+      everything: {
+        label: 'Everything',
+        description: 'All features enabled',
+      },
+    },
+    // Toasts
+    toasts: {
+      noChanges: 'No changes — everything already matches',
+      applied: 'Applied {count} changes',
+      applyFailed: '{key}: {message}',
+      applyFailedFallback: 'failed',
+    },
   },
 };

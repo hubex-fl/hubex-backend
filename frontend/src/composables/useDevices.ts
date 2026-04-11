@@ -2,9 +2,16 @@ import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import type { Ref } from "vue";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
+import { i18n } from "../i18n";
 
 export type DeviceType = "esp32" | "api_device" | "mqtt_bridge" | "software_agent" | "standard_device" | "hardware" | "service" | "bridge" | "agent" | "unknown";
 
+// Sprint 3.8 — DEVICE_TYPE_META was a static module-level English map (ESP32 /
+// API Device / MQTT Bridge / etc.). Labels now come from i18n at render time
+// via deviceTypeLabel(); icon + color stay in the static map because they
+// don't need translation. The `label` field is kept for back-compat with
+// call sites that haven't been migrated yet, and shows the raw English key
+// as a fallback only if i18n isn't yet initialised.
 export const DEVICE_TYPE_META: Record<DeviceType, { label: string; icon: string; color: string }> = {
   esp32:            { label: "ESP32",            icon: "M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z", color: "var(--cat-hardware)" },
   hardware:         { label: "Hardware",         icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z", color: "var(--cat-hardware)" },
@@ -17,6 +24,25 @@ export const DEVICE_TYPE_META: Record<DeviceType, { label: string; icon: string;
   standard_device:  { label: "Standard Device",  icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z", color: "var(--text-muted)" },
   unknown:          { label: "Unknown",          icon: "M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z", color: "var(--text-muted)" },
 };
+
+/**
+ * i18n-aware device type label. Looks up `devices.types.<type>` with a
+ * fallback to the raw English label from `DEVICE_TYPE_META` and then to
+ * the raw string passed in (so it never returns empty).
+ *
+ * This is the replacement for `DEVICE_TYPE_META[type].label`. Use this
+ * everywhere a device type is rendered in UI text. Works outside of
+ * Vue setup() scope because it calls `i18n.global.t(...)`.
+ */
+export function deviceTypeLabel(type: string | null | undefined): string {
+  const key = (type || "unknown") as DeviceType;
+  const i18nKey = `devices.types.${key}`;
+  // i18n.global.t returns the key itself if missing — detect that and fall
+  // back to the legacy static label, then to the raw string.
+  const translated = i18n.global.t(i18nKey);
+  if (translated && translated !== i18nKey) return translated;
+  return DEVICE_TYPE_META[key]?.label ?? (type || "Unknown");
+}
 
 export type DeviceCategory = "hardware" | "service" | "bridge" | "agent";
 

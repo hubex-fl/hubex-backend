@@ -333,6 +333,59 @@ commit history.
 
 ---
 
+## ✅ Fixed in Sprint 3.8 (backlog polish)
+
+User explicitly said "die anderen punkte zeitnah fertigstellen, damit die
+nicht verloren gehen" — so this sprint closed the two actionable items
+from the Sprint 4 carry-over list. The DeviceDetail freeze got static
+investigation + diagnosis notes but no code fix (it genuinely needs a
+live devtools perf trace, not code reading).
+
+### ✅ P1 — DEVICE_TYPE_META composable is i18n-aware — FIXED 3.8
+- **Symptom:** Every device type rendered its label from a static English module-level map in `useDevices.ts`. Swapping to DE locale never translated "ESP32" / "API Device" / "MQTT Bridge" / "Software Agent" / "Bridge" / "Agent" / "Standard Device" / "Unknown" because none of them flowed through `t()`.
+- **Root cause:** `DEVICE_TYPE_META: Record<DeviceType, { label, icon, color }>` was imported directly across `Devices.vue` + `DeviceDetail.vue` (6 call sites on each page) with template bindings like `DEVICE_TYPE_META[d.device_type].label`.
+- **Fix:**
+  1. Added `devices.types.*` sub-namespace in `en.ts` + `de.ts` (esp32, hardware, api_device, service, mqtt_bridge, bridge, software_agent, agent, standard_device, unknown) — German translations `API-Ger\u00e4t / Dienst / MQTT-Bridge / Software-Agent / Standard-Ger\u00e4t / Unbekannt`.
+  2. Exported new `deviceTypeLabel(type)` helper from `useDevices.ts` that looks up `devices.types.<key>` via `i18n.global.t(...)` with legacy static label fallback, and final raw-string fallback so it never returns empty. Kept `DEVICE_TYPE_META` as export so icon + color call sites (which don't need translation) stay unchanged.
+  3. Updated all 5 label render sites: Devices.vue filter options + search filter + table view + card view; DeviceDetail.vue hero meta + Technical Details panel.
+- **File:** `frontend/src/composables/useDevices.ts`, `frontend/src/pages/Devices.vue`, `frontend/src/pages/DeviceDetail.vue`, `frontend/src/i18n/locales/{en,de}.ts`
+- **Verified live:** `/devices` now shows "Agent" (was "Software Agent") and "MQTT-Bridge" (was "MQTT Bridge") on DE locale for the simulated System Agent + MQTT Bridge devices. Unknown types (`simulator`) correctly fall through to the raw string.
+- **Status:** ✅ Sprint 3.8
+
+### ✅ P1 — SetupWizard i18n sweep (biggest-remaining-offender from Sprint 3.4 audit) — FIXED 3.8
+- **Symptom:** The onboarding Setup Wizard was 100% English regardless of locale. Per the Sprint 3.4 code-inspection audit, roughly 30+ hardcoded strings across 5 steps + 6 use-case preset cards + 3 toast messages. On DE locale users saw "Step 1 of 5 / What will you use HubEx for? / Pick a preset / Industrial IoT / Fine-tune features / Plugins & Branding / Almost there / Ready to launch / Back / Next / Apply and start" — nothing translated.
+- **Root cause:** `SetupWizard.vue` had no `useI18n()` import at all. The `USE_CASES: UseCaseDef[]` array at module level held static English `label` + `description` strings. All template strings were raw literals.
+- **Fix:**
+  1. Added full `setupWizard.*` namespace in `en.ts` + `de.ts`: header (title + stepXofY), step1/step2/step3/step4/step5 sub-blocks (title + subtitle + body text), footer (skip/back/next/apply/applying), useCases.{industrial,smart_home,saas_backend,showcase,enterprise,everything}.{label,description}, toasts.{noChanges,applied,applyFailed,applyFailedFallback}.
+  2. Removed `label` + `description` from the `UseCaseDef` interface + `USE_CASES` array (kept id + icon + enabled feature-flag set). Added `useCaseLabel(id)` + `useCaseDescription(id)` helpers that look up `setupWizard.useCases.<id>.{label,description}` via `t()`.
+  3. Wired `useI18n()` into the setup script, translated `applyAndFinish` toast messages ("No changes — everything already matches" / "Applied N changes" / per-failure `${key}: ${msg}`) to `t('setupWizard.toasts.*', { params })`.
+  4. Rewrote all 5 `<section>` blocks + footer buttons to use `{{ t('setupWizard.stepN.key') }}` with interpolation for `{enabled}/{total}`, `{email}`, `{path}`, `{action}`, `{count}`, `{current}/{total}`.
+  5. Step 4 summary card now reads `useCaseLabel(selectedUseCase)` instead of `USE_CASES.find().label`.
+- **Scope left alone:** Feature names + descriptions rendered in Step 2 (`{{ f.name }}` / `{{ f.description }}`) come from the backend features store; Sprint 3.6 already built `featureNameI18n` / `featureDescriptionI18n` helpers for the Settings page. Not wiring those into SetupWizard here because it expands scope (would need importing from Settings.vue or duplicating the maps). A true fix would move those helpers to a shared `useFeatureLabels()` composable — parked.
+- **File:** `frontend/src/pages/SetupWizard.vue` (~140 lines touched), `frontend/src/i18n/locales/{en,de}.ts` (~200 lines of new keys)
+- **Verified live:** walked all 5 steps in a fresh Chrome session, DE locale:
+  - Step 1: "Wof\u00fcr wirst du HubEx nutzen?" + "Industrie-IoT / Smart Home / SaaS-Backend / Showcase / Demo / Enterprise / Alles"
+  - Step 2: "Features fein abstimmen" + "0 von 0 Features aktiv. Kern-Features (Auth, Ger\u00e4te, Dashboards, Alerts) sind immer an."
+  - Step 3: "Plugins & Branding" + inline `{path}` interpolation "Jetzt verf\u00fcgbar unter CMS → Einstellungen."
+  - Step 4: "Fast fertig" + "Admin-Konto" + "Du bist angemeldet als test@test.com." + "Voreinstellung: Industrie-IoT"
+  - Step 5: "Bereit zum Start" + "Klicke auf \u00dcbernehmen & starten, um die Konfiguration zu speichern und HubEx zu betreten."
+  - Footer: "Wizard \u00fcberspringen / Zur\u00fcck / Weiter / \u00dcbernehmen & starten"
+  No console errors. Top-bar title also reads "Einrichtung".
+- **Status:** ✅ Sprint 3.8
+
+### ⏸ REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — STILL DEFERRED
+- **Sprint 3.8 investigation findings (static read of 2947-line `DeviceDetail.vue`):**
+  - All three `setInterval` handlers (`heartbeatTimer`, `leaseCountdownTimer`, `nowBucketTimer`) are cleaned up in `onUnmounted` — no obvious leak
+  - `cleanupWs()` properly detaches WebSocket callbacks + closes the connection
+  - Hot v-for on telemetry rows has `v-memo="[tel.__sig, isTelemetryExpanded(tel.id) ? 1 : 0]"` — good perf
+  - Task history v-for has `v-memo="[t.__sig]"` — good perf
+  - Big variables list (`variablesSorted.slice(0, 8)` for System Context graph + full `variablesSorted` for State panel) are both capped at reasonable sizes
+  - No infinite watchers, no recursive computeds spotted
+  - No huge canvas / SVG elements (the biggest is 88×88px hero ring)
+- **Conclusion:** Cannot be diagnosed statically. Genuine need for a Chrome devtools Performance trace while the freeze happens — static code-reading shows no smoking gun. Likely candidates (still untested): flex/viewport height interaction between the collapsible "Technische Details" panel + Hero Card + System Context grid; or a synchronous layout thrash from reading `getBoundingClientRect` somewhere during telemetry WebSocket frames. **Stays on the backlog; needs a dedicated investigation sprint with live perf trace.**
+
+---
+
 ## ✅ Verified still working in Sprint 3.5 real-browser pass
 
 - ✅ Sprint 3.1 configure modal: rich intro, "API-Key holen ↗" link, provider hint, visible help text, lock icon privacy line, "Speichern & schließen" button

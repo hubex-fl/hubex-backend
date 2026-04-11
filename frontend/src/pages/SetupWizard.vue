@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import UToggle from "../components/ui/UToggle.vue";
 import { useFeaturesStore, type FeatureFlag } from "../stores/features";
 import { useToastStore } from "../stores/toast";
@@ -9,6 +10,7 @@ import { apiFetch } from "../lib/api";
 const router = useRouter();
 const features = useFeaturesStore();
 const toast = useToastStore();
+const { t } = useI18n();
 const adminEmail = ref<string>("administrator");
 
 type UseCase =
@@ -21,19 +23,18 @@ type UseCase =
 
 interface UseCaseDef {
   id: UseCase;
-  label: string;
-  description: string;
   icon: string;
   // Feature keys that should be ON for this preset (all others OFF)
   enabled: Set<string>;
 }
 
-// Preset definitions — each use-case produces a reasonable Feature set
+// Sprint 3.8 — Preset definitions. Labels + descriptions used to live on
+// this array as English strings; they now come from i18n via
+// `setupWizard.useCases.<id>.{label,description}`. Icons + feature-flag
+// sets stay here because they are not translation targets.
 const USE_CASES: UseCaseDef[] = [
   {
     id: "industrial",
-    label: "Industrial IoT",
-    description: "Devices, alerts, OTA, bridges, protocols",
     icon: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z",
     enabled: new Set([
       "automations", "webhooks", "ota", "hardware", "mcp", "audit_log",
@@ -43,8 +44,6 @@ const USE_CASES: UseCaseDef[] = [
   },
   {
     id: "smart_home",
-    label: "Smart Home",
-    description: "Consumer devices, dashboards, automations",
     icon: "M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25",
     enabled: new Set([
       "automations", "webhooks", "hardware", "pairing", "notifications",
@@ -53,8 +52,6 @@ const USE_CASES: UseCaseDef[] = [
   },
   {
     id: "saas_backend",
-    label: "SaaS Backend",
-    description: "Custom API, webhooks, multi-tenant",
     icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5",
     enabled: new Set([
       "custom_api", "webhooks", "api_keys", "audit_log", "mfa",
@@ -64,8 +61,6 @@ const USE_CASES: UseCaseDef[] = [
   },
   {
     id: "showcase",
-    label: "Showcase / Demo",
-    description: "CMS, public pages, kiosk mode",
     icon: "M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zM9 12h6m-6 3h6m-6 3h6",
     enabled: new Set([
       "cms", "kiosk", "tours", "simulator", "hardware", "mcp", "ai_coop",
@@ -74,8 +69,6 @@ const USE_CASES: UseCaseDef[] = [
   },
   {
     id: "enterprise",
-    label: "Enterprise",
-    description: "MFA, audit, compliance, advanced",
     icon: "M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75",
     enabled: new Set([
       "mfa", "audit_log", "api_keys", "custom_api", "reports", "observability",
@@ -85,12 +78,19 @@ const USE_CASES: UseCaseDef[] = [
   },
   {
     id: "everything",
-    label: "Everything",
-    description: "All features enabled",
     icon: "M4.5 12.75l6 6 9-13.5",
     enabled: new Set(), // special-cased below
   },
 ];
+
+// i18n-aware lookup — returns the localised preset label for a given id
+function useCaseLabel(id: UseCase): string {
+  return t(`setupWizard.useCases.${id}.label`);
+}
+
+function useCaseDescription(id: UseCase): string {
+  return t(`setupWizard.useCases.${id}.description`);
+}
 
 const currentStep = ref(1);
 const totalSteps = 5;
@@ -162,7 +162,7 @@ async function applyAndFinish() {
     }
 
     if (changes.length === 0) {
-      toast.addToast("No changes — everything already matches", "info");
+      toast.addToast(t("setupWizard.toasts.noChanges"), "info");
     } else {
       // Apply enables first (to satisfy deps), then disables
       const enables = changes.filter((c) => c.enabled);
@@ -171,10 +171,14 @@ async function applyAndFinish() {
         try {
           await features.setEnabled(key, enabled);
         } catch (e: any) {
-          toast.addToast(`${key}: ${e.message || "failed"}`, "error");
+          const fallback = t("setupWizard.toasts.applyFailedFallback");
+          toast.addToast(
+            t("setupWizard.toasts.applyFailed", { key, message: e.message || fallback }),
+            "error",
+          );
         }
       }
-      toast.addToast(`Applied ${changes.length} changes`, "success");
+      toast.addToast(t("setupWizard.toasts.applied", { count: changes.length }), "success");
     }
     router.push("/");
   } finally {
@@ -201,10 +205,10 @@ function prev() {
       <!-- Header / progress -->
       <header class="wizard-head">
         <div class="wizard-title">
-          <span class="brand">HUBEX</span> Setup
+          <span class="brand">HUBEX</span> {{ t('setupWizard.title') }}
         </div>
         <div class="wizard-step">
-          Step {{ currentStep }} of {{ totalSteps }}
+          {{ t('setupWizard.stepXofY', { current: currentStep, total: totalSteps }) }}
         </div>
       </header>
       <div class="progress-track">
@@ -213,8 +217,8 @@ function prev() {
 
       <!-- Step 1: Use case -->
       <section v-if="currentStep === 1" class="step">
-        <h1 class="step-title">What will you use HubEx for?</h1>
-        <p class="step-sub">Pick a preset — you can fine-tune every feature in the next step.</p>
+        <h1 class="step-title">{{ t('setupWizard.step1.title') }}</h1>
+        <p class="step-sub">{{ t('setupWizard.step1.subtitle') }}</p>
 
         <div class="use-case-grid">
           <button
@@ -227,18 +231,20 @@ function prev() {
             <svg viewBox="0 0 24 24" class="use-case-icon" fill="none" stroke="currentColor" stroke-width="1.5">
               <path :d="uc.icon" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <div class="use-case-name">{{ uc.label }}</div>
-            <div class="use-case-desc">{{ uc.description }}</div>
+            <div class="use-case-name">{{ useCaseLabel(uc.id) }}</div>
+            <div class="use-case-desc">{{ useCaseDescription(uc.id) }}</div>
           </button>
         </div>
       </section>
 
       <!-- Step 2: Feature fine-tuning -->
       <section v-else-if="currentStep === 2" class="step">
-        <h1 class="step-title">Fine-tune features</h1>
+        <h1 class="step-title">{{ t('setupWizard.step2.title') }}</h1>
         <p class="step-sub">
-          {{ enabledCountInSelection() }} of {{ Object.keys(featureSelection).length }} features enabled.
-          Core features (auth, devices, dashboards, alerts) are always on.
+          {{ t('setupWizard.step2.subtitle', {
+            enabled: enabledCountInSelection(),
+            total: Object.keys(featureSelection).length,
+          }) }}
         </p>
 
         <div v-for="(list, cat) in featuresByCategory" :key="cat" class="feature-group">
@@ -253,7 +259,7 @@ function prev() {
                 <div class="feature-row-name">{{ f.name }}</div>
                 <div class="feature-row-desc">{{ f.description }}</div>
                 <div v-if="f.requires.length" class="feature-row-deps">
-                  requires: {{ f.requires.join(", ") }}
+                  {{ t('setupWizard.step2.requiresPrefix') }} {{ f.requires.join(", ") }}
                 </div>
               </div>
             </div>
@@ -263,52 +269,40 @@ function prev() {
 
       <!-- Step 3: Plugins / Branding placeholder -->
       <section v-else-if="currentStep === 3" class="step">
-        <h1 class="step-title">Plugins & Branding</h1>
-        <p class="step-sub">Optional extras — you can configure these later.</p>
+        <h1 class="step-title">{{ t('setupWizard.step3.title') }}</h1>
+        <p class="step-sub">{{ t('setupWizard.step3.subtitle') }}</p>
 
         <div class="info-card">
-          <h3>Plugins Marketplace</h3>
-          <p>
-            Install container-based services like n8n (workflow automation),
-            Ollama (local AI), Frigate (camera ML) and connectors for Claude,
-            OpenAI, and Slack.
-          </p>
-          <div class="coming-soon">Coming in Sprint 3</div>
+          <h3>{{ t('setupWizard.step3.pluginsTitle') }}</h3>
+          <p>{{ t('setupWizard.step3.pluginsBody') }}</p>
+          <div class="coming-soon">{{ t('setupWizard.step3.pluginsNow') }}</div>
         </div>
 
         <div class="info-card">
-          <h3>Branding</h3>
-          <p>
-            Set your product name, logo, colors and footer content. Available
-            now at <strong>CMS → Settings</strong>.
-          </p>
-          <a href="/cms/settings" class="info-link">Open Site Settings →</a>
+          <h3>{{ t('setupWizard.step3.brandingTitle') }}</h3>
+          <p>{{ t('setupWizard.step3.brandingBody', { path: t('setupWizard.step3.brandingPath') }) }}</p>
+          <a href="/cms/settings" class="info-link">{{ t('setupWizard.step3.brandingOpen') }}</a>
         </div>
       </section>
 
       <!-- Step 4: Admin check -->
       <section v-else-if="currentStep === 4" class="step">
-        <h1 class="step-title">Almost there</h1>
-        <p class="step-sub">You're all set to apply your configuration.</p>
+        <h1 class="step-title">{{ t('setupWizard.step4.title') }}</h1>
+        <p class="step-sub">{{ t('setupWizard.step4.subtitle') }}</p>
 
         <div class="info-card">
-          <h3>Admin Account</h3>
-          <p>
-            You are signed in as
-            <strong>{{ adminEmail }}</strong>.
-          </p>
-          <p class="muted">
-            All changes will be recorded in the Audit Log under your user.
-          </p>
+          <h3>{{ t('setupWizard.step4.adminTitle') }}</h3>
+          <p>{{ t('setupWizard.step4.adminBody', { email: adminEmail }) }}</p>
+          <p class="muted">{{ t('setupWizard.step4.adminMuted') }}</p>
         </div>
 
         <div class="summary-card">
           <div class="summary-row">
-            <span>Use case preset</span>
-            <strong>{{ USE_CASES.find((u) => u.id === selectedUseCase)?.label || "Custom" }}</strong>
+            <span>{{ t('setupWizard.step4.summaryUseCase') }}</span>
+            <strong>{{ selectedUseCase ? useCaseLabel(selectedUseCase) : t('setupWizard.step4.summaryCustom') }}</strong>
           </div>
           <div class="summary-row">
-            <span>Features enabled</span>
+            <span>{{ t('setupWizard.step4.summaryFeatures') }}</span>
             <strong>{{ enabledCountInSelection() }} / {{ Object.keys(featureSelection).length }}</strong>
           </div>
         </div>
@@ -316,27 +310,24 @@ function prev() {
 
       <!-- Step 5: Apply -->
       <section v-else-if="currentStep === 5" class="step">
-        <h1 class="step-title">Ready to launch</h1>
-        <p class="step-sub">
-          Click <strong>Apply and start</strong> to save your configuration and
-          enter HubEx.
-        </p>
+        <h1 class="step-title">{{ t('setupWizard.step5.title') }}</h1>
+        <p class="step-sub">{{ t('setupWizard.step5.subtitle', { action: t('setupWizard.step5.actionRef') }) }}</p>
         <div class="launch-card">
           <div class="launch-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
             </svg>
           </div>
-          <p class="muted">Configuration is ready. No device or data will be deleted.</p>
+          <p class="muted">{{ t('setupWizard.step5.launchMuted') }}</p>
         </div>
       </section>
 
       <!-- Footer actions -->
       <footer class="wizard-foot">
-        <button class="btn-ghost" @click="skipWizard">Skip wizard</button>
+        <button class="btn-ghost" @click="skipWizard">{{ t('setupWizard.footer.skip') }}</button>
         <div class="spacer" />
         <button v-if="currentStep > 1" class="btn-secondary" @click="prev" :disabled="saving">
-          Back
+          {{ t('setupWizard.footer.back') }}
         </button>
         <button
           v-if="currentStep < totalSteps"
@@ -344,7 +335,7 @@ function prev() {
           :disabled="currentStep === 1 && !selectedUseCase"
           @click="next"
         >
-          Next
+          {{ t('setupWizard.footer.next') }}
         </button>
         <button
           v-else
@@ -352,7 +343,7 @@ function prev() {
           :disabled="saving"
           @click="applyAndFinish"
         >
-          {{ saving ? "Applying…" : "Apply and start" }}
+          {{ saving ? t('setupWizard.footer.applying') : t('setupWizard.footer.apply') }}
         </button>
       </footer>
     </div>

@@ -1320,14 +1320,17 @@
 - OTA integration (built binary auto-flashable via M14b OTA) — deferred to M14b sprint
 - Redis-backed job queue — not needed while we're single-backend-container
 
-### Sprint 3.8 — Deferred polish backlog [up-next] 🎯
+### Sprint 3.8 — Deferred polish backlog ✅ PARTIAL (2026-04-11)
 > Stuff that explicitly surfaced during Sprint 3.4-3.7 and got parked
 > because Sprint 4 took priority. User asked for these to not be lost.
-- [ ] **REAL-18/REAL-19 — DeviceDetail giant blank area + Chrome renderer freeze** (P0, scope-heavy, needs devtools perf trace to diagnose the flex/viewport height interaction with the collapsible "Technische Details" panel)
-- [ ] **SetupWizard i18n sweep** — 20+ hardcoded English strings per Sprint 3.4 audit (biggest remaining offender, warrants its own focused pass)
-- [ ] **DEVICE_TYPE_META composable labels** — ESP32 / API Device / MQTT Bridge / Agent labels live in `frontend/src/composables/useDevices.ts` as a static module-level map, need composable-level refactor to become i18n-aware (`computed(() => ...)` or `t()` call at render time)
+- [ ] **REAL-18/REAL-19 — DeviceDetail giant blank area + Chrome renderer freeze** ⏸ STILL DEFERRED. Sprint 3.8 did a static 2947-line read, verified all timers are cleaned up in onUnmounted, WebSocket is properly torn down, hot v-for paths have `v-memo`, variables lists are capped. Could not reproduce statically. Genuine need for live Chrome devtools Performance trace — stays on backlog with full investigation notes in BUG_TRACKER.
+- [x] **SetupWizard i18n sweep** — done. Added full `setupWizard.*` namespace in en+de (~100 keys: header / 5 steps / footer / 6 use-case presets / 3 toast messages). Rewrote `USE_CASES: UseCaseDef[]` to drop module-level `label`+`description`, added `useCaseLabel(id)`/`useCaseDescription(id)` helpers that look up `setupWizard.useCases.<id>.*` via `t()`. All 5 steps + footer + toasts wired. Browser-verified all 5 steps on DE locale with no console errors.
+- [x] **DEVICE_TYPE_META composable labels** — done. Added `devices.types.*` namespace in en+de (esp32, hardware, api_device, service, mqtt_bridge, bridge, software_agent, agent, standard_device, unknown with German translations API-Ger\u00e4t / Dienst / MQTT-Bridge / Software-Agent / Standard-Ger\u00e4t / Unbekannt). Exported new `deviceTypeLabel(type)` helper from useDevices.ts that looks up `devices.types.<key>` via `i18n.global.t(...)` with legacy static-label + raw-string fallbacks. Updated 5 render sites across Devices.vue + DeviceDetail.vue. Browser-verified: "Agent" instead of "Software Agent", "MQTT-Bridge" instead of "MQTT Bridge".
 - [ ] **REAL-10 — Dashboard "Großer Ausfall"** semantic mismatch next to a positive-looking "6 online" number — needs design decision (separate warn banner? redesign KPI card?)
 - [ ] Pre-existing DB alert events still carry old `variable 'X' value N gt M` format — only NEW alerts use the Sprint 3.6 symbol format. One-time backfill script?
+
+**Sprint 3.8 out-of-scope (logged, to be picked up later):**
+- Setup Wizard Step 2 still shows raw English `f.name` + `f.description` from the features store. Sprint 3.6 already built `featureNameI18n`/`featureDescriptionI18n` for the Settings page; not wiring those into SetupWizard here because it would require moving them out of Settings.vue into a shared composable (`useFeatureLabels()`). Parked.
 
 ### Sprint 5+ — TBD
 > Candidates: additional service plugins (Frigate, Ollama, Grafana),
@@ -1804,7 +1807,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │   (parallel track)
                                 ├─► Sprint 1-3 (Feature Flags / Codegen / Plugin Mgr v2)  ✅ DONE
                                 │   └─► Sprint 4 (firmware_builder)                        ✅ DONE
-                                │         └─► Sprint 3.8 (deferred polish)  ◄── NÄCHSTER SCHRITT
+                                │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META)  ✅ DONE (partial)
+                                │               └─► Sprint 5 / 3.8-residual                ◄── NÄCHSTER SCHRITT
                                 │
                                 └─► Phase 10 (Commercial)                  [TODO]
                                       │

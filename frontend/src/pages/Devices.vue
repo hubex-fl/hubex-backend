@@ -5,7 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { mapErrorToUserText, parseApiError } from "../lib/errors";
 import { useCapabilities, hasCap } from "../lib/capabilities";
-import { useDevices, DEVICE_TYPE_META } from "../composables/useDevices";
+import { useDevices, DEVICE_TYPE_META, deviceTypeLabel } from "../composables/useDevices";
 import type { Device, DeviceType } from "../composables/useDevices";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
@@ -180,7 +180,7 @@ const filterOptions = computed(() => {
   const presentTypes = new Set(devices.value.map((d) => d.device_type));
   for (const dt of Object.keys(DEVICE_TYPE_META) as DeviceType[]) {
     if (dt !== "unknown" && presentTypes.has(dt)) {
-      opts.push({ value: `type:${dt}`, label: DEVICE_TYPE_META[dt].label });
+      opts.push({ value: `type:${dt}`, label: deviceTypeLabel(dt) });
     }
   }
   return opts;
@@ -250,7 +250,7 @@ const visibleDevices = computed(() => {
   let list = devices.value.slice();
   if (q) list = list.filter((d) =>
     d.device_uid.toLowerCase().includes(q) ||
-    (DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type).toLowerCase().includes(q),
+    deviceTypeLabel(d.device_type).toLowerCase().includes(q),
   );
 
   switch (filterBy.value) {
@@ -1043,7 +1043,7 @@ onUnmounted(() => {
                     <svg class="h-4 w-4 shrink-0" :style="{ color: DEVICE_TYPE_META[d.device_type as DeviceType]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                       <path :d="DEVICE_TYPE_META[d.device_type as DeviceType]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
                     </svg>
-                    <span class="text-xs text-[var(--text-secondary)]">{{ DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type }}</span>
+                    <span class="text-xs text-[var(--text-secondary)]">{{ deviceTypeLabel(d.device_type) }}</span>
                   </div>
                 </td>
 
@@ -1234,7 +1234,7 @@ onUnmounted(() => {
               <svg class="h-3.5 w-3.5 shrink-0" :style="{ color: DEVICE_TYPE_META[d.device_type as DeviceType]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path :d="DEVICE_TYPE_META[d.device_type as DeviceType]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
               </svg>
-              <span class="text-[10px] text-[var(--text-muted)]">{{ DEVICE_TYPE_META[d.device_type as DeviceType]?.label ?? d.device_type }}</span>
+              <span class="text-[10px] text-[var(--text-muted)]">{{ deviceTypeLabel(d.device_type) }}</span>
             </div>
 
             <!-- Badges -->

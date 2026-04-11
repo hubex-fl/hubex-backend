@@ -18,7 +18,7 @@ import UInput from "../components/ui/UInput.vue";
 import USelect from "../components/ui/USelect.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
-import { DEVICE_TYPE_META } from "../composables/useDevices";
+import { DEVICE_TYPE_META, deviceTypeLabel } from "../composables/useDevices";
 import type { DeviceType } from "../composables/useDevices";
 import { getVariableHistory } from "../lib/variables";
 import type { VizDataPoint } from "../lib/viz-types";
@@ -1861,7 +1861,7 @@ onUnmounted(() => {
                 <svg class="h-3 w-3" :style="{ color: DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.color ?? 'var(--text-muted)' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <path :d="DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.icon ?? DEVICE_TYPE_META.unknown.icon" />
                 </svg>
-                {{ DEVICE_TYPE_META[(deviceInfo.device_type as DeviceType)]?.label ?? deviceInfo.device_type }}
+                {{ deviceTypeLabel(deviceInfo.device_type) }}
               </span>
               <span v-if="deviceInfo.firmware_version" class="ml-2 text-[var(--text-muted)]">&middot; FW {{ deviceInfo.firmware_version }}</span>
             </p>
@@ -1986,7 +1986,7 @@ onUnmounted(() => {
         </div>
         <div>
           <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.typeLabel') }}</p>
-          <p class="text-[var(--text-primary)]">{{ deviceInfo?.device_type || 'unknown' }}</p>
+          <p class="text-[var(--text-primary)]">{{ deviceTypeLabel(deviceInfo?.device_type) }}</p>
         </div>
         <div v-if="deviceInfo?.firmware_version">
           <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">{{ t('devices.firmware') }}</p>
