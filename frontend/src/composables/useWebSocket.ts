@@ -55,9 +55,14 @@ let intentionalClose = false;
 function getWsUrl(): string {
   const token = getToken();
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  // Use the backend port 8000 for WS
-  const host = window.location.hostname;
-  return `${protocol}://${host}:8000/api/v1/ws?token=${token}`;
+  // Sprint 8 dev-stable-v1 hotfix: use SAME-ORIGIN so nginx/Caddy can
+  // forward the WebSocket upgrade. Previously this hardcoded port 8000,
+  // which worked on localhost dev (where backend:8000 is publicly
+  // reachable and CORS-friendly) but broke on production — hubextest.tech
+  // doesn't expose port 8000 through Caddy, so wss://host:8000/... just
+  // hangs. window.location.host keeps the port if non-default (e.g.
+  // :5173 on dev, nothing on production 443), so this URL works in both.
+  return `${protocol}://${window.location.host}/api/v1/ws?token=${token}`;
 }
 
 function connect(): void {

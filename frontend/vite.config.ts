@@ -58,7 +58,12 @@ export default defineConfig(({ mode }) => {
       port: devPort,
       strictPort: true,
       proxy: {
-        "/api": { target: apiTarget, changeOrigin: true },
+        // Sprint 8 dev-stable-v1 hotfix: ws:true so Vite forwards the
+        // WebSocket upgrade handshake to the backend for /api/v1/ws
+        // (user_hub). Without it, same-origin ws://localhost:5173/api/v1/ws
+        // gets downgraded and the dev frontend silently loses all
+        // notifications + MCP UI commands.
+        "/api": { target: apiTarget, changeOrigin: true, ws: true },
         "/health": { target: apiTarget, changeOrigin: true },
         "/ready": { target: apiTarget, changeOrigin: true },
         "/docs": { target: apiTarget, changeOrigin: true },
