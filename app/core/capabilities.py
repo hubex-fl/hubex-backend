@@ -291,6 +291,14 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/firmware/builds/{build_id}/logs"): ["firmware.read"],
     ("GET", "/api/v1/firmware/builds/{build_id}/download"): ["firmware.read"],
     ("POST", "/api/v1/firmware/builds/{build_id}/cancel"): ["firmware.write"],
+    # Sprint 7 — firmware builder \u2192 OTA integration. Promote needs both
+    # firmware.write (writing build state) AND ota.write (creating a
+    # rollout). The device-auth artifact fetch reuses the uncapped
+    # X-Device-Token pattern of /ota/check and is therefore intentionally
+    # absent from this map.
+    ("POST", "/api/v1/firmware/builds/{build_id}/ota"): [
+        "firmware.write", "ota.write",
+    ],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],

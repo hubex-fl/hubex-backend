@@ -49,6 +49,16 @@ class FirmwareBuild(Base):
     # Structured error code on failure (e.g. "PIO_COMPILE_FAILED",
     # "PORTAINER_UNREACHABLE", "BOARD_NOT_SUPPORTED")
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Sprint 7 — link to the OTA rollout created when the user pushes
+    # this build to a device. NULL = never promoted (just a downloadable
+    # artifact). Setting this field creates a FirmwareVersion +
+    # OtaRollout + DeviceOtaStatus in one atomic step via the
+    # `/firmware/builds/{id}/ota` endpoint — see app/api/v1/firmware.py.
+    ota_rollout_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ota_rollouts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True

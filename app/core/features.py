@@ -397,7 +397,7 @@ _gate("plugins", [
     ("POST",   "/api/v1/plugins/{key}/execute"),
 ])
 
-# --- Firmware Builder (Sprint 4) -------------------------------------------
+# --- Firmware Builder (Sprint 4 + Sprint 7 OTA integration) ----------------
 _gate("firmware_builder", [
     ("POST", "/api/v1/firmware/build"),
     ("GET",  "/api/v1/firmware/builds"),
@@ -405,6 +405,9 @@ _gate("firmware_builder", [
     ("GET",  "/api/v1/firmware/builds/{build_id}/logs"),
     ("GET",  "/api/v1/firmware/builds/{build_id}/download"),
     ("POST", "/api/v1/firmware/builds/{build_id}/cancel"),
+    # Sprint 7 \u2014 OTA integration endpoints
+    ("POST", "/api/v1/firmware/builds/{build_id}/ota"),
+    ("GET",  "/api/v1/firmware/builds/{build_id}/ota-artifact"),
 ])
 
 # --- Modules ----------------------------------------------------------------

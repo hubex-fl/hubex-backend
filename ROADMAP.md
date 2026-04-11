@@ -1353,13 +1353,23 @@
 
 **Out of scope (intentionally):** Actually installing + pulling Frigate (2 GB image) / Ollama / Grafana in the test environment. The critical path (catalog entry + i18n helper + UI render) is end-to-end verified; runtime installation will be tested on demand by anyone clicking Install.
 
-### Sprint 7 — Firmware Builder → OTA Integration
+### Sprint 7 — Firmware Builder → OTA Integration ✅ DONE (2026-04-11)
 > Closes the Sprint 4 feature loop: built `.bin` artifacts from the
-> Firmware Builder should be one-click-flashable via the existing M14b
-> OTA system. "Build → Push to device" workflow from FirmwareBuilder.vue.
-- [ ] Backend: `POST /api/v1/firmware/builds/{id}/ota` accepts a device_id, creates an OTA job from the build artifact
-- [ ] Frontend: "Push to device" button next to "Download .bin" in FirmwareBuilder.vue with device selector
-- [ ] OTA progress surfaced in build list (linked OTA job id + status)
+> Firmware Builder are now one-click-flashable via the existing OTA
+> rollout system (models/endpoints from M14b). "Build → Push to device"
+> workflow from FirmwareBuilder.vue.
+- [x] **Alembic migration `h3c7a4d9e1b2`** — adds `firmware_builds.ota_rollout_id` FK to `ota_rollouts.id` (nullable, indexed). DB was in create_all mode so stamped to h2a1b2c3d4e5 first, then upgrade applied cleanly.
+- [x] **Backend `POST /api/v1/firmware/builds/{id}/ota`** — user-auth'd, takes `{device_id, release_notes?}`, creates `FirmwareVersion` + `OtaRollout(strategy=immediate, status=active)` + `DeviceOtaStatus(pending)` atomically in one transaction, sets `firmware_builds.ota_rollout_id`, emits `firmware.build_promoted_to_ota` system event, returns rollout/firmware/status ids. Caps: `firmware.write` + `ota.write`. Gated by `firmware_builder` feature flag.
+- [x] **Backend `GET /api/v1/firmware/builds/{id}/ota-artifact`** — device-auth'd (X-Device-Token pattern, same as `/ota/check`), returns the build `.bin` bytes with a content-disposition header. **Security check:** verifies the device has a pending/downloading `DeviceOtaStatus` pointing at a rollout whose `target_filter.build_id` matches this build — so no random device token can fetch any build by id.
+- [x] **Backend `list_builds` + `get_build`** — updated to left-join `OtaRollout` so every build row reports the current rollout status (`pending`/`active`/`paused`/`completed`/`failed`) without an extra round-trip.
+- [x] **Frontend `FirmwareBuilder.vue`:** new `FirmwareBuild.ota_rollout_id` / `ota_status` fields in the TS interface. "An Gerät senden" / "Push to device" button on success builds (disabled + relabeled to "An Gerät gesendet" / "Pushed to device" after promote). Device-selector modal (teleported `UModal` — sprint-5 lint rule vindicated) filtered to ESP32/hardware device types with online status. OTA rollout badge (`📡 OTA aktiv` etc.) rendered next to the build status badge. Full inline state-update on promote — no extra fetch needed.
+- [x] **i18n en+de** — 16 new `firmware.*` keys (pushToDevice, otaPushed, otaPushedToast, otaModalTitle/Body, otaSelectDeviceLabel, otaNoDevices, otaHint, otaConfirm, otaStatus{Pending,Active,Paused,Completed,Failed}, otaAlreadyPushed).
+- [x] **Browser-verified end-to-end** on `/firmware`: clicked "An Gerät senden" on Build #3, modal opened with ESP32 Sensor (Sim) preselected, clicked "Firmware senden", toast appeared, build row immediately showed `📡 OTA aktiv` badge + "An Gerät gesendet" disabled button. **DB verify**: `firmware_versions[1]` (version 0.3.0, sha256 = 8d9d11a5…), `ota_rollouts[1]` (strategy=immediate, status=active, target_filter={device_id:1, build_id:3}), `device_ota_status[1]` (status=pending), `firmware_builds[3].ota_rollout_id=1` — all 4 rows created atomically. Zero console errors.
+
+**Remaining for future sprint (out of current scope, but the path is now clear):**
+- The device firmware itself needs to implement `/ota/check` polling → fetch from `binary_url` → flash → `/ota/status/{rollout_id}/ack` — that's a firmware-side implementation task, not backend
+- Multi-device rollouts from the builder (currently 1-device per promote — keep it simple)
+- Rollback / staged / canary strategies (hardcoded to `immediate`)
 
 ### Sprint 7.5 — Bundle Splitting
 > Perf-hygiene wrapper before the Dev Stable Review. Vite warns every
@@ -1902,8 +1912,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META + REAL-18/19)  ✅ DONE
                                 │               └─► Sprint 5 (useFeatureLabels, REAL-10, backfill, lint)  ✅ DONE
                                 │                     └─► Sprint 6 (Frigate/Ollama/Grafana plugins)  ✅ DONE
-                                │                           └─► Sprint 7 (Firmware Builder OTA)  ◄── NÄCHSTER SCHRITT
-                                │                                 └─► Sprint 7.5 (Bundle splitting)
+                                │                           └─► Sprint 7 (Firmware Builder OTA)  ✅ DONE
+                                │                                 └─► Sprint 7.5 (Bundle splitting)  ◄── NÄCHSTER SCHRITT
                                 │                                       └─► 🎯 Sprint 8 (DEV STABLE REVIEW)
                                 │                                             └─► Sprint 8.5 (dev-stable-v1 tag + maturity badges)
                                 │                                                   └─► Sprint 9 (Phase 10 C1 License System)

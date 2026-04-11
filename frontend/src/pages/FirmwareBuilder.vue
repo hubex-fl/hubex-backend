@@ -17,6 +17,7 @@ import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
+import UModal from "../components/ui/UModal.vue";
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -45,6 +46,18 @@ interface FirmwareBuild {
   started_at: string | null;
   finished_at: string | null;
   has_logs: boolean;
+  // Sprint 7 — OTA linkage
+  ota_rollout_id: number | null;
+  ota_status: "pending" | "active" | "paused" | "completed" | "failed" | null;
+}
+
+// Sprint 7 — minimal device shape for the device selector modal
+interface DeviceLite {
+  id: number;
+  device_uid: string;
+  name: string | null;
+  device_type: string;
+  online: boolean;
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -62,6 +75,14 @@ const tailedBuildId = ref<number | null>(null);
 const tailLogs = ref<string>("");
 const tailLoading = ref(false);
 let pollHandle: number | null = null;
+
+// Sprint 7 — OTA push modal state
+const otaBuildTarget = ref<FirmwareBuild | null>(null);
+const otaDevices = ref<DeviceLite[]>([]);
+const otaSelectedDeviceId = ref<number | null>(null);
+const otaPushing = ref(false);
+const otaDevicesLoading = ref(false);
+const otaError = ref<string | null>(null);
 
 // ── Loaders ────────────────────────────────────────────────────────────────
 
@@ -150,6 +171,64 @@ function downloadBin(build: FirmwareBuild): void {
       URL.revokeObjectURL(url);
     })
     .catch((e) => toast.addToast(e.message || "Download failed", "error"));
+}
+
+// ── Sprint 7 — OTA push flow ──────────────────────────────────────────────
+
+async function openOtaModal(build: FirmwareBuild): Promise<void> {
+  otaBuildTarget.value = build;
+  otaSelectedDeviceId.value = build.device_id;
+  otaError.value = null;
+  otaDevicesLoading.value = true;
+  try {
+    const all = await apiFetch<DeviceLite[]>("/api/v1/devices");
+    // Only show claimed + hardware-category devices — service/bridge/agent
+    // don't accept firmware bin flashes.
+    otaDevices.value = all.filter((d) => d.device_type === "esp32" || d.device_type === "hardware");
+    if (otaSelectedDeviceId.value === null && otaDevices.value.length > 0) {
+      otaSelectedDeviceId.value = otaDevices.value[0].id;
+    }
+  } catch (e) {
+    otaError.value = e instanceof Error ? e.message : "Failed to load devices";
+  } finally {
+    otaDevicesLoading.value = false;
+  }
+}
+
+function closeOtaModal(): void {
+  otaBuildTarget.value = null;
+  otaSelectedDeviceId.value = null;
+  otaError.value = null;
+}
+
+async function confirmOtaPush(): Promise<void> {
+  if (!otaBuildTarget.value || !otaSelectedDeviceId.value) return;
+  otaPushing.value = true;
+  otaError.value = null;
+  try {
+    const res = await apiFetch<{ rollout_id: number; firmware_id: number; build: FirmwareBuild }>(
+      `/api/v1/firmware/builds/${otaBuildTarget.value.id}/ota`,
+      {
+        method: "POST",
+        body: JSON.stringify({ device_id: otaSelectedDeviceId.value }),
+      },
+    );
+    // Update the build row inline so the status badge appears without
+    // waiting for the next poll tick.
+    const idx = builds.value.findIndex((b) => b.id === res.build.id);
+    if (idx >= 0) builds.value[idx] = res.build;
+    toast.addToast(
+      t("firmware.otaPushedToast", { rollout: res.rollout_id }),
+      "success",
+    );
+    closeOtaModal();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "OTA push failed";
+    otaError.value = msg;
+    toast.addToast(msg, "error");
+  } finally {
+    otaPushing.value = false;
+  }
 }
 
 function toggleTail(build: FirmwareBuild): void {
@@ -244,6 +323,28 @@ function statusBadge(status: FirmwareBuild["status"]): {
       return { variant: "bad", label: t("firmware.statusFailed") };
     case "cancelled":
       return { variant: "neutral", label: t("firmware.statusCancelled") };
+  }
+}
+
+// Sprint 7 — OTA rollout status badge (distinct from build status)
+function otaBadge(status: FirmwareBuild["ota_status"]): {
+  variant: "info" | "warn" | "ok" | "bad" | "neutral";
+  label: string;
+} | null {
+  if (!status) return null;
+  switch (status) {
+    case "pending":
+      return { variant: "info", label: t("firmware.otaStatusPending") };
+    case "active":
+      return { variant: "warn", label: t("firmware.otaStatusActive") };
+    case "paused":
+      return { variant: "neutral", label: t("firmware.otaStatusPaused") };
+    case "completed":
+      return { variant: "ok", label: t("firmware.otaStatusCompleted") };
+    case "failed":
+      return { variant: "bad", label: t("firmware.otaStatusFailed") };
+    default:
+      return null;
   }
 }
 
@@ -361,6 +462,14 @@ function fmtRelative(iso: string): string {
                 <UBadge :status="statusBadge(build.status).variant" size="sm">
                   {{ statusBadge(build.status).label }}
                 </UBadge>
+                <!-- Sprint 7 — OTA rollout status badge -->
+                <UBadge
+                  v-if="otaBadge(build.ota_status)"
+                  :status="otaBadge(build.ota_status)!.variant"
+                  size="sm"
+                >
+                  📡 {{ otaBadge(build.ota_status)!.label }}
+                </UBadge>
                 <span class="text-xs text-[var(--text-muted)]">
                   {{ boardNameFor(build.board_profile_id) }}
                 </span>
@@ -401,6 +510,17 @@ function fmtRelative(iso: string): string {
               >
                 {{ t("firmware.download") }}
               </UButton>
+              <!-- Sprint 7 — Push to device (disabled if already promoted) -->
+              <UButton
+                v-if="build.status === 'success'"
+                size="sm"
+                variant="primary"
+                :disabled="build.ota_rollout_id !== null"
+                :title="build.ota_rollout_id !== null ? t('firmware.otaAlreadyPushed') : ''"
+                @click="openOtaModal(build)"
+              >
+                {{ build.ota_rollout_id !== null ? t('firmware.otaPushed') : t('firmware.pushToDevice') }}
+              </UButton>
               <UButton
                 v-if="build.status === 'queued' || build.status === 'building'"
                 size="sm"
@@ -419,5 +539,65 @@ function fmtRelative(iso: string): string {
         </div>
       </div>
     </UCard>
+
+    <!-- Sprint 7 — OTA Push modal -->
+    <UModal
+      :open="otaBuildTarget !== null"
+      :title="t('firmware.otaModalTitle', { id: otaBuildTarget?.id ?? 0 })"
+      size="sm"
+      @close="closeOtaModal"
+    >
+      <div class="space-y-3 p-1">
+        <p class="text-xs text-[var(--text-muted)]">
+          {{ t('firmware.otaModalBody') }}
+        </p>
+
+        <!-- Device selector -->
+        <div v-if="otaDevicesLoading" class="py-4">
+          <USkeleton height="2rem" width="100%" />
+        </div>
+        <div v-else-if="otaDevices.length === 0" class="py-4 text-xs text-[var(--text-muted)]">
+          {{ t('firmware.otaNoDevices') }}
+        </div>
+        <div v-else class="space-y-2">
+          <label class="text-[11px] font-medium text-[var(--text-muted)]">
+            {{ t('firmware.otaSelectDeviceLabel') }}
+          </label>
+          <select
+            v-model.number="otaSelectedDeviceId"
+            class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]"
+          >
+            <option
+              v-for="d in otaDevices"
+              :key="d.id"
+              :value="d.id"
+            >
+              {{ d.name || d.device_uid }} · {{ d.device_type }}
+              {{ d.online ? '· online' : '· offline' }}
+            </option>
+          </select>
+          <p class="text-[11px] text-[var(--text-muted)] leading-relaxed">
+            {{ t('firmware.otaHint') }}
+          </p>
+        </div>
+
+        <div v-if="otaError" class="text-xs text-[var(--status-bad)]">
+          {{ otaError }}
+        </div>
+      </div>
+      <template #footer>
+        <UButton variant="ghost" @click="closeOtaModal">
+          {{ t('common.cancel') }}
+        </UButton>
+        <UButton
+          variant="primary"
+          :loading="otaPushing"
+          :disabled="otaSelectedDeviceId === null || otaDevices.length === 0"
+          @click="confirmOtaPush"
+        >
+          {{ t('firmware.otaConfirm') }}
+        </UButton>
+      </template>
+    </UModal>
   </div>
 </template>
