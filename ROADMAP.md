@@ -1300,20 +1300,39 @@
 - [ ] MCP communication speed profiling → polling interval, db query-per-call
 - [ ] Post-login onboarding: "you have 0 devices, let's add one" flow
 
-### Sprint 4 — Firmware Builder [up-next] 🎯
-> Follows same pattern as Sprint 3: feature-flag-gated Docker sidecar via
-> existing `portainer_client`. Enables server-side firmware compilation
-> from HardwareWizard/DeviceDetail without requiring PlatformIO on the user's machine.
-- [ ] New feature `firmware_builder` (category=hardware, default=False, requires=`orchestrator`)
-- [ ] `app/core/firmware_builder.py` wraps PlatformIO docker image via `portainer_client` (create→start→wait→read artifact→remove)
-- [ ] `POST /api/v1/firmware/build` takes device_id → generates code (Sprint 2 codegen) → compiles in sidecar → returns .bin
-- [ ] Job queue (Redis Streams or in-process) for long builds (>30s)
-- [ ] Frontend "Build & Download Firmware" button on HardwareWizard, with live log tail
-- [ ] OTA integration: built binary can be pushed directly to device via M14b OTA system
+### Sprint 4 — Firmware Builder ✅ DONE (2026-04-10)
+> Same pattern as Sprint 3: feature-flag-gated Docker sidecar via the
+> existing `portainer_client`. Server-side firmware compilation from the
+> new `/firmware` page, no PlatformIO on the user's machine.
+- [x] New feature `firmware_builder` (category=hardware, default=False, requires=`orchestrator`+`hardware`)
+- [x] `app/core/firmware_builder.py` — tar-based container I/O (no shared volume), `python:3.11-slim` + `pip install platformio && pio run`
+- [x] `app/db/models/firmware_build.py` — `FirmwareBuild` model (logs, artifact bytes, status, error_code)
+- [x] `app/api/v1/firmware.py` — 6 endpoints: POST /build, GET /builds, GET /builds/{id}, /logs (text), /download (octet-stream), POST /cancel
+- [x] Caps: `firmware.read` (viewer+), `firmware.write` (operator+); route feature gating for all 6
+- [x] In-process `asyncio.Task` job runner (no external queue, fire-and-forget)
+- [x] `frontend/src/pages/FirmwareBuilder.vue` — board selector, build list with status badges, live log tail via 3s polling, .bin download via fetch+blob
+- [x] `/firmware` route wired with `feature: "firmware_builder"` gate + full en/de i18n (~25 keys + nav.firmwareBuilder)
+- [x] **Portainer 2.39 CSRF fix (side-quest):** discovered that non-GET requests need `Referer` + `X-Csrf-Token` header + `_gorilla_csrf` cookie. Added `_ensure_csrf()` prime on first GET, wired through all mutating endpoints. **Also unblocked the latent Sprint 3 Step 16 fresh-spawn path.**
+- [x] Browser verified end-to-end: build #3 produced valid 263 KB ESP32 .bin (magic byte 0xe9), duration 2m 17s, UI shows badges + logs + download button. First-build LED_BUILTIN failure fixed by hardcoding pin 2 in main.cpp template.
+
+**Carried out of scope (explicit user ask: "zeitnah fertigstellen, damit die nicht verloren gehen"):**
+- Live log tail via WebSocket (currently 3s polling — good enough for MVP)
+- OTA integration (built binary auto-flashable via M14b OTA) — deferred to M14b sprint
+- Redis-backed job queue — not needed while we're single-backend-container
+
+### Sprint 3.8 — Deferred polish backlog [up-next] 🎯
+> Stuff that explicitly surfaced during Sprint 3.4-3.7 and got parked
+> because Sprint 4 took priority. User asked for these to not be lost.
+- [ ] **REAL-18/REAL-19 — DeviceDetail giant blank area + Chrome renderer freeze** (P0, scope-heavy, needs devtools perf trace to diagnose the flex/viewport height interaction with the collapsible "Technische Details" panel)
+- [ ] **SetupWizard i18n sweep** — 20+ hardcoded English strings per Sprint 3.4 audit (biggest remaining offender, warrants its own focused pass)
+- [ ] **DEVICE_TYPE_META composable labels** — ESP32 / API Device / MQTT Bridge / Agent labels live in `frontend/src/composables/useDevices.ts` as a static module-level map, need composable-level refactor to become i18n-aware (`computed(() => ...)` or `t()` call at render time)
+- [ ] **REAL-10 — Dashboard "Großer Ausfall"** semantic mismatch next to a positive-looking "6 online" number — needs design decision (separate warn banner? redesign KPI card?)
+- [ ] Pre-existing DB alert events still carry old `variable 'X' value N gt M` format — only NEW alerts use the Sprint 3.6 symbol format. One-time backfill script?
 
 ### Sprint 5+ — TBD
 > Candidates: additional service plugins (Frigate, Ollama, Grafana),
-> license system (C1), HA/MQTT deep integration (M21 Steps 4-5).
+> license system (C1), HA/MQTT deep integration (M21 Steps 4-5),
+> OTA integration (Firmware Builder ⇢ M14b).
 
 ---
 
@@ -1784,7 +1803,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │
                                 │   (parallel track)
                                 ├─► Sprint 1-3 (Feature Flags / Codegen / Plugin Mgr v2)  ✅ DONE
-                                │   └─► Sprint 4 (firmware_builder)        ◄── NÄCHSTER SCHRITT
+                                │   └─► Sprint 4 (firmware_builder)                        ✅ DONE
+                                │         └─► Sprint 3.8 (deferred polish)  ◄── NÄCHSTER SCHRITT
                                 │
                                 └─► Phase 10 (Commercial)                  [TODO]
                                       │

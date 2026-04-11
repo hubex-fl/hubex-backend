@@ -63,6 +63,14 @@ class PortainerClient:
         self._verify_tls = verify_tls
         self._token: str | None = None
         self._token_expires_at: float = 0.0
+        # Sprint 4 — portainer 2.39+ uses gorilla CSRF tokens on non-GET
+        # requests. After the first GET the server sends back both a
+        # `_gorilla_csrf` cookie and an `X-Csrf-Token` header; subsequent
+        # POST/PUT/DELETE requests must echo both. We cache them here so
+        # multiple calls reuse the same anti-forgery pair without a
+        # round-trip. The tuple is invalidated whenever the JWT expires.
+        self._csrf_token: str | None = None
+        self._csrf_cookie: str | None = None
 
     # ------------------------------------------------------------------
     # Auth & endpoint discovery
@@ -100,6 +108,9 @@ class PortainerClient:
             )
         self._token = token
         self._token_expires_at = time.time() + _TOKEN_TTL_SECONDS
+        # Fresh login invalidates any cached anti-forgery pair
+        self._csrf_token = None
+        self._csrf_cookie = None
         logger.info("portainer: authenticated, token cached for %ds", _TOKEN_TTL_SECONDS)
         return token
 
@@ -135,6 +146,42 @@ class PortainerClient:
         logger.info("portainer: discovered endpoint id=%d", self._endpoint_id)
         return self._endpoint_id
 
+    async def _ensure_csrf(self, client: httpx.AsyncClient, token: str) -> None:
+        """Prime the anti-forgery token/cookie pair used by portainer 2.39+.
+
+        Issues a cheap GET (``/api/endpoints``) that portainer replies to
+        with a ``_gorilla_csrf`` cookie and an ``X-Csrf-Token`` response
+        header. We stash both on the instance so subsequent POST/PUT/DELETE
+        calls can echo them; without them portainer returns 403 CSRF.
+        Skipped if we already have a cached token (login invalidates it).
+        """
+        if self._csrf_token is not None and self._csrf_cookie is not None:
+            return
+        try:
+            resp = await client.get(
+                f"{self._base_url}/api/endpoints",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=_DEFAULT_TIMEOUT,
+            )
+        except httpx.RequestError as exc:
+            raise PortainerError(
+                "PORTAINER_UNREACHABLE",
+                f"CSRF prime request failed: {exc}",
+            ) from exc
+        if resp.status_code != 200:
+            raise PortainerError(
+                "PORTAINER_CSRF_PRIME_FAILED",
+                f"CSRF prime returned {resp.status_code}: {resp.text[:200]}",
+                status=resp.status_code,
+            )
+        self._csrf_token = resp.headers.get("X-Csrf-Token") or ""
+        # httpx.AsyncClient keeps cookies per-client; we extract the raw
+        # _gorilla_csrf value and cache it for future ephemeral clients.
+        for c in client.cookies.jar:
+            if c.name == "_gorilla_csrf":
+                self._csrf_cookie = c.value
+                break
+
     async def _request(
         self,
         method: str,
@@ -145,7 +192,24 @@ class PortainerClient:
     ) -> httpx.Response:
         async with httpx.AsyncClient(verify=self._verify_tls) as client:
             token = await self._login(client)
-            headers = {"Authorization": f"Bearer {token}"}
+            await self._ensure_csrf(client, token)
+            # Sprint 4 bugfix: Portainer 2.39+ has a three-part anti-CSRF
+            # check on non-GET requests via bearer auth:
+            #   1. Referer header must be present
+            #   2. X-Csrf-Token header must carry the token the server
+            #      issued on a prior GET
+            #   3. The _gorilla_csrf cookie must be echoed back
+            # Without all three, POST/PUT/DELETE return 403 even with a
+            # valid JWT. This was also the root cause of the Sprint 3
+            # fresh-spawn path being silently broken (we only ever adopted
+            # pre-existing containers, never actually created one).
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Referer": self._base_url + "/",
+                "X-Csrf-Token": self._csrf_token or "",
+            }
+            if self._csrf_cookie:
+                headers["Cookie"] = f"_gorilla_csrf={self._csrf_cookie}"
             endpoint_id = await self._get_endpoint_id(client, headers)
             url = f"{self._base_url}/api/endpoints/{endpoint_id}{path}"
             try:
@@ -281,6 +345,150 @@ class PortainerClient:
 
     async def container_exists(self, name: str) -> bool:
         return (await self.get_container_status(name)) is not None
+
+    # ------------------------------------------------------------------
+    # Sprint 4 additions — exec, archive read, and a wait-for-exit helper
+    # so the firmware_builder sidecar pattern can: start container →
+    # exec `pio run` → wait → fetch artifact as tar → remove.
+    # ------------------------------------------------------------------
+
+    async def container_logs(self, name: str, *, tail: int = 200) -> str:
+        """Fetch stdout+stderr logs from a container. Returns the last
+        ``tail`` lines as a single string. Docker's logs endpoint returns
+        a multiplexed framed stream when TTY is false — we strip the 8-byte
+        frame headers to get clean text.
+        """
+        resp = await self._request(
+            "GET",
+            f"/docker/containers/{name}/logs",
+            params={"stdout": "true", "stderr": "true", "tail": str(tail), "timestamps": "false"},
+        )
+        if resp.status_code not in (200, 101):
+            raise PortainerError(
+                "PORTAINER_LOGS_FAILED",
+                f"Failed to get logs for '{name}': {resp.text[:200]}",
+                status=resp.status_code,
+            )
+        raw = resp.content
+        # Strip docker multiplex frame headers (8 bytes per frame).
+        # Frame layout: [stream_type:1, 0, 0, 0, size:4 big-endian]
+        out: list[bytes] = []
+        i = 0
+        while i < len(raw):
+            if len(raw) - i < 8:
+                out.append(raw[i:])
+                break
+            # Heuristic: valid frame headers start with 0x00/0x01/0x02
+            stream_type = raw[i]
+            if stream_type not in (0, 1, 2):
+                out.append(raw[i:])
+                break
+            size = int.from_bytes(raw[i + 4 : i + 8], "big")
+            payload_start = i + 8
+            payload_end = payload_start + size
+            if payload_end > len(raw):
+                out.append(raw[payload_start:])
+                break
+            out.append(raw[payload_start:payload_end])
+            i = payload_end
+        try:
+            return b"".join(out).decode("utf-8", errors="replace")
+        except Exception:
+            return raw.decode("utf-8", errors="replace")
+
+    async def put_container_archive(self, name: str, path: str, tar_bytes: bytes) -> None:
+        """Upload a tar archive into a container, unpacking it at ``path``.
+
+        The tar MUST use forward-slash paths relative to ``path``. Used by
+        the firmware_builder to inject the generated PlatformIO project
+        into an ephemeral build container.
+        """
+        async with httpx.AsyncClient(verify=self._verify_tls) as client:
+            token = await self._login(client)
+            await self._ensure_csrf(client, token)
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/x-tar",
+                # Sprint 4 — referer + csrf token + gorilla cookie all needed
+                "Referer": self._base_url + "/",
+                "X-Csrf-Token": self._csrf_token or "",
+            }
+            if self._csrf_cookie:
+                headers["Cookie"] = f"_gorilla_csrf={self._csrf_cookie}"
+            endpoint_id = await self._get_endpoint_id(client, headers)
+            url = (
+                f"{self._base_url}/api/endpoints/{endpoint_id}"
+                f"/docker/containers/{name}/archive"
+            )
+            try:
+                resp = await client.put(
+                    url,
+                    params={"path": path, "noOverwriteDirNonDir": "false"},
+                    headers=headers,
+                    content=tar_bytes,
+                    timeout=_DEFAULT_TIMEOUT * 4,  # uploads can be slower
+                )
+            except httpx.RequestError as exc:
+                raise PortainerError(
+                    "PORTAINER_UNREACHABLE",
+                    f"Upload to '{name}' failed: {exc}",
+                ) from exc
+        if resp.status_code not in (200, 204):
+            raise PortainerError(
+                "PORTAINER_UPLOAD_FAILED",
+                f"Failed to upload tar to '{name}:{path}': {resp.text[:200]}",
+                status=resp.status_code,
+            )
+
+    async def get_container_archive(self, name: str, path: str) -> bytes:
+        """Return the tar-stream of a file or directory inside a container.
+
+        The caller is responsible for unpacking (single-file tars are easy
+        with the stdlib ``tarfile`` module). Useful for retrieving build
+        artifacts without mounting shared volumes.
+        """
+        resp = await self._request(
+            "GET",
+            f"/docker/containers/{name}/archive",
+            params={"path": path},
+        )
+        if resp.status_code != 200:
+            raise PortainerError(
+                "PORTAINER_ARCHIVE_FAILED",
+                f"Failed to archive '{path}' from '{name}': {resp.text[:200]}",
+                status=resp.status_code,
+            )
+        return resp.content
+
+    async def wait_for_container_exit(
+        self,
+        name: str,
+        *,
+        timeout_seconds: int = 300,
+        poll_interval: float = 2.0,
+    ) -> dict[str, Any]:
+        """Poll ``get_container_status`` until the container exits or the
+        timeout expires. Returns the final status dict. Raises
+        :class:`PortainerError` on timeout.
+        """
+        import asyncio as _asyncio
+        deadline = _asyncio.get_event_loop().time() + timeout_seconds
+        while True:
+            status = await self.get_container_status(name)
+            if status is None:
+                # Container vanished — treat as error
+                raise PortainerError(
+                    "PORTAINER_CONTAINER_GONE",
+                    f"Container '{name}' disappeared while waiting for exit",
+                )
+            if not status["running"]:
+                return status
+            if _asyncio.get_event_loop().time() >= deadline:
+                raise PortainerError(
+                    "PORTAINER_WAIT_TIMEOUT",
+                    f"Container '{name}' still running after {timeout_seconds}s",
+                )
+            await _asyncio.sleep(poll_interval)
 
 
 # Module-level lazy singleton — reused across requests so the JWT cache works.

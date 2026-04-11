@@ -298,6 +298,41 @@ existing keys around.
 
 ---
 
+## ✅ Fixed in Sprint 4 (firmware_builder)
+
+Sprint 4 was a feature sprint rather than a bug sprint, but two latent
+bugs surfaced during the Portainer integration work and got fixed as
+unavoidable side-quests. Capturing them here so they don't vanish into
+commit history.
+
+### ✅ P0 — Portainer 2.39 non-GET requests rejected with 403 "Referer not supplied" → then 403 "CSRF token not found" — FIXED 4
+- **Symptom:** All `POST/PUT/DELETE /api/docker/...` calls from `portainer_client` (create container, start, remove, put_archive) returned 403. First it was `"referer not supplied"`, after adding the Referer header it flipped to `"CSRF token not found in request"`.
+- **Root cause:** Portainer 2.39 enables full gorilla CSRF protection on its Docker proxy. It requires (1) a `Referer` header matching the configured public URL, (2) an `X-Csrf-Token` header that matches (3) a `_gorilla_csrf=...` cookie, where the token is handed out via `X-Csrf-Token` response header on the FIRST GET. Our client had `Authorization: Bearer` only.
+- **Fix:** Added `_ensure_csrf(client, token)` which does one priming GET against `/api/endpoints` on the first call per process, caches `X-Csrf-Token` response header + `_gorilla_csrf` cookie value, and then every non-GET request sends all four headers (`Authorization`, `Referer`, `X-Csrf-Token`, `Cookie: _gorilla_csrf=...`).
+- **File:** `app/core/portainer_client.py`
+- **Status:** ✅ Sprint 4
+
+### ✅ P0 — Sprint 3 Step 16 "Fresh-spawn path ungefahren" — implicitly FIXED by the CSRF fix — FIXED 4
+- **Context:** Sprint 3 had a latent non-adopt (fresh-spawn) plugin install path that was known-untested because nobody had triggered it in the browser. It would have hit the same non-GET Portainer endpoints.
+- **Why it's fixed now:** The CSRF header discipline is transport-layer, so the same `portainer_client` instance that Sprint 4 firmware builds use is also the one fresh-spawn plugin installs use. Next service-catalog entry (Frigate/Ollama) will exercise this naturally.
+- **Status:** ✅ Sprint 4 (inherited fix, no code change in plugin_manager itself)
+
+### ✅ P2 — First firmware build failed: `'LED_BUILTIN' was not declared` — FIXED 4
+- **Symptom:** Build #1 compiled cleanly until the Arduino `setup()` / `loop()` blink-skeleton referenced `LED_BUILTIN`, which the generic `esp32dev` PlatformIO environment does not define.
+- **Fix:** Changed `_MAIN_CPP_TEMPLATE` in `firmware_builder.py` to define `#define HUBEX_LED_PIN 2` (ESP32 DevKit v1 onboard LED) and use that instead of `LED_BUILTIN`. Comment notes to revisit for RP2040 Pico (LED is GPIO 25 there).
+- **File:** `app/core/firmware_builder.py`
+- **Status:** ✅ Sprint 4 — verified with build #3 (263 KB .bin, magic byte 0xe9)
+
+### Still open after Sprint 4 (Sprint 3.8 deferred backlog — user explicitly asked these not be lost)
+
+- 🔴 **REAL-18/REAL-19 DeviceDetail giant blank area + Chrome renderer freeze** — still needs a proper devtools perf trace. Suspected flex/viewport height calc interacting with the collapsible "Technische Details" panel. Chrome `Page.captureScreenshot` previously froze for >30s on this page. P0 but scope-heavy enough that it blocked a Sprint 3.5 fix.
+- 🟠 **SetupWizard — 20+ hardcoded English strings** per the Sprint 3.4 audit. Still the single biggest remaining i18n offender. Needs its own sprint.
+- 🟠 **Devices `DEVICE_TYPE_META` composable labels** (`frontend/src/composables/useDevices.ts`) — ESP32 / API Device / MQTT Bridge / Agent labels live in a static module-level map. Sprint 3.7 intentionally did not touch these because they need a composable-level refactor to become reactive (`computed(() => ...)` or `t()` at render time).
+- 🟡 **REAL-10 Dashboard "Großer Ausfall"** semantic mismatch — design decision pending.
+- 🟡 **Legacy alert format backfill** — pre-existing DB `AlertEvent` rows still contain the old `variable 'X' value N gt M` format; Sprint 3.6 symbol format only applies to new alerts. One-time backfill script?
+
+---
+
 ## ✅ Verified still working in Sprint 3.5 real-browser pass
 
 - ✅ Sprint 3.1 configure modal: rich intro, "API-Key holen ↗" link, provider hint, visible help text, lock icon privacy line, "Speichern & schließen" button

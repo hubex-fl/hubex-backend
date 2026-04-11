@@ -85,6 +85,9 @@ CAPABILITY_REGISTRY: set[str] = {
     # Sprint 3 — plugin-specific caps (previously re-used modules.*)
     "plugins.read",
     "plugins.write",
+    # Sprint 4 — server-side firmware builds
+    "firmware.read",
+    "firmware.write",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -281,6 +284,13 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/plugins/{plugin_key}/start"): ["plugins.write"],
     ("POST", "/api/v1/plugins/{plugin_key}/stop"): ["plugins.write"],
     ("GET", "/api/v1/plugins/{plugin_key}/status"): ["plugins.read"],
+    # Sprint 4 — firmware builder endpoints
+    ("POST", "/api/v1/firmware/build"): ["firmware.write"],
+    ("GET", "/api/v1/firmware/builds"): ["firmware.read"],
+    ("GET", "/api/v1/firmware/builds/{build_id}"): ["firmware.read"],
+    ("GET", "/api/v1/firmware/builds/{build_id}/logs"): ["firmware.read"],
+    ("GET", "/api/v1/firmware/builds/{build_id}/download"): ["firmware.read"],
+    ("POST", "/api/v1/firmware/builds/{build_id}/cancel"): ["firmware.write"],
     ("POST", "/api/v1/orgs"): ["org.write"],
     ("GET", "/api/v1/orgs"): ["org.read"],
     ("GET", "/api/v1/orgs/{org_id}"): ["org.read"],
@@ -544,6 +554,7 @@ _VIEWER_CAPS: list[str] = [
     "cms.read",
     "media.read",
     "plugins.read",
+    "firmware.read",
 ]
 
 # Read + write capabilities (operator role)
@@ -558,6 +569,7 @@ _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "ota.write", "mcp.execute", "notifications.write",
     "modules.read", "modules.write",
     "plugins.write",  # plugins.read is inherited from _VIEWER_CAPS
+    "firmware.write", # firmware.read is inherited from _VIEWER_CAPS
     "apikeys.read", "apikeys.write",
     "core.auth.login", "core.auth.register",
     "cms.write",

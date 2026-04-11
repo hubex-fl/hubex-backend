@@ -39,6 +39,7 @@ from .email_template import EmailTemplate
 from .custom_endpoint import CustomEndpoint
 from .report import ReportTemplate, GeneratedReport
 from .plugin import Plugin
+from .firmware_build import FirmwareBuild
 from .hardware import BoardProfile, ShieldProfile, PinConfiguration
 from .component import HardwareComponent
 from .device_profile import DeviceProfile
@@ -114,6 +115,7 @@ __all__ = [
     "ReportTemplate",
     "GeneratedReport",
     "Plugin",
+    "FirmwareBuild",
     "BoardProfile",
     "ShieldProfile",
     "PinConfiguration",

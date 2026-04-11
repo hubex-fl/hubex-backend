@@ -42,6 +42,7 @@ from .custom_endpoints import router as custom_endpoints_router
 from .observability import router as observability_router
 from .reports import router as reports_router
 from .plugins import router as plugins_router
+from .firmware import router as firmware_router
 from .hardware import router as hardware_router
 from .components import router as components_router
 from .codegen import router as codegen_router
@@ -97,6 +98,7 @@ router.include_router(custom_endpoints_router, tags=["custom-api"])
 router.include_router(observability_router, tags=["observability"])
 router.include_router(reports_router, tags=["reports"])
 router.include_router(plugins_router, tags=["plugins"])
+router.include_router(firmware_router, tags=["firmware"])
 router.include_router(hardware_router, tags=["hardware"])
 router.include_router(components_router, tags=["components"])
 router.include_router(codegen_router, tags=["codegen"])

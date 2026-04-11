@@ -137,6 +137,17 @@ FEATURES: dict[str, FeatureDef] = {
         "advanced",
         default=False,
     ),
+    "firmware_builder": _f(
+        "firmware_builder",
+        "Firmware Builder",
+        "Compile ESP32 / RP2040 firmware on the server via an ephemeral "
+        "PlatformIO sidecar container. Requires the Plugin Orchestrator "
+        "feature (which wires hubex to Portainer). Default OFF because it "
+        "pulls ~400 MB of platform SDKs on first build.",
+        "hardware",
+        default=False,
+        requires=("orchestrator", "hardware"),
+    ),
     "sandbox": _f(
         "sandbox",
         "Sandbox",
@@ -384,6 +395,16 @@ _gate("plugins", [
     ("PATCH",  "/api/v1/plugins/{key}"),
     ("DELETE", "/api/v1/plugins/{key}"),
     ("POST",   "/api/v1/plugins/{key}/execute"),
+])
+
+# --- Firmware Builder (Sprint 4) -------------------------------------------
+_gate("firmware_builder", [
+    ("POST", "/api/v1/firmware/build"),
+    ("GET",  "/api/v1/firmware/builds"),
+    ("GET",  "/api/v1/firmware/builds/{build_id}"),
+    ("GET",  "/api/v1/firmware/builds/{build_id}/logs"),
+    ("GET",  "/api/v1/firmware/builds/{build_id}/download"),
+    ("POST", "/api/v1/firmware/builds/{build_id}/cancel"),
 ])
 
 # --- Modules ----------------------------------------------------------------
