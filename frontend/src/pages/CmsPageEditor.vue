@@ -93,7 +93,7 @@ async function loadPage() {
     }
     await renderPreview();
   } catch (e: any) {
-    error.value = e.message || "Failed to load";
+    error.value = e.message || t("cms.pageEditor.loadFailed");
   } finally {
     loading.value = false;
   }
@@ -180,7 +180,7 @@ async function unpublishPage() {
   showPublishMenu.value = false;
   try {
     await apiFetch(`/api/v1/cms/pages/${page.value.id}/unpublish`, { method: "POST" });
-    toast.show("Moved to draft", "success");
+    toast.show(t("cms.pageEditor.toasts.movedToDraft"), "success");
     await loadPage();
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -190,10 +190,10 @@ async function unpublishPage() {
 async function archivePage() {
   if (!page.value) return;
   showPublishMenu.value = false;
-  if (!confirm("Archive this page? It will be hidden but preserved.")) return;
+  if (!confirm(t("cms.pageEditor.confirmArchive"))) return;
   try {
     await apiFetch(`/api/v1/cms/pages/${page.value.id}/archive`, { method: "POST" });
-    toast.show("Page archived", "success");
+    toast.show(t("cms.pageEditor.toasts.archived"), "success");
     await loadPage();
   } catch (e: any) {
     toast.show(e.message, "error");
@@ -219,7 +219,7 @@ async function submitSchedule() {
       method: "POST",
       body: JSON.stringify({ published_at: iso }),
     });
-    toast.show("Page scheduled for publishing", "success");
+    toast.show(t("cms.pageEditor.toasts.scheduled"), "success");
     showScheduleModal.value = false;
     await loadPage();
   } catch (e: any) {
@@ -229,17 +229,17 @@ async function submitSchedule() {
 
 // Relative time helper for stats
 function relativeTime(iso: string | null | undefined): string {
-  if (!iso) return "never";
+  if (!iso) return t("cms.pageEditor.relativeTime.never");
   try {
     const diffMs = Date.now() - new Date(iso).getTime();
     const sec = Math.floor(diffMs / 1000);
-    if (sec < 60) return `${sec}s ago`;
+    if (sec < 60) return t("cms.pageEditor.relativeTime.seconds", { n: sec });
     const min = Math.floor(sec / 60);
-    if (min < 60) return `${min}m ago`;
+    if (min < 60) return t("cms.pageEditor.relativeTime.minutes", { n: min });
     const hr = Math.floor(min / 60);
-    if (hr < 24) return `${hr}h ago`;
+    if (hr < 24) return t("cms.pageEditor.relativeTime.hours", { n: hr });
     const days = Math.floor(hr / 24);
-    return `${days}d ago`;
+    return t("cms.pageEditor.relativeTime.days", { n: days });
   } catch {
     return iso;
   }
@@ -261,93 +261,93 @@ async function share() {
 }
 
 // Template variables reference
-const templateVars = [
-  { group: "Metrics", items: [
-    { ref: "{{metric:devices_total}}", desc: "Total devices" },
-    { ref: "{{metric:devices_online}}", desc: "Devices currently online" },
+const templateVars = computed(() => [
+  { group: t("cms.pageEditor.templateVars.groups.metrics"), items: [
+    { ref: "{{metric:devices_total}}", desc: t("cms.pageEditor.templateVars.descriptions.devicesTotal") },
+    { ref: "{{metric:devices_online}}", desc: t("cms.pageEditor.templateVars.descriptions.devicesOnline") },
   ]},
-  { group: "Variables", items: [
-    { ref: "{{variable:your_key}}", desc: "Latest value of a variable" },
-    { ref: "{{variable:device_uid:key}}", desc: "Latest value on a specific device" },
+  { group: t("cms.pageEditor.templateVars.groups.variables"), items: [
+    { ref: "{{variable:your_key}}", desc: t("cms.pageEditor.templateVars.descriptions.variableLatest") },
+    { ref: "{{variable:device_uid:key}}", desc: t("cms.pageEditor.templateVars.descriptions.variableDeviceLatest") },
   ]},
-  { group: "Devices", items: [
-    { ref: "{{device:uid:name}}", desc: "Device display name" },
-    { ref: "{{device:uid:status}}", desc: "online / offline" },
+  { group: t("cms.pageEditor.templateVars.groups.devices"), items: [
+    { ref: "{{device:uid:name}}", desc: t("cms.pageEditor.templateVars.descriptions.deviceName") },
+    { ref: "{{device:uid:status}}", desc: t("cms.pageEditor.templateVars.descriptions.deviceStatus") },
   ]},
-  { group: "Timestamps", items: [
-    { ref: "{{timestamp:date}}", desc: "Current date" },
-    { ref: "{{timestamp:iso}}", desc: "Full ISO timestamp" },
+  { group: t("cms.pageEditor.templateVars.groups.timestamps"), items: [
+    { ref: "{{timestamp:date}}", desc: t("cms.pageEditor.templateVars.descriptions.timestampDate") },
+    { ref: "{{timestamp:iso}}", desc: t("cms.pageEditor.templateVars.descriptions.timestampIso") },
   ]},
-];
+]);
 
 // HTML starter blocks
-const starters = [
+const starters = computed(() => [
   {
-    name: "Hero Section",
+    name: t("cms.pageEditor.starters.hero.name"),
     html: `<section style="padding:80px 24px; text-align:center; background:radial-gradient(ellipse at top, rgba(245,166,35,0.1), transparent);">
-  <h1 style="font-size:56px; font-weight:800; margin:0 0 16px; color:#F5F5F5;">Your Hero Title</h1>
-  <p style="font-size:20px; color:#A1A1AA; max-width:640px; margin:0 auto 32px;">A compelling subtitle that explains the value proposition.</p>
-  <a href="#" style="display:inline-block; padding:14px 28px; background:#F5A623; color:#111110; border-radius:10px; font-weight:600; text-decoration:none;">Get Started</a>
+  <h1 style="font-size:56px; font-weight:800; margin:0 0 16px; color:#F5F5F5;">${t("cms.pageEditor.starters.hero.title")}</h1>
+  <p style="font-size:20px; color:#A1A1AA; max-width:640px; margin:0 auto 32px;">${t("cms.pageEditor.starters.hero.subtitle")}</p>
+  <a href="#" style="display:inline-block; padding:14px 28px; background:#F5A623; color:#111110; border-radius:10px; font-weight:600; text-decoration:none;">${t("cms.pageEditor.starters.hero.cta")}</a>
 </section>`,
   },
   {
-    name: "Feature Grid",
+    name: t("cms.pageEditor.starters.featureGrid.name"),
     html: `<section style="max-width:1200px; margin:0 auto; padding:64px 24px; display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:24px;">
   <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:28px;">
-    <h3 style="color:#F5A623; margin:0 0 12px;">Feature 1</h3>
-    <p style="color:#A1A1AA; margin:0;">Description of the first feature.</p>
+    <h3 style="color:#F5A623; margin:0 0 12px;">${t("cms.pageEditor.starters.featureGrid.feature1Title")}</h3>
+    <p style="color:#A1A1AA; margin:0;">${t("cms.pageEditor.starters.featureGrid.feature1Desc")}</p>
   </div>
   <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:28px;">
-    <h3 style="color:#2DD4BF; margin:0 0 12px;">Feature 2</h3>
-    <p style="color:#A1A1AA; margin:0;">Description of the second feature.</p>
+    <h3 style="color:#2DD4BF; margin:0 0 12px;">${t("cms.pageEditor.starters.featureGrid.feature2Title")}</h3>
+    <p style="color:#A1A1AA; margin:0;">${t("cms.pageEditor.starters.featureGrid.feature2Desc")}</p>
   </div>
   <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:28px;">
-    <h3 style="color:#F5A623; margin:0 0 12px;">Feature 3</h3>
-    <p style="color:#A1A1AA; margin:0;">Description of the third feature.</p>
+    <h3 style="color:#F5A623; margin:0 0 12px;">${t("cms.pageEditor.starters.featureGrid.feature3Title")}</h3>
+    <p style="color:#A1A1AA; margin:0;">${t("cms.pageEditor.starters.featureGrid.feature3Desc")}</p>
   </div>
 </section>`,
   },
   {
-    name: "CTA",
+    name: t("cms.pageEditor.starters.cta.name"),
     html: `<section style="padding:60px 24px; text-align:center; background:rgba(245,166,35,0.08); border-top:1px solid rgba(245,166,35,0.2); border-bottom:1px solid rgba(245,166,35,0.2);">
-  <h2 style="font-size:32px; margin:0 0 12px; color:#F5F5F5;">Ready to start?</h2>
-  <p style="color:#A1A1AA; margin:0 0 24px;">Join thousands of users already building with HubEx.</p>
-  <a href="#" style="display:inline-block; padding:12px 28px; background:#F5A623; color:#111110; border-radius:8px; font-weight:600; text-decoration:none;">Try Free</a>
+  <h2 style="font-size:32px; margin:0 0 12px; color:#F5F5F5;">${t("cms.pageEditor.starters.cta.title")}</h2>
+  <p style="color:#A1A1AA; margin:0 0 24px;">${t("cms.pageEditor.starters.cta.subtitle")}</p>
+  <a href="#" style="display:inline-block; padding:12px 28px; background:#F5A623; color:#111110; border-radius:8px; font-weight:600; text-decoration:none;">${t("cms.pageEditor.starters.cta.button")}</a>
 </section>`,
   },
   {
-    name: "About",
+    name: t("cms.pageEditor.starters.about.name"),
     html: `<section style="max-width:900px; margin:0 auto; padding:64px 24px;">
-  <h2 style="font-size:36px; color:#F5F5F5; margin:0 0 24px;">About Us</h2>
-  <p style="color:#A1A1AA; line-height:1.7; font-size:17px;">Tell your story here. Explain the mission, the team, the values.</p>
+  <h2 style="font-size:36px; color:#F5F5F5; margin:0 0 24px;">${t("cms.pageEditor.starters.about.title")}</h2>
+  <p style="color:#A1A1AA; line-height:1.7; font-size:17px;">${t("cms.pageEditor.starters.about.body")}</p>
 </section>`,
   },
   {
-    name: "Contact",
+    name: t("cms.pageEditor.starters.contact.name"),
     html: `<section style="max-width:720px; margin:0 auto; padding:64px 24px;">
-  <h2 style="color:#F5F5F5; margin:0 0 16px;">Contact</h2>
-  <p style="color:#A1A1AA; margin:0 0 8px;">Email: <a href="mailto:hello@example.com" style="color:#2DD4BF;">hello@example.com</a></p>
-  <p style="color:#A1A1AA; margin:0;">We usually reply within 24 hours.</p>
+  <h2 style="color:#F5F5F5; margin:0 0 16px;">${t("cms.pageEditor.starters.contact.title")}</h2>
+  <p style="color:#A1A1AA; margin:0 0 8px;">${t("cms.pageEditor.starters.contact.emailLabel")}: <a href="mailto:hello@example.com" style="color:#2DD4BF;">hello@example.com</a></p>
+  <p style="color:#A1A1AA; margin:0;">${t("cms.pageEditor.starters.contact.reply")}</p>
 </section>`,
   },
   {
-    name: "Stats",
+    name: t("cms.pageEditor.starters.stats.name"),
     html: `<section style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:960px; margin:0 auto; padding:48px 24px; text-align:center;">
   <div>
     <div style="font-family:monospace; font-size:42px; color:#2DD4BF; font-weight:700;">{{metric:devices_total}}</div>
-    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">Devices</div>
+    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">${t("cms.pageEditor.starters.stats.devicesLabel")}</div>
   </div>
   <div>
     <div style="font-family:monospace; font-size:42px; color:#F5A623; font-weight:700;">{{metric:devices_online}}</div>
-    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">Online</div>
+    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">${t("cms.pageEditor.starters.stats.onlineLabel")}</div>
   </div>
   <div>
     <div style="font-family:monospace; font-size:42px; color:#F5F5F5; font-weight:700;">4</div>
-    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">Levels</div>
+    <div style="color:#71717A; font-size:13px; text-transform:uppercase; letter-spacing:0.08em;">${t("cms.pageEditor.starters.stats.levelsLabel")}</div>
   </div>
 </section>`,
   },
-];
+]);
 
 function insertStarter(html: string) {
   const textarea = document.querySelector('textarea.code-editor') as HTMLTextAreaElement | null;
@@ -394,7 +394,7 @@ onMounted(loadPage);
         <input v-model="editTitle" class="title-input" :placeholder="t('cms.fields.title')" />
         <div class="slug-row">
           <span class="slug-prefix">/p/</span>
-          <input v-model="editSlug" class="slug-input" placeholder="page-slug" />
+          <input v-model="editSlug" class="slug-input" :placeholder="t('cms.pageEditor.slugPlaceholder')" />
         </div>
       </div>
       <div class="head-right">
@@ -405,33 +405,33 @@ onMounted(loadPage);
           <option value="fullscreen">{{ t('cms.layout.fullscreen') }}</option>
         </select>
         <button class="btn-ghost" @click="showMeta = !showMeta">{{ t('cms.meta') }}</button>
-        <button class="btn-ghost" @click="showHistory = true">History</button>
+        <button class="btn-ghost" @click="showHistory = true">{{ t('cms.pageEditor.historyButton') }}</button>
         <button class="btn-secondary" :disabled="saving" @click="saveDraft">
-          {{ saving ? '...' : t('common.save') }}
+          {{ saving ? t('cms.pageEditor.savingDots') : t('common.save') }}
         </button>
         <div class="publish-dropdown">
           <button class="btn-primary" @click="publish">{{ t('cms.publish') }}</button>
-          <button class="btn-primary dropdown-caret" @click="showPublishMenu = !showPublishMenu" title="Publishing options">▾</button>
+          <button class="btn-primary dropdown-caret" @click="showPublishMenu = !showPublishMenu" :title="t('cms.pageEditor.publishingOptions')">▾</button>
           <div v-if="showPublishMenu" class="publish-menu" @click.self="showPublishMenu = false">
             <button class="publish-item" @click="publish">
-              <span>Publish now</span>
-              <span class="hint">Make page live immediately</span>
+              <span>{{ t('cms.pageEditor.publishMenu.publishNow') }}</span>
+              <span class="hint">{{ t('cms.pageEditor.publishMenu.publishNowHint') }}</span>
             </button>
             <button class="publish-item" @click="openSchedule">
-              <span>Schedule…</span>
-              <span class="hint">Pick a date &amp; time</span>
+              <span>{{ t('cms.pageEditor.publishMenu.schedule') }}</span>
+              <span class="hint">{{ t('cms.pageEditor.publishMenu.scheduleHint') }}</span>
             </button>
             <button class="publish-item" @click="saveDraft(); showPublishMenu = false">
-              <span>Save as draft</span>
-              <span class="hint">Keep hidden from the public</span>
+              <span>{{ t('cms.pageEditor.publishMenu.saveDraft') }}</span>
+              <span class="hint">{{ t('cms.pageEditor.publishMenu.saveDraftHint') }}</span>
             </button>
             <button class="publish-item" v-if="page?.published" @click="unpublishPage">
-              <span>Unpublish</span>
-              <span class="hint">Back to draft</span>
+              <span>{{ t('cms.pageEditor.publishMenu.unpublish') }}</span>
+              <span class="hint">{{ t('cms.pageEditor.publishMenu.unpublishHint') }}</span>
             </button>
             <button class="publish-item danger" @click="archivePage">
-              <span>Archive</span>
-              <span class="hint">Hide but preserve</span>
+              <span>{{ t('cms.pageEditor.publishMenu.archive') }}</span>
+              <span class="hint">{{ t('cms.pageEditor.publishMenu.archiveHint') }}</span>
             </button>
           </div>
         </div>
@@ -442,19 +442,19 @@ onMounted(loadPage);
     <!-- Stats panel -->
     <div v-if="page" class="stats-panel">
       <div class="stat-item">
-        <span class="stat-label">Views</span>
+        <span class="stat-label">{{ t('cms.pageEditor.stats.views') }}</span>
         <span class="stat-value">{{ page.view_count ?? 0 }}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Last viewed</span>
+        <span class="stat-label">{{ t('cms.pageEditor.stats.lastViewed') }}</span>
         <span class="stat-value">{{ relativeTime(page.last_viewed_at) }}</span>
       </div>
       <div class="stat-item">
-        <span class="stat-label">Status</span>
-        <span class="stat-value">{{ page.status || (page.published ? 'published' : 'draft') }}</span>
+        <span class="stat-label">{{ t('cms.pageEditor.stats.status') }}</span>
+        <span class="stat-value">{{ page.status || (page.published ? t('cms.pageEditor.statusValues.published') : t('cms.pageEditor.statusValues.draft')) }}</span>
       </div>
       <div v-if="page.scheduled_at" class="stat-item">
-        <span class="stat-label">Scheduled</span>
+        <span class="stat-label">{{ t('cms.pageEditor.stats.scheduled') }}</span>
         <span class="stat-value">{{ new Date(page.scheduled_at).toLocaleString() }}</span>
       </div>
     </div>
@@ -462,15 +462,15 @@ onMounted(loadPage);
     <!-- Schedule modal -->
     <div v-if="showScheduleModal" class="modal-overlay" @click.self="showScheduleModal = false">
       <div class="modal">
-        <h2>Schedule Publishing</h2>
-        <p class="schedule-hint">The page will be published automatically at the selected time (checked every 5 minutes).</p>
+        <h2>{{ t('cms.pageEditor.scheduleModal.title') }}</h2>
+        <p class="schedule-hint">{{ t('cms.pageEditor.scheduleModal.hint') }}</p>
         <label class="field">
-          <span>When</span>
+          <span>{{ t('cms.pageEditor.scheduleModal.whenLabel') }}</span>
           <input v-model="scheduleDateTime" type="datetime-local" />
         </label>
         <div class="modal-actions">
-          <button class="btn-secondary" @click="showScheduleModal = false">Cancel</button>
-          <button class="btn-primary" @click="submitSchedule">Schedule</button>
+          <button class="btn-secondary" @click="showScheduleModal = false">{{ t('cms.pageEditor.scheduleModal.cancel') }}</button>
+          <button class="btn-primary" @click="submitSchedule">{{ t('cms.pageEditor.scheduleModal.schedule') }}</button>
         </div>
       </div>
     </div>
@@ -484,7 +484,7 @@ onMounted(loadPage);
           :class="{ active: editorMode === 'blocks' }"
           @click="editorMode = 'blocks'"
         >
-          Blocks
+          {{ t('cms.pageEditor.modes.blocks') }}
         </button>
         <button
           type="button"
@@ -492,7 +492,7 @@ onMounted(loadPage);
           :class="{ active: editorMode === 'html' }"
           @click="editorMode = 'html'"
         >
-          HTML
+          {{ t('cms.pageEditor.modes.html') }}
         </button>
         <button
           type="button"
@@ -500,7 +500,7 @@ onMounted(loadPage);
           :class="{ active: editorMode === 'preview' }"
           @click="editorMode = 'preview'"
         >
-          Preview
+          {{ t('cms.pageEditor.modes.preview') }}
         </button>
       </div>
       <div v-if="editorMode === 'blocks'" class="mode-actions">
@@ -509,18 +509,18 @@ onMounted(loadPage);
           class="btn-ghost sm"
           :disabled="!cmsEditor.canUndo"
           @click="cmsEditor.undo()"
-          title="Undo"
+          :title="t('cms.pageEditor.undoTitle')"
         >
-          ↶ Undo
+          {{ t('cms.pageEditor.undoButton') }}
         </button>
         <button
           type="button"
           class="btn-ghost sm"
           :disabled="!cmsEditor.canRedo"
           @click="cmsEditor.redo()"
-          title="Redo"
+          :title="t('cms.pageEditor.redoTitle')"
         >
-          ↷ Redo
+          {{ t('cms.pageEditor.redoButton') }}
         </button>
       </div>
     </div>

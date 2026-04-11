@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import BlockRenderer from "../components/cms/BlockRenderer.vue";
 
+const { t } = useI18n();
 const route = useRoute();
 
 type SiteSettingsPublic = {
@@ -128,7 +130,7 @@ async function loadPage(pinOverride?: string) {
     page.value = await res.json();
     if (page.value) applySeoTags();
   } catch (e: any) {
-    error.value = e.message || "Failed to load";
+    error.value = e.message || t("cms.pageView.loadFailed");
   } finally {
     loading.value = false;
   }
@@ -277,20 +279,20 @@ watch(() => route.params.slug, () => loadPage());
 </script>
 
 <template>
-  <div v-if="loading" class="state">Loading…</div>
+  <div v-if="loading" class="state">{{ t("cms.pageView.loading") }}</div>
 
   <div v-else-if="needsPin" class="pin-wrap">
     <div class="pin-card">
-      <h2>Protected Page</h2>
-      <p>This page requires a PIN to view.</p>
+      <h2>{{ t("cms.pageView.pin.title") }}</h2>
+      <p>{{ t("cms.pageView.pin.description") }}</p>
       <input
         v-model="enteredPin"
         type="password"
-        placeholder="PIN"
+        :placeholder="t('cms.pageView.pin.placeholder')"
         @keyup.enter="submitPin"
         autofocus
       />
-      <button @click="submitPin" class="pin-btn">Unlock</button>
+      <button @click="submitPin" class="pin-btn">{{ t("cms.pageView.pin.unlock") }}</button>
     </div>
   </div>
 

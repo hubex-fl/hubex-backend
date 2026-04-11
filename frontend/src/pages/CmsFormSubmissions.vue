@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const toast = useToastStore();
@@ -39,7 +41,7 @@ async function loadAll() {
       `/api/v1/cms/forms/${formId.value}/submissions`,
     );
   } catch (e: any) {
-    toast.show(e.message || "Failed to load", "error");
+    toast.show(e.message || t("cms.formSubmissions.loadFailed"), "error");
   } finally {
     loading.value = false;
   }
@@ -64,13 +66,13 @@ async function viewSubmission(sub: Submission) {
 }
 
 async function deleteSubmission(sub: Submission) {
-  if (!confirm("Delete this submission permanently?")) return;
+  if (!confirm(t("cms.formSubmissions.confirmDelete"))) return;
   try {
     await apiFetch(
       `/api/v1/cms/forms/${formId.value}/submissions/${sub.id}`,
       { method: "DELETE" },
     );
-    toast.show("Submission deleted", "success");
+    toast.show(t("cms.formSubmissions.deleted"), "success");
     if (selected.value?.id === sub.id) selected.value = null;
     await loadAll();
   } catch (e: any) {
@@ -80,7 +82,7 @@ async function deleteSubmission(sub: Submission) {
 
 function exportCsv() {
   if (!form.value || submissions.value.length === 0) {
-    toast.show("No submissions to export", "error");
+    toast.show(t("cms.formSubmissions.noneToExport"), "error");
     return;
   }
   // Collect all unique field IDs
@@ -138,31 +140,31 @@ onMounted(loadAll);
 <template>
   <div class="page-wrap">
     <header class="page-head">
-      <button class="back-btn" @click="router.push('/cms/forms')">← Forms</button>
+      <button class="back-btn" @click="router.push('/cms/forms')">{{ t("cms.formSubmissions.backToForms") }}</button>
       <div class="head-title">
-        <h1>{{ form?.name || "Submissions" }}</h1>
-        <div class="head-sub">{{ submissions.length }} submissions</div>
+        <h1>{{ form?.name || t("cms.formSubmissions.titleFallback") }}</h1>
+        <div class="head-sub">{{ t("cms.formSubmissions.countLabel", { n: submissions.length }) }}</div>
       </div>
       <div class="head-actions">
-        <button class="btn-secondary" @click="exportCsv">Export CSV</button>
+        <button class="btn-secondary" @click="exportCsv">{{ t("cms.formSubmissions.exportCsv") }}</button>
         <button class="btn-secondary" @click="router.push(`/cms/forms/${formId}/edit`)">
-          Edit Form
+          {{ t("cms.formSubmissions.editForm") }}
         </button>
       </div>
     </header>
 
-    <div v-if="loading" class="state-msg">Loading…</div>
+    <div v-if="loading" class="state-msg">{{ t("cms.formSubmissions.loading") }}</div>
     <div v-else-if="submissions.length === 0" class="state-msg">
-      No submissions yet. Share your form URL to start collecting responses.
+      {{ t("cms.formSubmissions.empty") }}
     </div>
     <div v-else class="submissions-layout">
       <div class="table-wrap">
         <table class="sub-table">
           <thead>
             <tr>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Preview</th>
+              <th>{{ t("cms.formSubmissions.columns.status") }}</th>
+              <th>{{ t("cms.formSubmissions.columns.date") }}</th>
+              <th>{{ t("cms.formSubmissions.columns.preview") }}</th>
               <th></th>
             </tr>
           </thead>
@@ -175,13 +177,13 @@ onMounted(loadAll);
               @click="viewSubmission(s)"
             >
               <td>
-                <span v-if="!s.read" class="dot unread-dot"></span>
-                <span v-else class="dot read-dot"></span>
+                <span v-if="!s.read" class="dot unread-dot" :title="t('cms.formSubmissions.unread')"></span>
+                <span v-else class="dot read-dot" :title="t('cms.formSubmissions.read')"></span>
               </td>
               <td>{{ formatDate(s.submitted_at) }}</td>
               <td class="preview-cell">{{ previewData(s.data) }}</td>
               <td>
-                <button class="mini-btn danger" @click.stop="deleteSubmission(s)">×</button>
+                <button class="mini-btn danger" :title="t('cms.formSubmissions.deleteTitle')" @click.stop="deleteSubmission(s)">×</button>
               </td>
             </tr>
           </tbody>
@@ -190,17 +192,17 @@ onMounted(loadAll);
 
       <aside v-if="selected" class="detail-panel">
         <div class="detail-head">
-          <h3>Submission #{{ selected.id }}</h3>
-          <button class="close-btn" @click="selected = null">×</button>
+          <h3>{{ t("cms.formSubmissions.detailHeading", { id: selected.id }) }}</h3>
+          <button class="close-btn" :title="t('cms.formSubmissions.close')" @click="selected = null">×</button>
         </div>
         <div class="detail-meta">
-          <div><span>Date</span> {{ formatDate(selected.submitted_at) }}</div>
-          <div v-if="selected.ip_address"><span>IP</span> {{ selected.ip_address }}</div>
+          <div><span>{{ t("cms.formSubmissions.detailMeta.date") }}</span> {{ formatDate(selected.submitted_at) }}</div>
+          <div v-if="selected.ip_address"><span>{{ t("cms.formSubmissions.detailMeta.ip") }}</span> {{ selected.ip_address }}</div>
           <div v-if="selected.user_agent">
-            <span>Agent</span> <code>{{ selected.user_agent }}</code>
+            <span>{{ t("cms.formSubmissions.detailMeta.agent") }}</span> <code>{{ selected.user_agent }}</code>
           </div>
         </div>
-        <h4>Fields</h4>
+        <h4>{{ t("cms.formSubmissions.fieldsHeading") }}</h4>
         <dl class="field-list">
           <template v-for="(val, k) in selected.data" :key="k">
             <dt>{{ fieldLabel(String(k)) }}</dt>

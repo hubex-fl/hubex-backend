@@ -5,10 +5,13 @@
  * simple inputs for everything else. Emits `update` with the modified props.
  */
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { CmsBlock } from "../../stores/cmsEditor";
 import RichTextEditor from "./RichTextEditor.vue";
 import MediaLibrary from "./MediaLibrary.vue";
 import type { MediaAsset } from "../../lib/media";
+
+const { t } = useI18n();
 
 const props = defineProps<{ block: CmsBlock | null }>();
 
@@ -71,9 +74,9 @@ function addStringArrayItem(key: string) {
 <template>
   <div class="bpp">
     <div v-if="!block" class="bpp-empty">
-      <div class="bpp-empty-title">No block selected</div>
+      <div class="bpp-empty-title">{{ t("cms.components.blockProperties.empty.title") }}</div>
       <div class="bpp-empty-sub">
-        Click any block in the canvas to edit its properties.
+        {{ t("cms.components.blockProperties.empty.subtitle") }}
       </div>
     </div>
 
@@ -83,7 +86,7 @@ function addStringArrayItem(key: string) {
       <!-- Heading -->
       <template v-if="block.type === 'heading'">
         <label class="bpp-field">
-          <span>Level</span>
+          <span>{{ t("cms.components.blockProperties.fields.level") }}</span>
           <select
             :value="block.props.level || 'h2'"
             @change="(e:any) => update('level', e.target.value)"
@@ -94,7 +97,7 @@ function addStringArrayItem(key: string) {
           </select>
         </label>
         <label class="bpp-field">
-          <span>Text</span>
+          <span>{{ t("cms.components.blockProperties.fields.text") }}</span>
           <input
             :value="block.props.text || ''"
             @input="(e:any) => update('text', e.target.value)"
@@ -102,14 +105,14 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Align</span>
+          <span>{{ t("cms.components.blockProperties.fields.align") }}</span>
           <select
             :value="block.props.align || 'left'"
             @change="(e:any) => update('align', e.target.value)"
           >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
+            <option value="left">{{ t("cms.components.blockProperties.align.left") }}</option>
+            <option value="center">{{ t("cms.components.blockProperties.align.center") }}</option>
+            <option value="right">{{ t("cms.components.blockProperties.align.right") }}</option>
           </select>
         </label>
       </template>
@@ -117,7 +120,7 @@ function addStringArrayItem(key: string) {
       <!-- Text -->
       <template v-else-if="block.type === 'text'">
         <div class="bpp-field">
-          <span>Content</span>
+          <span>{{ t("cms.components.blockProperties.fields.content") }}</span>
           <RichTextEditor
             :model-value="block.props.content || ''"
             @update:model-value="(v:string) => update('content', v)"
@@ -128,19 +131,19 @@ function addStringArrayItem(key: string) {
       <!-- Image -->
       <template v-else-if="block.type === 'image'">
         <div class="bpp-field">
-          <span>Source</span>
+          <span>{{ t("cms.components.blockProperties.fields.source") }}</span>
           <div class="bpp-media-row">
             <input
               :value="block.props.src || ''"
               @input="(e:any) => update('src', e.target.value)"
               type="text"
-              placeholder="Image URL"
+              :placeholder="t('cms.components.blockProperties.placeholders.imageUrl')"
             />
-            <button type="button" @click="openImagePicker('src')">Pick</button>
+            <button type="button" @click="openImagePicker('src')">{{ t("cms.components.blockProperties.pick") }}</button>
           </div>
         </div>
         <label class="bpp-field">
-          <span>Alt text</span>
+          <span>{{ t("cms.components.blockProperties.fields.altText") }}</span>
           <input
             :value="block.props.alt || ''"
             @input="(e:any) => update('alt', e.target.value)"
@@ -148,7 +151,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Caption</span>
+          <span>{{ t("cms.components.blockProperties.fields.caption") }}</span>
           <input
             :value="block.props.caption || ''"
             @input="(e:any) => update('caption', e.target.value)"
@@ -156,7 +159,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Max width (px)</span>
+          <span>{{ t("cms.components.blockProperties.fields.maxWidthPx") }}</span>
           <input
             :value="block.props.width ?? 800"
             @input="(e:any) => update('width', Number(e.target.value) || 0)"
@@ -164,14 +167,14 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Align</span>
+          <span>{{ t("cms.components.blockProperties.fields.align") }}</span>
           <select
             :value="block.props.align || 'center'"
             @change="(e:any) => update('align', e.target.value)"
           >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
+            <option value="left">{{ t("cms.components.blockProperties.align.left") }}</option>
+            <option value="center">{{ t("cms.components.blockProperties.align.center") }}</option>
+            <option value="right">{{ t("cms.components.blockProperties.align.right") }}</option>
           </select>
         </label>
       </template>
@@ -179,7 +182,7 @@ function addStringArrayItem(key: string) {
       <!-- Hero -->
       <template v-else-if="block.type === 'hero'">
         <label class="bpp-field">
-          <span>Title</span>
+          <span>{{ t("cms.components.blockProperties.fields.title") }}</span>
           <input
             :value="block.props.title || ''"
             @input="(e:any) => update('title', e.target.value)"
@@ -187,7 +190,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Subtitle</span>
+          <span>{{ t("cms.components.blockProperties.fields.subtitle") }}</span>
           <textarea
             :value="block.props.subtitle || ''"
             @input="(e:any) => update('subtitle', e.target.value)"
@@ -195,7 +198,7 @@ function addStringArrayItem(key: string) {
           ></textarea>
         </label>
         <label class="bpp-field">
-          <span>Background color</span>
+          <span>{{ t("cms.components.blockProperties.fields.backgroundColor") }}</span>
           <input
             :value="block.props.bg_color || '#111110'"
             @input="(e:any) => update('bg_color', e.target.value)"
@@ -203,7 +206,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>CTA text</span>
+          <span>{{ t("cms.components.blockProperties.fields.ctaText") }}</span>
           <input
             :value="block.props.cta_text || ''"
             @input="(e:any) => update('cta_text', e.target.value)"
@@ -211,7 +214,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>CTA link</span>
+          <span>{{ t("cms.components.blockProperties.fields.ctaLink") }}</span>
           <input
             :value="block.props.cta_link || ''"
             @input="(e:any) => update('cta_link', e.target.value)"
@@ -219,7 +222,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Secondary CTA text</span>
+          <span>{{ t("cms.components.blockProperties.fields.secondaryCtaText") }}</span>
           <input
             :value="block.props.cta_secondary_text || ''"
             @input="(e:any) => update('cta_secondary_text', e.target.value)"
@@ -227,7 +230,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Secondary CTA link</span>
+          <span>{{ t("cms.components.blockProperties.fields.secondaryCtaLink") }}</span>
           <input
             :value="block.props.cta_secondary_link || ''"
             @input="(e:any) => update('cta_secondary_link', e.target.value)"
@@ -239,7 +242,7 @@ function addStringArrayItem(key: string) {
       <!-- Feature Grid -->
       <template v-else-if="block.type === 'feature_grid'">
         <label class="bpp-field">
-          <span>Columns</span>
+          <span>{{ t("cms.components.blockProperties.fields.columns") }}</span>
           <input
             :value="block.props.columns ?? 3"
             @input="(e:any) => update('columns', Number(e.target.value) || 3)"
@@ -249,32 +252,32 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <div class="bpp-field">
-          <span>Items</span>
+          <span>{{ t("cms.components.blockProperties.fields.items") }}</span>
           <div
             v-for="(item, i) in (block.props.items || [])"
             :key="i"
             class="bpp-array-item"
           >
             <div class="bpp-array-head">
-              <span>Item {{ i + 1 }}</span>
-              <button type="button" class="bpp-remove" @click="removeArrayItem('items', i)">
+              <span>{{ t("cms.components.blockProperties.arrayLabels.item", { n: i + 1 }) }}</span>
+              <button type="button" class="bpp-remove" :title="t('cms.components.blockProperties.remove')" @click="removeArrayItem('items', i)">
                 ×
               </button>
             </div>
             <input
               :value="item.icon || ''"
               @input="(e:any) => updateArrayItem('items', i, 'icon', e.target.value)"
-              placeholder="Icon (emoji or symbol)"
+              :placeholder="t('cms.components.blockProperties.placeholders.iconEmoji')"
             />
             <input
               :value="item.title || ''"
               @input="(e:any) => updateArrayItem('items', i, 'title', e.target.value)"
-              placeholder="Title"
+              :placeholder="t('cms.components.blockProperties.placeholders.title')"
             />
             <textarea
               :value="item.description || ''"
               @input="(e:any) => updateArrayItem('items', i, 'description', e.target.value)"
-              placeholder="Description"
+              :placeholder="t('cms.components.blockProperties.placeholders.description')"
               rows="2"
             ></textarea>
           </div>
@@ -283,7 +286,7 @@ function addStringArrayItem(key: string) {
             class="bpp-add"
             @click="addArrayItem('items', { icon: '', title: '', description: '' })"
           >
-            + Add item
+            {{ t("cms.components.blockProperties.actions.addItem") }}
           </button>
         </div>
       </template>
@@ -291,14 +294,14 @@ function addStringArrayItem(key: string) {
       <!-- CTA -->
       <template v-else-if="block.type === 'cta'">
         <label class="bpp-field">
-          <span>Title</span>
+          <span>{{ t("cms.components.blockProperties.fields.title") }}</span>
           <input
             :value="block.props.title || ''"
             @input="(e:any) => update('title', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Description</span>
+          <span>{{ t("cms.components.blockProperties.fields.description") }}</span>
           <textarea
             :value="block.props.description || ''"
             @input="(e:any) => update('description', e.target.value)"
@@ -306,28 +309,28 @@ function addStringArrayItem(key: string) {
           ></textarea>
         </label>
         <label class="bpp-field">
-          <span>Button text</span>
+          <span>{{ t("cms.components.blockProperties.fields.buttonText") }}</span>
           <input
             :value="block.props.button_text || ''"
             @input="(e:any) => update('button_text', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Button link</span>
+          <span>{{ t("cms.components.blockProperties.fields.buttonLink") }}</span>
           <input
             :value="block.props.button_link || ''"
             @input="(e:any) => update('button_link', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Style</span>
+          <span>{{ t("cms.components.blockProperties.fields.style") }}</span>
           <select
             :value="block.props.style || 'amber'"
             @change="(e:any) => update('style', e.target.value)"
           >
-            <option value="amber">Amber</option>
-            <option value="teal">Teal</option>
-            <option value="dark">Dark</option>
+            <option value="amber">{{ t("cms.components.blockProperties.ctaStyles.amber") }}</option>
+            <option value="teal">{{ t("cms.components.blockProperties.ctaStyles.teal") }}</option>
+            <option value="dark">{{ t("cms.components.blockProperties.ctaStyles.dark") }}</option>
           </select>
         </label>
       </template>
@@ -335,7 +338,7 @@ function addStringArrayItem(key: string) {
       <!-- Spacer -->
       <template v-else-if="block.type === 'spacer'">
         <label class="bpp-field">
-          <span>Height (px)</span>
+          <span>{{ t("cms.components.blockProperties.fields.heightPx") }}</span>
           <input
             :value="block.props.height ?? 40"
             @input="(e:any) => update('height', Number(e.target.value) || 0)"
@@ -347,18 +350,18 @@ function addStringArrayItem(key: string) {
       <!-- Divider -->
       <template v-else-if="block.type === 'divider'">
         <label class="bpp-field">
-          <span>Style</span>
+          <span>{{ t("cms.components.blockProperties.fields.style") }}</span>
           <select
             :value="block.props.style || 'solid'"
             @change="(e:any) => update('style', e.target.value)"
           >
-            <option value="solid">Solid</option>
-            <option value="dashed">Dashed</option>
-            <option value="dotted">Dotted</option>
+            <option value="solid">{{ t("cms.components.blockProperties.dividerStyles.solid") }}</option>
+            <option value="dashed">{{ t("cms.components.blockProperties.dividerStyles.dashed") }}</option>
+            <option value="dotted">{{ t("cms.components.blockProperties.dividerStyles.dotted") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Width (%)</span>
+          <span>{{ t("cms.components.blockProperties.fields.widthPercent") }}</span>
           <input
             :value="block.props.width ?? 100"
             @input="(e:any) => update('width', Number(e.target.value) || 100)"
@@ -372,7 +375,7 @@ function addStringArrayItem(key: string) {
       <!-- Columns -->
       <template v-else-if="block.type === 'columns'">
         <label class="bpp-field">
-          <span>Count</span>
+          <span>{{ t("cms.components.blockProperties.fields.count") }}</span>
           <input
             :value="block.props.count ?? 2"
             @input="(e:any) => update('count', Number(e.target.value) || 2)"
@@ -382,22 +385,22 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <div class="bpp-field">
-          <span>Columns</span>
+          <span>{{ t("cms.components.blockProperties.fields.columns") }}</span>
           <div
             v-for="(item, i) in (block.props.items || [])"
             :key="i"
             class="bpp-array-item"
           >
             <div class="bpp-array-head">
-              <span>Col {{ i + 1 }}</span>
-              <button type="button" class="bpp-remove" @click="removeArrayItem('items', i)">
+              <span>{{ t("cms.components.blockProperties.arrayLabels.col", { n: i + 1 }) }}</span>
+              <button type="button" class="bpp-remove" :title="t('cms.components.blockProperties.remove')" @click="removeArrayItem('items', i)">
                 ×
               </button>
             </div>
             <textarea
               :value="item.content || ''"
               @input="(e:any) => updateArrayItem('items', i, 'content', e.target.value)"
-              placeholder="HTML content"
+              :placeholder="t('cms.components.blockProperties.placeholders.htmlContent')"
               rows="3"
             ></textarea>
           </div>
@@ -406,7 +409,7 @@ function addStringArrayItem(key: string) {
             class="bpp-add"
             @click="addArrayItem('items', { content: '' })"
           >
-            + Add column
+            {{ t("cms.components.blockProperties.actions.addColumn") }}
           </button>
         </div>
       </template>
@@ -414,7 +417,7 @@ function addStringArrayItem(key: string) {
       <!-- HTML -->
       <template v-else-if="block.type === 'html'">
         <div class="bpp-field">
-          <span>HTML</span>
+          <span>{{ t("cms.components.blockProperties.fields.html") }}</span>
           <textarea
             class="bpp-code"
             :value="block.props.content || ''"
@@ -428,22 +431,22 @@ function addStringArrayItem(key: string) {
       <!-- Video -->
       <template v-else-if="block.type === 'video'">
         <label class="bpp-field">
-          <span>URL</span>
+          <span>{{ t("cms.components.blockProperties.fields.url") }}</span>
           <input
             :value="block.props.url || ''"
             @input="(e:any) => update('url', e.target.value)"
-            placeholder="YouTube/Vimeo URL or .mp4"
+            :placeholder="t('cms.components.blockProperties.placeholders.videoUrl')"
           />
         </label>
         <label class="bpp-field">
-          <span>Caption</span>
+          <span>{{ t("cms.components.blockProperties.fields.caption") }}</span>
           <input
             :value="block.props.caption || ''"
             @input="(e:any) => update('caption', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Aspect ratio</span>
+          <span>{{ t("cms.components.blockProperties.fields.aspectRatio") }}</span>
           <select
             :value="block.props.aspect_ratio || '16:9'"
             @change="(e:any) => update('aspect_ratio', e.target.value)"
@@ -460,14 +463,14 @@ function addStringArrayItem(key: string) {
             :checked="!!block.props.autoplay"
             @change="(e:any) => update('autoplay', e.target.checked)"
           />
-          <span>Autoplay</span>
+          <span>{{ t("cms.components.blockProperties.fields.autoplay") }}</span>
         </label>
       </template>
 
       <!-- Quote -->
       <template v-else-if="block.type === 'quote'">
         <label class="bpp-field">
-          <span>Text</span>
+          <span>{{ t("cms.components.blockProperties.fields.text") }}</span>
           <textarea
             :value="block.props.text || ''"
             @input="(e:any) => update('text', e.target.value)"
@@ -475,28 +478,28 @@ function addStringArrayItem(key: string) {
           ></textarea>
         </label>
         <label class="bpp-field">
-          <span>Author</span>
+          <span>{{ t("cms.components.blockProperties.fields.author") }}</span>
           <input
             :value="block.props.author || ''"
             @input="(e:any) => update('author', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Role</span>
+          <span>{{ t("cms.components.blockProperties.fields.role") }}</span>
           <input
             :value="block.props.role || ''"
             @input="(e:any) => update('role', e.target.value)"
           />
         </label>
         <div class="bpp-field">
-          <span>Avatar</span>
+          <span>{{ t("cms.components.blockProperties.fields.avatar") }}</span>
           <div class="bpp-media-row">
             <input
               :value="block.props.avatar || ''"
               @input="(e:any) => update('avatar', e.target.value)"
-              placeholder="Image URL"
+              :placeholder="t('cms.components.blockProperties.placeholders.imageUrl')"
             />
-            <button type="button" @click="openImagePicker('avatar')">Pick</button>
+            <button type="button" @click="openImagePicker('avatar')">{{ t("cms.components.blockProperties.pick") }}</button>
           </div>
         </div>
       </template>
@@ -504,27 +507,27 @@ function addStringArrayItem(key: string) {
       <!-- Stats -->
       <template v-else-if="block.type === 'stats'">
         <div class="bpp-field">
-          <span>Items</span>
+          <span>{{ t("cms.components.blockProperties.fields.items") }}</span>
           <div
             v-for="(item, i) in (block.props.items || [])"
             :key="i"
             class="bpp-array-item"
           >
             <div class="bpp-array-head">
-              <span>Stat {{ i + 1 }}</span>
-              <button type="button" class="bpp-remove" @click="removeArrayItem('items', i)">
+              <span>{{ t("cms.components.blockProperties.arrayLabels.stat", { n: i + 1 }) }}</span>
+              <button type="button" class="bpp-remove" :title="t('cms.components.blockProperties.remove')" @click="removeArrayItem('items', i)">
                 ×
               </button>
             </div>
             <input
               :value="item.value || ''"
               @input="(e:any) => updateArrayItem('items', i, 'value', e.target.value)"
-              placeholder="Value (e.g. 1000+)"
+              :placeholder="t('cms.components.blockProperties.placeholders.statValue')"
             />
             <input
               :value="item.label || ''"
               @input="(e:any) => updateArrayItem('items', i, 'label', e.target.value)"
-              placeholder="Label"
+              :placeholder="t('cms.components.blockProperties.placeholders.label')"
             />
             <input
               :value="item.color || '#F5A623'"
@@ -537,7 +540,7 @@ function addStringArrayItem(key: string) {
             class="bpp-add"
             @click="addArrayItem('items', { value: '', label: '', color: '#F5A623' })"
           >
-            + Add stat
+            {{ t("cms.components.blockProperties.actions.addStat") }}
           </button>
         </div>
       </template>
@@ -545,50 +548,50 @@ function addStringArrayItem(key: string) {
       <!-- Button -->
       <template v-else-if="block.type === 'button'">
         <label class="bpp-field">
-          <span>Text</span>
+          <span>{{ t("cms.components.blockProperties.fields.text") }}</span>
           <input
             :value="block.props.text || ''"
             @input="(e:any) => update('text', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Link</span>
+          <span>{{ t("cms.components.blockProperties.fields.link") }}</span>
           <input
             :value="block.props.link || ''"
             @input="(e:any) => update('link', e.target.value)"
           />
         </label>
         <label class="bpp-field">
-          <span>Style</span>
+          <span>{{ t("cms.components.blockProperties.fields.style") }}</span>
           <select
             :value="block.props.style || 'primary'"
             @change="(e:any) => update('style', e.target.value)"
           >
-            <option value="primary">Primary</option>
-            <option value="secondary">Secondary</option>
-            <option value="ghost">Ghost</option>
+            <option value="primary">{{ t("cms.components.blockProperties.buttonStyles.primary") }}</option>
+            <option value="secondary">{{ t("cms.components.blockProperties.buttonStyles.secondary") }}</option>
+            <option value="ghost">{{ t("cms.components.blockProperties.buttonStyles.ghost") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Size</span>
+          <span>{{ t("cms.components.blockProperties.fields.size") }}</span>
           <select
             :value="block.props.size || 'md'"
             @change="(e:any) => update('size', e.target.value)"
           >
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
+            <option value="sm">{{ t("cms.components.blockProperties.sizes.small") }}</option>
+            <option value="md">{{ t("cms.components.blockProperties.sizes.medium") }}</option>
+            <option value="lg">{{ t("cms.components.blockProperties.sizes.large") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Align</span>
+          <span>{{ t("cms.components.blockProperties.fields.align") }}</span>
           <select
             :value="block.props.align || 'left'"
             @change="(e:any) => update('align', e.target.value)"
           >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
+            <option value="left">{{ t("cms.components.blockProperties.align.left") }}</option>
+            <option value="center">{{ t("cms.components.blockProperties.align.center") }}</option>
+            <option value="right">{{ t("cms.components.blockProperties.align.right") }}</option>
           </select>
         </label>
       </template>
@@ -596,17 +599,17 @@ function addStringArrayItem(key: string) {
       <!-- List -->
       <template v-else-if="block.type === 'list'">
         <label class="bpp-field">
-          <span>Type</span>
+          <span>{{ t("cms.components.blockProperties.fields.type") }}</span>
           <select
             :value="block.props.type || 'ul'"
             @change="(e:any) => update('type', e.target.value)"
           >
-            <option value="ul">Bullet</option>
-            <option value="ol">Numbered</option>
+            <option value="ul">{{ t("cms.components.blockProperties.listTypes.bullet") }}</option>
+            <option value="ol">{{ t("cms.components.blockProperties.listTypes.numbered") }}</option>
           </select>
         </label>
         <div class="bpp-field">
-          <span>Items</span>
+          <span>{{ t("cms.components.blockProperties.fields.items") }}</span>
           <div
             v-for="(item, i) in (block.props.items || [])"
             :key="i"
@@ -616,12 +619,12 @@ function addStringArrayItem(key: string) {
               :value="item"
               @input="(e:any) => updateStringArrayItem('items', i, e.target.value)"
             />
-            <button type="button" class="bpp-remove" @click="removeArrayItem('items', i)">
+            <button type="button" class="bpp-remove" :title="t('cms.components.blockProperties.remove')" @click="removeArrayItem('items', i)">
               ×
             </button>
           </div>
           <button type="button" class="bpp-add" @click="addStringArrayItem('items')">
-            + Add item
+            {{ t("cms.components.blockProperties.actions.addItem") }}
           </button>
         </div>
       </template>
@@ -629,7 +632,7 @@ function addStringArrayItem(key: string) {
       <!-- ── HubEx integration blocks ── -->
       <template v-else-if="block.type === 'dashboard_embed'">
         <label class="bpp-field">
-          <span>Dashboard ID</span>
+          <span>{{ t("cms.components.blockProperties.fields.dashboardId") }}</span>
           <input
             type="number"
             :value="block.props.dashboard_id || 0"
@@ -637,7 +640,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Height (px)</span>
+          <span>{{ t("cms.components.blockProperties.fields.heightPx") }}</span>
           <input
             type="number"
             :value="block.props.height || 600"
@@ -648,7 +651,7 @@ function addStringArrayItem(key: string) {
 
       <template v-else-if="block.type === 'variable_value'">
         <label class="bpp-field">
-          <span>Variable key</span>
+          <span>{{ t("cms.components.blockProperties.fields.variableKey") }}</span>
           <input
             type="text"
             :value="block.props.key || ''"
@@ -657,7 +660,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Device UID (optional)</span>
+          <span>{{ t("cms.components.blockProperties.fields.deviceUidOptional") }}</span>
           <input
             type="text"
             :value="block.props.device_uid || ''"
@@ -666,7 +669,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Label</span>
+          <span>{{ t("cms.components.blockProperties.fields.label") }}</span>
           <input
             type="text"
             :value="block.props.label || ''"
@@ -674,7 +677,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Unit</span>
+          <span>{{ t("cms.components.blockProperties.fields.unit") }}</span>
           <input
             type="text"
             :value="block.props.unit || ''"
@@ -683,7 +686,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Decimals</span>
+          <span>{{ t("cms.components.blockProperties.fields.decimals") }}</span>
           <input
             type="number"
             min="0"
@@ -696,7 +699,7 @@ function addStringArrayItem(key: string) {
 
       <template v-else-if="block.type === 'device_card'">
         <label class="bpp-field">
-          <span>Device UID</span>
+          <span>{{ t("cms.components.blockProperties.fields.deviceUid") }}</span>
           <input
             type="text"
             :value="block.props.device_uid || ''"
@@ -710,7 +713,7 @@ function addStringArrayItem(key: string) {
             :checked="block.props.show_status !== false"
             @change="(e:any) => update('show_status', e.target.checked)"
           />
-          <span>Show status</span>
+          <span>{{ t("cms.components.blockProperties.fields.showStatus") }}</span>
         </label>
         <label class="bpp-field bpp-row">
           <input
@@ -718,24 +721,24 @@ function addStringArrayItem(key: string) {
             :checked="block.props.show_variables !== false"
             @change="(e:any) => update('show_variables', e.target.checked)"
           />
-          <span>Show variables</span>
+          <span>{{ t("cms.components.blockProperties.fields.showVariables") }}</span>
         </label>
       </template>
 
       <template v-else-if="block.type === 'device_list'">
         <label class="bpp-field">
-          <span>Filter</span>
+          <span>{{ t("cms.components.blockProperties.fields.filter") }}</span>
           <select
             :value="block.props.filter || 'all'"
             @change="(e:any) => update('filter', e.target.value)"
           >
-            <option value="all">All</option>
-            <option value="online">Online only</option>
-            <option value="offline">Offline only</option>
+            <option value="all">{{ t("cms.components.blockProperties.deviceFilter.all") }}</option>
+            <option value="online">{{ t("cms.components.blockProperties.deviceFilter.online") }}</option>
+            <option value="offline">{{ t("cms.components.blockProperties.deviceFilter.offline") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Columns</span>
+          <span>{{ t("cms.components.blockProperties.fields.columns") }}</span>
           <input
             type="number"
             min="1"
@@ -750,13 +753,13 @@ function addStringArrayItem(key: string) {
             :checked="block.props.show_type !== false"
             @change="(e:any) => update('show_type', e.target.checked)"
           />
-          <span>Show type badge</span>
+          <span>{{ t("cms.components.blockProperties.fields.showTypeBadge") }}</span>
         </label>
       </template>
 
       <template v-else-if="block.type === 'tour_trigger'">
         <label class="bpp-field">
-          <span>Tour ID</span>
+          <span>{{ t("cms.components.blockProperties.fields.tourId") }}</span>
           <input
             type="text"
             :value="block.props.tour_id || ''"
@@ -765,7 +768,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Button text</span>
+          <span>{{ t("cms.components.blockProperties.fields.buttonText") }}</span>
           <input
             type="text"
             :value="block.props.button_text || ''"
@@ -773,33 +776,33 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Style</span>
+          <span>{{ t("cms.components.blockProperties.fields.style") }}</span>
           <select
             :value="block.props.style || 'primary'"
             @change="(e:any) => update('style', e.target.value)"
           >
-            <option value="primary">Primary</option>
-            <option value="secondary">Secondary</option>
-            <option value="ghost">Ghost</option>
+            <option value="primary">{{ t("cms.components.blockProperties.buttonStyles.primary") }}</option>
+            <option value="secondary">{{ t("cms.components.blockProperties.buttonStyles.secondary") }}</option>
+            <option value="ghost">{{ t("cms.components.blockProperties.buttonStyles.ghost") }}</option>
           </select>
         </label>
       </template>
 
       <template v-else-if="block.type === 'alert_banner'">
         <label class="bpp-field">
-          <span>Severity filter</span>
+          <span>{{ t("cms.components.blockProperties.fields.severityFilter") }}</span>
           <select
             :value="block.props.severity_filter || 'all'"
             @change="(e:any) => update('severity_filter', e.target.value)"
           >
-            <option value="all">All</option>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="critical">Critical</option>
+            <option value="all">{{ t("cms.components.blockProperties.severity.all") }}</option>
+            <option value="info">{{ t("cms.components.blockProperties.severity.info") }}</option>
+            <option value="warning">{{ t("cms.components.blockProperties.severity.warning") }}</option>
+            <option value="critical">{{ t("cms.components.blockProperties.severity.critical") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Max items</span>
+          <span>{{ t("cms.components.blockProperties.fields.maxItems") }}</span>
           <input
             type="number"
             min="1"
@@ -814,25 +817,25 @@ function addStringArrayItem(key: string) {
             :checked="block.props.auto_hide_if_none !== false"
             @change="(e:any) => update('auto_hide_if_none', e.target.checked)"
           />
-          <span>Hide if no alerts</span>
+          <span>{{ t("cms.components.blockProperties.fields.hideIfNoAlerts") }}</span>
         </label>
       </template>
 
       <template v-else-if="block.type === 'metric_counter'">
         <label class="bpp-field">
-          <span>Metric</span>
+          <span>{{ t("cms.components.blockProperties.fields.metric") }}</span>
           <select
             :value="block.props.metric || 'devices_online'"
             @change="(e:any) => update('metric', e.target.value)"
           >
-            <option value="devices_online">Devices online</option>
-            <option value="devices_total">Devices total</option>
-            <option value="alerts_active">Active alerts</option>
-            <option value="events_today">Events today</option>
+            <option value="devices_online">{{ t("cms.components.blockProperties.metrics.devicesOnline") }}</option>
+            <option value="devices_total">{{ t("cms.components.blockProperties.metrics.devicesTotal") }}</option>
+            <option value="alerts_active">{{ t("cms.components.blockProperties.metrics.alertsActive") }}</option>
+            <option value="events_today">{{ t("cms.components.blockProperties.metrics.eventsToday") }}</option>
           </select>
         </label>
         <label class="bpp-field">
-          <span>Label</span>
+          <span>{{ t("cms.components.blockProperties.fields.label") }}</span>
           <input
             type="text"
             :value="block.props.label || ''"
@@ -840,7 +843,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Icon (emoji)</span>
+          <span>{{ t("cms.components.blockProperties.fields.iconEmoji") }}</span>
           <input
             type="text"
             :value="block.props.icon || ''"
@@ -849,7 +852,7 @@ function addStringArrayItem(key: string) {
           />
         </label>
         <label class="bpp-field">
-          <span>Color</span>
+          <span>{{ t("cms.components.blockProperties.fields.color") }}</span>
           <input
             type="text"
             :value="block.props.color || '#2DD4BF'"
@@ -860,7 +863,7 @@ function addStringArrayItem(key: string) {
 
       <template v-else-if="block.type === 'automation_status'">
         <label class="bpp-field">
-          <span>Automation ID</span>
+          <span>{{ t("cms.components.blockProperties.fields.automationId") }}</span>
           <input
             type="number"
             :value="block.props.automation_id || 0"
@@ -873,14 +876,14 @@ function addStringArrayItem(key: string) {
             :checked="block.props.show_last_fire !== false"
             @change="(e:any) => update('show_last_fire', e.target.checked)"
           />
-          <span>Show last fire time</span>
+          <span>{{ t("cms.components.blockProperties.fields.showLastFireTime") }}</span>
         </label>
       </template>
 
       <!-- Fallback -->
       <template v-else>
         <div class="bpp-fallback">
-          No property editor for block type: <code>{{ block.type }}</code>
+          {{ t("cms.components.blockProperties.noEditorFor") }} <code>{{ block.type }}</code>
         </div>
       </template>
     </template>

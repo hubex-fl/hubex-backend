@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const toast = useToastStore();
@@ -46,20 +48,20 @@ type CmsForm = {
   enabled: boolean;
 };
 
-const FIELD_TYPES: { value: FieldType; label: string; icon: string }[] = [
-  { value: "text",     label: "Text",         icon: "Aa" },
-  { value: "email",    label: "Email",        icon: "@"  },
-  { value: "tel",      label: "Phone",        icon: "#"  },
-  { value: "url",      label: "URL",          icon: "/"  },
-  { value: "number",   label: "Number",       icon: "12" },
-  { value: "textarea", label: "Long Text",    icon: "T" },
-  { value: "select",   label: "Select",       icon: "v" },
-  { value: "radio",    label: "Radio",        icon: "o" },
-  { value: "checkbox", label: "Checkbox",     icon: "x" },
-  { value: "date",     label: "Date",         icon: "D" },
-  { value: "time",     label: "Time",         icon: "t" },
-  { value: "file",     label: "File Upload",  icon: "F" },
-];
+const FIELD_TYPES = computed<{ value: FieldType; label: string; icon: string }[]>(() => [
+  { value: "text",     label: t("cms.formEditor.fieldTypes.text"),     icon: "Aa" },
+  { value: "email",    label: t("cms.formEditor.fieldTypes.email"),    icon: "@"  },
+  { value: "tel",      label: t("cms.formEditor.fieldTypes.tel"),      icon: "#"  },
+  { value: "url",      label: t("cms.formEditor.fieldTypes.url"),      icon: "/"  },
+  { value: "number",   label: t("cms.formEditor.fieldTypes.number"),   icon: "12" },
+  { value: "textarea", label: t("cms.formEditor.fieldTypes.textarea"), icon: "T" },
+  { value: "select",   label: t("cms.formEditor.fieldTypes.select"),   icon: "v" },
+  { value: "radio",    label: t("cms.formEditor.fieldTypes.radio"),    icon: "o" },
+  { value: "checkbox", label: t("cms.formEditor.fieldTypes.checkbox"), icon: "x" },
+  { value: "date",     label: t("cms.formEditor.fieldTypes.date"),     icon: "D" },
+  { value: "time",     label: t("cms.formEditor.fieldTypes.time"),     icon: "t" },
+  { value: "file",     label: t("cms.formEditor.fieldTypes.file"),     icon: "F" },
+]);
 
 const formId = computed(() => Number(route.params.id));
 const loading = ref(true);
@@ -77,7 +79,7 @@ async function loadForm() {
   try {
     form.value = await apiFetch<CmsForm>(`/api/v1/cms/forms/${formId.value}`);
   } catch (e: any) {
-    toast.show(e.message || "Failed to load", "error");
+    toast.show(e.message || t("cms.formEditor.loadFailed"), "error");
     router.push("/cms/forms");
   } finally {
     loading.value = false;
@@ -90,15 +92,20 @@ function generateFieldId(): string {
 
 function addField(type: FieldType) {
   if (!form.value) return;
+  const typeLabel = t(`cms.formEditor.fieldTypes.${type}`);
   const newField: FormField = {
     id: generateFieldId(),
     type,
-    label: `${type.charAt(0).toUpperCase() + type.slice(1)} field`,
+    label: t("cms.formEditor.defaults.fieldLabel", { type: typeLabel }),
     required: false,
     placeholder: "",
   };
   if (type === "select" || type === "radio") {
-    newField.options = ["Option 1", "Option 2", "Option 3"];
+    newField.options = [
+      t("cms.formEditor.defaults.option", { n: 1 }),
+      t("cms.formEditor.defaults.option", { n: 2 }),
+      t("cms.formEditor.defaults.option", { n: 3 }),
+    ];
   }
   form.value.fields.push(newField);
   selectedFieldIdx.value = form.value.fields.length - 1;
@@ -122,7 +129,7 @@ function moveField(idx: number, delta: number) {
 
 function addOption(field: FormField) {
   if (!field.options) field.options = [];
-  field.options.push(`Option ${field.options.length + 1}`);
+  field.options.push(t("cms.formEditor.defaults.option", { n: field.options.length + 1 }));
 }
 
 function removeOption(field: FormField, idx: number) {
@@ -148,9 +155,9 @@ async function saveForm() {
         enabled: form.value.enabled,
       }),
     });
-    toast.show("Form saved", "success");
+    toast.show(t("cms.formEditor.saved"), "success");
   } catch (e: any) {
-    toast.show(e.message || "Failed to save", "error");
+    toast.show(e.message || t("cms.formEditor.saveFailed"), "error");
   } finally {
     saving.value = false;
   }
@@ -167,32 +174,32 @@ onMounted(loadForm);
 <template>
   <div class="editor-wrap" v-if="!loading && form">
     <header class="editor-head">
-      <button class="back-btn" @click="router.push('/cms/forms')">← Back</button>
+      <button class="back-btn" @click="router.push('/cms/forms')">{{ t("cms.formEditor.back") }}</button>
       <div class="head-title">
         <input v-model="form.name" class="title-input" />
         <div class="head-slug">/{{ form.slug }}</div>
       </div>
       <div class="head-tabs">
         <button
-          v-for="t in ['build','settings','preview'] as const"
-          :key="t"
+          v-for="tab in (['build','settings','preview'] as const)"
+          :key="tab"
           class="tab-btn"
-          :class="{ active: activeTab === t }"
-          @click="activeTab = t"
-        >{{ t }}</button>
+          :class="{ active: activeTab === tab }"
+          @click="activeTab = tab"
+        >{{ t(`cms.formEditor.tabs.${tab}`) }}</button>
       </div>
       <button class="btn-primary" :disabled="saving" @click="saveForm">
-        {{ saving ? "Saving…" : "Save" }}
+        {{ saving ? t("cms.formEditor.saving") : t("cms.formEditor.save") }}
       </button>
     </header>
 
     <!-- BUILD TAB -->
     <div v-if="activeTab === 'build'" class="editor-body">
       <div class="fields-col">
-        <h3 class="col-title">Form Fields</h3>
+        <h3 class="col-title">{{ t("cms.formEditor.build.fieldsTitle") }}</h3>
 
         <div v-if="form.fields.length === 0" class="empty-state">
-          No fields yet. Click “Add Field” below.
+          {{ t("cms.formEditor.build.emptyFields") }}
         </div>
 
         <div
@@ -206,54 +213,54 @@ onMounted(loadForm);
           <div class="field-info">
             <div class="field-label">{{ field.label }}</div>
             <div class="field-meta">
-              <span class="type-badge">{{ field.type }}</span>
-              <span v-if="field.required" class="required-badge">Required</span>
+              <span class="type-badge">{{ t(`cms.formEditor.fieldTypes.${field.type}`) }}</span>
+              <span v-if="field.required" class="required-badge">{{ t("cms.formEditor.build.requiredBadge") }}</span>
             </div>
           </div>
           <div class="field-ops">
-            <button class="ops-btn" @click.stop="moveField(idx, -1)" title="Move up">↑</button>
-            <button class="ops-btn" @click.stop="moveField(idx, 1)" title="Move down">↓</button>
-            <button class="ops-btn danger" @click.stop="removeField(idx)" title="Delete">×</button>
+            <button class="ops-btn" @click.stop="moveField(idx, -1)" :title="t('cms.formEditor.build.moveUp')">↑</button>
+            <button class="ops-btn" @click.stop="moveField(idx, 1)" :title="t('cms.formEditor.build.moveDown')">↓</button>
+            <button class="ops-btn danger" @click.stop="removeField(idx)" :title="t('cms.formEditor.build.deleteField')">×</button>
           </div>
         </div>
 
         <div class="add-field-wrap">
-          <button class="add-btn" @click="addFieldOpen = !addFieldOpen">+ Add Field</button>
+          <button class="add-btn" @click="addFieldOpen = !addFieldOpen">{{ t("cms.formEditor.build.addField") }}</button>
           <div v-if="addFieldOpen" class="field-type-grid">
             <button
-              v-for="t in FIELD_TYPES"
-              :key="t.value"
+              v-for="ft in FIELD_TYPES"
+              :key="ft.value"
               class="type-btn"
-              @click="addField(t.value)"
+              @click="addField(ft.value)"
             >
-              <span class="type-icon">{{ t.icon }}</span>
-              <span>{{ t.label }}</span>
+              <span class="type-icon">{{ ft.icon }}</span>
+              <span>{{ ft.label }}</span>
             </button>
           </div>
         </div>
       </div>
 
       <div class="prop-col">
-        <h3 class="col-title">Field Properties</h3>
+        <h3 class="col-title">{{ t("cms.formEditor.build.propertiesTitle") }}</h3>
         <div v-if="selectedFieldIdx === null" class="empty-state">
-          Select a field to edit its properties.
+          {{ t("cms.formEditor.build.selectFieldHint") }}
         </div>
         <div v-else-if="form.fields[selectedFieldIdx]">
           <label class="field-input">
-            <span>Label</span>
+            <span>{{ t("cms.formEditor.build.props.label") }}</span>
             <input v-model="form.fields[selectedFieldIdx].label" type="text" />
           </label>
           <label class="field-input">
-            <span>Field ID (key in submission)</span>
+            <span>{{ t("cms.formEditor.build.props.fieldId") }}</span>
             <input v-model="form.fields[selectedFieldIdx].id" type="text" />
           </label>
           <label class="field-input">
-            <span>Placeholder</span>
+            <span>{{ t("cms.formEditor.build.props.placeholder") }}</span>
             <input v-model="form.fields[selectedFieldIdx].placeholder" type="text" />
           </label>
           <label class="checkbox-row">
             <input type="checkbox" v-model="form.fields[selectedFieldIdx].required" />
-            <span>Required field</span>
+            <span>{{ t("cms.formEditor.build.props.requiredToggle") }}</span>
           </label>
 
           <div
@@ -264,9 +271,9 @@ onMounted(loadForm);
             class="options-section"
           >
             <div class="opt-header">
-              <span>Options</span>
+              <span>{{ t("cms.formEditor.build.props.options") }}</span>
               <button class="mini-btn" @click="addOption(form.fields[selectedFieldIdx])">
-                + Add
+                {{ t("cms.formEditor.build.props.addOption") }}
               </button>
             </div>
             <div
@@ -275,7 +282,7 @@ onMounted(loadForm);
               class="opt-row"
             >
               <input v-model="form.fields[selectedFieldIdx].options![i]" type="text" />
-              <button class="mini-btn danger" @click="removeOption(form.fields[selectedFieldIdx], i)">
+              <button class="mini-btn danger" :title="t('cms.formEditor.build.props.removeOption')" @click="removeOption(form.fields[selectedFieldIdx], i)">
                 ×
               </button>
             </div>
@@ -287,63 +294,63 @@ onMounted(loadForm);
     <!-- SETTINGS TAB -->
     <div v-if="activeTab === 'settings'" class="editor-body single-col">
       <div class="settings-section">
-        <h3>General</h3>
+        <h3>{{ t("cms.formEditor.settings.general") }}</h3>
         <label class="field-input">
-          <span>Form Name</span>
+          <span>{{ t("cms.formEditor.settings.formName") }}</span>
           <input v-model="form.name" type="text" />
         </label>
         <label class="field-input">
-          <span>Slug</span>
+          <span>{{ t("cms.formEditor.settings.slug") }}</span>
           <input v-model="form.slug" type="text" />
         </label>
         <label class="field-input">
-          <span>Description</span>
+          <span>{{ t("cms.formEditor.settings.description") }}</span>
           <textarea v-model="form.description" rows="2"></textarea>
         </label>
         <label class="field-input">
-          <span>Submit Button Text</span>
+          <span>{{ t("cms.formEditor.settings.submitButtonText") }}</span>
           <input v-model="form.submit_button_text" type="text" />
         </label>
         <label class="field-input">
-          <span>Success Message</span>
+          <span>{{ t("cms.formEditor.settings.successMessage") }}</span>
           <textarea v-model="form.success_message" rows="2"></textarea>
         </label>
         <label class="checkbox-row">
           <input type="checkbox" v-model="form.enabled" />
-          <span>Form is enabled (accepts submissions)</span>
+          <span>{{ t("cms.formEditor.settings.enabledToggle") }}</span>
         </label>
       </div>
 
       <div class="settings-section">
-        <h3>On Submission</h3>
+        <h3>{{ t("cms.formEditor.settings.onSubmission") }}</h3>
         <label class="field-input">
-          <span>Action</span>
+          <span>{{ t("cms.formEditor.settings.action") }}</span>
           <select v-model="form.action">
-            <option value="store">Store in database only</option>
-            <option value="email">Store + send email notification</option>
-            <option value="webhook">Store + call webhook</option>
-            <option value="both">Store + email + webhook</option>
+            <option value="store">{{ t("cms.formEditor.settings.actions.store") }}</option>
+            <option value="email">{{ t("cms.formEditor.settings.actions.email") }}</option>
+            <option value="webhook">{{ t("cms.formEditor.settings.actions.webhook") }}</option>
+            <option value="both">{{ t("cms.formEditor.settings.actions.both") }}</option>
           </select>
         </label>
         <label
           v-if="form.action === 'email' || form.action === 'both'"
           class="field-input"
         >
-          <span>Email to</span>
-          <input v-model="form.email_to" type="email" placeholder="you@example.com" />
+          <span>{{ t("cms.formEditor.settings.emailTo") }}</span>
+          <input v-model="form.email_to" type="email" :placeholder="t('cms.formEditor.settings.emailPlaceholder')" />
         </label>
         <label
           v-if="form.action === 'webhook' || form.action === 'both'"
           class="field-input"
         >
-          <span>Webhook URL</span>
-          <input v-model="form.webhook_url" type="url" placeholder="https://example.com/webhook" />
+          <span>{{ t("cms.formEditor.settings.webhookUrl") }}</span>
+          <input v-model="form.webhook_url" type="url" :placeholder="t('cms.formEditor.settings.webhookPlaceholder')" />
         </label>
       </div>
 
       <div class="settings-section">
-        <h3>Integration</h3>
-        <p class="settings-hint">Submit this form by POSTing JSON to:</p>
+        <h3>{{ t("cms.formEditor.settings.integration") }}</h3>
+        <p class="settings-hint">{{ t("cms.formEditor.settings.integrationHint") }}</p>
         <code class="embed-code">{{ embedUrl }}</code>
       </div>
     </div>
@@ -372,7 +379,7 @@ onMounted(loadForm);
               rows="4"
             ></textarea>
             <select v-else-if="field.type === 'select'" v-model="previewValues[field.id]">
-              <option value="" disabled>Choose…</option>
+              <option value="" disabled>{{ t("cms.formEditor.preview.choosePlaceholder") }}</option>
               <option v-for="opt in field.options || []" :key="opt" :value="opt">{{ opt }}</option>
             </select>
             <div v-else-if="field.type === 'radio'" class="radio-group">
@@ -383,7 +390,7 @@ onMounted(loadForm);
             </div>
             <label v-else-if="field.type === 'checkbox'" class="checkbox-opt">
               <input type="checkbox" v-model="previewValues[field.id]" />
-              <span>{{ field.placeholder || "Yes" }}</span>
+              <span>{{ field.placeholder || t("cms.formEditor.preview.checkboxYes") }}</span>
             </label>
             <input v-else-if="field.type === 'file'" type="file" />
           </div>
@@ -392,7 +399,7 @@ onMounted(loadForm);
       </div>
     </div>
   </div>
-  <div v-else class="state-msg">Loading…</div>
+  <div v-else class="state-msg">{{ t("cms.formEditor.loading") }}</div>
 </template>
 
 <style scoped>

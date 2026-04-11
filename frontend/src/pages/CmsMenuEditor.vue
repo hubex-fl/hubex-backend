@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { useToastStore } from "../stores/toast";
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const toast = useToastStore();
@@ -67,7 +69,7 @@ async function load() {
     items.value = assignIds(m.items || []);
     pages.value = await apiFetch<PageOption[]>("/api/v1/cms/pages");
   } catch (e: any) {
-    toast.show(e.message || "Failed to load", "error");
+    toast.show(e.message || t("cms.menuEditor.loadFailed"), "error");
   } finally {
     loading.value = false;
   }
@@ -138,7 +140,7 @@ function addLink() {
   items.value.push({
     id: uid(),
     type: "link",
-    label: "External link",
+    label: t("cms.menuEditor.defaults.externalLinkLabel"),
     url: "https://example.com",
     target: "_blank",
   });
@@ -147,7 +149,7 @@ function addSection() {
   items.value.push({
     id: uid(),
     type: "section",
-    label: "Section",
+    label: t("cms.menuEditor.defaults.sectionLabel"),
     children: [],
   });
 }
@@ -202,9 +204,9 @@ async function save() {
       method: "PUT",
       body: JSON.stringify({ items: stripIds(items.value) }),
     });
-    toast.show("Menu saved", "success");
+    toast.show(t("cms.menuEditor.saved"), "success");
   } catch (e: any) {
-    toast.show(e.message || "Save failed", "error");
+    toast.show(e.message || t("cms.menuEditor.saveFailed"), "error");
   } finally {
     saving.value = false;
   }
@@ -226,32 +228,32 @@ onMounted(load);
 <template>
   <div class="editor-wrap">
     <header class="ed-head">
-      <button class="back-btn" @click="router.push('/cms/menus')">← Menus</button>
+      <button class="back-btn" @click="router.push('/cms/menus')">{{ t("cms.menuEditor.backToMenus") }}</button>
       <div class="ed-title">
-        <h1>{{ menu?.name || 'Menu' }}</h1>
+        <h1>{{ menu?.name || t("cms.menuEditor.titleFallback") }}</h1>
         <span class="ed-loc">{{ menu?.location }}</span>
       </div>
       <button class="btn-primary" :disabled="saving" @click="save">
-        {{ saving ? 'Saving…' : 'Save' }}
+        {{ saving ? t("cms.menuEditor.saving") : t("cms.menuEditor.save") }}
       </button>
     </header>
 
-    <div v-if="loading" class="state">Loading…</div>
+    <div v-if="loading" class="state">{{ t("cms.menuEditor.loading") }}</div>
 
     <div v-else class="panels">
       <!-- Left: library -->
       <aside class="panel-left">
-        <h2 class="panel-title">Add items</h2>
+        <h2 class="panel-title">{{ t("cms.menuEditor.library.title") }}</h2>
 
         <div class="section">
-          <h3>Quick add</h3>
-          <button class="add-btn" @click="addLink">+ External link</button>
-          <button class="add-btn" @click="addSection">+ Section</button>
-          <button class="add-btn" @click="addDivider">+ Divider</button>
+          <h3>{{ t("cms.menuEditor.library.quickAdd") }}</h3>
+          <button class="add-btn" @click="addLink">{{ t("cms.menuEditor.library.addExternalLink") }}</button>
+          <button class="add-btn" @click="addSection">{{ t("cms.menuEditor.library.addSection") }}</button>
+          <button class="add-btn" @click="addDivider">{{ t("cms.menuEditor.library.addDivider") }}</button>
         </div>
 
         <div class="section">
-          <h3>Existing pages</h3>
+          <h3>{{ t("cms.menuEditor.library.existingPages") }}</h3>
           <div class="page-list">
             <button
               v-for="p in pages"
@@ -259,7 +261,7 @@ onMounted(load);
               class="page-item"
               :class="{ unpublished: !p.published }"
               @click="addPage(p.id)"
-              :title="p.published ? 'Add to menu' : 'Draft — add anyway'"
+              :title="p.published ? t('cms.menuEditor.library.pageAddTitlePublished') : t('cms.menuEditor.library.pageAddTitleDraft')"
             >
               <span class="pg-title">{{ p.title }}</span>
               <span class="pg-slug">/{{ p.slug }}</span>
@@ -270,9 +272,9 @@ onMounted(load);
 
       <!-- Right: current menu -->
       <section class="panel-right">
-        <h2 class="panel-title">Menu structure</h2>
+        <h2 class="panel-title">{{ t("cms.menuEditor.structure.title") }}</h2>
         <div v-if="!items.length" class="empty">
-          Click items on the left to add them.
+          {{ t("cms.menuEditor.structure.empty") }}
         </div>
         <ul v-else class="menu-tree">
           <li
@@ -294,9 +296,9 @@ onMounted(load);
               @drop="onDrop($event, it)"
               @click="selectedId = it.id"
             >
-              <span class="type-tag" :class="`t-${it.type}`">{{ it.type }}</span>
-              <span v-if="it.type === 'divider'" class="m-label muted">— divider —</span>
-              <span v-else class="m-label">{{ it.label || '(no label)' }}</span>
+              <span class="type-tag" :class="`t-${it.type}`">{{ t(`cms.menuEditor.itemType.${it.type}`) }}</span>
+              <span v-if="it.type === 'divider'" class="m-label muted">{{ t("cms.menuEditor.dividerPlaceholder") }}</span>
+              <span v-else class="m-label">{{ it.label || t("cms.menuEditor.noLabel") }}</span>
               <span v-if="it.url" class="m-url">{{ it.url }}</span>
             </div>
 
@@ -312,9 +314,9 @@ onMounted(load);
                   @drop="onDrop($event, c)"
                   @click="selectedId = c.id"
                 >
-                  <span class="type-tag" :class="`t-${c.type}`">{{ c.type }}</span>
-                  <span v-if="c.type === 'divider'" class="m-label muted">— divider —</span>
-                  <span v-else class="m-label">{{ c.label || '(no label)' }}</span>
+                  <span class="type-tag" :class="`t-${c.type}`">{{ t(`cms.menuEditor.itemType.${c.type}`) }}</span>
+                  <span v-if="c.type === 'divider'" class="m-label muted">{{ t("cms.menuEditor.dividerPlaceholder") }}</span>
+                  <span v-else class="m-label">{{ c.label || t("cms.menuEditor.noLabel") }}</span>
                 </div>
               </li>
             </ul>
@@ -323,29 +325,29 @@ onMounted(load);
 
         <!-- Inspector for selected item -->
         <div v-if="selected" class="inspector">
-          <h3>Item properties</h3>
+          <h3>{{ t("cms.menuEditor.inspector.title") }}</h3>
           <label v-if="selected.type !== 'divider'" class="f">
-            <span>Label</span>
+            <span>{{ t("cms.menuEditor.inspector.labelField") }}</span>
             <input v-model="selected.label" type="text" />
           </label>
           <label v-if="selected.type === 'link'" class="f">
-            <span>URL</span>
+            <span>{{ t("cms.menuEditor.inspector.urlField") }}</span>
             <input v-model="selected.url" type="url" placeholder="https://…" />
           </label>
           <label v-if="selected.type === 'link'" class="f">
-            <span>Target</span>
+            <span>{{ t("cms.menuEditor.inspector.targetField") }}</span>
             <select v-model="selected.target">
-              <option value="_self">Same tab</option>
-              <option value="_blank">New tab</option>
+              <option value="_self">{{ t("cms.menuEditor.inspector.targetSelf") }}</option>
+              <option value="_blank">{{ t("cms.menuEditor.inspector.targetBlank") }}</option>
             </select>
           </label>
           <label v-if="selected.type === 'page'" class="f">
-            <span>Page</span>
+            <span>{{ t("cms.menuEditor.inspector.pageField") }}</span>
             <select v-model.number="selected.page_id">
               <option v-for="p in pages" :key="p.id" :value="p.id">{{ p.title }}</option>
             </select>
           </label>
-          <button class="btn-danger" @click="removeSelected">Remove item</button>
+          <button class="btn-danger" @click="removeSelected">{{ t("cms.menuEditor.inspector.removeItem") }}</button>
         </div>
       </section>
     </div>

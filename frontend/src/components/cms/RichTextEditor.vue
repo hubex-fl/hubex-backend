@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -7,6 +8,8 @@ import Image from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
 import MediaLibrary from "./MediaLibrary.vue";
 import type { MediaAsset } from "../../lib/media";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   modelValue: string;
@@ -100,7 +103,7 @@ function redo() {
 
 function promptLink() {
   const prev = editor.value?.getAttributes("link").href || "";
-  const url = prompt("Link URL", prev || "https://");
+  const url = prompt(t("cms.components.richText.linkPrompt"), prev || "https://");
   if (url === null) return;
   if (!url) {
     editor.value?.chain().focus().extendMarkRange("link").unsetLink().run();
@@ -184,7 +187,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.bold }"
         @click="toggleBold"
-        title="Bold"
+        :title="t('cms.components.richText.bold')"
       >
         B
       </button>
@@ -193,7 +196,7 @@ const isActive = computed(() => ({
         class="rte-btn italic"
         :class="{ active: isActive.italic }"
         @click="toggleItalic"
-        title="Italic"
+        :title="t('cms.components.richText.italic')"
       >
         I
       </button>
@@ -202,7 +205,7 @@ const isActive = computed(() => ({
         class="rte-btn strike"
         :class="{ active: isActive.strike }"
         @click="toggleStrike"
-        title="Strikethrough"
+        :title="t('cms.components.richText.strikethrough')"
       >
         S
       </button>
@@ -211,7 +214,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.code }"
         @click="toggleCode"
-        title="Inline code"
+        :title="t('cms.components.richText.inlineCode')"
       >
         &lt;/&gt;
       </button>
@@ -221,7 +224,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.h1 }"
         @click="setHeading(1)"
-        title="Heading 1"
+        :title="t('cms.components.richText.heading1')"
       >
         H1
       </button>
@@ -230,7 +233,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.h2 }"
         @click="setHeading(2)"
-        title="Heading 2"
+        :title="t('cms.components.richText.heading2')"
       >
         H2
       </button>
@@ -239,11 +242,11 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.h3 }"
         @click="setHeading(3)"
-        title="Heading 3"
+        :title="t('cms.components.richText.heading3')"
       >
         H3
       </button>
-      <button type="button" class="rte-btn" @click="setParagraph" title="Paragraph">
+      <button type="button" class="rte-btn" @click="setParagraph" :title="t('cms.components.richText.paragraph')">
         P
       </button>
       <span class="rte-sep"></span>
@@ -252,7 +255,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.bulletList }"
         @click="toggleBulletList"
-        title="Bullet list"
+        :title="t('cms.components.richText.bulletList')"
       >
         •≡
       </button>
@@ -261,7 +264,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.orderedList }"
         @click="toggleOrderedList"
-        title="Ordered list"
+        :title="t('cms.components.richText.orderedList')"
       >
         1≡
       </button>
@@ -271,11 +274,11 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.link }"
         @click="promptLink"
-        title="Link"
+        :title="t('cms.components.richText.link')"
       >
         🔗
       </button>
-      <button type="button" class="rte-btn" @click="pickImage" title="Insert image">
+      <button type="button" class="rte-btn" @click="pickImage" :title="t('cms.components.richText.insertImage')">
         🖼
       </button>
       <span class="rte-sep"></span>
@@ -284,7 +287,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.alignLeft }"
         @click="setAlign('left')"
-        title="Align left"
+        :title="t('cms.components.richText.alignLeft')"
       >
         ⇤
       </button>
@@ -293,7 +296,7 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.alignCenter }"
         @click="setAlign('center')"
-        title="Align center"
+        :title="t('cms.components.richText.alignCenter')"
       >
         ⇔
       </button>
@@ -302,30 +305,30 @@ const isActive = computed(() => ({
         class="rte-btn"
         :class="{ active: isActive.alignRight }"
         @click="setAlign('right')"
-        title="Align right"
+        :title="t('cms.components.richText.alignRight')"
       >
         ⇥
       </button>
       <span class="rte-sep"></span>
-      <button type="button" class="rte-btn" @click="clearFormat" title="Clear formatting">
+      <button type="button" class="rte-btn" @click="clearFormat" :title="t('cms.components.richText.clearFormatting')">
         ⨯
       </button>
-      <button type="button" class="rte-btn" @click="undo" title="Undo">↶</button>
-      <button type="button" class="rte-btn" @click="redo" title="Redo">↷</button>
+      <button type="button" class="rte-btn" @click="undo" :title="t('cms.components.richText.undo')">↶</button>
+      <button type="button" class="rte-btn" @click="redo" :title="t('cms.components.richText.redo')">↷</button>
       <span class="rte-sep"></span>
       <button
         type="button"
         class="rte-btn"
         :class="{ active: showSource }"
         @click="toggleSource"
-        title="Source view"
+        :title="t('cms.components.richText.sourceView')"
       >
-        &lt;/&gt; HTML
+        &lt;/&gt; {{ t("cms.components.richText.htmlLabel") }}
       </button>
     </div>
     <div class="rte-toolbar" v-else>
       <button type="button" class="rte-btn active" @click="toggleSource">
-        Back to editor
+        {{ t("cms.components.richText.backToEditor") }}
       </button>
     </div>
 

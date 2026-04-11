@@ -3,6 +3,11 @@
  * BlockLibrary — lists available block types grouped by category.
  * Click to insert a block (emits "insert" with type + default props).
  */
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
+
 const emit = defineEmits<{
   (e: "insert", payload: { type: string; props: Record<string, any> }): void;
 }>();
@@ -19,19 +24,19 @@ type BlockGroup = {
   items: BlockSpec[];
 };
 
-const groups: BlockGroup[] = [
+const groups = computed<BlockGroup[]>(() => [
   {
-    name: "Layout",
+    name: t("cms.components.blockLibrary.groups.layout"),
     items: [
       {
         type: "hero",
-        label: "Hero",
+        label: t("cms.components.blockLibrary.items.hero"),
         icon: "🪧",
         defaults: {
-          title: "Your Hero Title",
-          subtitle: "A compelling subtitle that explains the value.",
+          title: t("cms.components.blockLibrary.defaults.hero.title"),
+          subtitle: t("cms.components.blockLibrary.defaults.hero.subtitle"),
           bg_color: "#111110",
-          cta_text: "Get Started",
+          cta_text: t("cms.components.blockLibrary.defaults.hero.cta"),
           cta_link: "#",
           cta_secondary_text: "",
           cta_secondary_link: "",
@@ -39,118 +44,124 @@ const groups: BlockGroup[] = [
       },
       {
         type: "columns",
-        label: "Columns",
+        label: t("cms.components.blockLibrary.items.columns"),
         icon: "▤",
         defaults: {
           count: 2,
           items: [
-            { content: "Column 1 content" },
-            { content: "Column 2 content" },
+            { content: t("cms.components.blockLibrary.defaults.columns.col1") },
+            { content: t("cms.components.blockLibrary.defaults.columns.col2") },
           ],
         },
       },
-      { type: "spacer", label: "Spacer", icon: "↕", defaults: { height: 40 } },
+      { type: "spacer", label: t("cms.components.blockLibrary.items.spacer"), icon: "↕", defaults: { height: 40 } },
       {
         type: "divider",
-        label: "Divider",
+        label: t("cms.components.blockLibrary.items.divider"),
         icon: "—",
         defaults: { style: "solid", width: 100 },
       },
     ],
   },
   {
-    name: "Content",
+    name: t("cms.components.blockLibrary.groups.content"),
     items: [
       {
         type: "heading",
-        label: "Heading",
+        label: t("cms.components.blockLibrary.items.heading"),
         icon: "H",
-        defaults: { level: "h2", text: "Section heading", align: "left" },
+        defaults: { level: "h2", text: t("cms.components.blockLibrary.defaults.heading.text"), align: "left" },
       },
       {
         type: "text",
-        label: "Text",
+        label: t("cms.components.blockLibrary.items.text"),
         icon: "T",
-        defaults: { content: "<p>Your text here…</p>" },
+        defaults: { content: t("cms.components.blockLibrary.defaults.text.content") },
       },
       {
         type: "image",
-        label: "Image",
+        label: t("cms.components.blockLibrary.items.image"),
         icon: "🖼",
         defaults: { src: "", alt: "", caption: "", width: 800, align: "center" },
       },
       {
         type: "video",
-        label: "Video",
+        label: t("cms.components.blockLibrary.items.video"),
         icon: "▶",
         defaults: { url: "", caption: "", autoplay: false, aspect_ratio: "16:9" },
       },
       {
         type: "list",
-        label: "List",
+        label: t("cms.components.blockLibrary.items.list"),
         icon: "•",
-        defaults: { type: "ul", items: ["First item", "Second item"] },
+        defaults: {
+          type: "ul",
+          items: [
+            t("cms.components.blockLibrary.defaults.list.firstItem"),
+            t("cms.components.blockLibrary.defaults.list.secondItem"),
+          ],
+        },
       },
       {
         type: "quote",
-        label: "Quote",
+        label: t("cms.components.blockLibrary.items.quote"),
         icon: "❝",
-        defaults: { text: "A meaningful quote.", author: "", role: "", avatar: "" },
+        defaults: { text: t("cms.components.blockLibrary.defaults.quote.text"), author: "", role: "", avatar: "" },
       },
       {
         type: "html",
-        label: "Raw HTML",
+        label: t("cms.components.blockLibrary.items.html"),
         icon: "</>",
-        defaults: { content: "<div>Custom HTML</div>" },
+        defaults: { content: t("cms.components.blockLibrary.defaults.html.content") },
       },
     ],
   },
   {
-    name: "Marketing",
+    name: t("cms.components.blockLibrary.groups.marketing"),
     items: [
       {
         type: "feature_grid",
-        label: "Feature Grid",
+        label: t("cms.components.blockLibrary.items.featureGrid"),
         icon: "▦",
         defaults: {
           columns: 3,
           items: [
-            { icon: "", title: "Feature 1", description: "Describe the feature." },
-            { icon: "", title: "Feature 2", description: "Describe the feature." },
-            { icon: "", title: "Feature 3", description: "Describe the feature." },
+            { icon: "", title: t("cms.components.blockLibrary.defaults.featureGrid.feature1Title"), description: t("cms.components.blockLibrary.defaults.featureGrid.featureDesc") },
+            { icon: "", title: t("cms.components.blockLibrary.defaults.featureGrid.feature2Title"), description: t("cms.components.blockLibrary.defaults.featureGrid.featureDesc") },
+            { icon: "", title: t("cms.components.blockLibrary.defaults.featureGrid.feature3Title"), description: t("cms.components.blockLibrary.defaults.featureGrid.featureDesc") },
           ],
         },
       },
       {
         type: "cta",
-        label: "Call to Action",
+        label: t("cms.components.blockLibrary.items.cta"),
         icon: "→",
         defaults: {
-          title: "Ready to start?",
-          description: "Join thousands already using HubEx.",
-          button_text: "Try Free",
+          title: t("cms.components.blockLibrary.defaults.cta.title"),
+          description: t("cms.components.blockLibrary.defaults.cta.description"),
+          button_text: t("cms.components.blockLibrary.defaults.cta.buttonText"),
           button_link: "#",
           style: "amber",
         },
       },
       {
         type: "stats",
-        label: "Stats",
+        label: t("cms.components.blockLibrary.items.stats"),
         icon: "123",
         defaults: {
           items: [
-            { value: "1000+", label: "Devices", color: "#F5A623" },
-            { value: "99.9%", label: "Uptime", color: "#2DD4BF" },
-            { value: "24/7", label: "Support", color: "#F5A623" },
+            { value: "1000+", label: t("cms.components.blockLibrary.defaults.stats.devicesLabel"), color: "#F5A623" },
+            { value: "99.9%", label: t("cms.components.blockLibrary.defaults.stats.uptimeLabel"), color: "#2DD4BF" },
+            { value: "24/7", label: t("cms.components.blockLibrary.defaults.stats.supportLabel"), color: "#F5A623" },
           ],
         },
       },
       {
         type: "button",
-        label: "Button",
+        label: t("cms.components.blockLibrary.items.button"),
         icon: "⬛",
         defaults: {
-          text: "Click me",
+          text: t("cms.components.blockLibrary.defaults.button.text"),
           link: "#",
           style: "primary",
           size: "md",
@@ -160,17 +171,17 @@ const groups: BlockGroup[] = [
     ],
   },
   {
-    name: "HubEx",
+    name: t("cms.components.blockLibrary.groups.hubex"),
     items: [
       {
         type: "dashboard_embed",
-        label: "Dashboard",
+        label: t("cms.components.blockLibrary.items.dashboardEmbed"),
         icon: "📊",
         defaults: { dashboard_id: 0, height: 600 },
       },
       {
         type: "variable_value",
-        label: "Variable",
+        label: t("cms.components.blockLibrary.items.variableValue"),
         icon: "🔢",
         defaults: {
           key: "",
@@ -183,7 +194,7 @@ const groups: BlockGroup[] = [
       },
       {
         type: "device_card",
-        label: "Device Card",
+        label: t("cms.components.blockLibrary.items.deviceCard"),
         icon: "🖥",
         defaults: {
           device_uid: "",
@@ -194,23 +205,23 @@ const groups: BlockGroup[] = [
       },
       {
         type: "device_list",
-        label: "Device List",
+        label: t("cms.components.blockLibrary.items.deviceList"),
         icon: "▦",
         defaults: { filter: "all", columns: 3, show_type: true },
       },
       {
         type: "tour_trigger",
-        label: "Tour Button",
+        label: t("cms.components.blockLibrary.items.tourTrigger"),
         icon: "🎬",
         defaults: {
           tour_id: "getting-started",
-          button_text: "Take a tour",
+          button_text: t("cms.components.blockLibrary.defaults.tourTrigger.buttonText"),
           style: "primary",
         },
       },
       {
         type: "alert_banner",
-        label: "Alerts",
+        label: t("cms.components.blockLibrary.items.alertBanner"),
         icon: "⚠",
         defaults: {
           severity_filter: "all",
@@ -220,24 +231,24 @@ const groups: BlockGroup[] = [
       },
       {
         type: "metric_counter",
-        label: "Metric",
+        label: t("cms.components.blockLibrary.items.metricCounter"),
         icon: "📡",
         defaults: {
           metric: "devices_online",
-          label: "Devices Online",
+          label: t("cms.components.blockLibrary.defaults.metricCounter.label"),
           icon: "📡",
           color: "#2DD4BF",
         },
       },
       {
         type: "automation_status",
-        label: "Automation",
+        label: t("cms.components.blockLibrary.items.automationStatus"),
         icon: "⚙",
         defaults: { automation_id: 0, show_last_fire: true },
       },
     ],
   },
-];
+]);
 
 function insert(spec: BlockSpec) {
   emit("insert", {
@@ -249,7 +260,7 @@ function insert(spec: BlockSpec) {
 
 <template>
   <div class="block-library">
-    <h4 class="lib-title">Blocks</h4>
+    <h4 class="lib-title">{{ t("cms.components.blockLibrary.title") }}</h4>
     <div v-for="g in groups" :key="g.name" class="lib-group">
       <div class="lib-group-name">{{ g.name }}</div>
       <div class="lib-grid">
@@ -258,7 +269,7 @@ function insert(spec: BlockSpec) {
           :key="it.type"
           type="button"
           class="lib-item"
-          :title="`Insert ${it.label}`"
+          :title="t('cms.components.blockLibrary.insertTitle', { label: it.label })"
           @click="insert(it)"
         >
           <span class="lib-icon">{{ it.icon }}</span>
