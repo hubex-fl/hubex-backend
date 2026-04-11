@@ -77,6 +77,33 @@ export default {
     alertRule: 'Alarm-Regel',
     dashboard: 'Dashboard',
   },
+  // Sprint 8 R3 NU-F04 — Willkommens-Bildschirm beim ersten Login
+  welcomeScreen: {
+    title: 'Willkommen bei HubEx',
+    subtitle: 'Was m\u00f6chtest du zuerst anbinden?',
+    or: 'oder',
+    justLookAround: 'Nur umschauen',
+    loadDemoData: 'Demo-Daten laden',
+    loading: 'Wird geladen…',
+    categories: {
+      hardware: {
+        label: 'Hardware',
+        description: 'ESP32, Shelly, Sensoren',
+      },
+      service: {
+        label: 'Dienst',
+        description: 'REST-APIs, Wetter, Daten',
+      },
+      bridge: {
+        label: 'Bridge',
+        description: 'MQTT, Modbus, Protokolle',
+      },
+      agent: {
+        label: 'Agent',
+        description: 'Software auf RPi, Windows',
+      },
+    },
+  },
   common: {
     save: 'Speichern',
     cancel: 'Abbrechen',

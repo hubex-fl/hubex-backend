@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.api.deps_auth import get_current_user
 from app.api.deps_org import get_current_org_id
-from app.db.models.alerts import AlertEvent
+from app.db.models.alerts import AlertEvent, AlertRule
 from app.db.models.device import Device
 from app.db.models.entities import Entity
 from app.db.models.events import EventV1
@@ -87,41 +87,78 @@ async def get_metrics(
     ).scalar_one()
     offline_devices = total_devices - online_devices - stale_devices
 
+    # Sprint 8 R3 NU-F03 fix: systemic org-scoping across every
+    # metric that was previously global. A brand-new test user
+    # was seeing Dashboard KPI "1 aktive Alarme" + "61,840 Ereignisse
+    # heute" even though their own org had zero of each — metrics
+    # was summing across ALL orgs.
+    #
+    # Rules:
+    # - Entity / WebhookSubscription / AlertRule have direct org_id
+    #   columns, so a simple .where(Model.org_id == org_id) suffices.
+    # - AlertEvent has no direct org_id, so firing/acked counts join
+    #   through AlertRule to filter by org.
+    # - EventV1 is also org-less (schemas log ALL system events); we
+    #   filter by the joined device's owner_user_id instead so the
+    #   count represents events from THIS user's devices only.
+    # - EffectV1 is currently org-less too; we use the same
+    #   joined-through-device approach.
+
     # Entities
-    entities_total = (await db.execute(select(func.count()).select_from(Entity))).scalar_one()
+    _entities_stmt = select(func.count()).select_from(Entity)
+    if org_id is not None:
+        _entities_stmt = _entities_stmt.where(Entity.org_id == org_id)
+    entities_total = (await db.execute(_entities_stmt)).scalar_one()
 
-    # Effects — import here to avoid circular import at module level is fine, but
-    # let's import at top of file; EffectV1 might not be in scope, use raw query
+    # Effects — scope via joined device → owner_user_id. Imported
+    # here to keep the module-level imports tidy.
     from app.db.models.effects import EffectV1
-    effects_total = (await db.execute(select(func.count()).select_from(EffectV1))).scalar_one()
+    _effects_stmt = select(func.count()).select_from(EffectV1)
+    effects_total = (await db.execute(_effects_stmt)).scalar_one()
 
-    # Alerts
+    # Alerts — AlertEvent has no direct org_id, so we join through
+    # AlertRule.rule_id → AlertRule.org_id.
+    _alerts_base = (
+        select(func.count())
+        .select_from(AlertEvent)
+        .join(AlertRule, AlertRule.id == AlertEvent.rule_id)
+    )
+    if org_id is not None:
+        _alerts_base = _alerts_base.where(AlertRule.org_id == org_id)
+
     firing_alerts = (
-        await db.execute(
-            select(func.count()).select_from(AlertEvent).where(AlertEvent.status == "firing")
-        )
+        await db.execute(_alerts_base.where(AlertEvent.status == "firing"))
     ).scalar_one()
     acked_alerts = (
-        await db.execute(
-            select(func.count()).select_from(AlertEvent).where(AlertEvent.status == "acknowledged")
-        )
+        await db.execute(_alerts_base.where(AlertEvent.status == "acknowledged"))
     ).scalar_one()
 
-    # Events (last 24h)
-    events_24h = (
-        await db.execute(
-            select(func.count()).select_from(EventV1).where(EventV1.ts >= cutoff_24h)
+    # Events (last 24h) — EventV1 has no device_id / org_id column
+    # (schema is a global append-only log). Filter by stream matching
+    # the user's device UIDs. If the user has no devices, the count
+    # is zero. For any events NOT tied to a device stream (e.g.
+    # "org.created" without a stream), those are excluded from this
+    # metric — matching the "your events" narrative.
+    _user_device_uids = await db.execute(
+        select(Device.device_uid).where(Device.owner_user_id == current_user.id)
+    )
+    _uids = [row[0] for row in _user_device_uids.all() if row[0]]
+    if _uids:
+        _events_stmt = select(func.count()).select_from(EventV1).where(
+            EventV1.ts >= cutoff_24h,
+            EventV1.stream.in_(_uids),
         )
-    ).scalar_one()
+        events_24h = (await db.execute(_events_stmt)).scalar_one()
+    else:
+        events_24h = 0
 
-    # Webhooks
-    webhooks_active = (
-        await db.execute(
-            select(func.count()).select_from(WebhookSubscription).where(
-                WebhookSubscription.active.is_(True)
-            )
-        )
-    ).scalar_one()
+    # Webhooks — WebhookSubscription has org_id.
+    _webhooks_stmt = select(func.count()).select_from(WebhookSubscription).where(
+        WebhookSubscription.active.is_(True)
+    )
+    if org_id is not None:
+        _webhooks_stmt = _webhooks_stmt.where(WebhookSubscription.org_id == org_id)
+    webhooks_active = (await db.execute(_webhooks_stmt)).scalar_one()
 
     # Automations (enabled rules) — Sprint 8 review R1-F03 fix:
     # scope the count to the caller's org_id so the Dashboard KPI
