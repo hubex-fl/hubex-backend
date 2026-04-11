@@ -138,7 +138,7 @@ onMounted(load);
     </div>
 
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
-      <div class="modal">
+      <div class="cms-modal">
         <h2>{{ t('cms.menus.modal.titleNew') }}</h2>
         <label class="field">
           <span>{{ t('cms.menus.modal.nameLabel') }}</span>
@@ -264,7 +264,8 @@ onMounted(load);
   justify-content: center;
   z-index: 100;
 }
-.modal {
+/* Sprint 8 R4 CMS fix: was .modal → collided with global .modal overlay rule. */
+.cms-modal {
   background: #1a1a18;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px;
@@ -272,7 +273,7 @@ onMounted(load);
   min-width: 420px;
   max-width: 500px;
 }
-.modal h2 { margin: 0 0 20px; font-size: 20px; color: #F5F5F5; }
+.cms-modal h2 { margin: 0 0 20px; font-size: 20px; color: #F5F5F5; }
 .field { display: block; margin-bottom: 16px; }
 .field span {
   display: block;

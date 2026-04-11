@@ -561,7 +561,7 @@ onMounted(loadPages);
 
     <!-- Template Picker Modal -->
     <div v-if="templatePickerOpen" class="modal-overlay" @click.self="templatePickerOpen = false">
-      <div class="modal tpl-modal">
+      <div class="cms-modal tpl-modal">
         <div class="tpl-head">
           <h2>{{ t('cms.pages.templatePickerTitle') }}</h2>
           <button class="close-x" @click="templatePickerOpen = false">×</button>
@@ -597,7 +597,7 @@ onMounted(loadPages);
 
     <!-- Create Modal -->
     <div v-if="createOpen" class="modal-overlay" @click.self="createOpen = false">
-      <div class="modal">
+      <div class="cms-modal">
         <h2>
           {{ t('cms.createPage') }}
           <span v-if="selectedTemplate" class="tpl-tag">{{ t('cms.pages.createFromTemplate', { name: selectedTemplate.name }) }}</span>
@@ -965,7 +965,14 @@ onMounted(loadPages);
   justify-content: center;
   z-index: 100;
 }
-.modal {
+/* Sprint 8 R4 CMS fix: was .modal which collided with the global .modal
+   overlay rule in style.css (position:fixed inset:0 display:flex). The
+   CMS pages use .modal-overlay for the overlay and .modal for the CARD
+   — exactly the inverse of the global pattern — so the global
+   position:fixed was leaking onto the card and collapsing the layout.
+   Renamed the card class to .cms-modal. Applies to the plain create
+   modal AND the .tpl-modal template picker variant. */
+.cms-modal {
   background: #1a1a18;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px;
@@ -973,7 +980,7 @@ onMounted(loadPages);
   min-width: 420px;
   max-width: 500px;
 }
-.modal h2 {
+.cms-modal h2 {
   margin: 0 0 20px;
   font-size: 20px;
   color: #F5F5F5;

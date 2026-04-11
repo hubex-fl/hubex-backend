@@ -461,7 +461,7 @@ onMounted(loadPage);
 
     <!-- Schedule modal -->
     <div v-if="showScheduleModal" class="modal-overlay" @click.self="showScheduleModal = false">
-      <div class="modal">
+      <div class="cms-modal">
         <h2>{{ t('cms.pageEditor.scheduleModal.title') }}</h2>
         <p class="schedule-hint">{{ t('cms.pageEditor.scheduleModal.hint') }}</p>
         <label class="field">
@@ -1101,7 +1101,9 @@ onMounted(loadPage);
   justify-content: center;
   z-index: 200;
 }
-.modal {
+/* Sprint 8 R4 CMS fix: was .modal → collided with global .modal overlay
+   rule in style.css which added position:fixed inset:0 to the card. */
+.cms-modal {
   background: #1a1a18;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -1109,16 +1111,16 @@ onMounted(loadPage);
   min-width: 420px;
   max-width: 500px;
 }
-.modal h2 {
+.cms-modal h2 {
   margin: 0 0 12px;
   font-size: 20px;
   color: #F5F5F5;
 }
-.modal .field {
+.cms-modal .field {
   display: block;
   margin-bottom: 16px;
 }
-.modal .field span {
+.cms-modal .field span {
   display: block;
   font-size: 11px;
   color: #A1A1AA;
@@ -1126,7 +1128,7 @@ onMounted(loadPage);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.modal .field input {
+.cms-modal .field input {
   width: 100%;
   background: #111110;
   border: 1px solid rgba(255, 255, 255, 0.1);
