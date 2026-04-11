@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.api.deps_auth import get_current_device
+from app.api.deps_auth import get_current_device, get_current_user
 from app.db.models.device import Device
 from app.db.models.events import EventV1, EventV1Checkpoint
+from app.db.models.user import User
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -86,6 +87,54 @@ async def read_events(
     ]
     next_cursor = items[-1].cursor if items else cursor
     return EventReadOut(stream=stream, cursor=cursor, next_cursor=next_cursor, items=items)
+
+
+@router.get("/my-activity", response_model=list[EventItemOut])
+async def read_my_activity(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Sprint 8 R4 NU-F05 fix: Dashboard activity feed was pulling from the
+    global `stream=system` which shows events from every org. This endpoint
+    returns the most recent events whose stream matches one of the CURRENT
+    user's devices — mirroring the metrics.py events_24h scoping pattern.
+
+    Returns events ordered by most-recent-first, limited to `limit` rows.
+    Returns an empty list for users with no devices.
+    """
+    # Look up the current user's device UIDs. Events are streamed as
+    # `device:<uid>` so we filter by that prefix + list.
+    uid_rows = await db.execute(
+        select(Device.device_uid).where(Device.owner_user_id == current_user.id)
+    )
+    uids = [row[0] for row in uid_rows.all() if row[0]]
+    if not uids:
+        return []
+
+    # Match either the prefixed form (`device:xxx`) or the bare UID for
+    # compat. The emit_event handler on this router writes prefixed streams,
+    # but legacy data may exist with bare UIDs.
+    stream_keys = uids + [f"device:{u}" for u in uids]
+
+    res = await db.execute(
+        select(EventV1)
+        .where(EventV1.stream.in_(stream_keys))
+        .order_by(EventV1.id.desc())
+        .limit(limit)
+    )
+    rows = res.scalars().all()
+    return [
+        EventItemOut(
+            cursor=row.id,
+            ts=row.ts,
+            type=row.type,
+            payload=row.payload,
+            trace_id=row.trace_id,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{event_id}", response_model=EventItemOut)

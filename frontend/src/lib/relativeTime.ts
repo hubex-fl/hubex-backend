@@ -64,3 +64,34 @@ export function fmtRelativeIso(dateStr: string | null | undefined): string {
   const diffSeconds = Math.max(0, Math.floor((Date.now() - parsed) / 1000));
   return fmtAgeSeconds(diffSeconds);
 }
+
+/**
+ * Sprint 8 R4 B3: centralised date/time formatters that respect the ACTIVE
+ * vue-i18n locale, not the browser locale. Use these instead of calling
+ * `new Date(x).toLocaleDateString()` directly — otherwise a German user
+ * with an English browser sees English-formatted dates and vice versa.
+ *
+ * There are ~21 call sites in the codebase that still use the bare
+ * toLocale* methods. They can be migrated to these helpers gradually as
+ * each file is touched. Flagged in Sprint 9 backlog as a systemic sweep.
+ */
+export function fmtDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString(i18n.global.locale.value);
+}
+
+export function fmtDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleString(i18n.global.locale.value);
+}
+
+export function fmtTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString(i18n.global.locale.value);
+}

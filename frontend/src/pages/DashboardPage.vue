@@ -15,11 +15,22 @@ import { useEventStream, eventBadgeStatus, eventTypeOf, eventTimestampOf, type S
 
 const router = useRouter();
 const onboardingDismissed = ref(localStorage.getItem('hubex_onboarding_dismissed') === 'true');
-watch(onboardingDismissed, (v) => { if (v) localStorage.setItem('hubex_onboarding_dismissed', 'true'); });
+// Sprint 8 R4 NU-F06: persist both true AND false so the "Restart Guide"
+// button on the empty-state banner survives a page reload. Before, only
+// true was persisted — setting it false briefly showed the guide but
+// localStorage still had 'true' so the next navigation lost it again.
+watch(onboardingDismissed, (v) => {
+  if (v) localStorage.setItem('hubex_onboarding_dismissed', 'true');
+  else localStorage.removeItem('hubex_onboarding_dismissed');
+});
 
 const { data: metrics, loading: metricsLoading } = useMetrics();
 const { alerts, loading: alertsLoading } = useRecentAlerts();
-const { events, loading: eventsLoading } = useEventStream();
+// Sprint 8 R4 NU-F05: Dashboard uses the org-scoped my-activity endpoint
+// so fresh users don't see cross-org system events (device pairings from
+// other orgs, telemetry received across the platform, etc.). The /events
+// page still uses the default system-wide stream for admin visibility.
+const { events, loading: eventsLoading } = useEventStream({ scope: "my" });
 
 // ── Activity feed — progressive disclosure ───────────────────────────────────
 const activityExpanded = ref(false);
@@ -125,6 +136,39 @@ function eventIconColor(eventType: string): string {
           <span class="text-lg">5</span>
           <span class="text-[10px] font-medium">{{ t('dashboard.automate') }}</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Sprint 8 R4 NU-F06 fix: if the user dismissed the Getting Started guide
+         BUT still has zero devices, show a friendly empty-state banner instead
+         of 4 silent grey zeros. Appears above the KPI strip, offers three
+         distinct next steps (add device, load demo data, restart guide). -->
+    <div
+      v-if="!metricsLoading && metrics && onboardingDismissed && metrics.devices.total === 0"
+      class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)]/60 px-5 py-4"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-2xl">&#x1F44B;</span>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-[var(--text-primary)]">{{ t('dashboard.emptyStateTitle') }}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('dashboard.emptyStateHint') }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-[var(--text-invert)] hover:bg-[var(--primary-hover)] transition-colors"
+            @click="router.push('/devices?wizard=open')"
+          >
+            {{ t('dashboard.addDevice') }}
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-raised)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--primary)]/40 transition-colors"
+            @click="onboardingDismissed = false"
+          >
+            {{ t('dashboard.restartGuide') }}
+          </button>
+        </div>
       </div>
     </div>
 

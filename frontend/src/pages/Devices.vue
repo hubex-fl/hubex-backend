@@ -690,13 +690,22 @@ onUnmounted(() => {
           <UInfoTooltip :title="t('infoTooltips.devices.title')" :items="tm('infoTooltips.devices.items').map((i: any) => rt(i))" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
-          <span v-if="refreshing" class="text-[var(--text-muted)]">{{ t('common.loading') }}</span>
-          <span v-else>
+          <!-- Sprint 8 R4 extra-finding: the subtitle text was being swapped between
+               "Loading..." and the full subtitle on every 5-second silent poll →
+               visible layout jump. Now the subtitle text stays constant and a tiny
+               pulsing dot appears next to it during refresh. No layout shift. -->
+          <span>
             {{ t('devices.subtitle') }}
             <span v-if="includeUnclaimed" class="ml-1 text-[var(--status-warn)]">
-              — admin view (includes unclaimed)
+              — {{ t('devices.adminViewSuffix') }}
             </span>
           </span>
+          <span
+            v-if="refreshing"
+            class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--primary)] animate-pulse shrink-0"
+            :title="t('common.loading')"
+            aria-hidden="true"
+          />
         </p>
       </div>
       <div class="flex items-center gap-2">

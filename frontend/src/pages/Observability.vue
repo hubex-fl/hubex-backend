@@ -5,6 +5,7 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 type DeviceRow = {
   id: number;
@@ -35,7 +36,7 @@ type EventsResponse = {
 };
 
 const caps = useCapabilities();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const { signal } = useAbortHandle();
 
 const canReadDevices = computed(() => hasCap("devices.read"));
@@ -337,7 +338,10 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>{{ t('nav.observability') }}</h2>
+      <div class="flex items-center gap-1">
+        <h2>{{ t('nav.observability') }}</h2>
+        <UInfoTooltip :title="t('infoTooltips.observability.title')" :items="tm('infoTooltips.observability.items').map((i: any) => rt(i))" />
+      </div>
       <button class="btn secondary" @click="retryAll">{{ t('observability.retry') }}</button>
     </div>
 

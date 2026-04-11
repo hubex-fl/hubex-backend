@@ -755,7 +755,7 @@ const htmlPreviewSrcdoc = computed(() => {
     .replace(/\{\{device:status\}\}/g, "online")
     .replace(/\{\{label\}\}/g, newWidget.value.label || "Widget")
     .replace(/\{\{timestamp\}\}/g, new Date().toLocaleString())
-    .replace(/\{\{timestamp:relative\}\}/g, "2m ago")
+    .replace(/\{\{timestamp:relative\}\}/g, t('dashboardsList.relative.minutesAgo', { n: 2 }))
     .replace(/\{\{points:count\}\}/g, "42");
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html,body{background:transparent;color:#e6edf3;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;overflow:hidden}</style></head><body>${preview}</body></html>`;

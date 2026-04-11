@@ -162,6 +162,17 @@ async function onMfaSubmit() {
         {{ t('auth.noAccountYet') }}
         <button class="text-[var(--primary)] hover:underline" @click="handleRegister">{{ t('auth.createOne') }}</button>
       </p>
+      <!-- Sprint 8 R4 NU-F02 fix: brand-new visitors used to land on a bare
+           login form with zero context about what HubEx is. A subtle link
+           to the marketing page gives them an obvious way out. -->
+      <p class="mt-6 text-center text-xs text-[var(--text-muted)]">
+        <router-link to="/landing" class="hover:text-[var(--text-secondary)] transition-colors inline-flex items-center gap-1">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+          </svg>
+          {{ t('auth.whatIsHubex') }} →
+        </router-link>
+      </p>
     </template>
   </div>
 </template>

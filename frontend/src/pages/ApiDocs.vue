@@ -4,8 +4,9 @@ import { useI18n } from "vue-i18n";
 import UCard from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 
 const copied = ref(false);
 const activeTab = ref<"swagger" | "redoc" | "overview">("swagger");
@@ -388,7 +389,10 @@ const sections: ApiSection[] = [
   <div class="max-w-6xl mx-auto space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">{{ t('pages.apiDocs.title') }}</h1>
+      <div class="flex items-center gap-1.5">
+        <h1 class="text-2xl font-bold text-[var(--text-primary)]">{{ t('pages.apiDocs.title') }}</h1>
+        <UInfoTooltip :title="t('infoTooltips.apiDocs.title')" :items="tm('infoTooltips.apiDocs.items').map((i: any) => rt(i))" />
+      </div>
       <p class="mt-1 text-sm text-[var(--text-muted)]">
         {{ t('pages.apiDocs.subtitle') }}
       </p>

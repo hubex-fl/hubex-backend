@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 type TaskItem = {
   id: number;
@@ -21,7 +22,7 @@ type TaskItemWithClient = TaskItem & { client_id: number };
 
 const caps = useCapabilities();
 const router = useRouter();
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const { signal } = useAbortHandle();
 
 const deviceIdInput = ref("");
@@ -110,7 +111,10 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>{{ t('nav.executions') }}</h2>
+      <div class="flex items-center gap-1">
+        <h2>{{ t('nav.executions') }}</h2>
+        <UInfoTooltip :title="t('infoTooltips.executions.title')" :items="tm('infoTooltips.executions.items').map((i: any) => rt(i))" />
+      </div>
       <div class="row">
         <button class="btn secondary" @click="retry">{{ t('common.refresh') }}</button>
         <button class="btn secondary" @click="openTraceHub">{{ t('pages.executions.openInTraceHub') }}</button>

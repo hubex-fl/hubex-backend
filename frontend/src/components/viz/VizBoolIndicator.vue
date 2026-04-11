@@ -6,7 +6,7 @@
       <span class="bool-label" :class="isTrue ? 'label-on' : 'label-off'">
         {{ isTrue ? onLabel : offLabel }}
       </span>
-      <span class="bool-since" v-if="lastChange">since {{ lastChange }}</span>
+      <span class="bool-since" v-if="lastChange">{{ t('vizBool.since', { when: lastChange }) }}</span>
     </div>
 
     <!-- Event timeline (recent history) -->
@@ -31,8 +31,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import type { VizDataPoint } from "../../lib/viz-types";
 import { fmtAgeSeconds } from "../../lib/relativeTime";
+
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<{
   currentValue?: unknown;

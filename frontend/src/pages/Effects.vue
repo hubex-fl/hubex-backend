@@ -5,6 +5,7 @@ import { useCapabilities, hasCap } from "../lib/capabilities";
 import { fetchJson, ApiError } from "../lib/request";
 import { useAbortHandle } from "../lib/abort";
 import { createPoller } from "../lib/poller";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 type EffectItem = {
   id: number;
@@ -17,7 +18,7 @@ type EffectItem = {
   error_json: Record<string, unknown> | null;
 };
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const { signal: listSignal } = useAbortHandle();
 const { signal: detailSignal } = useAbortHandle();
@@ -210,7 +211,10 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="page-header">
-      <h2>{{ t('nav.effects') }}</h2>
+      <div class="flex items-center gap-1">
+        <h2>{{ t('nav.effects') }}</h2>
+        <UInfoTooltip :title="t('infoTooltips.effects.title')" :items="tm('infoTooltips.effects.items').map((i: any) => rt(i))" />
+      </div>
       <div class="row">
         <button class="btn secondary" @click="retryList">{{ t('pages.effects.retry') }}</button>
         <button class="btn secondary" @click="stopPolling" :disabled="!polling">{{ t('pages.effects.stop') }}</button>

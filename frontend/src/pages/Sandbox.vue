@@ -109,13 +109,17 @@ const canProceedStep2 = computed(
 const canCreate = computed(() => formName.value.trim() !== "");
 
 // ── Time helpers ─────────────────────────────────────────────────────────────
+// Sprint 8 R4 B3 fix: this used to build "{n}s vor" on DE which is
+// grammatically broken ("vor 12s" is the correct German form). Route
+// through the centralised dashboardsList.relative.* namespace which
+// already has language-correct patterns for all 8 locales.
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return "-";
   const diff = Date.now() - new Date(dateStr).getTime();
-  if (diff < 5_000) return t("sandbox.justNow");
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ${t("sandbox.ago")}`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60000)}m ${t("sandbox.ago")}`;
-  return `${Math.floor(diff / 3600000)}h ${t("sandbox.ago")}`;
+  if (diff < 5_000) return t("dashboardsList.relative.justNow");
+  if (diff < 60_000) return t("dashboardsList.relative.secondsAgo", { n: Math.floor(diff / 1000) });
+  if (diff < 3_600_000) return t("dashboardsList.relative.minutesAgo", { n: Math.floor(diff / 60000) });
+  return t("dashboardsList.relative.hoursAgo", { n: Math.floor(diff / 3600000) });
 }
 
 function formatNumber(n: number): string {

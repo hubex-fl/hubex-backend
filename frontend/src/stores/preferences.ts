@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { apiFetch, hasToken } from "../lib/api";
+import { apiFetch, fetchMe, hasToken } from "../lib/api";
 
 const STORAGE_KEY = "hubex_user_prefs";
 
@@ -19,7 +19,9 @@ export const usePreferencesStore = defineStore("preferences", () => {
     if (!hasToken()) return;
 
     try {
-      const data = await apiFetch<{ preferences: Record<string, unknown> }>("/api/v1/users/me");
+      // Sprint 8 R4 Perf-01: use the shared fetchMe() so this call collapses
+      // with the one from refreshCapabilities() during app bootstrap.
+      const data = await fetchMe<{ preferences: Record<string, unknown> }>();
       preferences.value = data.preferences ?? {};
       localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences.value));
     } catch {

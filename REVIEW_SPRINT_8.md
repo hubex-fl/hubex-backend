@@ -9,6 +9,7 @@
 - **Round 2 (Visual):** ✅ **COMPLETE** — 12 routes walked, 11 findings, **8/11 fixed**, 3 flagged
 - **Round 3 (Persona):** 🔁 **IN PROGRESS** — user's initial walk done (25 findings), Option A fix batch done, Neuer-User walk done
 - **Round 4 (Perf + A11y):** ✅ **COMPLETE** — 5 routes measured, 5 a11y sweeps, 6 findings, **5/6 fixed** (1 P3 deferred)
+- **Round 4 extended Quick-Fix batch:** ✅ **COMPLETE** — 1 extra flicker bug + 6 approved cleanups (B1/B2/B3/D2/D3/D4), **7/7 delivered**
 - **Round 5 (Fixing):** ✅ merged into per-round fix phases
 - **Round 6 (Release):** ⏸ pending (after Round 3 walks complete + Round 4)
 - **Findings R1:** 36 total — **0 P0 / 8 P1 / 18 P2 / 10 P3** — **36/36 fixed**
@@ -753,6 +754,187 @@ On `/devices/1` after nginx bundle swap:
 ### Deferred (1 item)
 
 - **R4-Perf-01** — `/users/me` double-bootstrap. Root cause: `auth.ts` and `capabilities.ts` both call it independently on first mount. Cleanup idea: make capabilities share the auth-store payload rather than re-fetch. Logged here for the backlog, not a release blocker.
+
+---
+
+## Round 3 Clarifications (resolved 2026-04-11 batch 2)
+
+User provided clarifications for the 5 items that were flagged as "needs
+user input". All three were **rescoped larger than originally thought**,
+so they're moved to Sprint 9 as proper feature packages instead of being
+squeezed into dev-stable-v1.
+
+### A1 — R3-F07 reinterpreted as "Dashboard Builder Rework"
+**Original quote:** *"Probleme mit GPS-Ansicht und Einrichtungen als Dashboard"*
+
+GPS part is fixed (Sprint 7d Commit `7d169b2`, viz-resolve auto-detect).
+
+"Einrichtungen als Dashboard" turned out to mean **Dashboard creation UX
+is broken**, not SetupWizard-as-widget. Specific issues:
+- Widget resize doesn't work
+- Widget drag/move doesn't work
+- Only background color is editable, chart color is not
+- Border/outline can't be turned off
+- No free positioning — everything is locked to a grid
+- Labels can't be positioned freely
+- More widget types are needed
+
+**Status:** Sprint 9 feature package `dashboard-builder-v2`. Too large
+for dev-stable-v1 — this is essentially a partial rewrite of the
+Dashboard editor.
+
+### A2 — R3-F10 reinterpreted as "Automation Builder Rewrite"
+**Original quote:** *"Automatisierung Erstellungs-Wizard nicht perfekt genug, ist ein bisschen komisch"*
+
+Clarified to: **Apple-Automations-style building blocks wanted**. Current
+wizard feels cryptic. Specific requirements:
+- Block-based UX (like Apple Shortcuts / Home Automations)
+- More trigger types
+- More condition types
+- Visually attractive, not spreadsheet-like
+- Overview-friendly, not field-dump
+
+**Status:** Sprint 9 feature package `automation-builder-v2`. Again,
+too large — a full redesign of the creation flow.
+
+### A3 — R3-F14 CMS "verbuggt" — spot check needed
+Agent-side: the P1 vue-i18n parser crash is fixed (Commit `7d169b2`).
+User still needs to click through `/cms → Neue Seite → edit` and
+confirm any remaining visual bugs are sprint-9 polish, not blockers.
+
+**Status:** Pending user spot-check before tag.
+
+### A4 — R3-F15 "System Part" = `/flow-editor`
+Clarified: not `/system-health` or `/system-stage` — it's **`/flow-editor`
+(System Map)**. The 4-column squeeze applies there when many entities
+are rendered at once.
+
+**Status:** Sprint 9 polish item `flow-editor-density-rework`.
+
+### A5 — R3-F25 "4 Personas" — closed, no action
+Confirmed to be a misunderstanding. The "4 Personas" in my review method
+are reviewer archetypes (New User / Operator / Admin / Viewer), not UI
+features. No code change needed.
+
+**Status:** Closed.
+
+---
+
+## Round 4 Extended Fixes (2026-04-11 batch 2)
+
+After R4 Perf+A11y wrapped, user approved a 6-item Quick-Fix batch of
+leftover R2/R3/NU findings to land before the `dev-stable-v1` tag. Plus
+one extra finding discovered during the walk.
+
+### Extra Finding: `/devices` status flicker on refresh
+**User quote:** *"devices-status ruckelt immernoch bei refresh in der UI"*
+
+Root cause: `Devices.vue` line 693 had `<span v-if="refreshing">Loading...</span>`
+inside the page-header subtitle, with a `v-else` fallback to the full
+subtitle + optional "admin view" suffix. Every 5-second silent poll
+toggled between the two texts, and the text-width delta caused a
+visible layout jump in the header.
+
+**Fix:** Replaced the v-if text swap with a tiny pulsing dot that
+appears next to the subtitle during refresh. The subtitle text itself
+never changes, so no layout shift. Also i18n'd the hardcoded
+"— admin view (includes unclaimed)" English suffix to
+`devices.adminViewSuffix` / DE "— Admin-Ansicht (inkl. nicht beanspruchter)".
+
+### B1 — Info-Icon audit (4 of ~13 pages)
+Added `UInfoTooltip` to the 4 most user-facing missing pages:
+- `/effects` (Effects.vue)
+- `/executions` (Executions.vue)
+- `/observability` (Observability.vue)
+- `/developer` (ApiDocs.vue)
+
+New `infoTooltips.*` namespace entries in en.ts + de.ts for each
+page (title + 3-4 bullet items).
+
+Remaining ~9 pages (`/system-stage`, `/trace-timeline`, `/pairing`,
+`/cms/forms`, `/cms/menus`, `/cms/media`, `/cms/redirects`, `/cms/settings`,
+and DashboardPage which has no h1) deferred to Sprint 9 as
+**infotip-audit-sweep**.
+
+### B2 — `/users/me` double-bootstrap cleanup
+`auth.ts` and `capabilities.ts` both fired `/users/me` independently
+on every app mount, and `preferences.store` also called it — three
+total fetches on every bootstrap. Consolidated via a new shared
+`fetchMe<T>()` cache in `lib/api.ts`:
+
+- Inflight-promise dedupe (first caller creates, second reuses)
+- 60 s cache lifetime for short-lived bootstrap wave dedupe
+- Auto-clear on `setToken()` (login/MFA/org-switch) and `clearToken()` (logout)
+- Failed requests invalidate the cache so the next caller retries
+
+Wired into `preferences.ts` + `capabilities.ts` (only the token-with-caps
+branch; the no-caps probe path still uses `fetchJson` for ApiError status
+parsing).
+
+Capability unit tests updated: `vi.doMock("../api", …)` now exposes
+`fetchMe` pointing to the same shared mock so call-count assertions
+continue to hold. All 5 tests pass post-migration.
+
+### B3 — R2 flagged i18n leaks (5 items)
+1. **`DashboardView.vue` line 758** — hardcoded `"2m ago"` placeholder in
+   HTML widget preview → now uses `t('dashboardsList.relative.minutesAgo', { n: 2 })`
+2. **`Sandbox.vue` timeAgo()** — was generating `"12s vor"` on DE
+   (grammatically broken — German says "vor 12s"). Rerouted through
+   `dashboardsList.relative.*` namespace which has correct per-locale patterns.
+3. **`ApiKeyManager.vue`** — "Last used" / "Never used" / "expires" / "never"
+   hardcoded English → new `apiKeyManager.*` i18n namespace with 4 keys
+   (en/de). Also fixed `.toLocaleDateString()` to respect app locale.
+4. **`VizBoolIndicator.vue`** — "since {{ lastChange }}" word leak →
+   new `vizBool.since` key with `{when}` slot.
+5. **`lib/relativeTime.ts`** — added centralised `fmtDate()` / `fmtDateTime()` /
+   `fmtTime()` helpers that route through `i18n.global.locale.value` instead
+   of browser locale. Remaining ~21 `.toLocale*()` call sites in the
+   codebase flagged as Sprint 9 systemic sweep.
+
+### D2 — `/login` "Was ist HubEx?" marketing link (NU-F02)
+Below the register-prompt line, added a subtle secondary link to
+`/landing`. Icon + text + arrow, no layout intrusion. New `auth.whatIsHubex`
+i18n key (en: "What is HubEx?", de: "Was ist HubEx?").
+
+### D3 — Dashboard Activity Feed org-scoping (NU-F05)
+**Backend change:** New endpoint `GET /api/v1/events/my-activity` that
+returns events whose `stream` matches one of the current user's device
+UIDs (or `device:<uid>` prefixed form). Uses the same join pattern as
+`metrics.py events_24h` scoping from Sprint 8 R3 NU-F03.
+
+**Frontend change:** `useEventStream()` now accepts either a plain
+interval number (back-compat) or an options object with a `scope: "my" | "system"`
+field. Default is `"system"` so the `/events` page keeps the
+global admin view. Dashboard opts into `scope: "my"`.
+
+Verified live: `/api/v1/events/my-activity` hit 1×, global `/events` hit 0×.
+
+### D4 — Empty-Dashboard 'Erste Schritte' banner (NU-F06)
+Added a second empty-state banner that appears ABOVE the KPI strip when:
+- `metrics.devices.total === 0` AND
+- `onboardingDismissed === true` (user already clicked "Ausblenden" on
+  the Getting Started guide)
+
+Banner contains a friendly 👋, title + hint, and two CTAs: "Gerät hinzufügen"
+(primary → `/devices?wizard=open`) and "Anleitung wieder öffnen" (secondary
+→ sets `onboardingDismissed = false`).
+
+Also fixed the `onboardingDismissed` watch to `removeItem()` the localStorage
+key when the value goes false, so "Anleitung wieder öffnen" survives a
+page reload.
+
+New i18n keys: `dashboard.emptyStateTitle`, `dashboard.emptyStateHint`,
+`dashboard.restartGuide` (en + de).
+
+### Extended Round 4 Summary
+- 1 extra bug finding (Devices header flicker)
+- 6 approved Quick-Fix items (B1, B2, B3, D2, D3, D4)
+- 7/7 delivered
+- 2 Sprint 9 items created (`infotip-audit-sweep`, `tolocale-systemic-sweep`)
+- 3 Sprint 9 feature packages created from Bucket A rescoping:
+  `dashboard-builder-v2`, `automation-builder-v2`, `flow-editor-density-rework`
+
+Build + i18n parity + unit tests all green.
 
 ---
 

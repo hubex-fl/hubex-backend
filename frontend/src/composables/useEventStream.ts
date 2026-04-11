@@ -59,7 +59,29 @@ export function payloadPreview(payload: Record<string, unknown>): string {
   }
 }
 
-export function useEventStream(intervalMs = 10_000) {
+export type EventStreamOptions = {
+  intervalMs?: number;
+  /**
+   * Sprint 8 R4 NU-F05: when true, fetch from `/api/v1/events/my-activity`
+   * which is scoped to the current user's own device streams. Used on
+   * the Dashboard activity widget so fresh users don't see cross-org
+   * telemetry noise. Defaults to false for back-compat with the /events
+   * page which needs the global system stream.
+   */
+  scope?: "system" | "my";
+};
+
+export function useEventStream(
+  intervalMsOrOptions: number | EventStreamOptions = 10_000,
+) {
+  // Back-compat: accept either a plain interval number or an options object.
+  const opts: EventStreamOptions =
+    typeof intervalMsOrOptions === "number"
+      ? { intervalMs: intervalMsOrOptions }
+      : intervalMsOrOptions;
+  const intervalMs = opts.intervalMs ?? 10_000;
+  const scope = opts.scope ?? "system";
+
   const events = ref<StreamEvent[]>([]);
   const loading = ref(true);
   const paused = ref(false);
@@ -76,9 +98,11 @@ export function useEventStream(intervalMs = 10_000) {
       // broken. Fixed by unwrapping .items, with a fallback to [] if the
       // backend ever changes shape back (and accepting bare arrays for
       // forward-compat).
-      const resp = await apiFetch<StreamEvent[] | { items?: StreamEvent[] }>(
-        "/api/v1/events?limit=20"
-      );
+      const path =
+        scope === "my"
+          ? "/api/v1/events/my-activity?limit=20"
+          : "/api/v1/events?limit=20";
+      const resp = await apiFetch<StreamEvent[] | { items?: StreamEvent[] }>(path);
       if (Array.isArray(resp)) {
         events.value = resp;
       } else if (resp && Array.isArray((resp as { items?: StreamEvent[] }).items)) {

@@ -157,10 +157,12 @@ export default {
     orRecoveryCode: 'Or enter a recovery code',
     registering: 'Creating account\u2026',
     registerFailed: 'Registration failed',
+    whatIsHubex: 'What is HubEx?',
   },
   devices: {
     title: 'Devices',
     subtitle: 'Manage and pair IoT devices',
+    adminViewSuffix: 'admin view (includes unclaimed)',
     addDevice: 'Add Device',
     pairDevice: 'Pair Device',
     deviceUid: 'Device UID',
@@ -831,6 +833,9 @@ export default {
     setAlert: 'Set Alert',
     buildDashboard: 'Dashboard',
     automate: 'Automate',
+    emptyStateTitle: 'Nothing to show yet',
+    emptyStateHint: 'Add your first device or reopen the guide to see what HubEx can do.',
+    restartGuide: 'Reopen guide',
     htmlTemplate: {
       name: 'Custom HTML',
       groupLabel: 'Custom',
@@ -1826,6 +1831,15 @@ export default {
     copyNow: 'Copy this key now — it won\'t be shown again',
     noKeys: 'No API keys yet',
   },
+  apiKeyManager: {
+    lastUsed: 'Last used {when}',
+    neverUsed: 'Never used',
+    never: 'never',
+    expiresOn: 'expires {date}',
+  },
+  vizBool: {
+    since: 'since {when}',
+  },
   customApi: {
     title: 'Custom API Builder',
     subtitle: 'Build your own API endpoints to serve device data, variables, and metrics.',
@@ -2150,6 +2164,42 @@ export default {
         'Pages can be private, public or behind a login',
         'Use layouts for landing, minimal or fullscreen presentation',
         'Link CMS pages from menus and dashboards',
+      ],
+    },
+    effects: {
+      title: 'Pipeline effects executed by automations and handlers.',
+      items: [
+        'Effects are the "what happened" trail of any automation run',
+        'Filter by kind to find specific effect types',
+        'Live polling shows new effects as they arrive',
+        'Click a row to trace back to the originating event',
+      ],
+    },
+    executions: {
+      title: 'History of automation and task runs.',
+      items: [
+        'Every automation run is logged here with inputs and outputs',
+        'Filter by device, status or context ID to debug failures',
+        'Click "Open in Trace Hub" for a full timeline view',
+        'Use this to verify cooldowns and rate-limits are working',
+      ],
+    },
+    observability: {
+      title: 'System-wide metrics and request-rate dashboards.',
+      items: [
+        'Monitor backend health, request latency and error rates',
+        'Track device-ingestion throughput and websocket connections',
+        'Spot trends before they become incidents',
+        'Requires the observability feature flag',
+      ],
+    },
+    apiDocs: {
+      title: 'Interactive API documentation (Swagger + Redoc).',
+      items: [
+        'Try out any endpoint directly from the browser with Swagger UI',
+        'Read-friendly Redoc view for printed-style reference',
+        'All endpoints are auto-generated from the live backend',
+        'Use your personal API token to test authenticated calls',
       ],
     },
   },

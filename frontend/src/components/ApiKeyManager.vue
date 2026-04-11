@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import { fmtRelativeIso } from "../lib/relativeTime";
 import { useToastStore } from "../stores/toast";
 
 const toast = useToastStore();
+const { t, locale } = useI18n();
 
 type ApiKeyOut = {
   id: number;
@@ -109,8 +111,14 @@ function closeCreate() {
 }
 
 function relativeTime(dt: string | null): string {
-  if (!dt) return "never";
+  if (!dt) return t('apiKeyManager.never');
   return fmtRelativeIso(dt);
+}
+
+// Sprint 8 R4 B3 fix: was using .toLocaleDateString() without locale arg, which
+// defaulted to the browser locale (may differ from the app's i18n locale).
+function formatExpiryDate(dt: string): string {
+  return new Date(dt).toLocaleDateString(locale.value);
 }
 
 onMounted(loadKeys);
@@ -159,8 +167,10 @@ onMounted(loadKeys);
           <div class="flex items-center gap-3 mt-1 text-[10px] text-[var(--text-muted)]">
             <span class="font-mono">{{ key.key_prefix }}...</span>
             <span :title="key.caps.join(', ')">{{ key.caps.length }} capabilities</span>
-            <span :class="key.last_used_at ? 'text-[var(--status-ok)]' : ''">{{ key.last_used_at ? 'Last used ' + relativeTime(key.last_used_at) : 'Never used' }}</span>
-            <span v-if="key.expires_at">expires {{ new Date(key.expires_at).toLocaleDateString() }}</span>
+            <span :class="key.last_used_at ? 'text-[var(--status-ok)]' : ''">
+              {{ key.last_used_at ? t('apiKeyManager.lastUsed', { when: relativeTime(key.last_used_at) }) : t('apiKeyManager.neverUsed') }}
+            </span>
+            <span v-if="key.expires_at">{{ t('apiKeyManager.expiresOn', { date: formatExpiryDate(key.expires_at) }) }}</span>
           </div>
         </div>
         <button

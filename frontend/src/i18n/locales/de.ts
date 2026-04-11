@@ -157,10 +157,12 @@ export default {
     orRecoveryCode: 'Oder Wiederherstellungscode eingeben',
     registering: 'Konto wird erstellt\u2026',
     registerFailed: 'Registrierung fehlgeschlagen',
+    whatIsHubex: 'Was ist HubEx?',
   },
   devices: {
     title: 'Geräte',
     subtitle: 'IoT-Geräte verwalten und koppeln',
+    adminViewSuffix: 'Admin-Ansicht (inkl. nicht beanspruchter)',
     addDevice: 'Gerät hinzufügen',
     pairDevice: 'Gerät koppeln',
     deviceUid: 'Geräte-UID',
@@ -824,6 +826,9 @@ export default {
     setAlert: 'Alarm einrichten',
     buildDashboard: 'Dashboard',
     automate: 'Automatisieren',
+    emptyStateTitle: 'Noch nichts zu sehen',
+    emptyStateHint: 'Füge dein erstes Gerät hinzu oder öffne die Anleitung wieder, um zu sehen was HubEx kann.',
+    restartGuide: 'Anleitung wieder öffnen',
     htmlTemplate: {
       name: 'Eigenes HTML',
       groupLabel: 'Eigene',
@@ -1801,6 +1806,15 @@ export default {
     copyNow: 'Kopieren Sie diesen Schlüssel jetzt — er wird nicht erneut angezeigt',
     noKeys: 'Noch keine API-Schlüssel',
   },
+  apiKeyManager: {
+    lastUsed: 'Zuletzt verwendet {when}',
+    neverUsed: 'Noch nie verwendet',
+    never: 'nie',
+    expiresOn: 'läuft ab am {date}',
+  },
+  vizBool: {
+    since: 'seit {when}',
+  },
   customApi: {
     title: 'Custom API Builder',
     subtitle: 'Eigene API-Endpunkte f\u00FCr Ger\u00E4tedaten, Variablen und Metriken erstellen.',
@@ -2125,6 +2139,42 @@ export default {
         'Seiten können privat, öffentlich oder login-geschützt sein',
         'Layouts für Landing, Minimal oder Vollbild nutzen',
         'CMS-Seiten aus Menüs und Dashboards verlinken',
+      ],
+    },
+    effects: {
+      title: 'Pipeline-Effekte, die von Automationen und Handlern ausgeführt werden.',
+      items: [
+        'Effekte sind die "Was ist passiert"-Spur eines Automations-Durchlaufs',
+        'Nach Art filtern, um bestimmte Effekt-Typen zu finden',
+        'Live-Polling zeigt neue Effekte sobald sie eintreffen',
+        'Auf eine Zeile klicken, um zum auslösenden Event zurückzuverfolgen',
+      ],
+    },
+    executions: {
+      title: 'Verlauf aller Automations- und Task-Durchläufe.',
+      items: [
+        'Jeder Automations-Lauf wird hier mit Eingaben und Ausgaben protokolliert',
+        'Nach Gerät, Status oder Context-ID filtern, um Fehler zu debuggen',
+        'Auf "Im Trace Hub öffnen" klicken für die vollständige Zeitachse',
+        'Prüfe damit, ob Cooldowns und Rate-Limits wie erwartet greifen',
+      ],
+    },
+    observability: {
+      title: 'Systemweite Metriken und Request-Rate-Dashboards.',
+      items: [
+        'Backend-Gesundheit, Request-Latenz und Fehlerraten überwachen',
+        'Device-Ingestion-Durchsatz und WebSocket-Verbindungen verfolgen',
+        'Trends erkennen, bevor daraus Vorfälle werden',
+        'Benötigt das Observability-Feature-Flag',
+      ],
+    },
+    apiDocs: {
+      title: 'Interaktive API-Dokumentation (Swagger + Redoc).',
+      items: [
+        'Endpunkte direkt aus dem Browser mit Swagger UI testen',
+        'Lesefreundliche Redoc-Ansicht als Referenz',
+        'Alle Endpunkte werden automatisch aus dem laufenden Backend generiert',
+        'Mit deinem persönlichen API-Token authentifizierte Aufrufe testen',
       ],
     },
   },

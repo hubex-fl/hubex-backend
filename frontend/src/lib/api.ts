@@ -12,10 +12,44 @@ export function hasToken(): boolean {
 
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
+  // New token → drop cached /users/me so the next caller re-fetches fresh data
+  // under the new auth context (fresh login, MFA verify, org switch).
+  clearMeCache();
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  clearMeCache();
+}
+
+// Sprint 8 R4 Perf-01 cleanup: /users/me was being fetched twice on
+// every session bootstrap — once by the auth capabilities layer and
+// once by the preferences store. Both fire in parallel during app
+// mount, so caching the inflight promise collapses them into one
+// network call. Cache is cleared on logout and on token change.
+//
+// Cache lifetime is short (60 s) — long enough to dedupe the bootstrap
+// wave but short enough that settings edits to the user profile
+// propagate within a minute.
+let _meInflight: Promise<unknown> | null = null;
+let _meCacheTime = 0;
+const ME_CACHE_MS = 60_000;
+
+export function fetchMe<T = unknown>(): Promise<T> {
+  const now = Date.now();
+  if (_meInflight && now - _meCacheTime < ME_CACHE_MS) {
+    return _meInflight as Promise<T>;
+  }
+  _meCacheTime = now;
+  _meInflight = apiFetch<T>("/api/v1/users/me");
+  // If the request fails, invalidate so the next caller retries.
+  (_meInflight as Promise<unknown>).catch(() => { _meInflight = null; });
+  return _meInflight as Promise<T>;
+}
+
+export function clearMeCache(): void {
+  _meInflight = null;
+  _meCacheTime = 0;
 }
 
 export async function apiFetch<T>(

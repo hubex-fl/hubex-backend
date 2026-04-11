@@ -12,7 +12,11 @@ function makeToken(payload: Record<string, unknown>): string {
 
 async function loadModule(getTokenMock: () => string | null, fetchJsonMock: () => Promise<unknown>) {
   vi.resetModules();
-  vi.doMock("../api", () => ({ getToken: getTokenMock }));
+  // Sprint 8 R4 Perf-01: capabilities.ts now uses fetchMe() from lib/api for
+  // the token-with-caps verification path (was fetchJson). We wire fetchMe
+  // straight to the same mock so existing expectations on call counts still
+  // apply to the verification hit.
+  vi.doMock("../api", () => ({ getToken: getTokenMock, fetchMe: fetchJsonMock }));
   vi.doMock("../request", () => ({ fetchJson: fetchJsonMock, ApiError: {} }));
   return import("../capabilities");
 }

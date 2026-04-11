@@ -1,6 +1,6 @@
 ﻿import { reactive } from "vue";
 import { fetchJson, ApiError } from "./request";
-import { getToken } from "./api";
+import { getToken, fetchMe } from "./api";
 
 export type CapStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
 
@@ -45,7 +45,7 @@ export async function refreshCapabilities(signal?: AbortSignal): Promise<void> {
     state.status = "ready";
     state.error = null;
     try {
-      await fetchJson("/api/v1/users/me", { method: "GET" }, signal);
+      await fetchMe();
     } catch (err) {
       const e = err as ApiError;
       if (e.status === 401) {
