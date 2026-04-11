@@ -80,7 +80,24 @@ _N8N_MANIFEST: dict[str, Any] = {
         ],
     },
     "embed": {
+        # n8n is a full-fledged app designed to run fullscreen with its own
+        # navigation, user profile, and websocket connections. It sets
+        # X-Frame-Options: sameorigin + Cross-Origin-Resource-Policy:
+        # same-origin + uses absolute asset paths (/static/, /assets/,
+        # /rest/) that would need deep sub_filter rewriting to work inside
+        # a reverse-proxied iframe. Rather than fight the framework with
+        # brittle path rewriting, we open n8n in a new tab. The container
+        # is still managed by hubex (adopted), credentials/workflows stay
+        # in the n8n volume, status still visible in the Plugins list.
+        "allow_iframe": False,
         "iframe_url": "http://localhost:5678",
+        "open_url": "http://localhost:5678",
+        # proxy_path is unused for n8n but kept so the infrastructure is
+        # exercised in tests. Future service plugins that DO support
+        # iframing (e.g. Grafana with GF_SECURITY_ALLOW_EMBEDDING=true)
+        # will reuse the nginx /plugins-embed/ location without any
+        # further config changes.
+        "proxy_path": "/plugins-embed/n8n/",
         "sidebar_label": "n8n Workflows",
         "sidebar_icon": "workflow",
     },

@@ -1861,8 +1861,12 @@ export default {
       not_found: "Plugin '{key}' not found",
       not_running: 'This plugin is not running. Start it to open the embedded view.',
       no_iframe: 'This plugin has no embedded view.',
+      not_embeddable_title: '{name} cannot be embedded here',
+      not_embeddable_body: 'This plugin refuses to be displayed inside a frame (X-Frame-Options). Open it in a new browser tab to use the full UI — HubEx keeps the container and credentials, you just visit it directly.',
+      open_in_new_tab_button: 'Open in new tab',
       back_to_list: 'Back to plugins',
       open_new_tab: 'Open in new tab',
     },
+    open_new_tab_title: 'Opens in a new browser tab because this plugin cannot be embedded',
   },
 };

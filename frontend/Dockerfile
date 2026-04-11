@@ -9,9 +9,10 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-
-# SPA fallback + API proxy
-RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  index index.html;\n\n  # index.html must never be cached (contains hashed JS/CSS refs)\n  location = /index.html {\n    add_header Cache-Control "no-cache, no-store, must-revalidate";\n    add_header Pragma "no-cache";\n    add_header Expires "0";\n  }\n\n  # Hashed assets can be cached forever\n  location /assets/ {\n    add_header Cache-Control "public, max-age=31536000, immutable";\n  }\n\n  location / { try_files $uri $uri/ /index.html; }\n  location /api/ { proxy_pass http://backend:8000; }\n  location /health { proxy_pass http://backend:8000; }\n  location /ready { proxy_pass http://backend:8000; }\n  location /docs { proxy_pass http://backend:8000; }\n  location /redoc { proxy_pass http://backend:8000; }\n  location /openapi.json { proxy_pass http://backend:8000; }\n}\n' > /etc/nginx/conf.d/default.conf
+# Nginx config extracted from the Dockerfile in Sprint 3.3 so the
+# plugin reverse-proxy rules (X-Frame-Options strip) are readable
+# and version-controlled instead of living in a single printf.
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:80/ || exit 1

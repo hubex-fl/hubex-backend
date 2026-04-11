@@ -282,21 +282,39 @@ function statusDotClass(status: string | null): string {
   }
 }
 
-function iframeUrlFor(plugin: InstalledPlugin): string | null {
-  const manifest = plugin.manifest as Record<string, unknown>;
-  const embed = manifest.embed as { iframe_url?: string } | undefined;
-  return resolveEmbedUrl(embed?.iframe_url ?? null);
+/**
+ * True when we can actually render an embedded iframe view for this plugin.
+ * Plugins with allow_iframe=false ALWAYS return false, even when they have
+ * a proxy_path configured — some plugins (e.g. n8n) are apps designed to
+ * run fullscreen with absolute asset paths that break inside an iframe
+ * even after headers are stripped. For those, the "Open" button opens a
+ * new tab via externalUrlFor() instead of routing to /plugins/:key/embed.
+ */
+function hasEmbedView(plugin: InstalledPlugin): boolean {
+  const embed = (plugin.manifest as Record<string, unknown>).embed as
+    | {
+        iframe_url?: string;
+        proxy_path?: string;
+        allow_iframe?: boolean;
+      }
+    | undefined;
+  if (!embed) return false;
+  if (embed.allow_iframe === false) return false;
+  if (embed.proxy_path) return true;
+  return !!embed.iframe_url;
 }
 
 /**
- * Catalog manifests hardcode `http://localhost:5678` for n8n etc. That breaks
- * when HubEx is accessed over a hostname or IP other than "localhost" — the
- * browser tries to reach ITS OWN localhost:5678, not the server's. Rewrite
- * the hostname at render time so the URL tracks wherever the user is browsing
- * from. Only "localhost" (and its alias 127.0.0.1) is rewritten; hostnames
- * the catalog explicitly set to something else are left alone.
+ * External URL to open in a new tab for plugins that either have an embed
+ * view (same target, just in a standalone tab) or don't (this is the only
+ * way to access them). Rewrites localhost → current hostname so it works
+ * over LAN/remote.
  */
-function resolveEmbedUrl(raw: string | null): string | null {
+function externalUrlFor(plugin: InstalledPlugin): string | null {
+  const embed = (plugin.manifest as Record<string, unknown>).embed as
+    | { iframe_url?: string; open_url?: string }
+    | undefined;
+  const raw = embed?.open_url || embed?.iframe_url;
   if (!raw) return null;
   try {
     const u = new URL(raw);
@@ -306,6 +324,13 @@ function resolveEmbedUrl(raw: string | null): string | null {
     return u.toString();
   } catch {
     return raw;
+  }
+}
+
+function openPluginExternal(plugin: InstalledPlugin): void {
+  const url = externalUrlFor(plugin);
+  if (url) {
+    window.open(url, "_blank", "noopener");
   }
 }
 
@@ -569,12 +594,25 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
               <div class="flex items-center gap-1.5 shrink-0">
                 <!-- Service actions -->
                 <template v-if="plugin.kind === 'service'">
+                  <!-- Open: prefer embedded view (via reverse proxy), fall
+                       back to external tab for plugins that block iframing -->
                   <button
-                    v-if="iframeUrlFor(plugin) && plugin.runtime_status === 'running'"
+                    v-if="hasEmbedView(plugin) && plugin.runtime_status === 'running'"
                     class="px-2 py-1 rounded-lg text-[10px] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10"
                     @click="handleOpenEmbed(plugin)"
                   >
                     {{ t("plugins.open") }}
+                  </button>
+                  <button
+                    v-else-if="externalUrlFor(plugin) && plugin.runtime_status === 'running'"
+                    class="px-2 py-1 rounded-lg text-[10px] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 flex items-center gap-1"
+                    :title="t('plugins.open_new_tab_title')"
+                    @click="openPluginExternal(plugin)"
+                  >
+                    {{ t("plugins.open") }}
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7m0-7L10 14m-5-5v10a2 2 0 002 2h10" />
+                    </svg>
                   </button>
                   <button
                     v-if="plugin.runtime_status === 'running'"

@@ -1861,8 +1861,12 @@ export default {
       not_found: "Plugin '{key}' nicht gefunden",
       not_running: 'Dieses Plugin läuft nicht. Starte es, um die eingebettete Ansicht zu öffnen.',
       no_iframe: 'Dieses Plugin hat keine eingebettete Ansicht.',
+      not_embeddable_title: '{name} kann hier nicht eingebettet werden',
+      not_embeddable_body: 'Dieses Plugin verweigert die Darstellung in einem Frame (X-Frame-Options). Öffne es in einem neuen Browser-Tab, um die volle UI zu nutzen — HubEx behält den Container und die Zugangsdaten, du besuchst es einfach direkt.',
+      open_in_new_tab_button: 'In neuem Tab öffnen',
       back_to_list: 'Zurück zu Plugins',
       open_new_tab: 'In neuem Tab öffnen',
     },
+    open_new_tab_title: 'Öffnet in neuem Browser-Tab weil dieses Plugin sich nicht einbetten lässt',
   },
 };
