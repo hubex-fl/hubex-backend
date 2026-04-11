@@ -4,6 +4,9 @@ import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import { downloadProjectZip, CodegenError } from "../lib/codegen";
 import { useToastStore } from "../stores/toast";
+import { useBoardLabels } from "../composables/useBoardLabels";
+
+const { boardName, boardDescription } = useBoardLabels();
 
 interface Board {
   id: number;
@@ -203,8 +206,8 @@ function resetWizard() {
             @click="selectBoard(b.chip)"
           >
             <div class="board-chip-badge">{{ b.chip }}</div>
-            <div class="board-name">{{ b.name }}</div>
-            <div v-if="b.description" class="board-desc">{{ b.description }}</div>
+            <div class="board-name">{{ boardName(b) }}</div>
+            <div v-if="boardDescription(b)" class="board-desc">{{ boardDescription(b) }}</div>
             <div class="board-tags">
               <span v-if="b.wifi_capable" class="tag">WiFi</span>
               <span v-if="b.bluetooth_capable" class="tag">BLE</span>
@@ -375,7 +378,7 @@ function resetWizard() {
         </div>
 
         <div class="summary-card">
-          <div class="summary-row"><span>Board</span><strong>{{ selectedBoard?.name || '—' }}</strong></div>
+          <div class="summary-row"><span>Board</span><strong>{{ selectedBoard ? boardName(selectedBoard) : '—' }}</strong></div>
           <div class="summary-row"><span>Framework</span><strong>{{ selectedFramework }}</strong></div>
           <div class="summary-row"><span>Komponenten</span><strong>{{ selectedComponentKeys.size }}</strong></div>
           <div class="summary-row"><span>WiFi SSID</span><strong>{{ wifiSsid || '(leer — später setzen)' }}</strong></div>

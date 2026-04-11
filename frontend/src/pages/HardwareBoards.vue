@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
+import { useBoardLabels } from "../composables/useBoardLabels";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
 
 const { t } = useI18n();
 const router = useRouter();
+const { boardName, boardDescription } = useBoardLabels();
 
 function openWizard() {
   router.push("/hardware/wizard");
@@ -100,18 +102,18 @@ onMounted(loadAll);
         >
           <div class="flex items-center gap-2 mb-2">
             <div class="h-3 w-3 rounded-full" :style="{ background: CHIP_COLORS[board.chip] || 'var(--text-muted)' }" />
-            <span class="text-sm font-medium text-[var(--text-primary)]">{{ board.name }}</span>
+            <span class="text-sm font-medium text-[var(--text-primary)]">{{ boardName(board) }}</span>
           </div>
           <div class="flex flex-wrap gap-1.5 mb-2">
             <UBadge status="info" size="sm">{{ board.chip }}</UBadge>
             <UBadge v-if="board.wifi_capable" status="ok" size="sm">WiFi</UBadge>
             <UBadge v-if="board.bluetooth_capable" status="neutral" size="sm">BLE</UBadge>
           </div>
-          <p v-if="board.description" class="text-[10px] text-[var(--text-muted)] line-clamp-2">{{ board.description }}</p>
+          <p v-if="boardDescription(board)" class="text-[10px] text-[var(--text-muted)] line-clamp-2">{{ boardDescription(board) }}</p>
           <div class="flex items-center gap-3 mt-2 text-[10px] text-[var(--text-muted)]">
-            <span>{{ board.pins.length }} pins</span>
-            <span>{{ board.flash_size_kb }}KB flash</span>
-            <span>{{ board.ram_size_kb }}KB RAM</span>
+            <span>{{ board.pins.length }} {{ t('hardware.pins') }}</span>
+            <span>{{ board.flash_size_kb }}KB {{ t('hardware.flash') }}</span>
+            <span>{{ board.ram_size_kb }}KB {{ t('hardware.ram') }}</span>
           </div>
         </div>
       </div>
@@ -120,7 +122,7 @@ onMounted(loadAll);
       <UCard v-if="selectedBoard">
         <template #header>
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ selectedBoard.name }} — {{ t('hardware.pinMap') }}</h3>
+            <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ boardName(selectedBoard) }} — {{ t('hardware.pinMap') }}</h3>
             <button class="text-xs text-[var(--text-muted)]" @click="selectedBoard = null">{{ t('common.close') }}</button>
           </div>
         </template>
@@ -167,7 +169,7 @@ onMounted(loadAll);
                 </span>
               </div>
             </div>
-            <div class="text-[10px] text-[var(--text-muted)] shrink-0">{{ s.occupied_pins.length }} pins</div>
+            <div class="text-[10px] text-[var(--text-muted)] shrink-0">{{ s.occupied_pins.length }} {{ t('hardware.pins') }}</div>
           </div>
         </div>
       </UCard>

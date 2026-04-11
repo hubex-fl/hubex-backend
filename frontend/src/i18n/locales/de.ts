@@ -1018,6 +1018,21 @@ export default {
     shieldsModules: 'Shields & Module',
     shieldsDesc: 'Vorgefertigte Hardware-Erweiterungen',
     noShields: 'Keine Shields verf\u00fcgbar',
+    pins: 'Pins',
+    flash: 'Flash',
+    ram: 'RAM',
+    boardNames: {
+      esp32: 'ESP32 DevKit V1',
+      esp32c3: 'ESP32-C3 Mini',
+      esp32s3: 'ESP32-S3 DevKit',
+      rp2040: 'Raspberry Pi Pico W',
+    },
+    boardDescs: {
+      esp32: 'Der meistverbreitete ESP32-Entwicklungsboard. 30-Pin-Layout mit USB-C oder Micro-USB.',
+      esp32c3: 'Stromsparender RISC-V ESP32-C3. Kompakt, mit WiFi und BLE.',
+      esp32s3: 'ESP32-S3 mit USB-OTG und KI-Beschleunigung. 44-Pin-Layout.',
+      rp2040: 'RP2040 Dual-Core mit CYW43 WiFi/BLE. 40-Pin-Layout.',
+    },
   },
   empty: {
     noDevices: 'Noch keine Geräte gekoppelt',
