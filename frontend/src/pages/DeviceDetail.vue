@@ -18,6 +18,16 @@ import UInput from "../components/ui/UInput.vue";
 import USelect from "../components/ui/USelect.vue";
 import USkeleton from "../components/ui/USkeleton.vue";
 import UEmpty from "../components/ui/UEmpty.vue";
+// Sprint 3.8-hotfix REAL-18/19 — these were silently missing from imports
+// in DeviceDetail.vue. Vue 3 with <script setup> treats unresolved
+// components as native HTML elements and renders the slot content
+// verbatim, which caused both modals to *ignore* their `:open="false"`
+// gate and leak ~400px of invisible DOM into the page flow. That was
+// the "giant blank area after scroll" + `Page.captureScreenshot` freeze
+// reported in Sprint 3.5 — captureScreenshot was choking on the
+// unresolved-element + inline `<select>` combo.
+import UModal from "../components/ui/UModal.vue";
+import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import { DEVICE_TYPE_META, deviceTypeLabel } from "../composables/useDevices";
 import type { DeviceType } from "../composables/useDevices";
 import { getVariableHistory } from "../lib/variables";

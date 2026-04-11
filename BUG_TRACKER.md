@@ -373,16 +373,37 @@ live devtools perf trace, not code reading).
   No console errors. Top-bar title also reads "Einrichtung".
 - **Status:** ✅ Sprint 3.8
 
-### ⏸ REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — STILL DEFERRED
-- **Sprint 3.8 investigation findings (static read of 2947-line `DeviceDetail.vue`):**
-  - All three `setInterval` handlers (`heartbeatTimer`, `leaseCountdownTimer`, `nowBucketTimer`) are cleaned up in `onUnmounted` — no obvious leak
-  - `cleanupWs()` properly detaches WebSocket callbacks + closes the connection
-  - Hot v-for on telemetry rows has `v-memo="[tel.__sig, isTelemetryExpanded(tel.id) ? 1 : 0]"` — good perf
-  - Task history v-for has `v-memo="[t.__sig]"` — good perf
-  - Big variables list (`variablesSorted.slice(0, 8)` for System Context graph + full `variablesSorted` for State panel) are both capped at reasonable sizes
-  - No infinite watchers, no recursive computeds spotted
-  - No huge canvas / SVG elements (the biggest is 88×88px hero ring)
-- **Conclusion:** Cannot be diagnosed statically. Genuine need for a Chrome devtools Performance trace while the freeze happens — static code-reading shows no smoking gun. Likely candidates (still untested): flex/viewport height interaction between the collapsible "Technische Details" panel + Hero Card + System Context grid; or a synchronous layout thrash from reading `getBoundingClientRect` somewhere during telemetry WebSocket frames. **Stays on the backlog; needs a dedicated investigation sprint with live perf trace.**
+### ✅ REAL-18/19 DeviceDetail giant blank area + Chrome renderer freeze — FIXED 3.8-hotfix
+- **Sprint 3.8 initial conclusion (WRONG):** needs live devtools Performance trace, punted to backlog.
+- **Sprint 3.8-hotfix re-investigation (via Chrome-MCP live DOM eval):** took ~15 minutes. The static read had missed a one-line bug because it was looking at timers and v-for hot paths instead of component imports.
+- **Root cause:** `DeviceDetail.vue` uses `<UModal>` (twice) and `<UEntitySelect>` (once) in its template but **never imports them** in `<script setup>`. Vue 3 with `<script setup>` requires every component used in template to be explicitly imported — otherwise the tag is emitted as an unknown HTML element (`<umodal>`, `<uentityselect>`) and **the slot contents render as raw DOM children in the normal document flow**, completely bypassing `v-if="open"`, `<Teleport to="body">`, and `z-index`. The "giant blank area" after scrolling was two stacked modals silently leaking into the page: the "Add to Group" modal (121px) from inside the System Context section, and the "Send Task" modal (265px at full 1162px width) at the bottom of the page. Chrome's `Page.captureScreenshot` timed out while trying to serialize the unresolved elements + inline `<select>` fallback widgets.
+- **Why Sprint 3.5/3.8 missed it:**
+  - Static code-read looked for `setInterval` leaks, watch loops, v-memo, scroll math. Did not grep for used-but-not-imported components.
+  - Chrome devtools via CDP `Page.captureScreenshot` timed out on the first attempt back in Sprint 3.5, which made us assume it was a perf/freeze issue instead of a broken-render issue. The Chrome-MCP extension takes screenshots via a different path (DevTools extension API) and actually worked fine.
+- **Live DOM diagnosis:**
+  ```js
+  document.documentElement.scrollHeight  // 2033 px before, 1671 after
+  document.querySelectorAll('*').filter(el => el.tagName === 'UMODAL').length  // 2 before, 0 after
+  ```
+  Before fix: 2 UMODAL elements and 1 UENTITYSELECT element in DOM with innerHTML containing modal body content.
+  After fix: 0 unresolved custom elements, docHeight drops by 362 px.
+- **Fix:** Added two missing imports to `DeviceDetail.vue` script setup:
+  ```ts
+  import UModal from "../components/ui/UModal.vue";
+  import UEntitySelect from "../components/ui/UEntitySelect.vue";
+  ```
+  Zero template changes. 9-line diff total (7 lines of comment explaining the bug + 2 imports).
+- **File:** `frontend/src/pages/DeviceDetail.vue`
+- **Verified live (after docker frontend rebuild):**
+  - docHeight = 1671 px (was 2033) ✓
+  - 0 unresolved `<u*>` elements in DOM ✓
+  - No console errors or `[Vue warn]` component-resolution warnings ✓
+  - Click "Task senden" button → exactly 1 `[role="dialog"]` element appears in body, `body.style.overflow = "hidden"` (scroll locked), modal correctly teleported ✓
+  - Escape closes modal, overflow lock released ✓
+- **Status:** ✅ Sprint 3.8-hotfix (2026-04-11)
+
+### Lesson learned
+When investigating a "mystery perf issue" in a Vue component, **grep the script imports against the template component usages FIRST**. Unresolved `<UFoo>` tags will look like perf or layout bugs because they render fallback DOM in-place with none of the component's behavior. This should be added to a lint rule (`vue/no-undef-components` or similar) — parked for a follow-up.
 
 ---
 

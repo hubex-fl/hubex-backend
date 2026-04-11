@@ -1320,10 +1320,10 @@
 - OTA integration (built binary auto-flashable via M14b OTA) — deferred to M14b sprint
 - Redis-backed job queue — not needed while we're single-backend-container
 
-### Sprint 3.8 — Deferred polish backlog ✅ PARTIAL (2026-04-11)
+### Sprint 3.8 — Deferred polish backlog ✅ DONE (2026-04-11)
 > Stuff that explicitly surfaced during Sprint 3.4-3.7 and got parked
 > because Sprint 4 took priority. User asked for these to not be lost.
-- [ ] **REAL-18/REAL-19 — DeviceDetail giant blank area + Chrome renderer freeze** ⏸ STILL DEFERRED. Sprint 3.8 did a static 2947-line read, verified all timers are cleaned up in onUnmounted, WebSocket is properly torn down, hot v-for paths have `v-memo`, variables lists are capped. Could not reproduce statically. Genuine need for live Chrome devtools Performance trace — stays on backlog with full investigation notes in BUG_TRACKER.
+- [x] **REAL-18/REAL-19 — DeviceDetail giant blank area + Chrome renderer freeze** ✅ FIXED in 3.8-hotfix after user explicitly asked to try live-browser diagnosis instead of punting again. Root cause was **two missing component imports**: `DeviceDetail.vue` uses `<UModal>` and `<UEntitySelect>` in its template but never imported them. Vue 3 `<script setup>` rendered them as unknown HTML tags (`<umodal>`, `<uentityselect>`), bypassing their `v-if="open"` / `<Teleport>` guards, so the modal slot contents (121 px + 265 px) leaked into the page flow as raw DOM. 9-line fix (2 imports + explanatory comment), docHeight drops 2033→1671, browser-verified.
 - [x] **SetupWizard i18n sweep** — done. Added full `setupWizard.*` namespace in en+de (~100 keys: header / 5 steps / footer / 6 use-case presets / 3 toast messages). Rewrote `USE_CASES: UseCaseDef[]` to drop module-level `label`+`description`, added `useCaseLabel(id)`/`useCaseDescription(id)` helpers that look up `setupWizard.useCases.<id>.*` via `t()`. All 5 steps + footer + toasts wired. Browser-verified all 5 steps on DE locale with no console errors.
 - [x] **DEVICE_TYPE_META composable labels** — done. Added `devices.types.*` namespace in en+de (esp32, hardware, api_device, service, mqtt_bridge, bridge, software_agent, agent, standard_device, unknown with German translations API-Ger\u00e4t / Dienst / MQTT-Bridge / Software-Agent / Standard-Ger\u00e4t / Unbekannt). Exported new `deviceTypeLabel(type)` helper from useDevices.ts that looks up `devices.types.<key>` via `i18n.global.t(...)` with legacy static-label + raw-string fallbacks. Updated 5 render sites across Devices.vue + DeviceDetail.vue. Browser-verified: "Agent" instead of "Software Agent", "MQTT-Bridge" instead of "MQTT Bridge".
 - [ ] **REAL-10 — Dashboard "Großer Ausfall"** semantic mismatch next to a positive-looking "6 online" number — needs design decision (separate warn banner? redesign KPI card?)
@@ -1807,8 +1807,8 @@ Phase 1-4 (Core + UI + Data + Integration)            ✅ DONE
                                 │   (parallel track)
                                 ├─► Sprint 1-3 (Feature Flags / Codegen / Plugin Mgr v2)  ✅ DONE
                                 │   └─► Sprint 4 (firmware_builder)                        ✅ DONE
-                                │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META)  ✅ DONE (partial)
-                                │               └─► Sprint 5 / 3.8-residual                ◄── NÄCHSTER SCHRITT
+                                │         └─► Sprint 3.8 (SetupWizard + DEVICE_TYPE_META + REAL-18/19)  ✅ DONE
+                                │               └─► Sprint 5 (residual polish + next track)  ◄── NÄCHSTER SCHRITT
                                 │
                                 └─► Phase 10 (Commercial)                  [TODO]
                                       │
