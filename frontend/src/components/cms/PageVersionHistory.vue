@@ -4,7 +4,10 @@
  * preview and restore actions.
  */
 import { ref, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../../lib/api";
+
+const { t } = useI18n();
 
 type VersionSummary = {
   id: number;
@@ -59,7 +62,9 @@ async function restore() {
   if (!selected.value) return;
   if (
     !confirm(
-      `Restore version ${selected.value.version_num}? Current state will be saved as a new version first.`,
+      t("cms.components.pageVersionHistory.confirmRestore", {
+        version: selected.value.version_num,
+      }),
     )
   ) {
     return;
@@ -73,7 +78,7 @@ async function restore() {
     emit("restored");
     emit("close");
   } catch (e: any) {
-    alert(e?.message || "Restore failed");
+    alert(e?.message || t("cms.components.pageVersionHistory.restoreFailed"));
   } finally {
     restoring.value = false;
   }
@@ -94,13 +99,13 @@ onMounted(loadVersions);
   <div class="vh-modal" @click.self="emit('close')">
     <div class="vh-body">
       <header class="vh-head">
-        <h3>Version history</h3>
-        <button type="button" class="btn-ghost" @click="emit('close')">Close</button>
+        <h3>{{ t('cms.components.pageVersionHistory.title') }}</h3>
+        <button type="button" class="btn-ghost" @click="emit('close')">{{ t('cms.components.pageVersionHistory.close') }}</button>
       </header>
       <div class="vh-content">
         <aside class="vh-list">
-          <div v-if="loading" class="vh-empty">Loading…</div>
-          <div v-else-if="versions.length === 0" class="vh-empty">No versions yet.</div>
+          <div v-if="loading" class="vh-empty">{{ t('cms.components.pageVersionHistory.loading') }}</div>
+          <div v-else-if="versions.length === 0" class="vh-empty">{{ t('cms.components.pageVersionHistory.emptyList') }}</div>
           <button
             v-for="v in versions"
             :key="v.id"
@@ -118,7 +123,7 @@ onMounted(loadVersions);
         </aside>
         <main class="vh-preview">
           <div v-if="!selected" class="vh-empty">
-            Select a version to preview.
+            {{ t('cms.components.pageVersionHistory.emptyPreview') }}
           </div>
           <div v-else>
             <div class="vh-meta-bar">
@@ -131,7 +136,7 @@ onMounted(loadVersions);
                 :disabled="restoring"
                 @click="restore"
               >
-                {{ restoring ? "Restoring…" : "Restore this version" }}
+                {{ restoring ? t('cms.components.pageVersionHistory.restoring') : t('cms.components.pageVersionHistory.restoreButton') }}
               </button>
             </div>
             <div class="vh-frame" v-html="selected.content_html"></div>

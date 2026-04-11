@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Props = {
   filter?: "all" | "online" | "offline";
@@ -8,6 +9,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 type Item = {
   device_uid: string;
@@ -36,7 +38,7 @@ async function load() {
     devices.value = Array.isArray(data) ? data : data.items ?? [];
     error.value = null;
   } catch (e: any) {
-    error.value = "Failed to load devices";
+    error.value = t('cms.components.blocks.deviceList.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -47,9 +49,9 @@ onMounted(load);
 
 <template>
   <div class="dev-list">
-    <div v-if="loading" class="loading">Loading devices…</div>
+    <div v-if="loading" class="loading">{{ t('cms.components.blocks.deviceList.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="!filtered.length" class="empty">No devices</div>
+    <div v-else-if="!filtered.length" class="empty">{{ t('cms.components.blocks.deviceList.empty') }}</div>
     <div v-else class="grid" :style="{ gridTemplateColumns: `repeat(${columns}, 1fr)` }">
       <div v-for="d in filtered" :key="d.device_uid" class="item">
         <div class="item-head">

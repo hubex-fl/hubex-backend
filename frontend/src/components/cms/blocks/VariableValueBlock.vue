@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Props = {
   key?: string;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 const current = ref<string | number | null>(null);
 const loading = ref(true);
@@ -28,13 +30,15 @@ const displayValue = computed(() => {
   return String(current.value);
 });
 
-const displayLabel = computed(() => props.props.label || props.props.key || "Variable");
+const displayLabel = computed(
+  () => props.props.label || props.props.key || t('cms.components.blocks.variableValue.defaultLabel')
+);
 
 async function fetchValue() {
   const key = props.props.key;
   if (!key) {
     loading.value = false;
-    error.value = "No variable key";
+    error.value = t('cms.components.blocks.variableValue.noKey');
     return;
   }
   try {

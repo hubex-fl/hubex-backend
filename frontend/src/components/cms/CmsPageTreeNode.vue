@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 type Node = {
   id: number;
@@ -69,24 +72,24 @@ const isDropTarget = computed(() => props.dropTargetId === props.node.id);
       </span>
       <span class="node-slug">/{{ node.slug }}</span>
 
-      <span v-if="node.published" class="node-badge pub">live</span>
-      <span v-else class="node-badge draft">draft</span>
+      <span v-if="node.published" class="node-badge pub">{{ t('cms.components.pageTreeNode.liveBadge') }}</span>
+      <span v-else class="node-badge draft">{{ t('cms.components.pageTreeNode.draftBadge') }}</span>
 
       <div class="node-actions">
         <button
           class="a-btn"
           type="button"
           @click.stop="emit('add-child', node.id)"
-          title="Add child page"
+          :title="t('cms.components.pageTreeNode.addChildTitle')"
         >
-          + Child
+          {{ t('cms.components.pageTreeNode.addChild') }}
         </button>
         <button
           class="a-btn"
           type="button"
           @click.stop="emit('edit', node.id)"
         >
-          Edit
+          {{ t('cms.components.pageTreeNode.edit') }}
         </button>
       </div>
 
@@ -95,7 +98,7 @@ const isDropTarget = computed(() => props.dropTargetId === props.node.id);
         class="drop-child-zone"
         @dragover.prevent="emit('drag-over', $event, node, true)"
         @drop.stop="emit('drop', $event, node)"
-        title="Drop here to nest"
+        :title="t('cms.components.pageTreeNode.dropHereToNest')"
       ></div>
     </div>
 

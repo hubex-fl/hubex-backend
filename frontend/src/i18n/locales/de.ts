@@ -3432,6 +3432,117 @@ export default {
         htmlLabel: 'HTML',
         backToEditor: 'Zurück zum Editor',
       },
+      // Sprint 8 Batch 7c — BlockCanvas Editor-Vorschau-Renderer
+      blockCanvas: {
+        empty: {
+          title: 'Leere Arbeitsfläche',
+          subtitle: 'Wähle links einen Block, um loszulegen.',
+        },
+        controls: {
+          moveUp: 'Nach oben',
+          moveDown: 'Nach unten',
+          duplicate: 'Duplizieren',
+          delete: 'Löschen',
+        },
+        defaults: {
+          heading: 'Überschrift',
+          heroTitle: 'Hero-Titel',
+          ctaTitle: 'Handlungsaufforderung',
+          ctaButton: 'Klicken',
+          quoteText: 'Zitattext',
+          buttonText: 'Schaltfläche',
+          tourButtonText: 'Tour starten',
+          variableLabel: 'Variable',
+          metricLabel: 'Metrik',
+          notSet: '(nicht gesetzt)',
+        },
+        placeholders: {
+          emptyText: 'Leerer Textblock',
+          imageNoSrc: 'Bild — keine Quelle gesetzt',
+          videoNoUrl: 'Video — keine URL gesetzt',
+          noItemsYet: 'Noch keine Einträge',
+          noStatsYet: 'Noch keine Kennzahlen',
+          noItems: 'Keine Einträge',
+          column: 'Spalte',
+          emptyHtml: 'Leerer HTML-Block',
+          spacer: 'Abstand ({height}px)',
+          blockFallback: 'Block: {type}',
+        },
+        dashboard: {
+          hint: 'Dashboard-Einbettung — Dashboard-ID im Eigenschaften-Panel setzen.',
+          runtime: 'Live-Dashboard #{id} (rendert zur Laufzeit)',
+        },
+        device: {
+          label: 'Gerät: {uid}',
+          loadsAtRuntime: 'lädt zur Laufzeit',
+          listHeader: 'Geräte ({filter})',
+          listRuntime: 'Geräteraster — lädt zur Laufzeit',
+        },
+        alertBanner: 'Alarm-Banner ({severity}) — live zur Laufzeit',
+        automation: {
+          label: 'Automatisierung {ref}',
+        },
+      },
+      // Sprint 8 Batch 7c — PageVersionHistory-Modal
+      pageVersionHistory: {
+        title: 'Versionsverlauf',
+        close: 'Schließen',
+        loading: 'Lädt…',
+        emptyList: 'Noch keine Versionen.',
+        emptyPreview: 'Version zur Vorschau auswählen.',
+        restoring: 'Wird wiederhergestellt…',
+        restoreButton: 'Diese Version wiederherstellen',
+        confirmRestore: 'Version {version} wiederherstellen? Der aktuelle Stand wird zuvor als neue Version gespeichert.',
+        restoreFailed: 'Wiederherstellung fehlgeschlagen',
+      },
+      // Sprint 8 Batch 7c — CmsPageTreeNode Baum-Renderer
+      pageTreeNode: {
+        liveBadge: 'live',
+        draftBadge: 'Entwurf',
+        addChild: '+ Unterseite',
+        addChildTitle: 'Unterseite hinzufügen',
+        edit: 'Bearbeiten',
+        dropHereToNest: 'Hier ablegen zum Verschachteln',
+      },
+      // Sprint 8 Batch 7d — Laufzeit-Block-Renderer (components/cms/blocks/*)
+      blocks: {
+        tourTrigger: {
+          defaultButtonText: 'Tour starten',
+        },
+        automationStatus: {
+          loading: 'Automation wird geladen…',
+          notFound: 'Automation nicht gefunden',
+          enabled: 'aktiv',
+          disabled: 'inaktiv',
+          lastFired: 'Zuletzt ausgelöst:',
+          runs: '{n} Läufe',
+          never: 'nie',
+        },
+        alertBanner: {
+          loading: 'Alarme werden geprüft…',
+          empty: 'Keine aktiven Alarme',
+          fallbackRule: 'Alarm #{id}',
+        },
+        dashboardEmbed: {
+          notConfigured: 'Dashboard nicht konfiguriert',
+        },
+        deviceCard: {
+          loading: 'Gerät wird geladen…',
+          noDevice: 'Kein Gerät',
+          loadFailed: 'Gerät konnte nicht geladen werden',
+          online: 'online',
+          offline: 'offline',
+        },
+        deviceList: {
+          loading: 'Geräte werden geladen…',
+          loadFailed: 'Geräte konnten nicht geladen werden',
+          empty: 'Keine Geräte',
+        },
+        variableValue: {
+          defaultLabel: 'Variable',
+          noKey: 'Kein Variable-Key',
+        },
+      },
     },
   },
   firmware: {

@@ -3442,6 +3442,117 @@ export default {
         htmlLabel: 'HTML',
         backToEditor: 'Back to editor',
       },
+      // Sprint 8 Batch 7c — BlockCanvas in-editor preview renderer
+      blockCanvas: {
+        empty: {
+          title: 'Empty Canvas',
+          subtitle: 'Pick a block from the left to get started.',
+        },
+        controls: {
+          moveUp: 'Move up',
+          moveDown: 'Move down',
+          duplicate: 'Duplicate',
+          delete: 'Delete',
+        },
+        defaults: {
+          heading: 'Heading',
+          heroTitle: 'Hero Title',
+          ctaTitle: 'Call to Action',
+          ctaButton: 'Click',
+          quoteText: 'Quote text',
+          buttonText: 'Button',
+          tourButtonText: 'Take a tour',
+          variableLabel: 'variable',
+          metricLabel: 'metric',
+          notSet: '(not set)',
+        },
+        placeholders: {
+          emptyText: 'Empty text block',
+          imageNoSrc: 'Image — no src set',
+          videoNoUrl: 'Video — no URL set',
+          noItemsYet: 'No items yet',
+          noStatsYet: 'No stats yet',
+          noItems: 'No items',
+          column: 'Column',
+          emptyHtml: 'Empty HTML block',
+          spacer: 'Spacer ({height}px)',
+          blockFallback: 'Block: {type}',
+        },
+        dashboard: {
+          hint: 'Dashboard embed — set a dashboard ID in the properties panel.',
+          runtime: 'Live dashboard #{id} (renders at runtime)',
+        },
+        device: {
+          label: 'Device: {uid}',
+          loadsAtRuntime: 'loads at runtime',
+          listHeader: 'Devices ({filter})',
+          listRuntime: 'Device grid — loads at runtime',
+        },
+        alertBanner: 'Alert banner ({severity}) — live at runtime',
+        automation: {
+          label: 'Automation {ref}',
+        },
+      },
+      // Sprint 8 Batch 7c — PageVersionHistory modal
+      pageVersionHistory: {
+        title: 'Version history',
+        close: 'Close',
+        loading: 'Loading…',
+        emptyList: 'No versions yet.',
+        emptyPreview: 'Select a version to preview.',
+        restoring: 'Restoring…',
+        restoreButton: 'Restore this version',
+        confirmRestore: 'Restore version {version}? Current state will be saved as a new version first.',
+        restoreFailed: 'Restore failed',
+      },
+      // Sprint 8 Batch 7c — CmsPageTreeNode tree renderer
+      pageTreeNode: {
+        liveBadge: 'live',
+        draftBadge: 'draft',
+        addChild: '+ Child',
+        addChildTitle: 'Add child page',
+        edit: 'Edit',
+        dropHereToNest: 'Drop here to nest',
+      },
+      // Sprint 8 Batch 7d — runtime block renderers (components/cms/blocks/*)
+      blocks: {
+        tourTrigger: {
+          defaultButtonText: 'Take a tour',
+        },
+        automationStatus: {
+          loading: 'Loading automation…',
+          notFound: 'Automation not found',
+          enabled: 'enabled',
+          disabled: 'disabled',
+          lastFired: 'Last fired:',
+          runs: '{n} runs',
+          never: 'never',
+        },
+        alertBanner: {
+          loading: 'Checking alerts…',
+          empty: 'No active alerts',
+          fallbackRule: 'Alert #{id}',
+        },
+        dashboardEmbed: {
+          notConfigured: 'Dashboard not configured',
+        },
+        deviceCard: {
+          loading: 'Loading device…',
+          noDevice: 'No device',
+          loadFailed: 'Failed to load device',
+          online: 'online',
+          offline: 'offline',
+        },
+        deviceList: {
+          loading: 'Loading devices…',
+          loadFailed: 'Failed to load devices',
+          empty: 'No devices',
+        },
+        variableValue: {
+          defaultLabel: 'Variable',
+          noKey: 'No variable key',
+        },
+      },
     },
   },
   firmware: {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Props = {
   dashboard_id?: number;
@@ -7,6 +8,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 const src = computed(() =>
   props.props.dashboard_id ? `/kiosk/${props.props.dashboard_id}` : ""
@@ -16,7 +18,7 @@ const height = computed(() => Math.max(120, props.props.height ?? 600));
 
 <template>
   <div class="dash-embed">
-    <div v-if="!src" class="missing">Dashboard not configured</div>
+    <div v-if="!src" class="missing">{{ t('cms.components.blocks.dashboardEmbed.notConfigured') }}</div>
     <iframe
       v-else
       :src="src"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Severity = "info" | "warning" | "critical";
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 type Alert = {
   id: number;
@@ -58,8 +60,8 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 
 <template>
   <div v-if="!hidden" class="alert-banner">
-    <div v-if="loading && !filtered.length" class="loading">Checking alerts…</div>
-    <div v-else-if="!filtered.length" class="empty">No active alerts</div>
+    <div v-if="loading && !filtered.length" class="loading">{{ t('cms.components.blocks.alertBanner.loading') }}</div>
+    <div v-else-if="!filtered.length" class="empty">{{ t('cms.components.blocks.alertBanner.empty') }}</div>
     <div v-else class="list">
       <div
         v-for="a in filtered"
@@ -69,7 +71,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
       >
         <div class="sev-dot"></div>
         <div class="alert-body">
-          <div class="rule">{{ a.rule_name || `Alert #${a.id}` }}</div>
+          <div class="rule">{{ a.rule_name || t('cms.components.blocks.alertBanner.fallbackRule', { id: a.id }) }}</div>
           <div v-if="a.message" class="msg">{{ a.message }}</div>
         </div>
       </div>

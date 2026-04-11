@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useTourStore } from "../../../stores/tour";
 
 type Props = {
@@ -10,8 +11,11 @@ type Props = {
 
 const props = defineProps<{ props: Props }>();
 const tour = useTourStore();
+const { t } = useI18n();
 
-const buttonText = computed(() => props.props.button_text || "Take a tour");
+const buttonText = computed(
+  () => props.props.button_text || t('cms.components.blocks.tourTrigger.defaultButtonText')
+);
 const variant = computed(() => props.props.style || "primary");
 
 async function startTour() {

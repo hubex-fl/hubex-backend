@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Props = {
   device_uid?: string;
@@ -9,6 +10,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 type DeviceData = {
   name: string;
@@ -27,7 +29,7 @@ async function load() {
   const uid = props.props.device_uid;
   if (!uid) {
     loading.value = false;
-    error.value = "No device";
+    error.value = t('cms.components.blocks.deviceCard.noDevice');
     return;
   }
   try {
@@ -36,7 +38,7 @@ async function load() {
     data.value = await res.json();
     error.value = null;
   } catch (e: any) {
-    error.value = "Failed to load device";
+    error.value = t('cms.components.blocks.deviceCard.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -52,13 +54,13 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 
 <template>
   <div class="dev-card">
-    <div v-if="loading" class="loading">Loading device…</div>
+    <div v-if="loading" class="loading">{{ t('cms.components.blocks.deviceCard.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="data" class="body">
       <div class="head">
         <div class="name">{{ data.name || data.device_uid }}</div>
         <div v-if="props.props.show_status !== false" class="status" :class="{ online: data.online }">
-          {{ data.online ? 'online' : 'offline' }}
+          {{ data.online ? t('cms.components.blocks.deviceCard.online') : t('cms.components.blocks.deviceCard.offline') }}
         </div>
       </div>
       <div class="uid">{{ data.device_uid }}</div>

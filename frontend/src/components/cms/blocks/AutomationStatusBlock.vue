@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
 
 type Props = {
   automation_id?: number;
@@ -8,6 +9,7 @@ type Props = {
 };
 
 const props = defineProps<{ props: Props }>();
+const { t } = useI18n();
 
 type Automation = {
   id: number;
@@ -38,7 +40,7 @@ async function load() {
 }
 
 function formatDate(s?: string | null) {
-  if (!s) return "never";
+  if (!s) return t('cms.components.blocks.automationStatus.never');
   try { return new Date(s).toLocaleString(); } catch { return s; }
 }
 
@@ -52,18 +54,18 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer); });
 
 <template>
   <div class="auto-block">
-    <div v-if="loading" class="loading">Loading automation…</div>
-    <div v-else-if="!data" class="empty">Automation not found</div>
+    <div v-if="loading" class="loading">{{ t('cms.components.blocks.automationStatus.loading') }}</div>
+    <div v-else-if="!data" class="empty">{{ t('cms.components.blocks.automationStatus.notFound') }}</div>
     <div v-else class="body">
       <div class="head">
         <div class="name">{{ data.name }}</div>
         <div class="status" :class="{ enabled: data.enabled }">
-          {{ data.enabled ? 'enabled' : 'disabled' }}
+          {{ data.enabled ? t('cms.components.blocks.automationStatus.enabled') : t('cms.components.blocks.automationStatus.disabled') }}
         </div>
       </div>
       <div v-if="props.props.show_last_fire !== false" class="last">
-        Last fired: <strong>{{ formatDate(data.last_fired_at) }}</strong>
-        <span v-if="typeof data.fire_count === 'number'"> · {{ data.fire_count }} runs</span>
+        {{ t('cms.components.blocks.automationStatus.lastFired') }} <strong>{{ formatDate(data.last_fired_at) }}</strong>
+        <span v-if="typeof data.fire_count === 'number'"> · {{ t('cms.components.blocks.automationStatus.runs', { n: data.fire_count }) }}</span>
       </div>
     </div>
   </div>
