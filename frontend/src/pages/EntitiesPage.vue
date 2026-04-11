@@ -129,7 +129,7 @@ function healthToBadge(hs: string | null): "ok" | "warn" | "bad" | "neutral" {
 }
 
 function healthLabel(hs: string | null): string {
-  if (!hs) return "unknown";
+  if (!hs) return t('pages.entities.unknownStatus');
   return hs;
 }
 
@@ -163,11 +163,11 @@ function openCreate() {
 
 async function submitCreate() {
   if (!createEntityId.value.trim()) {
-    createError.value = "Entity ID is required";
+    createError.value = t('pages.entities.entityIdRequired');
     return;
   }
   if (!createEntityType.value.trim()) {
-    createError.value = "Type is required";
+    createError.value = t('pages.entities.typeRequired');
     return;
   }
   createLoading.value = true;
@@ -189,7 +189,7 @@ async function submitCreate() {
     await reload();
   } catch (err: unknown) {
     const info = parseApiError(err);
-    createError.value = mapErrorToUserText(info, "Failed to create entity");
+    createError.value = mapErrorToUserText(info, t('pages.entities.createFailed'));
   } finally {
     createLoading.value = false;
   }
@@ -238,7 +238,7 @@ async function submitEdit() {
     await reload();
   } catch (err: unknown) {
     const info = parseApiError(err);
-    editError.value = mapErrorToUserText(info, "Failed to update entity");
+    editError.value = mapErrorToUserText(info, t('pages.entities.updateFailed'));
   } finally {
     editLoading.value = false;
   }
@@ -272,7 +272,7 @@ async function submitDelete() {
     await reload();
   } catch (err: unknown) {
     const info = parseApiError(err);
-    deleteError.value = mapErrorToUserText(info, "Failed to delete entity");
+    deleteError.value = mapErrorToUserText(info, t('pages.entities.deleteFailed'));
   } finally {
     deleteLoading.value = false;
   }
@@ -324,7 +324,7 @@ async function submitBind() {
     await refreshEntityData(bindTargetEntityId.value);
   } catch (err: unknown) {
     const info = parseApiError(err);
-    bindError.value = mapErrorToUserText(info, "Failed to bind device");
+    bindError.value = mapErrorToUserText(info, t('pages.entities.bindFailed'));
   } finally {
     bindLoading.value = false;
   }
@@ -363,14 +363,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
         <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <UBadge status="neutral" :label="`${entities.length} entities`" />
+        <UBadge status="neutral" :label="t('pages.entities.entitiesCount', { n: entities.length })" />
         <UButton
           v-if="caps.status === 'ready' && hasCap('entities.write')"
           size="sm"
           variant="primary"
           @click="openCreate"
         >
-          + New Entity
+          {{ t('pages.entities.newEntity') }}
         </UButton>
       </div>
     </div>
@@ -379,8 +379,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     <template v-if="caps.status !== 'ready'">
       <UCard>
         <UEmpty
-          title="Not authenticated"
-          description="Paste a valid token to view entities."
+          :title="t('pages.entities.notAuthenticated')"
+          :description="t('pages.entities.notAuthenticatedHint')"
         />
       </UCard>
     </template>
@@ -393,7 +393,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
             <UInput
               v-model="search"
               variant="search"
-              placeholder="Search entity ID or name…"
+              :placeholder="t('pages.entities.searchPlaceholder')"
             />
           </div>
           <select
@@ -401,12 +401,12 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
             data-testid="entities-type-filter"
             class="input text-sm"
           >
-            <option value="all">All types</option>
-            <option value="group">Groups</option>
-            <option value="custom">Custom</option>
+            <option value="all">{{ t('pages.entities.filterAll') }}</option>
+            <option value="group">{{ t('pages.entities.filterGroup') }}</option>
+            <option value="custom">{{ t('pages.entities.filterCustom') }}</option>
           </select>
           <span class="text-xs text-[var(--text-muted)] whitespace-nowrap">
-            {{ filteredEntities.length }} of {{ entities.length }} entities
+            {{ t('pages.entities.countSummary', { shown: filteredEntities.length, total: entities.length }) }}
           </span>
         </div>
       </UCard>
@@ -435,8 +435,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
         <template v-else-if="filteredEntities.length === 0">
           <UEmpty
             v-if="entities.length === 0"
-            title="No entities yet"
-            description="Entities represent logical things — rooms, machines, systems — that group your devices. Create your first entity to start organizing."
+            :title="t('pages.entities.emptyTitle')"
+            :description="t('pages.entities.emptyDescription')"
             icon="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
           >
             <UButton
@@ -445,13 +445,13 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
               variant="primary"
               @click="openCreate"
             >
-              + New Entity
+              {{ t('pages.entities.newEntity') }}
             </UButton>
           </UEmpty>
           <UEmpty
             v-else
-            title="No entities match your filter"
-            description="Try adjusting your search or type filter."
+            :title="t('pages.entities.emptyFilterTitle')"
+            :description="t('pages.entities.emptyFilterDescription')"
             icon="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 10.607z"
           />
         </template>
@@ -530,7 +530,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   variant="ghost"
                   @click="openEdit(entity)"
                 >
-                  Edit
+                  {{ t('pages.entities.editAction') }}
                 </UButton>
                 <UButton
                   size="sm"
@@ -538,7 +538,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   class="text-[var(--status-bad)] hover:text-[var(--status-bad)]"
                   @click="openDelete(entity)"
                 >
-                  Delete
+                  {{ t('pages.entities.deleteAction') }}
                 </UButton>
               </div>
             </div>
@@ -561,22 +561,22 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   v-if="healthMap.get(entity.entity_id)"
                   class="flex items-center gap-4 text-xs"
                 >
-                  <span class="text-[var(--text-muted)] font-medium">Health:</span>
+                  <span class="text-[var(--text-muted)] font-medium">{{ t('pages.entities.healthLabel') }}</span>
                   <span class="text-[var(--text-muted)]">
-                    {{ healthMap.get(entity.entity_id)!.device_count }} devices
+                    {{ t('pages.entities.healthDevices', { n: healthMap.get(entity.entity_id)!.device_count }) }}
                   </span>
                   <span class="text-[var(--status-ok)]">
-                    {{ healthMap.get(entity.entity_id)!.online }} online
+                    {{ t('pages.entities.healthOnline', { n: healthMap.get(entity.entity_id)!.online }) }}
                   </span>
                   <span class="text-[var(--status-warn)]">
-                    {{ healthMap.get(entity.entity_id)!.stale }} stale
+                    {{ t('pages.entities.healthStale', { n: healthMap.get(entity.entity_id)!.stale }) }}
                   </span>
                   <span class="text-[var(--status-bad)]">
-                    {{ healthMap.get(entity.entity_id)!.offline }} offline
+                    {{ t('pages.entities.healthOffline', { n: healthMap.get(entity.entity_id)!.offline }) }}
                   </span>
                   <UBadge
                     :status="healthToBadge(healthMap.get(entity.entity_id)!.worst_health)"
-                    :label="healthMap.get(entity.entity_id)!.worst_health || 'unknown'"
+                    :label="healthMap.get(entity.entity_id)!.worst_health || t('pages.entities.unknownStatus')"
                   />
                 </div>
 
@@ -585,14 +585,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   v-if="(bindingsMap.get(entity.entity_id) ?? []).length === 0"
                   class="text-xs text-[var(--text-muted)]"
                 >
-                  No devices bound.
+                  {{ t('pages.entities.noDevicesBound') }}
                 </div>
                 <table v-else class="w-full text-xs">
                   <thead>
                     <tr class="text-left text-[var(--text-muted)]">
-                      <th class="pb-1.5 pr-4 font-medium">Device ID</th>
-                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.enableBindingTooltip')">Enabled</th>
-                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.priorityTooltip')">Priority</th>
+                      <th class="pb-1.5 pr-4 font-medium">{{ t('pages.entities.colDeviceId') }}</th>
+                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.enableBindingTooltip')">{{ t('pages.entities.colEnabled') }}</th>
+                      <th class="pb-1.5 pr-4 font-medium" :title="t('pages.entities.priorityTooltip')">{{ t('pages.entities.colPriority') }}</th>
                       <th class="pb-1.5 font-medium"></th>
                     </tr>
                   </thead>
@@ -623,7 +623,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                           class="text-[var(--status-bad)]"
                           @click="unbindDevice(entity.entity_id, b.device_id)"
                         >
-                          Unbind
+                          {{ t('pages.entities.unbindAction') }}
                         </UButton>
                       </td>
                     </tr>
@@ -637,7 +637,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
                   variant="secondary"
                   @click="openBind(entity.entity_id)"
                 >
-                  + Bind Device
+                  {{ t('pages.entities.bindDeviceAction') }}
                 </UButton>
               </div>
             </div>
@@ -647,12 +647,12 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     </template>
 
     <!-- ── Create Entity Modal ────────────────────────────────────────────────── -->
-    <UModal :open="createOpen" title="New Entity" @close="createOpen = false">
+    <UModal :open="createOpen" :title="t('pages.entities.modalNewTitle')" @close="createOpen = false">
       <div class="space-y-4">
         <UInput
           v-model="createEntityId"
-          label="Entity ID"
-          placeholder="e.g. sensor-group-1"
+          :label="t('pages.entities.entityIdLabel')"
+          :placeholder="t('pages.entities.entityIdPlaceholder')"
         />
         <!-- Type combobox -->
         <div class="relative flex flex-col gap-1">
@@ -686,8 +686,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
         </div>
         <UInput
           v-model="createEntityName"
-          label="Name (optional)"
-          placeholder="Human-readable name"
+          :label="t('pages.entities.nameLabelOptional')"
+          :placeholder="t('pages.entities.namePlaceholder')"
         />
         <!-- Parent Entity (optional) -->
         <UEntitySelect
@@ -740,10 +740,10 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     </UModal>
 
     <!-- ── Edit Entity Modal ──────────────────────────────────────────────────── -->
-    <UModal :open="editOpen" title="Edit Entity" @close="editOpen = false">
+    <UModal :open="editOpen" :title="t('pages.entities.modalEditTitle')" @close="editOpen = false">
       <div class="space-y-4">
         <div class="text-xs text-[var(--text-muted)]">
-          Editing: <span class="font-mono font-medium text-[var(--text-primary)]">{{ editEntityId }}</span>
+          {{ t('pages.entities.modalEditingLabel') }} <span class="font-mono font-medium text-[var(--text-primary)]">{{ editEntityId }}</span>
         </div>
         <!-- Type combobox -->
         <div class="relative flex flex-col gap-1">
@@ -777,8 +777,8 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
         </div>
         <UInput
           v-model="editEntityName"
-          label="Name"
-          placeholder="Human-readable name"
+          :label="t('pages.entities.nameLabel')"
+          :placeholder="t('pages.entities.namePlaceholder')"
         />
         <!-- Parent Entity (optional) -->
         <UEntitySelect
@@ -831,12 +831,11 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     </UModal>
 
     <!-- ── Delete Entity Modal ────────────────────────────────────────────────── -->
-    <UModal :open="deleteOpen" title="Delete Entity" size="sm" @close="deleteOpen = false">
+    <UModal :open="deleteOpen" :title="t('pages.entities.modalDeleteTitle')" size="sm" @close="deleteOpen = false">
       <div class="space-y-3">
         <p class="text-sm text-[var(--text-secondary)]">
-          Delete entity
-          <span class="font-mono font-medium text-[var(--text-primary)]">{{ deleteEntityId }}</span>?
-          This removes all device bindings.
+          {{ t('pages.entities.deleteConfirmPrefix') }}
+          <span class="font-mono font-medium text-[var(--text-primary)]">{{ deleteEntityId }}</span>{{ t('pages.entities.deleteConfirmSuffix') }}
         </p>
         <div
           v-if="deleteError"
@@ -861,30 +860,30 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
     </UModal>
 
     <!-- ── Bind Device Modal ──────────────────────────────────────────────────── -->
-    <UModal :open="bindOpen" title="Bind Device" @close="bindOpen = false">
+    <UModal :open="bindOpen" :title="t('pages.entities.modalBindTitle')" @close="bindOpen = false">
       <div class="space-y-4">
         <div class="text-xs text-[var(--text-muted)]">
-          Binding to entity:
+          {{ t('pages.entities.bindingToLabel') }}
           <span class="font-mono font-medium text-[var(--text-primary)]">{{ bindTargetEntityId }}</span>
         </div>
         <UEntitySelect
           v-model="bindDeviceId"
           entity-type="device"
-          label="Device"
-          placeholder="Select device..."
+          :label="t('pages.entities.deviceFieldLabel')"
+          :placeholder="t('pages.entities.deviceFieldPlaceholder')"
         />
         <div>
           <UInput
             v-model="bindPriority"
-            label="Priority"
+            :label="t('pages.entities.colPriority')"
             type="number"
             placeholder="0"
           />
           <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.entities.priorityTooltip') }}</p>
         </div>
         <div class="flex flex-col gap-1">
-          <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Enabled</span>
-          <UToggle v-model="bindEnabled" label="Enable binding" />
+          <span class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('pages.entities.enabledLabel') }}</span>
+          <UToggle v-model="bindEnabled" :label="t('pages.entities.enableBindingLabel')" />
           <p class="text-[10px] text-[var(--text-muted)]">{{ t('pages.entities.enableBindingTooltip') }}</p>
         </div>
         <div
@@ -896,14 +895,14 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
       </div>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="secondary" size="sm" @click="bindOpen = false">Cancel</UButton>
+          <UButton variant="secondary" size="sm" @click="bindOpen = false">{{ t('common.cancel') }}</UButton>
           <UButton
             variant="primary"
             size="sm"
             :loading="bindLoading"
             @click="submitBind"
           >
-            Bind
+            {{ t('pages.entities.bindAction') }}
           </UButton>
         </div>
       </template>

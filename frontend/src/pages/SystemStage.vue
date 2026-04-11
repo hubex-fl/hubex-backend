@@ -94,8 +94,8 @@ function isOffline(device: DeviceRow): boolean {
 }
 
 function statusLabel(device: DeviceRow): string {
-  if (!lastSeen(device)) return "Unknown";
-  return isOffline(device) ? "Offline" : "Online";
+  if (!lastSeen(device)) return t('pages.systemStage.statusUnknown');
+  return isOffline(device) ? t('pages.systemStage.statusOffline') : t('pages.systemStage.statusOnline');
 }
 
 function statusClass(device: DeviceRow): string {
@@ -115,16 +115,18 @@ function runtimeBadges(device: DeviceRow): RuntimeBadge[] {
     return device.__runtimeBadges;
   }
   const unknown = !canReadVars.value;
-  const offlineValue = lastSeen(device) ? (isOffline(device) ? "Offline" : "Online") : "Unknown";
+  const offlineValue = lastSeen(device)
+    ? (isOffline(device) ? t('pages.systemStage.statusOffline') : t('pages.systemStage.statusOnline'))
+    : t('pages.systemStage.statusUnknown');
   const offlineClass = lastSeen(device)
     ? (isOffline(device) ? "pill-bad" : "pill-ok")
     : "pill-warn";
-  const unknownValue = unknown ? "N/A" : "Unknown";
+  const unknownValue = unknown ? t('pages.systemStage.valueNA') : t('pages.systemStage.statusUnknown');
   const badges = [
-    { label: "Pending", value: unknownValue, className: "pill-warn" },
-    { label: "Ack", value: unknownValue, className: "pill-warn" },
-    { label: "Stale", value: unknownValue, className: "pill-warn" },
-    { label: "Offline", value: offlineValue, className: offlineClass },
+    { label: t('pages.systemStage.badgePending'), value: unknownValue, className: "pill-warn" },
+    { label: t('pages.systemStage.badgeAck'), value: unknownValue, className: "pill-warn" },
+    { label: t('pages.systemStage.badgeStale'), value: unknownValue, className: "pill-warn" },
+    { label: t('pages.systemStage.badgeOffline'), value: offlineValue, className: offlineClass },
   ];
   device.__runtimeSig = sig;
   device.__runtimeBadges = badges;
@@ -254,9 +256,9 @@ function reconcileByKey<T extends { __sig?: string }>(
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('pages.systemStage.capsLoading');
+  if (caps.status === "error") return t('pages.systemStage.capsError', { error: caps.error ?? t('pages.systemStage.statusUnknown') });
+  return t('pages.systemStage.capsUnavailable');
 }
 
 async function refreshDevices() {
@@ -267,7 +269,7 @@ async function refreshDevices() {
     return false;
   }
   if (!canReadDevices.value) {
-    devicesError.value = "Missing capability: devices.read";
+    devicesError.value = t('pages.systemStage.missingDevicesCap');
     return false;
   }
   if (devicesInflight) return;
@@ -298,7 +300,7 @@ async function refreshEntities() {
     return false;
   }
   if (!canReadEntities.value) {
-    entitiesError.value = "Missing capability: entities.read";
+    entitiesError.value = t('pages.systemStage.missingEntitiesCap');
     return false;
   }
   if (entitiesInflight) return;
@@ -331,7 +333,7 @@ async function refreshBindings() {
     return;
   }
   if (!canReadEntities.value) {
-    bindingsError.value = "Missing capability: entities.read";
+    bindingsError.value = t('pages.systemStage.missingEntitiesCap');
     return;
   }
   if (!entities.value.length || entitiesError.value) return;
@@ -408,9 +410,9 @@ function retryAll() {
     return;
   }
   if (!canReadDevices.value && !canReadEntities.value) {
-    devicesError.value = "Missing capability: devices.read";
-    entitiesError.value = "Missing capability: entities.read";
-    bindingsError.value = "Missing capability: entities.read";
+    devicesError.value = t('pages.systemStage.missingDevicesCap');
+    entitiesError.value = t('pages.systemStage.missingEntitiesCap');
+    bindingsError.value = t('pages.systemStage.missingEntitiesCap');
     return;
   }
   stoppedOnError.value = false;
@@ -453,35 +455,35 @@ onUnmounted(() => {
     <div class="page-header">
       <h2>{{ t('pages.systemStage.title') }}</h2>
       <div class="page-meta">
-        <span v-if="loading" class="muted">Refreshing...</span>
-        <span v-else class="muted">Last updated: {{ lastUpdated ?? "-" }}</span>
+        <span v-if="loading" class="muted">{{ t('pages.systemStage.refreshing') }}</span>
+        <span v-else class="muted">{{ t('pages.systemStage.lastUpdated', { time: lastUpdated ?? '-' }) }}</span>
       </div>
       <button class="btn secondary" :disabled="caps.status !== 'ready'" @click="retryAll">
-        Retry
+        {{ t('pages.systemStage.retry') }}
       </button>
     </div>
 
     <div class="status-line">
-      <span v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</span>
-      <span v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</span>
-      <span v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</span>
+      <span v-if="caps.status === 'unavailable'" class="muted">{{ t('pages.systemStage.capsUnavailable') }}</span>
+      <span v-else-if="caps.status === 'loading'" class="muted">{{ t('pages.systemStage.capsLoading') }}</span>
+      <span v-else-if="caps.status === 'error'" class="error">{{ t('pages.systemStage.capsError', { error: caps.error ?? '' }) }}</span>
     </div>
 
     <section class="card">
-      <h3>Entities</h3>
+      <h3>{{ t('pages.systemStage.entitiesHeader') }}</h3>
       <div class="section-status">
         <span v-if="entitiesError" class="error">{{ entitiesError }}</span>
-        <span v-else-if="!capsReady" class="muted">Capabilities unavailable</span>
-        <span v-else-if="!canReadEntities" class="muted">Missing capability: entities.read</span>
-        <span v-else-if="loading" class="muted">Loading.</span>
+        <span v-else-if="!capsReady" class="muted">{{ t('pages.systemStage.capsUnavailable') }}</span>
+        <span v-else-if="!canReadEntities" class="muted">{{ t('pages.systemStage.missingEntitiesCap') }}</span>
+        <span v-else-if="loading" class="muted">{{ t('pages.systemStage.loading') }}</span>
       </div>
       <table ref="entitiesTableRef" class="table table-fixed entities-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Type</th>
-            <th>Name</th>
-            <th>Devices</th>
+            <th>{{ t('pages.systemStage.colId') }}</th>
+            <th>{{ t('pages.systemStage.colType') }}</th>
+            <th>{{ t('pages.systemStage.colName') }}</th>
+            <th>{{ t('pages.systemStage.colDevices') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -489,13 +491,13 @@ onUnmounted(() => {
             <td colspan="4" class="muted">{{ entitiesError }}</td>
           </tr>
           <tr v-else-if="!capsReady">
-            <td colspan="4" class="muted">Capabilities unavailable</td>
+            <td colspan="4" class="muted">{{ t('pages.systemStage.capsUnavailable') }}</td>
           </tr>
           <tr v-else-if="!canReadEntities">
-            <td colspan="4" class="muted">Missing capability: entities.read</td>
+            <td colspan="4" class="muted">{{ t('pages.systemStage.missingEntitiesCap') }}</td>
           </tr>
           <tr v-else-if="!entities.length">
-            <td colspan="4" class="muted">No entities.</td>
+            <td colspan="4" class="muted">{{ t('pages.systemStage.noEntities') }}</td>
           </tr>
           <tr v-else v-for="entity in entities" :key="entity.entity_id" v-memo="[entity.__sig]">
             <td>{{ entity.entity_id }}</td>
@@ -519,25 +521,25 @@ onUnmounted(() => {
     </section>
 
     <section class="card">
-      <h3>Devices</h3>
+      <h3>{{ t('pages.systemStage.devicesHeader') }}</h3>
       <div class="section-status">
         <span v-if="devicesError" class="error">{{ devicesError }}</span>
-        <span v-else-if="!capsReady" class="muted">Capabilities unavailable</span>
-        <span v-else-if="!canReadDevices" class="muted">Missing capability: devices.read</span>
+        <span v-else-if="!capsReady" class="muted">{{ t('pages.systemStage.capsUnavailable') }}</span>
+        <span v-else-if="!canReadDevices" class="muted">{{ t('pages.systemStage.missingDevicesCap') }}</span>
         <span v-else-if="!canReadVars" class="muted">
-          Missing capability: vars.read (runtime states unavailable)
+          {{ t('pages.systemStage.missingVarsCap') }}
         </span>
-        <span v-else-if="loading" class="muted">Loading.</span>
+        <span v-else-if="loading" class="muted">{{ t('pages.systemStage.loading') }}</span>
       </div>
       <table ref="devicesTableRef" class="table table-fixed devices-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>UID</th>
-            <th>Status</th>
-            <th>Runtime</th>
-            <th>State</th>
-            <th>Last seen</th>
+            <th>{{ t('pages.systemStage.colId') }}</th>
+            <th>{{ t('pages.systemStage.colUid') }}</th>
+            <th>{{ t('pages.systemStage.colStatus') }}</th>
+            <th>{{ t('pages.systemStage.colRuntime') }}</th>
+            <th>{{ t('pages.systemStage.colState') }}</th>
+            <th>{{ t('pages.systemStage.colLastSeen') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -545,18 +547,18 @@ onUnmounted(() => {
             <td colspan="6" class="muted">{{ devicesError }}</td>
           </tr>
           <tr v-else-if="!capsReady">
-            <td colspan="6" class="muted">Capabilities unavailable</td>
+            <td colspan="6" class="muted">{{ t('pages.systemStage.capsUnavailable') }}</td>
           </tr>
           <tr v-else-if="!canReadDevices">
-            <td colspan="6" class="muted">Missing capability: devices.read</td>
+            <td colspan="6" class="muted">{{ t('pages.systemStage.missingDevicesCap') }}</td>
           </tr>
           <tr v-else-if="!canReadVars">
             <td colspan="6" class="muted">
-              Missing capability: vars.read (runtime states unavailable)
+              {{ t('pages.systemStage.missingVarsCap') }}
             </td>
           </tr>
           <tr v-else-if="!devices.length">
-            <td colspan="6" class="muted">No devices.</td>
+            <td colspan="6" class="muted">{{ t('pages.systemStage.noDevices') }}</td>
           </tr>
           <tr
             v-else
@@ -588,7 +590,7 @@ onUnmounted(() => {
                 </span>
               </div>
             </td>
-            <td>{{ device.state ?? "Unknown" }}</td>
+            <td>{{ device.state ?? t('pages.systemStage.statusUnknown') }}</td>
             <td class="tabular-nums">{{ lastSeen(device) ?? "-" }}</td>
           </tr>
         </tbody>

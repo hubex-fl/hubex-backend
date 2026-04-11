@@ -68,9 +68,9 @@ function buildListUrl(afterId?: number | null) {
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('pages.effects.capsLoading');
+  if (caps.status === "error") return t('pages.effects.capsError', { error: caps.error ?? 'unknown' });
+  return t('pages.effects.capsUnavailable');
 }
 
 async function refreshList(reset = false) {
@@ -80,7 +80,7 @@ async function refreshList(reset = false) {
     return;
   }
   if (!canReadEffects.value) {
-    listError.value = "Missing capability: effects.read";
+    listError.value = t('pages.effects.missingCap');
     return;
   }
   inflightList = true;
@@ -113,7 +113,7 @@ async function refreshDetail(effectId: string) {
     return;
   }
   if (!canReadEffects.value) {
-    detailError.value = "Missing capability: effects.read";
+    detailError.value = t('pages.effects.missingCap');
     return;
   }
   inflightDetail = true;
@@ -137,7 +137,7 @@ function startPolling() {
     return;
   }
   if (!canReadEffects.value) {
-    listError.value = "Missing capability: effects.read";
+    listError.value = t('pages.effects.missingCap');
     return;
   }
   listError.value = null;
@@ -158,7 +158,7 @@ function retryList() {
     return;
   }
   if (!canReadEffects.value) {
-    listError.value = "Missing capability: effects.read";
+    listError.value = t('pages.effects.missingCap');
     return;
   }
   listError.value = null;
@@ -212,42 +212,42 @@ onUnmounted(() => {
     <div class="page-header">
       <h2>{{ t('nav.effects') }}</h2>
       <div class="row">
-        <button class="btn secondary" @click="retryList">Retry</button>
-        <button class="btn secondary" @click="stopPolling" :disabled="!polling">Stop</button>
+        <button class="btn secondary" @click="retryList">{{ t('pages.effects.retry') }}</button>
+        <button class="btn secondary" @click="stopPolling" :disabled="!polling">{{ t('pages.effects.stop') }}</button>
       </div>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
+    <p v-if="caps.status === 'unavailable'" class="muted">{{ t('pages.effects.capsUnavailable') }}</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">{{ t('pages.effects.capsLoading') }}</p>
+    <p v-else-if="caps.status === 'error'" class="error">{{ t('pages.effects.capsError', { error: caps.error ?? '' }) }}</p>
 
-    <div v-else-if="!canReadEffects" class="muted">Missing capability: effects.read</div>
+    <div v-else-if="!canReadEffects" class="muted">{{ t('pages.effects.missingCap') }}</div>
     <div v-else class="card">
       <div class="form-row">
         <div>
-          <label class="muted">Kind (optional)</label>
-          <input v-model="kindFilter" class="input" placeholder="vars.v3.apply" />
+          <label class="muted">{{ t('pages.effects.kindLabel') }}</label>
+          <input v-model="kindFilter" class="input" :placeholder="t('pages.effects.kindPlaceholder')" />
         </div>
         <div>
-          <label class="muted">Limit</label>
+          <label class="muted">{{ t('pages.effects.limitLabel') }}</label>
           <input v-model.number="limit" type="number" min="1" max="200" class="input" />
         </div>
-        <button class="btn" @click="startPolling" :disabled="polling">Start</button>
+        <button class="btn" @click="startPolling" :disabled="polling">{{ t('pages.effects.start') }}</button>
       </div>
       <p class="muted">
-        <span v-if="caughtUp">- Caught up</span>
+        <span v-if="caughtUp">{{ t('pages.effects.caughtUp') }}</span>
       </p>
 
       <div v-if="listError" class="error">{{ listError }}</div>
-      <div v-else-if="loadingList" class="muted">Loading.</div>
-      <div v-else-if="effects.length === 0" class="muted">No effects.</div>
+      <div v-else-if="loadingList" class="muted">{{ t('pages.effects.loading') }}</div>
+      <div v-else-if="effects.length === 0" class="muted">{{ t('pages.effects.noEffects') }}</div>
       <table v-else class="table">
         <thead>
           <tr>
-            <th>Effect ID</th>
-            <th>Kind</th>
-            <th>Status</th>
-            <th>Created</th>
+            <th>{{ t('pages.effects.colEffectId') }}</th>
+            <th>{{ t('pages.effects.colKind') }}</th>
+            <th>{{ t('pages.effects.colStatus') }}</th>
+            <th>{{ t('pages.effects.colCreated') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -266,11 +266,11 @@ onUnmounted(() => {
 
       <div class="section-divider"></div>
 
-      <div v-if="!selectedEffectId" class="muted">Select an effect to view details.</div>
+      <div v-if="!selectedEffectId" class="muted">{{ t('pages.effects.selectToView') }}</div>
       <div v-else>
-        <div class="muted">Selected: {{ selectedEffectId }}</div>
+        <div class="muted">{{ t('pages.effects.selected', { id: selectedEffectId }) }}</div>
         <div v-if="detailError" class="error">{{ detailError }}</div>
-        <div v-else-if="loadingDetail" class="muted">Loading.</div>
+        <div v-else-if="loadingDetail" class="muted">{{ t('pages.effects.loading') }}</div>
         <div v-else-if="detail" class="card">
           <pre class="muted">{{ detail }}</pre>
         </div>

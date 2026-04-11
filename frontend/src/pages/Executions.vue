@@ -45,9 +45,9 @@ function mapError(err: unknown): string {
 }
 
 function capsStatusMessage(): string {
-  if (caps.status === "loading") return "Capabilities loading.";
-  if (caps.status === "error") return `Capabilities error: ${caps.error ?? "unknown"}`;
-  return "Capabilities unavailable";
+  if (caps.status === "loading") return t('pages.executions.capsLoading');
+  if (caps.status === "error") return t('pages.executions.capsError', { error: caps.error ?? 'unknown' });
+  return t('pages.executions.capsUnavailable');
 }
 
 function buildUrl(deviceId: number): string {
@@ -66,12 +66,12 @@ async function refresh() {
     return;
   }
   if (!canReadTasks.value) {
-    error.value = "Missing capability: tasks.read";
+    error.value = t('pages.executions.missingCap');
     return;
   }
   const id = Number(deviceIdInput.value.trim());
   if (!Number.isFinite(id) || id <= 0) {
-    error.value = "Device ID required";
+    error.value = t('pages.executions.deviceIdRequired');
     return;
   }
   inflight = true;
@@ -113,44 +113,44 @@ onUnmounted(() => {
       <h2>{{ t('nav.executions') }}</h2>
       <div class="row">
         <button class="btn secondary" @click="retry">{{ t('common.refresh') }}</button>
-        <button class="btn secondary" @click="openTraceHub">Open in Trace Hub</button>
+        <button class="btn secondary" @click="openTraceHub">{{ t('pages.executions.openInTraceHub') }}</button>
       </div>
     </div>
 
-    <p v-if="caps.status === 'unavailable'" class="muted">Capabilities unavailable</p>
-    <p v-else-if="caps.status === 'loading'" class="muted">Loading capabilities.</p>
-    <p v-else-if="caps.status === 'error'" class="error">Capabilities error: {{ caps.error }}</p>
-    <div v-else-if="!canReadTasks" class="muted">Missing capability: tasks.read</div>
+    <p v-if="caps.status === 'unavailable'" class="muted">{{ t('pages.executions.capsUnavailable') }}</p>
+    <p v-else-if="caps.status === 'loading'" class="muted">{{ t('pages.executions.capsLoading') }}</p>
+    <p v-else-if="caps.status === 'error'" class="error">{{ t('pages.executions.capsError', { error: caps.error ?? '' }) }}</p>
+    <div v-else-if="!canReadTasks" class="muted">{{ t('pages.executions.missingCap') }}</div>
     <div v-else class="card">
       <div class="form-row">
         <div>
-          <label class="muted">Device ID</label>
-          <input v-model="deviceIdInput" class="input" placeholder="e.g. 123" />
+          <label class="muted">{{ t('pages.executions.deviceIdLabel') }}</label>
+          <input v-model="deviceIdInput" class="input" :placeholder="t('pages.executions.deviceIdPlaceholder')" />
         </div>
         <div>
-          <label class="muted">Status (optional)</label>
-          <input v-model="statusFilter" class="input" placeholder="queued/in_flight/done" />
+          <label class="muted">{{ t('pages.executions.statusLabel') }}</label>
+          <input v-model="statusFilter" class="input" :placeholder="t('pages.executions.statusPlaceholder')" />
         </div>
         <div>
-          <label class="muted">Context ID (optional)</label>
-          <input v-model="contextFilter" class="input" placeholder="e.g. 1" />
+          <label class="muted">{{ t('pages.executions.contextLabel') }}</label>
+          <input v-model="contextFilter" class="input" :placeholder="t('pages.executions.contextPlaceholder')" />
         </div>
-        <button class="btn" @click="refresh" :disabled="loading">Load</button>
+        <button class="btn" @click="refresh" :disabled="loading">{{ t('pages.executions.load') }}</button>
       </div>
 
       <div v-if="error" class="error">{{ error }}</div>
-      <div v-else-if="loading" class="muted">Loading.</div>
-      <div v-else-if="tasks.length === 0" class="muted">No tasks.</div>
+      <div v-else-if="loading" class="muted">{{ t('pages.executions.loading') }}</div>
+      <div v-else-if="tasks.length === 0" class="muted">{{ t('pages.executions.noTasks') }}</div>
       <table v-else class="table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Completed</th>
-            <th>Context</th>
-            <th>Device</th>
+            <th>{{ t('pages.executions.colId') }}</th>
+            <th>{{ t('pages.executions.colType') }}</th>
+            <th>{{ t('pages.executions.colStatus') }}</th>
+            <th>{{ t('pages.executions.colCreated') }}</th>
+            <th>{{ t('pages.executions.colCompleted') }}</th>
+            <th>{{ t('pages.executions.colContext') }}</th>
+            <th>{{ t('pages.executions.colDevice') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -168,9 +168,9 @@ onUnmounted(() => {
 
       <div class="section-divider"></div>
 
-      <div v-if="!selected" class="muted">Select a task to view details.</div>
+      <div v-if="!selected" class="muted">{{ t('pages.executions.selectToView') }}</div>
       <div v-else class="card">
-        <div class="muted">Selected task: {{ selected.id }}</div>
+        <div class="muted">{{ t('pages.executions.selectedTask', { id: selected.id }) }}</div>
         <pre class="muted">{{ selected }}</pre>
       </div>
     </div>

@@ -10,20 +10,23 @@ import UEmpty from "../components/ui/UEmpty.vue";
 const toast = useToastStore();
 const { t } = useI18n();
 
-const CAP_LABELS: Record<string, string> = {
-  "devices.read": "View devices", "devices.write": "Manage devices",
-  "vars.read": "View variables", "vars.write": "Edit variables",
-  "alerts.read": "View alerts", "alerts.write": "Manage alerts",
-  "automations.read": "View automations", "automations.write": "Manage automations",
-  "telemetry.read": "View telemetry", "telemetry.emit": "Send telemetry",
-  "events.read": "View events", "audit.read": "View audit log",
-  "dashboards.read": "View dashboards", "dashboards.write": "Edit dashboards",
-  "config.read": "View config", "config.write": "Edit config",
-  "webhooks.read": "View webhooks", "webhooks.write": "Manage webhooks",
-  "org.read": "View organization", "org.admin": "Administer organization",
-  "modules.read": "View modules", "modules.write": "Manage modules",
+const CAP_LABEL_KEYS: Record<string, string> = {
+  "devices.read": "devicesRead", "devices.write": "devicesWrite",
+  "vars.read": "varsRead", "vars.write": "varsWrite",
+  "alerts.read": "alertsRead", "alerts.write": "alertsWrite",
+  "automations.read": "automationsRead", "automations.write": "automationsWrite",
+  "telemetry.read": "telemetryRead", "telemetry.emit": "telemetryEmit",
+  "events.read": "eventsRead", "audit.read": "auditRead",
+  "dashboards.read": "dashboardsRead", "dashboards.write": "dashboardsWrite",
+  "config.read": "configRead", "config.write": "configWrite",
+  "webhooks.read": "webhooksRead", "webhooks.write": "webhooksWrite",
+  "org.read": "orgRead", "org.admin": "orgAdmin",
+  "modules.read": "modulesRead", "modules.write": "modulesWrite",
 };
-function capLabel(cap: string): string { return CAP_LABELS[cap] || cap; }
+function capLabel(cap: string): string {
+  const key = CAP_LABEL_KEYS[cap];
+  return key ? t(`pages.admin.capLabels.${key}`) : cap;
+}
 
 // ── Modules ──────────────────────────────────────────────────────────────────
 type Module = {
@@ -46,7 +49,7 @@ async function loadModules() {
   try {
     modules.value = await apiFetch<Module[]>("/api/v1/modules");
   } catch {
-    modulesError.value = "Failed to load modules";
+    modulesError.value = t('pages.admin.loadModulesFailed');
   } finally {
     modulesLoading.value = false;
   }
@@ -55,16 +58,19 @@ async function loadModules() {
 async function toggleModule(mod: Module) {
   if (mod.enabled) {
     const caps = (mod.capabilities || []).length;
-    if (!confirm(`Disable "${mod.label || mod.key}"? This module provides ${caps} capabilities that other features may depend on.`)) return;
+    if (!confirm(t('pages.admin.disableConfirm', { name: mod.label || mod.key, caps }))) return;
   }
   togglingModule.value = mod.key;
   try {
     const action = mod.enabled ? "disable" : "enable";
     await apiFetch(`/api/v1/modules/${mod.key}/${action}`, { method: "POST" });
     mod.enabled = !mod.enabled;
-    toast.addToast(`Module ${mod.key} ${mod.enabled ? "enabled" : "disabled"}`, "success");
+    const message = mod.enabled
+      ? t('pages.admin.moduleEnabled', { key: mod.key })
+      : t('pages.admin.moduleDisabled', { key: mod.key });
+    toast.addToast(message, "success");
   } catch (err: unknown) {
-    toast.addToast(err instanceof Error ? err.message : "Toggle failed", "error");
+    toast.addToast(err instanceof Error ? err.message : t('pages.admin.toggleFailed'), "error");
   } finally {
     togglingModule.value = null;
   }
@@ -118,13 +124,13 @@ onMounted(() => {
       <UCard padding="md">
         <div class="text-center">
           <p class="text-2xl font-bold text-[var(--primary)]">{{ enabledCount }}/{{ modules.length }}</p>
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Modules Enabled</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.admin.modulesEnabled') }}</p>
         </div>
       </UCard>
       <UCard padding="md">
         <div class="text-center">
           <p class="text-2xl font-bold text-[var(--accent)]">{{ totalCaps }}</p>
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">Active Capabilities</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.admin.activeCapabilities') }}</p>
         </div>
       </UCard>
       <UCard padding="md">
@@ -132,7 +138,7 @@ onMounted(() => {
           <p class="text-2xl font-bold" :class="health?.status === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">
             {{ healthLoading ? '...' : health?.status === 'ok' ? t('health.healthy') : t('health.degraded') }}
           </p>
-          <p class="text-[10px] text-[var(--text-muted)] mt-1">System Status</p>
+          <p class="text-[10px] text-[var(--text-muted)] mt-1">{{ t('pages.admin.systemStatus') }}</p>
         </div>
       </UCard>
     </div>
@@ -140,16 +146,16 @@ onMounted(() => {
     <!-- Module List -->
     <UCard>
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--text-primary)]">Module Registry</h3>
-        <span class="text-xs text-[var(--text-muted)]">Enable or disable platform modules</span>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.moduleRegistry') }}</h3>
+        <span class="text-xs text-[var(--text-muted)]">{{ t('pages.admin.moduleRegistryHint') }}</span>
       </template>
 
-      <div v-if="modulesLoading" class="text-xs text-[var(--text-muted)] py-4">Loading modules...</div>
+      <div v-if="modulesLoading" class="text-xs text-[var(--text-muted)] py-4">{{ t('pages.admin.loadingModules') }}</div>
       <div v-else-if="modulesError" class="text-xs text-red-400 py-4">{{ modulesError }}</div>
 
       <UEmpty v-else-if="!modules.length"
-        title="No modules registered"
-        description="Modules provide additional capabilities to the platform."
+        :title="t('pages.admin.noModulesTitle')"
+        :description="t('pages.admin.noModulesDescription')"
         icon="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0L12 16.5l-5.571-2.25m11.142 0L21.75 16.5 12 21.75 2.25 16.5l4.179-2.25"
       />
 
@@ -158,7 +164,7 @@ onMounted(() => {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-xs font-medium text-[var(--text-primary)]">{{ mod.label || mod.key }}</span>
-              <UBadge :status="mod.enabled ? 'ok' : 'neutral'" size="sm">{{ mod.enabled ? 'enabled' : 'disabled' }}</UBadge>
+              <UBadge :status="mod.enabled ? 'ok' : 'neutral'" size="sm">{{ mod.enabled ? t('pages.admin.enabledLabel') : t('pages.admin.disabledLabel') }}</UBadge>
               <span class="text-[10px] text-[var(--text-muted)] font-mono">v{{ mod.version }}</span>
             </div>
             <p v-if="mod.description" class="text-[10px] text-[var(--text-muted)] mt-0.5 truncate">{{ mod.description }}</p>
@@ -169,7 +175,7 @@ onMounted(() => {
                 :title="capLabel(cap)"
                 class="text-[9px] px-1 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-muted)] cursor-help"
               >{{ cap }}</span>
-              <span v-if="mod.capabilities.length > 5" class="text-[9px] text-[var(--text-muted)]">+{{ mod.capabilities.length - 5 }} more</span>
+              <span v-if="mod.capabilities.length > 5" class="text-[9px] text-[var(--text-muted)]">{{ t('pages.admin.moreCapabilities', { n: mod.capabilities.length - 5 }) }}</span>
             </div>
           </div>
           <button
@@ -194,19 +200,19 @@ onMounted(() => {
     <!-- System Info -->
     <UCard v-if="health">
       <template #header>
-        <h3 class="text-sm font-semibold text-[var(--text-primary)]">System Info</h3>
+        <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.systemInfo') }}</h3>
       </template>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
         <div>
-          <span class="text-[var(--text-muted)]">Database</span>
+          <span class="text-[var(--text-muted)]">{{ t('pages.admin.database') }}</span>
           <p class="font-medium" :class="health.database === 'ok' ? 'text-[var(--status-ok)]' : 'text-[var(--status-bad)]'">{{ health.database }}</p>
         </div>
         <div>
-          <span class="text-[var(--text-muted)]">Redis</span>
+          <span class="text-[var(--text-muted)]">{{ t('pages.admin.redis') }}</span>
           <p class="font-medium" :class="health.redis === 'ok' ? 'text-[var(--status-ok)]' : health.redis === 'not configured' ? 'text-[var(--text-muted)]' : 'text-[var(--status-bad)]'">{{ health.redis }}</p>
         </div>
         <div>
-          <span class="text-[var(--text-muted)]">Version</span>
+          <span class="text-[var(--text-muted)]">{{ t('pages.admin.version') }}</span>
           <p class="font-medium text-[var(--text-primary)]">{{ health.version || 'dev' }}</p>
         </div>
       </div>
