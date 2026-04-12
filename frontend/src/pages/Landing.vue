@@ -185,7 +185,7 @@ const mobileMenuOpen = ref(false);
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-2">
             <svg
-              class="h-7 w-7 text-cyan-400"
+              class="h-7 w-7 text-[#2DD4BF]"
               fill="none"
               stroke="currentColor"
               stroke-width="1.5"
@@ -220,7 +220,7 @@ const mobileMenuOpen = ref(false);
             <!-- pricing nav hidden (Sprint 9 #8) -->
             <router-link
               to="/login"
-              class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 transition-colors"
+              class="text-sm font-medium px-4 py-2 rounded-lg bg-[#F5A623] hover:bg-[#E09510] text-gray-950 transition-colors"
               >{{ t('landing.nav.signIn') }}</router-link
             >
           </div>
@@ -276,7 +276,7 @@ const mobileMenuOpen = ref(false);
           <!-- pricing nav hidden (Sprint 9 #8) -->
           <router-link
             to="/login"
-            class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 text-gray-950 text-center"
+            class="text-sm font-medium px-4 py-2 rounded-lg bg-[#F5A623] text-gray-950 text-center"
             >{{ t('landing.nav.signIn') }}</router-link
           >
         </div>
@@ -289,15 +289,15 @@ const mobileMenuOpen = ref(false);
     >
       <!-- Background gradient -->
       <div
-        class="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent pointer-events-none"
+        class="absolute inset-0 bg-gradient-to-b from-[#F5A623]/5 via-transparent to-transparent pointer-events-none"
       />
       <div
-        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#F5A623]/5 rounded-full blur-3xl pointer-events-none"
       />
 
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div
-          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-xs font-medium mb-8"
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#F5A623]/20 bg-[#F5A623]/5 text-[#2DD4BF] text-xs font-medium mb-8"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
           {{ t('landing.hero.badge') }}
@@ -309,7 +309,7 @@ const mobileMenuOpen = ref(false);
           {{ t('landing.hero.titleLine1') }}
           <br />
           <span
-            class="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent"
+            class="bg-gradient-to-r from-[#F5A623] to-[#2DD4BF] bg-clip-text text-transparent"
             >{{ t('landing.hero.titleLine2') }}</span
           >
         </h1>
@@ -327,7 +327,7 @@ const mobileMenuOpen = ref(false);
             href="https://github.com/hubex-iot/hubex"
             target="_blank"
             rel="noopener"
-            class="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-semibold text-lg transition-colors"
+            class="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-[#F5A623] hover:bg-[#E09510] text-gray-950 font-semibold text-lg transition-colors"
           >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path
@@ -362,19 +362,19 @@ const mobileMenuOpen = ref(false);
           class="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto"
         >
           <div>
-            <div class="text-2xl sm:text-3xl font-bold text-cyan-400">150+</div>
+            <div class="text-2xl sm:text-3xl font-bold text-[#2DD4BF]">150+</div>
             <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statApiEndpoints') }}</div>
           </div>
           <div>
-            <div class="text-2xl sm:text-3xl font-bold text-cyan-400">17</div>
+            <div class="text-2xl sm:text-3xl font-bold text-[#2DD4BF]">17</div>
             <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statUiComponents') }}</div>
           </div>
           <div>
-            <div class="text-2xl sm:text-3xl font-bold text-cyan-400">69</div>
+            <div class="text-2xl sm:text-3xl font-bold text-[#2DD4BF]">69</div>
             <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statCapabilities') }}</div>
           </div>
           <div>
-            <div class="text-2xl sm:text-3xl font-bold text-cyan-400">
+            <div class="text-2xl sm:text-3xl font-bold text-[#2DD4BF]">
               &lt;1h
             </div>
             <div class="text-sm text-gray-500 mt-1">{{ t('landing.hero.statToDeploy') }}</div>
@@ -399,16 +399,16 @@ const mobileMenuOpen = ref(false);
           <div
             v-for="feature in features"
             :key="feature.titleKey"
-            class="group p-6 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-cyan-500/30 transition-all duration-300"
+            class="group p-6 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-[#F5A623]/30 transition-all duration-300"
           >
             <!-- Icons -->
             <div
-              class="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-4"
+              class="w-12 h-12 rounded-lg bg-[#F5A623]/10 flex items-center justify-center mb-4"
             >
               <!-- Signal icon -->
               <svg
                 v-if="feature.icon === 'signal'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -423,7 +423,7 @@ const mobileMenuOpen = ref(false);
               <!-- Chart icon -->
               <svg
                 v-if="feature.icon === 'chart'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -438,7 +438,7 @@ const mobileMenuOpen = ref(false);
               <!-- Bolt icon -->
               <svg
                 v-if="feature.icon === 'bolt'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -453,7 +453,7 @@ const mobileMenuOpen = ref(false);
               <!-- Workflow icon -->
               <svg
                 v-if="feature.icon === 'workflow'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -468,7 +468,7 @@ const mobileMenuOpen = ref(false);
               <!-- Shield icon -->
               <svg
                 v-if="feature.icon === 'shield'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -483,7 +483,7 @@ const mobileMenuOpen = ref(false);
               <!-- Rocket icon -->
               <svg
                 v-if="feature.icon === 'rocket'"
-                class="w-6 h-6 text-cyan-400"
+                class="w-6 h-6 text-[#2DD4BF]"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
@@ -535,10 +535,10 @@ const mobileMenuOpen = ref(false);
             </p>
           </div>
           <div
-            class="p-5 rounded-xl bg-gray-900 border border-cyan-500/20 text-center ring-1 ring-cyan-500/10"
+            class="p-5 rounded-xl bg-gray-900 border border-[#F5A623]/20 text-center ring-1 ring-[#F5A623]/10"
           >
             <div
-              class="w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-3 text-lg font-bold"
+              class="w-10 h-10 rounded-full bg-[#F5A623]/10 text-[#2DD4BF] flex items-center justify-center mx-auto mb-3 text-lg font-bold"
             >
               2
             </div>
@@ -645,7 +645,7 @@ const mobileMenuOpen = ref(false);
                   v-for="c in competitors"
                   :key="c.name"
                   class="py-3 px-3 font-semibold text-center"
-                  :class="c.name === 'HUBEX' ? 'text-cyan-400' : 'text-gray-300'"
+                  :class="c.name === 'HUBEX' ? 'text-[#2DD4BF]' : 'text-gray-300'"
                 >
                   {{ c.name }}
                 </th>
@@ -791,13 +791,13 @@ const mobileMenuOpen = ref(false);
             class="rounded-xl p-6 sm:p-8 flex flex-col"
             :class="
               tier.highlight
-                ? 'bg-gray-900 border-2 border-cyan-500/40 ring-1 ring-cyan-500/20 relative'
+                ? 'bg-gray-900 border-2 border-[#F5A623]/40 ring-1 ring-[#F5A623]/20 relative'
                 : 'bg-gray-900/50 border border-gray-800'
             "
           >
             <div
               v-if="tier.highlight"
-              class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-cyan-500 text-gray-950 text-xs font-bold"
+              class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#F5A623] text-gray-950 text-xs font-bold"
             >
               {{ t('landing.pricing.mostPopular') }}
             </div>
@@ -820,7 +820,7 @@ const mobileMenuOpen = ref(false);
                 class="flex items-start gap-2 text-sm"
               >
                 <svg
-                  class="w-4 h-4 mt-0.5 text-cyan-400 flex-shrink-0"
+                  class="w-4 h-4 mt-0.5 text-[#2DD4BF] flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -839,7 +839,7 @@ const mobileMenuOpen = ref(false);
               class="w-full py-3 rounded-lg font-semibold text-sm transition-colors"
               :class="
                 tier.highlight
-                  ? 'bg-cyan-500 hover:bg-cyan-400 text-gray-950'
+                  ? 'bg-[#F5A623] hover:bg-[#E09510] text-gray-950'
                   : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
               "
             >
@@ -862,7 +862,7 @@ const mobileMenuOpen = ref(false);
         <div
           class="mt-8 p-4 rounded-lg bg-gray-900 border border-gray-800 max-w-lg mx-auto text-left"
         >
-          <code class="text-sm text-cyan-400 font-mono">
+          <code class="text-sm text-[#2DD4BF] font-mono">
             <span class="text-gray-500">$</span> git clone
             https://github.com/hubex-iot/hubex.git<br />
             <span class="text-gray-500">$</span> cd hubex<br />
@@ -875,7 +875,7 @@ const mobileMenuOpen = ref(false);
             href="https://github.com/hubex-iot/hubex"
             target="_blank"
             rel="noopener"
-            class="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-semibold transition-colors"
+            class="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-[#F5A623] hover:bg-[#E09510] text-gray-950 font-semibold transition-colors"
           >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path
@@ -903,7 +903,7 @@ const mobileMenuOpen = ref(false);
       >
         <div class="flex items-center gap-2 text-gray-500 text-sm">
           <svg
-            class="h-5 w-5 text-cyan-400/50"
+            class="h-5 w-5 text-[#2DD4BF]/50"
             fill="none"
             stroke="currentColor"
             stroke-width="1.5"
