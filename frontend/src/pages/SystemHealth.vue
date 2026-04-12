@@ -150,7 +150,7 @@ function deviceHealthPercent(): number {
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('health.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.systemHealth.title')" :items="tm('infoTooltips.systemHealth.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.systemHealth.title')" :items="tm('infoTooltips.systemHealth.items').map((i: any) => rt(i))" tourId="health-overview" />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('health.subtitle') }}</p>
       </div>

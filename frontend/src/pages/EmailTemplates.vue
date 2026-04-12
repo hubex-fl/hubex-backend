@@ -275,6 +275,7 @@ onMounted(loadTemplates);
           <UInfoTooltip
             :title="t('infoTooltips.emailTemplates.title')"
             :items="tm('infoTooltips.emailTemplates.items').map((i: any) => rt(i))"
+            tourId="email-templates-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">

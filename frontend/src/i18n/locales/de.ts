@@ -2618,6 +2618,186 @@ export default {
         },
       },
     },
+    webhooksOverview: {
+      name: 'Webhooks-Überblick',
+      description: 'Kurze Tour durch die Webhooks-Seite',
+      steps: {
+        intro: {
+          title: 'Ausgehende Event-Zustellung',
+          text: 'Webhooks ermöglichen es HubEx, Echtzeit-Event-Benachrichtigungen an deine externen Dienste zu senden. Jede Geräteänderung, jeder Alarm und jede Variablen-Aktualisierung kann als HTTP POST an eine beliebige URL weitergeleitet werden.',
+        },
+        create: {
+          title: 'Webhook registrieren',
+          text: 'Klicke hier, um einen neuen Endpunkt hinzuzufügen. Gib die Ziel-URL an, optional ein Secret zur Signaturverifizierung, und wähle aus, welche Event-Typen abonniert werden sollen.',
+        },
+        deliveries: {
+          title: 'Zustellungsprotokolle',
+          text: 'Jeder Webhook zeigt seine Zustellungshistorie mit Statuscodes und Antwortzeiten. Nutze den Test-Button, um einen Ping zu senden und die Konnektivität zu prüfen, bevor du live gehst.',
+        },
+      },
+    },
+    pluginsOverview: {
+      name: 'Plugins-Überblick',
+      description: 'Kurze Tour durch die Plugins-Seite',
+      steps: {
+        intro: {
+          title: 'Der Plugin-Marktplatz',
+          text: 'Plugins erweitern HubEx um Konnektoren und Dienste. Durchsuche den Katalog nach Integrationen für Frigate, Grafana, Ollama, n8n und mehr. Jedes Plugin fügt neue Fähigkeiten hinzu, ohne dein Kern-Setup zu verändern.',
+        },
+        install: {
+          title: 'Plugin installieren',
+          text: 'Klicke auf einen Katalogeintrag für Details und drücke Installieren. Konnektor-Plugins fragen ggf. nach Zugangsdaten (API-Schlüssel, URLs), die sicher in HubEx Secrets gespeichert werden.',
+        },
+        manage: {
+          title: 'Installierte Plugins verwalten',
+          text: 'Installierte Plugins erscheinen in deiner Liste mit Status-Badges. Du kannst Zugangsdaten konfigurieren, den Konnektor-Zustand prüfen oder nicht mehr benötigte Plugins deinstallieren.',
+        },
+      },
+    },
+    hardwareOverview: {
+      name: 'Hardware-Überblick',
+      description: 'Kurze Tour durch die Hardware-Seite',
+      steps: {
+        intro: {
+          title: 'Board-Profile & Pin-Maps',
+          text: 'Die Hardware-Seite zeigt alle unterstützten Mikrocontroller-Boards. Jede Karte zeigt Chip-Typ, Konnektivitäts-Features (WiFi, BLE) und verfügbare Pins. Klicke auf ein Board, um die vollständige Pin-Map zu erkunden.',
+        },
+        wizard: {
+          title: 'Hardware-Projekt starten',
+          text: 'Klicke diesen Button, um den Hardware-Wizard zu starten. Er führt dich durch Board-Auswahl, Shield-Kopplung und Pin-Zuweisung, um ein flash-fertiges Firmware-Projekt zu erzeugen.',
+        },
+        firmware: {
+          title: 'Vom Board zur Firmware',
+          text: 'Nach dem Einrichten eines Board-Profils gehe zum Firmware Builder, um dein Gerät zu kompilieren und zu flashen. Shields und Sensormodule werden automatisch den richtigen Pins zugeordnet.',
+        },
+      },
+    },
+    firmwareOverview: {
+      name: 'Firmware-Builder-Überblick',
+      description: 'Kurze Tour durch den Firmware Builder',
+      steps: {
+        intro: {
+          title: 'Firmware kompilieren & flashen',
+          text: 'Der Firmware Builder ermöglicht es, PlatformIO-basierte Firmware für deine registrierten Boards direkt aus HubEx zu kompilieren. Builds laufen serverseitig und erzeugen eine herunterladbare .bin-Datei.',
+        },
+        board: {
+          title: 'Board-Profil auswählen',
+          text: 'Wähle aus, für welches Board gebaut werden soll. Das Dropdown listet alle Profile von der Hardware-Seite. Jeder Build zielt auf eine PlatformIO-Umgebung passend zu deinem Chip und deiner Konfiguration.',
+        },
+        output: {
+          title: 'Build-Verlauf & Logs',
+          text: 'Vergangene Builds werden mit Status, Dauer und Artefakt-Größe aufgelistet. Klicke auf "Logs anzeigen" für die Live-Ausgabe. Erfolgreiche Builds bieten einen Download-Button und eine OTA-Push-Option.',
+        },
+      },
+    },
+    reportsOverview: {
+      name: 'Reports-Überblick',
+      description: 'Kurze Tour durch die Reports-Seite',
+      steps: {
+        intro: {
+          title: 'Geplante & On-Demand-Reports',
+          text: 'Reports ermöglichen das Erstellen von Vorlagen, die Daten aus deinen Geräten und Variablen ziehen und als herunterladbare Dokumente rendern. Plane sie täglich, wöchentlich oder monatlich, oder erstelle sie bei Bedarf.',
+        },
+        create: {
+          title: 'Report-Vorlage erstellen',
+          text: 'Klicke hier, um eine neue Vorlage zu definieren. Vergib einen Namen, konfiguriere optional einen Zeitplan und füge E-Mail-Empfänger hinzu, die den Report automatisch erhalten sollen.',
+        },
+        schedule: {
+          title: 'Zustellungsplan',
+          text: 'Geplante Vorlagen laufen automatisch. Filtere zwischen geplanten und manuellen Vorlagen. Jede Vorlage zeigt ihr Cron-Muster und die Anzahl konfigurierter E-Mail-Empfänger.',
+        },
+      },
+    },
+    emailTemplatesOverview: {
+      name: 'E-Mail-Vorlagen-Überblick',
+      description: 'Kurze Tour durch die E-Mail-Vorlagen-Seite',
+      steps: {
+        intro: {
+          title: 'Wiederverwendbare E-Mail-Layouts',
+          text: 'E-Mail-Vorlagen definieren das Aussehen und den Inhalt aller Benachrichtigungs-E-Mails, die HubEx versendet. Eingebaute Vorlagen decken Alarme, Reports und Systemnachrichten ab. Erstelle eigene für individuelle Benachrichtigungen.',
+        },
+        editor: {
+          title: 'Visueller & Code-Editor',
+          text: 'Klicke hier, um eine neue Vorlage zu erstellen. Der Editor bietet einen visuellen WYSIWYG-Modus (TipTap), einen einfachen Block-Editor, Code-Ansicht für rohes HTML und eine Split-Ansicht mit Live-Vorschau.',
+        },
+        variables: {
+          title: 'Template-Variablen',
+          text: 'Füge dynamische Platzhalter wie {{alert.name}}, {{device.uid}} oder {{timestamp}} in deine Vorlagen ein. Sie werden beim Versand der E-Mail durch echte Daten ersetzt.',
+        },
+      },
+    },
+    adminOverview: {
+      name: 'Admin-Konsole-Überblick',
+      description: 'Kurze Tour durch die Admin-Konsole',
+      steps: {
+        intro: {
+          title: 'Dein Administrations-Hub',
+          text: 'Die Admin-Konsole gibt dir einen Überblick über deine HubEx-Instanz. Sieh Modul-Status, Systemzustand und Organisations-Details auf einen Blick.',
+        },
+        roles: {
+          title: 'Module & Status-Karten',
+          text: 'Die Status-Karten oben zeigen aktivierte Module, aktive Berechtigungen und den Systemzustand. Darunter kannst du einzelne Module ein- oder ausschalten, um verfügbare Features zu steuern.',
+        },
+        caps: {
+          title: 'Berechtigungen & Rollen',
+          text: 'Überprüfe dein aktuelles Berechtigungsset, erkunde Rollendefinitionen mit ihren Fähigkeiten-Zählern und sieh alle Mitglieder deiner Organisation. So verstehst du, wer was tun kann.',
+        },
+      },
+    },
+    healthOverview: {
+      name: 'System-Health-Überblick',
+      description: 'Kurze Tour durch die System-Health-Seite',
+      steps: {
+        intro: {
+          title: 'Live-Systemstatus',
+          text: 'System Health zeigt den Echtzeit-Betriebsstatus deiner HubEx-Instanz. Das Status-Banner oben sagt dir auf einen Blick, ob alles reibungslos läuft oder Aufmerksamkeit benötigt.',
+        },
+        indicators: {
+          title: 'Komponenten-Zustandsanzeigen',
+          text: 'Drei Karten zeigen den Status von Backend-API, Datenbank (PostgreSQL) und Redis-Cache. Jede Karte hat einen farbigen Punkt: gesund (grün), beeinträchtigt (gelb) oder Fehler (rot).',
+        },
+        refresh: {
+          title: 'Automatische Aktualisierung alle 30 Sekunden',
+          text: 'Die Seite pollt die Health-Endpunkte automatisch alle 30 Sekunden. Du kannst auch sofort auf Aktualisieren klicken. Der "Zuletzt geprüft"-Zeitstempel zeigt, wann die Daten zuletzt abgerufen wurden.',
+        },
+      },
+    },
+    auditOverview: {
+      name: 'Audit-Log-Überblick',
+      description: 'Kurze Tour durch die Audit-Seite',
+      steps: {
+        intro: {
+          title: 'Wer hat was geändert, und wann',
+          text: 'Das Audit-Log zeichnet jede bedeutende Aktion in deinem System auf: Logins, Geräteänderungen, Automations-Trigger, Konfigurationsänderungen und API-Schlüssel-Operationen. Jeder Eintrag enthält Akteur, Aktion, Ressource und Zeitstempel.',
+        },
+        filters: {
+          title: 'Nach Akteur oder Aktion filtern',
+          text: 'Nutze die Filterleiste, um Audit-Einträge einzugrenzen. Suche nach Akteur-ID (Benutzer oder System), Aktionstyp (z.B. token.revoked) oder begrenze die Ergebnisanzahl. Klicke Anwenden, um die Liste zu aktualisieren.',
+        },
+        export: {
+          title: 'Export für Compliance',
+          text: 'Lade das Audit-Log als CSV-Datei herunter für Compliance-Prüfungen oder Offline-Analyse. Der Export berücksichtigt deine aktuellen Filtereinstellungen und enthält bis zu 1000 Einträge.',
+        },
+      },
+    },
+    traceHubOverview: {
+      name: 'Trace-Hub-Überblick',
+      description: 'Kurze Tour durch den Trace Hub',
+      steps: {
+        intro: {
+          title: 'Request-Traces & Kausalität',
+          text: 'Der Trace Hub kombiniert Events und Effects in einer einzigen Diagnose-Ansicht. Nutze ihn, um zu verstehen, was in deinem System passiert ist, und verfolge die Kausalkette von einem Geräte-Event bis zu seinen nachgelagerten Effekten.',
+        },
+        events: {
+          title: 'Events-Tab',
+          text: 'Wechsle zum Events-Tab, um den Echtzeit-Event-Stream zu sehen. Events sind nach Streams gruppiert (System, gerätespezifisch). Nutze den Trace-ID-Filter, um einer einzelnen Anfrage über alle Event-Quellen zu folgen.',
+        },
+        effects: {
+          title: 'Effects-Tab',
+          text: 'Wechsle zum Effects-Tab, um Nebeneffekte zu sehen, die von Automationen und Alarmregeln ausgelöst wurden. Jeder Effekt-Eintrag zeigt, was passiert ist (Webhook aufgerufen, E-Mail gesendet, Variable gesetzt) und verlinkt zurück zum auslösenden Event.',
+        },
+      },
+    },
     onboarding: {
       name: 'Erste Schritte',
       description: 'Schnelle Tour durch die wichtigsten Funktionen',

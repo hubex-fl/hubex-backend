@@ -382,6 +382,7 @@ function fmtRelative(iso: string): string {
           <UInfoTooltip
             :title="t('infoTooltips.firmware.title')"
             :items="tm('infoTooltips.firmware.items').map((i: any) => rt(i))"
+            tourId="firmware-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 max-w-2xl">

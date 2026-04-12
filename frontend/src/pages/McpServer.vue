@@ -371,7 +371,7 @@ onMounted(async () => {
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-[var(--text-primary)]">
             {{ t('mcp.apiKeys') }}
-            <UInfoTooltip :text="t('mcp.apiKeysHelp')" />
+            <UInfoTooltip :text="t('mcp.apiKeysHelp')" tourId="mcp-overview" />
           </h2>
           <button
             class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--primary)] text-black hover:bg-[var(--primary-hover)] transition-colors disabled:opacity-50"

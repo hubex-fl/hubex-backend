@@ -213,7 +213,7 @@ onUnmounted(() => {
     <div class="page-header">
       <div class="flex items-center gap-1">
         <h2>{{ t('nav.effects') }}</h2>
-        <UInfoTooltip :title="t('infoTooltips.effects.title')" :items="tm('infoTooltips.effects.items').map((i: any) => rt(i))" />
+        <UInfoTooltip :title="t('infoTooltips.effects.title')" :items="tm('infoTooltips.effects.items').map((i: any) => rt(i))" tourId="effects-overview" />
       </div>
       <div class="row">
         <button class="btn secondary" @click="retryList">{{ t('pages.effects.retry') }}</button>

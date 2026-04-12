@@ -122,6 +122,7 @@ onMounted(loadAll);
           <UInfoTooltip
             :title="t('infoTooltips.reports.title')"
             :items="tm('infoTooltips.reports.items').map((i: any) => rt(i))"
+            tourId="reports-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">

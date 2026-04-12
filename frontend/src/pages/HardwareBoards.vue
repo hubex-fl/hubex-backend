@@ -81,6 +81,7 @@ onMounted(loadAll);
           <UInfoTooltip
             :title="t('infoTooltips.hardware.title')"
             :items="tm('infoTooltips.hardware.items').map((i: any) => rt(i))"
+            tourId="hardware-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('hardware.subtitle') }}</p>

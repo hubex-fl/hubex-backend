@@ -810,6 +810,150 @@ const cmsOverviewTour: TourDefinition = {
   ],
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 13-22. Page-specific inline tours (batch 2)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const webhooksOverviewTour: TourDefinition = {
+  id: "webhooks-overview", name: "tours.webhooksOverview.name",
+  description: "tours.webhooksOverview.description", icon: "globe", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/webhooks", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.webhooksOverview.steps.intro.title", text: "tours.webhooksOverview.steps.intro.text" },
+    { id: "create", page: "/webhooks", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.webhooksOverview.steps.create.title", text: "tours.webhooksOverview.steps.create.text" },
+    { id: "deliveries", page: "/webhooks", target: ".space-y-3, main", action: "spotlight", position: "top",
+      title: "tours.webhooksOverview.steps.deliveries.title", text: "tours.webhooksOverview.steps.deliveries.text" },
+  ],
+};
+
+const pluginsOverviewTour: TourDefinition = {
+  id: "plugins-overview", name: "tours.pluginsOverview.name",
+  description: "tours.pluginsOverview.description", icon: "puzzle", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/plugins", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.pluginsOverview.steps.intro.title", text: "tours.pluginsOverview.steps.intro.text" },
+    { id: "install", page: "/plugins", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.pluginsOverview.steps.install.title", text: "tours.pluginsOverview.steps.install.text" },
+    { id: "manage", page: "/plugins", target: ".space-y-3, main", action: "spotlight", position: "top",
+      title: "tours.pluginsOverview.steps.manage.title", text: "tours.pluginsOverview.steps.manage.text" },
+  ],
+};
+
+const hardwareOverviewTour: TourDefinition = {
+  id: "hardware-overview", name: "tours.hardwareOverview.name",
+  description: "tours.hardwareOverview.description", icon: "chip", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/hardware", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.hardwareOverview.steps.intro.title", text: "tours.hardwareOverview.steps.intro.text" },
+    { id: "wizard", page: "/hardware", target: ".wizard-cta-btn", action: "spotlight+pulse", position: "left",
+      title: "tours.hardwareOverview.steps.wizard.title", text: "tours.hardwareOverview.steps.wizard.text" },
+    { id: "firmware", page: "/hardware", target: ".grid.grid-cols-1, main", action: "spotlight", position: "top",
+      title: "tours.hardwareOverview.steps.firmware.title", text: "tours.hardwareOverview.steps.firmware.text" },
+  ],
+};
+
+const firmwareOverviewTour: TourDefinition = {
+  id: "firmware-overview", name: "tours.firmwareOverview.name",
+  description: "tours.firmwareOverview.description", icon: "cpu", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/firmware", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.firmwareOverview.steps.intro.title", text: "tours.firmwareOverview.steps.intro.text" },
+    { id: "board", page: "/firmware", target: "select", action: "spotlight+pulse", position: "bottom",
+      title: "tours.firmwareOverview.steps.board.title", text: "tours.firmwareOverview.steps.board.text" },
+    { id: "output", page: "/firmware", target: ".divide-y, main", action: "spotlight", position: "top",
+      title: "tours.firmwareOverview.steps.output.title", text: "tours.firmwareOverview.steps.output.text" },
+  ],
+};
+
+const reportsOverviewTour: TourDefinition = {
+  id: "reports-overview", name: "tours.reportsOverview.name",
+  description: "tours.reportsOverview.description", icon: "document", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/reports", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.reportsOverview.steps.intro.title", text: "tours.reportsOverview.steps.intro.text" },
+    { id: "create", page: "/reports", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.reportsOverview.steps.create.title", text: "tours.reportsOverview.steps.create.text" },
+    { id: "schedule", page: "/reports", target: ".space-y-3, main", action: "spotlight", position: "top",
+      title: "tours.reportsOverview.steps.schedule.title", text: "tours.reportsOverview.steps.schedule.text" },
+  ],
+};
+
+const emailTemplatesOverviewTour: TourDefinition = {
+  id: "email-templates-overview", name: "tours.emailTemplatesOverview.name",
+  description: "tours.emailTemplatesOverview.description", icon: "mail", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/email-templates", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.emailTemplatesOverview.steps.intro.title", text: "tours.emailTemplatesOverview.steps.intro.text" },
+    { id: "editor", page: "/email-templates", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.emailTemplatesOverview.steps.editor.title", text: "tours.emailTemplatesOverview.steps.editor.text" },
+    { id: "variables", page: "/email-templates", target: ".space-y-3, main", action: "spotlight", position: "top",
+      title: "tours.emailTemplatesOverview.steps.variables.title", text: "tours.emailTemplatesOverview.steps.variables.text" },
+  ],
+};
+
+const adminOverviewTour: TourDefinition = {
+  id: "admin-overview", name: "tours.adminOverview.name",
+  description: "tours.adminOverview.description", icon: "shield", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/admin", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.adminOverview.steps.intro.title", text: "tours.adminOverview.steps.intro.text" },
+    { id: "roles", page: "/admin", target: ".grid.grid-cols-1.sm\\:grid-cols-3, .grid", action: "spotlight+pulse", position: "bottom",
+      title: "tours.adminOverview.steps.roles.title", text: "tours.adminOverview.steps.roles.text" },
+    { id: "caps", page: "/admin", target: ".flex.flex-wrap.gap-1\\.5, main", action: "spotlight", position: "top",
+      title: "tours.adminOverview.steps.caps.title", text: "tours.adminOverview.steps.caps.text" },
+  ],
+};
+
+const healthOverviewTour: TourDefinition = {
+  id: "health-overview", name: "tours.healthOverview.name",
+  description: "tours.healthOverview.description", icon: "heart", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/system-health", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.healthOverview.steps.intro.title", text: "tours.healthOverview.steps.intro.text" },
+    { id: "indicators", page: "/system-health", target: ".grid.grid-cols-1.sm\\:grid-cols-3, .grid", action: "spotlight+pulse", position: "bottom",
+      title: "tours.healthOverview.steps.indicators.title", text: "tours.healthOverview.steps.indicators.text" },
+    { id: "refresh", page: "/system-health", target: "button:last-of-type", action: "spotlight", position: "left",
+      title: "tours.healthOverview.steps.refresh.title", text: "tours.healthOverview.steps.refresh.text" },
+  ],
+};
+
+const auditOverviewTour: TourDefinition = {
+  id: "audit-overview", name: "tours.auditOverview.name",
+  description: "tours.auditOverview.description", icon: "clipboard", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/audit", target: "h2", action: "spotlight", position: "bottom",
+      title: "tours.auditOverview.steps.intro.title", text: "tours.auditOverview.steps.intro.text" },
+    { id: "filters", page: "/audit", target: ".flex.flex-col.sm\\:flex-row, .flex-col", action: "spotlight+pulse", position: "bottom",
+      title: "tours.auditOverview.steps.filters.title", text: "tours.auditOverview.steps.filters.text" },
+    { id: "export", page: "/audit", target: "a[download], .flex.gap-2", action: "spotlight", position: "left",
+      title: "tours.auditOverview.steps.export.title", text: "tours.auditOverview.steps.export.text" },
+  ],
+};
+
+const traceHubOverviewTour: TourDefinition = {
+  id: "trace-hub-overview", name: "tours.traceHubOverview.name",
+  description: "tours.traceHubOverview.description", icon: "search", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/trace-hub", target: "h2", action: "spotlight", position: "bottom",
+      title: "tours.traceHubOverview.steps.intro.title", text: "tours.traceHubOverview.steps.intro.text" },
+    { id: "events", page: "/trace-hub", target: ".form-row, .btn.secondary:first-of-type, .card", action: "spotlight+pulse", position: "bottom",
+      title: "tours.traceHubOverview.steps.events.title", text: "tours.traceHubOverview.steps.events.text" },
+    { id: "effects", page: "/trace-hub", target: ".form-row, .card", action: "spotlight", position: "bottom",
+      title: "tours.traceHubOverview.steps.effects.title", text: "tours.traceHubOverview.steps.effects.text" },
+  ],
+};
+
 export const builtinTours: TourDefinition[] = [
   onboardingTour,
   testerTour,
@@ -824,6 +968,16 @@ export const builtinTours: TourDefinition[] = [
   sandboxOverviewTour,
   eventsOverviewTour,
   cmsOverviewTour,
+  webhooksOverviewTour,
+  pluginsOverviewTour,
+  hardwareOverviewTour,
+  firmwareOverviewTour,
+  reportsOverviewTour,
+  emailTemplatesOverviewTour,
+  adminOverviewTour,
+  healthOverviewTour,
+  auditOverviewTour,
+  traceHubOverviewTour,
 ];
 
 /**

@@ -402,6 +402,7 @@ function pluginDescriptionFor(plugin: InstalledPlugin): string {
           <UInfoTooltip
             :title="t('infoTooltips.plugins.title')"
             :items="tm('infoTooltips.plugins.items').map((i: any) => rt(i))"
+            tourId="plugins-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5 max-w-2xl">

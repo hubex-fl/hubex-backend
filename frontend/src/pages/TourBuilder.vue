@@ -447,6 +447,7 @@ onMounted(() => {
           <UInfoTooltip
             :title="t('tourBuilder.infoTitle')"
             :items="[t('tourBuilder.infoItem1'), t('tourBuilder.infoItem2'), t('tourBuilder.infoItem3')]"
+            tourId="tour-builder-overview"
           />
         </div>
         <p class="page-sub">{{ t('tourBuilder.subtitle') }}</p>

@@ -226,6 +226,7 @@ onMounted(() => {
         <UInfoTooltip
           :title="t('infoTooltips.admin.title')"
           :items="tm('infoTooltips.admin.items').map((i: any) => rt(i))"
+          tourId="admin-overview"
         />
       </div>
       <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.admin.subtitle') }}</p>

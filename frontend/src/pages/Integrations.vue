@@ -126,6 +126,7 @@ const setupSteps = computed(() => [
           <UInfoTooltip
             :title="t('integrations.tooltip.title')"
             :items="tm('integrations.tooltip.items').map((i: any) => rt(i))"
+            tourId="integrations-overview"
           />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('integrations.subtitle') }}</p>

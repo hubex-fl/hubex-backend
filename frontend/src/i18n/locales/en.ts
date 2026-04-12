@@ -2651,6 +2651,186 @@ export default {
         },
       },
     },
+    webhooksOverview: {
+      name: 'Webhooks Overview',
+      description: 'Quick walkthrough of the Webhooks page',
+      steps: {
+        intro: {
+          title: 'Outbound event delivery',
+          text: 'Webhooks let HubEx push real-time event notifications to your external services. Every device change, alert fire, or variable update can be forwarded as an HTTP POST to any URL you configure.',
+        },
+        create: {
+          title: 'Register a webhook',
+          text: 'Click here to add a new endpoint. Provide the target URL, an optional secret for signature verification, and choose which event types to subscribe to.',
+        },
+        deliveries: {
+          title: 'Delivery logs',
+          text: 'Each webhook shows its delivery history with status codes and response times. Use the test button to send a ping and verify connectivity before going live.',
+        },
+      },
+    },
+    pluginsOverview: {
+      name: 'Plugins Overview',
+      description: 'Quick walkthrough of the Plugins page',
+      steps: {
+        intro: {
+          title: 'The plugin marketplace',
+          text: 'Plugins extend HubEx with connectors and services. Browse the catalog to find integrations for Frigate, Grafana, Ollama, n8n, and more. Each plugin adds new capabilities without touching your core setup.',
+        },
+        install: {
+          title: 'Install a plugin',
+          text: 'Click any catalog entry to see its details and hit Install. Connector plugins may ask for credentials (API keys, URLs) which are stored securely in HubEx secrets.',
+        },
+        manage: {
+          title: 'Manage installed plugins',
+          text: 'Installed plugins appear in your list with status badges. You can configure credentials, check connector health, or uninstall plugins you no longer need.',
+        },
+      },
+    },
+    hardwareOverview: {
+      name: 'Hardware Overview',
+      description: 'Quick walkthrough of the Hardware page',
+      steps: {
+        intro: {
+          title: 'Board profiles & pin maps',
+          text: 'The Hardware page shows all supported microcontroller boards. Each card displays the chip type, connectivity features (WiFi, BLE), and available pins. Click a board to explore its full pin map.',
+        },
+        wizard: {
+          title: 'Start a hardware project',
+          text: 'Click this button to launch the hardware wizard. It guides you through board selection, shield pairing, and pin assignment to generate a ready-to-flash firmware project.',
+        },
+        firmware: {
+          title: 'From board to firmware',
+          text: 'After setting up a board profile, head to the Firmware Builder to compile and flash your device. Shields and sensor modules are automatically mapped to the correct pins.',
+        },
+      },
+    },
+    firmwareOverview: {
+      name: 'Firmware Builder Overview',
+      description: 'Quick walkthrough of the Firmware Builder',
+      steps: {
+        intro: {
+          title: 'Compile & flash firmware',
+          text: 'The Firmware Builder lets you compile PlatformIO-based firmware for your registered boards directly from HubEx. Builds run server-side and produce a downloadable .bin file ready for flashing.',
+        },
+        board: {
+          title: 'Select a board profile',
+          text: 'Choose which board to build for. The dropdown lists all profiles from the Hardware page. Each build targets a specific PlatformIO environment matching your chip and configuration.',
+        },
+        output: {
+          title: 'Build history & logs',
+          text: 'Past builds are listed below with status, duration, and artifact size. Click "Show Logs" for the live build output. Successful builds offer a download button and an OTA push option.',
+        },
+      },
+    },
+    reportsOverview: {
+      name: 'Reports Overview',
+      description: 'Quick walkthrough of the Reports page',
+      steps: {
+        intro: {
+          title: 'Scheduled & on-demand reports',
+          text: 'Reports let you create templates that pull data from your devices and variables, then render them as downloadable documents. Schedule them daily, weekly, or monthly, or generate on demand.',
+        },
+        create: {
+          title: 'Create a report template',
+          text: 'Click here to define a new template. Give it a name, configure a schedule if needed, and add email recipients who should receive the report automatically.',
+        },
+        schedule: {
+          title: 'Delivery schedule',
+          text: 'Scheduled templates run automatically. Filter between scheduled and manual-only templates. Each template shows its cron pattern and how many email recipients are configured.',
+        },
+      },
+    },
+    emailTemplatesOverview: {
+      name: 'Email Templates Overview',
+      description: 'Quick walkthrough of the Email Templates page',
+      steps: {
+        intro: {
+          title: 'Reusable email layouts',
+          text: 'Email Templates define the look and content of all notification emails HubEx sends. Built-in templates cover alerts, reports, and system messages. Create your own for custom notifications.',
+        },
+        editor: {
+          title: 'Visual & code editor',
+          text: 'Click here to create a new template. The editor offers a visual WYSIWYG mode (TipTap), a simple block editor, code view for raw HTML, and a split view with live preview.',
+        },
+        variables: {
+          title: 'Template variables',
+          text: 'Insert dynamic placeholders like {{alert.name}}, {{device.uid}}, or {{timestamp}} into your templates. They get replaced with real data when the email is sent.',
+        },
+      },
+    },
+    adminOverview: {
+      name: 'Admin Console Overview',
+      description: 'Quick walkthrough of the Admin Console',
+      steps: {
+        intro: {
+          title: 'Your administration hub',
+          text: 'The Admin Console gives you a bird\'s eye view of your HubEx instance. See module status, system health, and organization details all in one place.',
+        },
+        roles: {
+          title: 'Modules & status cards',
+          text: 'The status cards at the top show enabled modules, active capabilities, and system health. Below you can toggle individual modules on or off to control which features are available.',
+        },
+        caps: {
+          title: 'Capabilities & roles',
+          text: 'Review your current permission set, explore role definitions with their capability counts, and see all members of your organization. This helps you understand who can do what.',
+        },
+      },
+    },
+    healthOverview: {
+      name: 'System Health Overview',
+      description: 'Quick walkthrough of the System Health page',
+      steps: {
+        intro: {
+          title: 'Live system status',
+          text: 'System Health shows the real-time operational status of your HubEx instance. The overall status banner tells you at a glance whether everything is running smoothly or needs attention.',
+        },
+        indicators: {
+          title: 'Component health indicators',
+          text: 'Three cards show the status of the Backend API, Database (PostgreSQL), and Redis cache. Each card has a colored dot indicating healthy (green), degraded (yellow), or error (red) state.',
+        },
+        refresh: {
+          title: 'Auto-refresh every 30 seconds',
+          text: 'The page polls the health endpoints automatically every 30 seconds. You can also click Refresh to check immediately. The "Last checked" timestamp shows when data was last fetched.',
+        },
+      },
+    },
+    auditOverview: {
+      name: 'Audit Log Overview',
+      description: 'Quick walkthrough of the Audit page',
+      steps: {
+        intro: {
+          title: 'Who changed what, and when',
+          text: 'The Audit Log records every significant action in your system: logins, device changes, automation triggers, configuration updates, and API key operations. Each entry includes actor, action, resource, and timestamp.',
+        },
+        filters: {
+          title: 'Filter by actor or action',
+          text: 'Use the filter bar to narrow down audit entries. Search by actor ID (user or system), action type (e.g. token.revoked), or limit the number of results. Click Apply to refresh the list.',
+        },
+        export: {
+          title: 'Export for compliance',
+          text: 'Download the audit log as a CSV file for compliance reviews or offline analysis. The export respects your current filter settings and includes up to 1000 entries.',
+        },
+      },
+    },
+    traceHubOverview: {
+      name: 'Trace Hub Overview',
+      description: 'Quick walkthrough of the Trace Hub',
+      steps: {
+        intro: {
+          title: 'Request traces & causality',
+          text: 'The Trace Hub combines Events and Effects into a single diagnostic view. Use it to understand what happened in your system and trace the causal chain from a device event to its downstream effects.',
+        },
+        events: {
+          title: 'Events tab',
+          text: 'Switch to the Events tab to see the real-time event stream. Events are grouped by stream (system, device-specific). Use the trace ID filter to follow a single request across all event sources.',
+        },
+        effects: {
+          title: 'Effects tab',
+          text: 'Switch to the Effects tab to see side-effects triggered by automations and alert rules. Each effect record shows what happened (webhook called, email sent, variable set) and links back to the triggering event.',
+        },
+      },
+    },
     onboarding: {
       name: 'Getting Started',
       description: 'Quick tour through the main features',

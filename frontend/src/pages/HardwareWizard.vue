@@ -195,6 +195,7 @@ function resetWizard() {
           <UInfoTooltip
             :title="t('infoTooltips.hardwareWizard.title')"
             :items="tm('infoTooltips.hardwareWizard.items').map((i: any) => rt(i))"
+            tourId="hardware-wizard-overview"
           />
         </div>
         <div class="wiz-step">{{ t('hardwareWizard.stepOfTotal', { current: currentStep, total: totalSteps }) }}</div>

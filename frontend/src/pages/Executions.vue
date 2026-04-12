@@ -113,7 +113,7 @@ onUnmounted(() => {
     <div class="page-header">
       <div class="flex items-center gap-1">
         <h2>{{ t('nav.executions') }}</h2>
-        <UInfoTooltip :title="t('infoTooltips.executions.title')" :items="tm('infoTooltips.executions.items').map((i: any) => rt(i))" />
+        <UInfoTooltip :title="t('infoTooltips.executions.title')" :items="tm('infoTooltips.executions.items').map((i: any) => rt(i))" tourId="executions-overview" />
       </div>
       <div class="row">
         <button class="btn secondary" @click="retry">{{ t('common.refresh') }}</button>

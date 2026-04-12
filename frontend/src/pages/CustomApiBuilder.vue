@@ -427,7 +427,7 @@ onMounted(load);
       <div>
         <div class="flex items-center">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('customApi.title') }}</h1>
-          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('customApi.infoTitle')" :items="tm('customApi.infoItems').map((i: any) => rt(i))" tourId="custom-api-overview" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           {{ t('customApi.subtitle') }}

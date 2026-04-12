@@ -340,7 +340,7 @@ onUnmounted(() => {
     <div class="page-header">
       <div class="flex items-center gap-1">
         <h2>{{ t('nav.observability') }}</h2>
-        <UInfoTooltip :title="t('infoTooltips.observability.title')" :items="tm('infoTooltips.observability.items').map((i: any) => rt(i))" />
+        <UInfoTooltip :title="t('infoTooltips.observability.title')" :items="tm('infoTooltips.observability.items').map((i: any) => rt(i))" tourId="observability-overview" />
       </div>
       <button class="btn secondary" @click="retryAll">{{ t('observability.retry') }}</button>
     </div>

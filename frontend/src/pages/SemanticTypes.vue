@@ -252,6 +252,7 @@ onMounted(fetchTypes);
           <UInfoTooltip
             :title="t('infoTooltips.semanticTypes.title')"
             :items="tm('infoTooltips.semanticTypes.items').map((i: any) => rt(i))"
+            tourId="semantic-types-overview"
           />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-0.5">

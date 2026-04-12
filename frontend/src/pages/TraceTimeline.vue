@@ -83,7 +83,7 @@ onMounted(loadAll);
       <div>
         <div class="flex items-center gap-1.5">
           <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.traceTimeline.title') }}</h1>
-          <UInfoTooltip :title="t('infoTooltips.traceTimeline.title')" :items="tm('infoTooltips.traceTimeline.items').map((i: any) => rt(i))" />
+          <UInfoTooltip :title="t('infoTooltips.traceTimeline.title')" :items="tm('infoTooltips.traceTimeline.items').map((i: any) => rt(i))" tourId="trace-timeline-overview" />
         </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.traceTimeline.subtitle') }}</p>
       </div>
