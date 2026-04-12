@@ -107,7 +107,9 @@ const isAnimating = ref(false);
 const pulsingNodeId = ref<string | null>(null);
 
 // ── Layout mode ───────────────────────────────────────────────────────────
-const layoutMode = ref<"columns" | "free">("columns");
+// Sprint 10 F8: 4 layout presets
+type LayoutMode = "columns" | "radial" | "hierarchical" | "force";
+const layoutMode = ref<LayoutMode>("columns");
 const customPositions = ref<Record<string, { x: number; y: number }>>({});
 
 // ── Drag state ────────────────────────────────────────────────────────────
@@ -1148,38 +1150,106 @@ function resetFilters() {
 
 // ── Layout mode toggle ───────────────────────────────────────────────────
 
-function toggleLayoutMode() {
-  layoutMode.value = layoutMode.value === "columns" ? "free" : "columns";
+// Sprint 10 F8: Layout mode selector (was toggle, now 4 presets)
+function setLayoutMode(mode: LayoutMode) {
+  layoutMode.value = mode;
   applyLayout();
   nextTick(() => fitToView());
 }
 
 function applyLayout() {
+  const n = nodes.value;
+  const count = n.length;
+  if (!count) return;
+
   if (layoutMode.value === "columns") {
-    // Restore column positions (re-run layout algorithm)
     customPositions.value = {};
-    // Re-assign column-based positions
     const colCounts = [0, 0, 0, 0];
-    for (const node of nodes.value) {
+    for (const node of n) {
       const colIdx = node.column;
       node.x = COL_X[colIdx];
       node.y = COL_START_Y + colCounts[colIdx] * (getNodeHeight(node.type) + ROW_GAP);
       colCounts[colIdx]++;
     }
-  } else {
-    // Free layout: spread nodes in a wider area using a simple force-directed approximation
-    const centerX = 500;
-    const centerY = 400;
-    const radius = Math.max(200, nodes.value.length * 25);
-    nodes.value.forEach((node, i) => {
-      const angle = (i / nodes.value.length) * 2 * Math.PI;
-      const colOffset = node.column * 150;
-      const x = centerX + colOffset + Math.cos(angle) * (radius * 0.3);
-      const y = centerY + Math.sin(angle) * radius * 0.6;
-      node.x = x;
-      node.y = y;
-      customPositions.value[node.id] = { x, y };
+  } else if (layoutMode.value === "radial") {
+    // Circular: nodes in a ring grouped by type
+    const cx = 600, cy = 500;
+    const radius = Math.max(250, count * 20);
+    n.forEach((node, i) => {
+      const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
+      const r = radius + (node.column * 60);
+      node.x = cx + Math.cos(angle) * r;
+      node.y = cy + Math.sin(angle) * r;
+      customPositions.value[node.id] = { x: node.x, y: node.y };
     });
+  } else if (layoutMode.value === "hierarchical") {
+    // Top-down tree: devices top, variables middle, automations/alerts bottom
+    const typeOrder: Record<string, number> = { device: 0, variable: 1, automation: 2, alert: 3, webhook: 3 };
+    const layers: Record<number, typeof n> = {};
+    for (const node of n) {
+      const layer = typeOrder[node.type] ?? 2;
+      (layers[layer] ??= []).push(node);
+    }
+    const layerGap = 200, nodeGap = 180;
+    for (const [layerStr, layerNodes] of Object.entries(layers)) {
+      const layer = Number(layerStr);
+      const totalW = (layerNodes.length - 1) * nodeGap;
+      const startX = 600 - totalW / 2;
+      layerNodes.forEach((node, i) => {
+        node.x = startX + i * nodeGap;
+        node.y = 100 + layer * layerGap;
+        customPositions.value[node.id] = { x: node.x, y: node.y };
+      });
+    }
+  } else if (layoutMode.value === "force") {
+    // Simple force-directed simulation (80 iterations)
+    const pos: Record<string, { x: number; y: number }> = {};
+    for (const node of n) {
+      pos[node.id] = { x: 600 + (Math.random() - 0.5) * 400, y: 400 + (Math.random() - 0.5) * 300 };
+    }
+    const edgeList = edges.value;
+    for (let iter = 0; iter < 80; iter++) {
+      const forces: Record<string, { fx: number; fy: number }> = {};
+      for (const node of n) forces[node.id] = { fx: 0, fy: 0 };
+      // Repulsion
+      for (let i = 0; i < n.length; i++) {
+        for (let j = i + 1; j < n.length; j++) {
+          const a = pos[n[i].id], b = pos[n[j].id];
+          let dx = b.x - a.x, dy = b.y - a.y;
+          const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+          const repulse = 8000 / (dist * dist);
+          dx /= dist; dy /= dist;
+          forces[n[i].id].fx -= dx * repulse;
+          forces[n[i].id].fy -= dy * repulse;
+          forces[n[j].id].fx += dx * repulse;
+          forces[n[j].id].fy += dy * repulse;
+        }
+      }
+      // Edge attraction
+      for (const e of edgeList) {
+        const a = pos[e.from], b = pos[e.to];
+        if (!a || !b) continue;
+        let dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const attract = dist * 0.01;
+        dx /= Math.max(1, dist); dy /= Math.max(1, dist);
+        forces[e.from].fx += dx * attract;
+        forces[e.from].fy += dy * attract;
+        forces[e.to].fx -= dx * attract;
+        forces[e.to].fy -= dy * attract;
+      }
+      // Apply with damping
+      for (const node of n) {
+        const f = forces[node.id];
+        pos[node.id].x += Math.max(-30, Math.min(30, f.fx * 0.3));
+        pos[node.id].y += Math.max(-30, Math.min(30, f.fy * 0.3));
+      }
+    }
+    for (const node of n) {
+      node.x = pos[node.id].x;
+      node.y = pos[node.id].y;
+      customPositions.value[node.id] = { x: node.x, y: node.y };
+    }
   }
 }
 </script>
@@ -1228,14 +1298,17 @@ function applyLayout() {
 
         <span class="w-px h-4 bg-[var(--border)]" />
 
-        <!-- Layout mode toggle -->
-        <button
-          class="px-2 py-1 rounded text-[10px] border transition-colors"
-          :class="layoutMode === 'free'
-            ? 'border-[var(--primary)]/50 text-[var(--primary)] bg-[var(--primary)]/10'
-            : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--bg-raised)]'"
-          @click="toggleLayoutMode"
-        >{{ layoutMode === 'columns' ? 'Free Layout' : 'Columns' }}</button>
+        <!-- Sprint 10 F8: Layout preset selector -->
+        <select
+          :value="layoutMode"
+          class="px-2 py-1 rounded text-[10px] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] cursor-pointer focus:outline-none focus:border-[var(--primary)]/50"
+          @change="setLayoutMode(($event.target as HTMLSelectElement).value as LayoutMode)"
+        >
+          <option value="columns">{{ t('pages.flowEditor.layoutColumns') }}</option>
+          <option value="hierarchical">{{ t('pages.flowEditor.layoutHierarchical') }}</option>
+          <option value="radial">{{ t('pages.flowEditor.layoutRadial') }}</option>
+          <option value="force">{{ t('pages.flowEditor.layoutForce') }}</option>
+        </select>
       </div>
     </div>
 

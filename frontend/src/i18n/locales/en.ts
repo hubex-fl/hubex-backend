@@ -1585,7 +1585,8 @@ export default {
       zoomIn: 'Zoom in', zoomOut: 'Zoom out', resetView: 'Reset', fitView: 'Fit',
       refresh: 'Refresh', openDetail: 'Open',
       // Detail inspector panel
-      inspector: 'Inspector', connectedElements: 'Connected', goToDevice: 'Go to Device', goToVariable: 'Go to Variable',
+      inspector: 'Inspector', connectedElements: 'Connected',
+      layoutColumns: 'Columns', layoutHierarchical: 'Hierarchical', layoutRadial: 'Radial', layoutForce: 'Force-Directed', goToDevice: 'Go to Device', goToVariable: 'Go to Variable',
       editAutomation: 'Edit Automation', viewAlerts: 'View Alerts', viewWebhook: 'View Webhook',
       deviceName: 'Name', deviceType: 'Type', deviceStatus: 'Status', lastSeen: 'Last seen',
       variableCount: 'Variables', variableKey: 'Key', currentValue: 'Value', unit: 'Unit',
