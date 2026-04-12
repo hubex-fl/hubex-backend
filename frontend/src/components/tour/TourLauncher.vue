@@ -31,6 +31,7 @@ function startTour(tourId: string) {
   <div v-if="hasTours" class="relative">
     <!-- Trigger button -->
     <button
+      data-tour="tour-launcher"
       class="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
       :title="t('tour.guidedTours')"
       @click="isOpen = !isOpen"

@@ -330,14 +330,16 @@ onUnmounted(() => { stopPolling(); });
         <!-- Stream + trace filter row -->
         <div class="flex flex-col sm:flex-row gap-3 mb-3">
           <div class="flex-1">
-            <label class="block text-xs text-[var(--text-muted)] mb-1">{{ t('events.stream') }}</label>
+            <label class="block text-xs text-[var(--text-muted)] mb-1 inline-flex items-center gap-1">{{ t('events.stream') }}
+              <UInfoTooltip :title="t('events.streamTooltip')" :items="tm('events.streamTooltipItems').map((i: any) => rt(i))" />
+            </label>
             <UEntitySelect v-model="stream" entity-type="stream" class="w-full" />
           </div>
 
           <!-- Trace ID combobox -->
           <div class="flex-1 relative">
             <label class="block text-xs text-[var(--text-muted)] mb-1">
-              <span class="inline-flex items-center">{{ t('events.traceIdFilter') }}<UInfoTooltip :title="t('events.traceIdTooltip')" :items="[]" /></span>
+              <span class="inline-flex items-center gap-1">{{ t('events.traceIdFilter') }}<UInfoTooltip :title="t('events.traceIdTooltip')" :items="tm('events.traceIdTooltipItems').map((i: any) => rt(i))" /></span>
             </label>
             <div class="relative">
               <input
@@ -345,7 +347,7 @@ onUnmounted(() => { stopPolling(); });
                 v-model="traceFilter"
                 type="text"
                 :placeholder="uniqueTraceIds.length ? t('events.traceSelectPlaceholder') : 'trace_id'"
-                class="w-full h-9 px-3 pr-16 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]/60 focus:ring-1 focus:ring-[var(--primary)]/30"
+                class="w-full h-9 px-3 pr-16 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]/60 focus:ring-1 focus:ring-[var(--primary)]/30"
                 @focus="onTraceInputFocus"
                 @blur="onTraceInputBlur"
                 @input="traceDropdownOpen = uniqueTraceIds.length > 0"
