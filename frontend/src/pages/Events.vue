@@ -56,6 +56,7 @@ const capsReady = computed(() => caps.status === "ready");
 const canReadEvents = computed(() => hasCap("events.read"));
 const canAckEvents = computed(() => hasCap("events.ack"));
 const limit = 100;
+const MAX_ITEMS = 200;
 const subscriberId = "ui.events.viewer";
 
 /* ── Trace ID combobox helpers ── */
@@ -171,7 +172,7 @@ async function refreshEvents() {
     const res = await fetchJson<EventsResponse>(buildUrl(), { method: "GET" }, signal);
     nextCursor.value = res.next_cursor ?? res.cursor ?? cursor.value;
     if (res.items?.length) {
-      items.value = [...items.value, ...res.items].slice(-500);
+      items.value = [...items.value, ...res.items].slice(-MAX_ITEMS);
       cursor.value = nextCursor.value;
       caughtUp.value = false;
       // After first successful fetch with from_ts, switch to cursor-based for subsequent polls
@@ -446,7 +447,7 @@ onUnmounted(() => { stopPolling(); });
         <template #header>
           <h3 class="text-sm font-semibold text-[var(--text-primary)]">
             {{ t('events.events') }}
-            <span v-if="filteredItems.length" class="ml-1.5 text-xs font-normal text-[var(--text-muted)]">({{ filteredItems.length }})</span>
+            <span v-if="filteredItems.length" class="ml-1.5 text-xs font-normal text-[var(--text-muted)]">({{ filteredItems.length }}<template v-if="items.length >= MAX_ITEMS"> / {{ t('events.showingLast', { count: MAX_ITEMS }) }}</template>)</span>
           </h3>
         </template>
 
