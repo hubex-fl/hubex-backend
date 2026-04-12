@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { apiFetch } from "../lib/api";
 import UCard from "../components/ui/UCard.vue";
 import UBadge from "../components/ui/UBadge.vue";
+import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 type TraceEntry = {
   timestamp: string;
@@ -31,7 +32,7 @@ type AnomalyHint = {
   hint: string;
 };
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
 const traces = ref<TraceEntry[]>([]);
 const incidents = ref<IncidentSummary | null>(null);
 const anomalies = ref<AnomalyHint[]>([]);
@@ -80,7 +81,10 @@ onMounted(loadAll);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.traceTimeline.title') }}</h1>
+        <div class="flex items-center gap-1.5">
+          <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ t('pages.traceTimeline.title') }}</h1>
+          <UInfoTooltip :title="t('infoTooltips.traceTimeline.title')" :items="tm('infoTooltips.traceTimeline.items').map((i: any) => rt(i))" />
+        </div>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ t('pages.traceTimeline.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">

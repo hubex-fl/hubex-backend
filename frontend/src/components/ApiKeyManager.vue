@@ -53,8 +53,16 @@ async function loadKeys() {
   error.value = null;
   try {
     keys.value = await apiFetch<ApiKeyOut[]>("/api/v1/api-keys");
-  } catch {
-    error.value = "Failed to load API keys";
+  } catch (e: unknown) {
+    // Sprint 10 C2 fix: if the user lacks apikeys.read cap (403), show
+    // empty state instead of an error banner. The endpoint is optional
+    // and restricted users (testers) simply don't have access.
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("403") || msg.includes("CAP")) {
+      keys.value = [];
+    } else {
+      error.value = t('apiKeys.loadError');
+    }
   } finally {
     loading.value = false;
   }

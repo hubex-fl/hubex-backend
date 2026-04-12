@@ -659,6 +659,15 @@ export default {
   automations: {
     title: 'Automations',
     subtitle: 'If-then rules for automated actions',
+    // Sprint 10 C5: selector labels (were hardcoded English)
+    selectors: {
+      device: 'Device',
+      deviceUid: 'Device UID',
+      variableKey: 'Variable Key',
+      devicePlaceholderGlobal: 'Select device (or leave empty for global)',
+      devicePlaceholderAny: 'Leave empty for any device',
+      deviceScopeOnly: 'Device scope only',
+    },
     // Sprint 3.4 — IF/THEN labels, severity option labels, form placeholders
     ifLabel: 'IF',
     thenLabel: 'THEN',
@@ -1853,6 +1862,7 @@ export default {
     selectAccess: 'Select what this key can access',
     copyNow: 'Copy this key now — it won\'t be shown again',
     noKeys: 'No API keys yet',
+    loadError: 'Failed to load API keys',
   },
   apiKeyManager: {
     lastUsed: 'Last used {when}',
@@ -2178,6 +2188,15 @@ export default {
         'Add sensors, actuators and other components',
         'Wizard suggests safe pin assignments automatically',
         'Finishes by saving a reusable board you can flash',
+      ],
+    },
+    traceTimeline: {
+      title: 'Trace timeline for debugging request flows across your system.',
+      items: [
+        'Shows events, effects, and task executions on a single timeline',
+        'Filter by time range (last 15 min, 1 hour, etc.) to narrow scope',
+        'Each entry links back to the originating device and event type',
+        'Use this to trace data from ingestion through automation to action',
       ],
     },
     cmsPages: {

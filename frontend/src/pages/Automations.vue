@@ -952,8 +952,8 @@ function toggleRuleExpand(id: number) {
 
             <!-- Variable Threshold config -->
             <template v-if="formTriggerType === 'variable_threshold'">
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device" placeholder="Select device first (or leave empty for global)" :optional="true" />
-              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" :label="t('automations.selectors.device')" :placeholder="t('automations.selectors.devicePlaceholderGlobal')" :optional="true" />
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" :label="t('automations.selectors.variableKey')" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">{{ t('automations.operatorLabel') }}</label>
@@ -973,8 +973,8 @@ function toggleRuleExpand(id: number) {
               <p class="text-[10px] text-[var(--text-muted)] bg-[var(--bg-raised)] rounded px-2 py-1" :title="t('automations.geofenceTooltip')">
                 GPS variable should contain <code class="font-mono">{{"{"}}lat: number, lng: number{{"}"}}</code>
               </p>
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device" placeholder="Select device first (or leave empty for any)" :optional="true" />
-              <UEntitySelect v-model="trigVarKey" entity-type="variable" label="Variable Key" :device-uid="trigDeviceUid || undefined" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" :label="t('automations.selectors.device')" :placeholder="t('automations.selectors.devicePlaceholderAny')" :optional="true" />
+              <UEntitySelect v-model="trigVarKey" entity-type="variable" :label="t('automations.selectors.variableKey')" :device-uid="trigDeviceUid || undefined" />
               <div class="grid grid-cols-2 gap-2">
                 <div class="space-y-1">
                   <label :class="labelClass">{{ t('automations.geofenceType') }}</label>
@@ -1018,12 +1018,12 @@ function toggleRuleExpand(id: number) {
 
             <!-- Device Offline config -->
             <template v-else-if="formTriggerType === 'device_offline'">
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" :label="t('automations.selectors.deviceUid')" :placeholder="t('automations.selectors.devicePlaceholderAny')" :optional="true" />
             </template>
 
             <!-- Telemetry Received config -->
             <template v-else-if="formTriggerType === 'telemetry_received'">
-              <UEntitySelect v-model="trigDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for any device" :optional="true" />
+              <UEntitySelect v-model="trigDeviceUid" entity-type="device" :label="t('automations.selectors.deviceUid')" :placeholder="t('automations.selectors.devicePlaceholderAny')" :optional="true" />
               <div class="space-y-1">
                 <label :class="labelClass">{{ t('automations.eventTypeLabel') }} <span class="text-[var(--text-muted)]">{{ t('automations.eventTypeOptional') }}</span></label>
                 <input v-model="trigEventType" type="text" placeholder="e.g. sensor.reading" :class="inputClass" />
@@ -1103,7 +1103,7 @@ function toggleRuleExpand(id: number) {
 
             <!-- Set Variable config -->
             <template v-if="formActionType === 'set_variable'">
-              <UEntitySelect v-model="actVarKey" entity-type="variable" label="Variable Key" />
+              <UEntitySelect v-model="actVarKey" entity-type="variable" :label="t('automations.selectors.variableKey')" />
               <div class="space-y-1">
                 <label :class="labelClass">{{ t('automations.valueJson') }}</label>
                 <input v-model="actVarValue" type="text" placeholder='"alert"' :class="[inputClass, 'font-mono']" />
@@ -1116,7 +1116,7 @@ function toggleRuleExpand(id: number) {
                     <option value="device">device</option>
                   </select>
                 </div>
-                <UEntitySelect v-model="actVarDeviceUid" entity-type="device" label="Device UID" placeholder="device scope only" :optional="true" />
+                <UEntitySelect v-model="actVarDeviceUid" entity-type="device" :label="t('automations.selectors.deviceUid')" :placeholder="t('automations.selectors.deviceScopeOnly')" :optional="true" />
               </div>
             </template>
 

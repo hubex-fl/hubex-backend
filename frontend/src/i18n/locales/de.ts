@@ -656,6 +656,15 @@ export default {
   automations: {
     title: 'Automatisierungen',
     subtitle: 'Wenn-dann-Regeln f\u00fcr automatisierte Aktionen',
+    // Sprint 10 C5: Selektor-Labels
+    selectors: {
+      device: 'Ger\u00e4t',
+      deviceUid: 'Ger\u00e4te-UID',
+      variableKey: 'Variablen-Schl\u00fcssel',
+      devicePlaceholderGlobal: 'Ger\u00e4t w\u00e4hlen (oder leer f\u00fcr global)',
+      devicePlaceholderAny: 'Leer lassen f\u00fcr jedes Ger\u00e4t',
+      deviceScopeOnly: 'Nur Ger\u00e4te-Scope',
+    },
     // Sprint 3.4 — IF/THEN labels, severity options, placeholders
     ifLabel: 'WENN',
     thenLabel: 'DANN',
@@ -1828,6 +1837,7 @@ export default {
     selectAccess: 'Wählen Sie den Zugriff für diesen Schlüssel',
     copyNow: 'Kopieren Sie diesen Schlüssel jetzt — er wird nicht erneut angezeigt',
     noKeys: 'Noch keine API-Schlüssel',
+    loadError: 'API-Schlüssel konnten nicht geladen werden',
   },
   apiKeyManager: {
     lastUsed: 'Zuletzt verwendet {when}',
@@ -2153,6 +2163,15 @@ export default {
         'Sensoren, Aktoren und weitere Komponenten hinzufügen',
         'Assistent schlägt sichere Pinbelegung automatisch vor',
         'Am Ende entsteht ein wiederverwendbares Board zum Flashen',
+      ],
+    },
+    traceTimeline: {
+      title: 'Trace-Zeitachse zum Debuggen von Anfrage-Fl\u00fcssen in deinem System.',
+      items: [
+        'Zeigt Events, Effekte und Task-Ausf\u00fchrungen auf einer Zeitachse',
+        'Zeitraum filtern (letzte 15 Min, 1 Stunde, etc.) um den Fokus einzugrenzen',
+        'Jeder Eintrag verlinkt zum ausl\u00f6senden Ger\u00e4t und Event-Typ',
+        'Nutze dies um Daten von der Aufnahme \u00fcber Automationen bis zur Aktion zu verfolgen',
       ],
     },
     cmsPages: {
