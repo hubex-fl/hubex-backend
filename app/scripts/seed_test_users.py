@@ -39,7 +39,7 @@ from app.db.session import AsyncSessionLocal
 logger = logging.getLogger("uvicorn.error")
 
 
-DEFAULT_EMAILS = "test@hubextest.tech,tester1@hubextest.tech,tester2@hubextest.tech,tester3@hubextest.tech"
+DEFAULT_EMAILS = "test@hubextest.tech"
 DEFAULT_PASSWORD = "HubExDemo2025!"
 DEFAULT_ORG_ID = 1
 
