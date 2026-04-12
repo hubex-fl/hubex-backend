@@ -1523,7 +1523,7 @@ export default {
       zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', resetView: 'Zurücksetzen', fitView: 'Einpassen',
       refresh: 'Aktualisieren', openDetail: 'Öffnen',
       // Detail-Inspektor-Panel
-      inspector: 'Inspektor', goToDevice: 'Zum Gerät', goToVariable: 'Zur Variable',
+      inspector: 'Inspektor', connectedElements: 'Verbindungen', goToDevice: 'Zum Ger\u00e4t', goToVariable: 'Zur Variable',
       editAutomation: 'Automatisierung bearbeiten', viewAlerts: 'Alarme anzeigen', viewWebhook: 'Webhook anzeigen',
       deviceName: 'Name', deviceType: 'Typ', deviceStatus: 'Status', lastSeen: 'Zuletzt gesehen',
       variableCount: 'Variablen', variableKey: 'Schlüssel', currentValue: 'Wert', unit: 'Einheit',

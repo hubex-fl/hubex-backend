@@ -644,6 +644,14 @@ function highlightNode(nodeId: string) {
   flyToNode(node);
 }
 
+// Sprint 10 B1: fly to a connected node from the inspector sidebar
+// and select it (updating the inspector to show the target node's details).
+function flyToAndSelect(node: FlowNode) {
+  selectedNode.value = node;
+  inspectorOpen.value = true;
+  flyToNode(node);
+}
+
 function getNodeHeight(type: NodeType): number {
   return type === "device" ? NODE_H_DEVICE : NODE_H_SMALL;
 }
@@ -1093,6 +1101,23 @@ function getInspectorRoute(node: FlowNode): string {
 function getConnectedCount(nodeId: string): number {
   return edges.value.filter((e) => e.from === nodeId || e.to === nodeId).length;
 }
+
+// Sprint 10 B1: list connected nodes for the inspector sidebar.
+// Returns the actual FlowNode objects grouped by type, each with a fly-to handler.
+const inspectorConnections = computed(() => {
+  if (!selectedNode.value) return [];
+  const nodeId = selectedNode.value.id;
+  const connectedIds = new Set<string>();
+  for (const e of edges.value) {
+    if (e.from === nodeId) connectedIds.add(e.to);
+    if (e.to === nodeId) connectedIds.add(e.from);
+  }
+  connectedIds.delete(nodeId); // exclude self
+  const nodeMap = new Map(nodes.value.map(n => [n.id, n]));
+  return Array.from(connectedIds)
+    .map(id => nodeMap.get(id))
+    .filter(Boolean) as FlowNode[];
+});
 
 // Column headers
 const columnHeaders = computed(() => [
@@ -1757,6 +1782,33 @@ function applyLayout() {
               class="w-full mt-1 px-3 py-1 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               @click="navigateToNode(selectedNode)"
             >{{ t('pages.flowEditor.openDetail') }} &#8599;</button>
+          </div>
+
+          <!-- Sprint 10 B1: Connected elements — shared section for all node types -->
+          <div
+            v-if="inspectorConnections.length"
+            class="px-4 py-3 border-t border-[var(--border)]"
+          >
+            <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
+              {{ t('pages.flowEditor.connectedElements') }} ({{ inspectorConnections.length }})
+            </p>
+            <div class="space-y-1 max-h-[200px] overflow-y-auto">
+              <button
+                v-for="cn in inspectorConnections"
+                :key="cn.id"
+                class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-[var(--bg-raised)] transition-colors group"
+                @click="flyToAndSelect(cn)"
+              >
+                <div class="w-2 h-2 rounded-sm shrink-0" :style="{ background: NODE_COLORS[cn.type] }" />
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] text-[var(--text-primary)] truncate">{{ cn.label }}</p>
+                  <p class="text-[9px] text-[var(--text-muted)] truncate">{{ cn.type }}{{ cn.sublabel ? ' · ' + cn.sublabel : '' }}</p>
+                </div>
+                <svg class="w-3 h-3 text-[var(--text-muted)] group-hover:text-[var(--primary)] shrink-0 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
