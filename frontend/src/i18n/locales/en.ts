@@ -2444,6 +2444,9 @@ export default {
     pinPlaceholder: '4-6 digit PIN',
     // Appearance
     appearance: 'Appearance',
+    freeLayout: 'Free Position',
+    gridLayout: 'Grid',
+    freeLayoutHint: 'Toggle between grid-snapped and free pixel-based positioning',
     transparentMode: 'Transparent Widget',
     transparentHint: 'Remove background, border and shadow — only the chart/data is visible',
     borderColor: 'Border Color',

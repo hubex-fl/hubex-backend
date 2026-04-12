@@ -2414,6 +2414,9 @@ export default {
     pinPlaceholder: '4-6 stellige PIN',
     // Darstellung
     appearance: 'Darstellung',
+    freeLayout: 'Freie Position',
+    gridLayout: 'Raster',
+    freeLayoutHint: 'Zwischen rastergebundener und freier Pixel-Positionierung umschalten',
     transparentMode: 'Transparentes Widget',
     transparentHint: 'Hintergrund, Rahmen und Schatten entfernen \u2014 nur das Diagramm/die Daten sind sichtbar',
     borderColor: 'Rahmenfarbe',

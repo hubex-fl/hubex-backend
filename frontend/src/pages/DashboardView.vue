@@ -42,6 +42,16 @@
         <button v-if="!isKiosk" class="edit-btn" :class="{ active: editMode }" @click="editMode = !editMode">
           {{ editMode ? '&#10003; ' + t('dashboardEnhance.doneMode') : '&#9998; ' + t('dashboardEnhance.editMode') }}
         </button>
+        <!-- Sprint 10: free layout toggle -->
+        <button
+          v-if="editMode"
+          class="edit-btn"
+          :class="{ active: freeLayout }"
+          @click="freeLayout = !freeLayout"
+          :title="t('dashboardEnhance.freeLayoutHint')"
+        >
+          {{ freeLayout ? t('dashboardEnhance.gridLayout') : t('dashboardEnhance.freeLayout') }}
+        </button>
         <button class="refresh-btn" @click="loadDashboard" :title="t('common.refresh')">&#8634;</button>
       </div>
     </div>
@@ -238,7 +248,7 @@
     <div
       v-else-if="dashboard"
       ref="gridRef"
-      class="db-grid"
+      :class="freeLayout ? 'db-free-canvas' : 'db-grid'"
       @dragover.prevent="onGridDragOver"
       @drop.prevent="onGridDrop"
     >
@@ -250,8 +260,15 @@
           'widget-edit-mode': editMode,
           'widget-drag-over': dragOverWidgetId === widget.id,
           'widget-transparent': widget.display_config?.transparent,
+          'widget-free': freeLayout,
         }"
-        :style="{
+        :style="freeLayout ? {
+          position: 'absolute',
+          left: (widget.display_config?.free_x ?? (widget.grid_col - 1) * 100) + 'px',
+          top: (widget.display_config?.free_y ?? (widget.grid_row - 1) * 80) + 'px',
+          width: (widget.display_config?.free_w ?? widget.grid_span_w * 100) + 'px',
+          height: (widget.display_config?.free_h ?? widget.grid_span_h * 80) + 'px',
+        } : {
           gridColumn: `${widget.grid_col} / span ${widget.grid_span_w}`,
           gridRow: `${widget.grid_row} / span ${widget.grid_span_h}`,
         }"
@@ -641,6 +658,8 @@ const isKiosk = computed(() => route.meta?.layout === "kiosk");
 const dashboard = ref<Dashboard | null>(null);
 const loading = ref(true);
 const editMode = ref(false);
+// Sprint 10: free layout mode — widgets positioned absolutely with px coords
+const freeLayout = ref(false);
 const currentRange = ref<TimeRange>("1h");
 const TIME_RANGES: TimeRange[] = ["1h", "6h", "24h", "7d", "30d"];
 
@@ -1115,6 +1134,21 @@ const sortedWidgets = computed<DashboardWidget[]>(() => {
 
 // ── Drag-and-Drop (widget swap) ──────────────────────────────────────────────
 
+// Sprint 10: save free position after drag/resize
+async function saveWidgetPosition(widget: DashboardWidget) {
+  if (!dashboard.value) return;
+  try {
+    await updateWidget(dashboard.value.id, widget.id, {
+      display_config: widget.display_config,
+    });
+  } catch { /* silent */ }
+}
+
+// Sprint 10: track drag start position for free layout mode
+let freeDragStartX = 0;
+let freeDragStartY = 0;
+let freeDragWidget: DashboardWidget | null = null;
+
 function onWidgetDragStart(e: DragEvent, widget: DashboardWidget) {
   if (!editMode.value) return;
   dragWidgetId.value = widget.id;
@@ -1122,9 +1156,31 @@ function onWidgetDragStart(e: DragEvent, widget: DashboardWidget) {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", String(widget.id));
   }
+  // Free layout: track start position
+  if (freeLayout.value) {
+    freeDragStartX = e.clientX;
+    freeDragStartY = e.clientY;
+    freeDragWidget = widget;
+  }
 }
 
-function onWidgetDragEnd() {
+function onWidgetDragEnd(e: DragEvent) {
+  // Free layout: apply position delta
+  if (freeLayout.value && freeDragWidget && e.clientX > 0 && e.clientY > 0) {
+    const dx = e.clientX - freeDragStartX;
+    const dy = e.clientY - freeDragStartY;
+    const dc = freeDragWidget.display_config || {};
+    const oldX = (dc.free_x as number) ?? ((freeDragWidget.grid_col - 1) * 100);
+    const oldY = (dc.free_y as number) ?? ((freeDragWidget.grid_row - 1) * 80);
+    freeDragWidget.display_config = {
+      ...dc,
+      free_x: Math.max(0, oldX + dx),
+      free_y: Math.max(0, oldY + dy),
+    };
+    // Auto-save the new position
+    saveWidgetPosition(freeDragWidget);
+  }
+  freeDragWidget = null;
   dragWidgetId.value = null;
   dragOverWidgetId.value = null;
 }
@@ -1679,6 +1735,14 @@ function openAddWidget() {
   grid-template-columns: repeat(12, 1fr);
   grid-auto-rows: 60px;
   gap: 8px;
+  padding: 16px;
+}
+/* Sprint 10: free positioning canvas */
+.db-free-canvas {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  min-height: 800px;
   padding: 16px;
   align-content: start;
 }
