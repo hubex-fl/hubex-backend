@@ -1312,33 +1312,47 @@ function onResizeStart(e: DragEvent, widget: DashboardWidget) {
 
 function onResizeDrag(e: DragEvent, widget: DashboardWidget) {
   if (!resizeWidgetId.value || resizeWidgetId.value !== widget.id) return;
-  if (e.clientX === 0 && e.clientY === 0) return; // browser sends 0,0 at end
-
-  const grid = gridRef.value;
-  if (!grid) return;
-
-  const colWidth = grid.clientWidth / 12;
-  const rowHeight = 60; // grid-auto-rows
+  if (e.clientX === 0 && e.clientY === 0) return;
 
   const dx = e.clientX - resizeStartX.value;
   const dy = e.clientY - resizeStartY.value;
 
-  let newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
-  let newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
-
-  // Clamp so widget doesn't exceed grid columns
-  newW = Math.min(newW, 13 - widget.grid_col);
-
-  // Clamp so widget doesn't overlap other widgets
-  const clamped = clampToNoOverlap(widget, newW, newH);
-  widget.grid_span_w = clamped.w;
-  widget.grid_span_h = clamped.h;
+  if (freeLayout.value) {
+    // Free mode: resize in pixels
+    const dc = widget.display_config || {};
+    const baseW = (dc.free_w as number) ?? (widget.grid_span_w * 100);
+    const baseH = (dc.free_h as number) ?? (widget.grid_span_h * 80);
+    widget.display_config = {
+      ...dc,
+      free_w: Math.max(80, baseW + dx - (resizeStartX.value - e.clientX ? 0 : 0)),
+      free_h: Math.max(60, baseH + dy - (resizeStartY.value - e.clientY ? 0 : 0)),
+    };
+    // Update start for next delta
+    resizeStartX.value = e.clientX;
+    resizeStartY.value = e.clientY;
+  } else {
+    // Grid mode: resize in grid units
+    const grid = gridRef.value;
+    if (!grid) return;
+    const colWidth = grid.clientWidth / 12;
+    const rowHeight = 60;
+    let newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
+    let newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
+    newW = Math.min(newW, 13 - widget.grid_col);
+    const clamped = clampToNoOverlap(widget, newW, newH);
+    widget.grid_span_w = clamped.w;
+    widget.grid_span_h = clamped.h;
+  }
 }
 
 function onResizeEnd(e: DragEvent, widget: DashboardWidget) {
   if (resizeWidgetId.value === widget.id) {
     resizeWidgetId.value = null;
-    saveLayout();
+    if (freeLayout.value) {
+      saveWidgetPosition(widget);
+    } else {
+      saveLayout();
+    }
   }
 }
 
