@@ -6,7 +6,10 @@
  * Fetches options from the API and provides a filterable dropdown.
  */
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { apiFetch } from "../../lib/api";
+
+const { t } = useI18n();
 
 export interface EntityOption {
   value: string;
@@ -96,7 +99,8 @@ async function fetchOptions() {
       }));
     } else if (props.entityType === "stream") {
       options.value = [
-        { value: "tenant.system", label: "tenant.system", sublabel: "System events" },
+        { value: "system", label: "system", sublabel: "System events" },
+        { value: "tenant.system", label: "tenant.system", sublabel: "Tenant system events" },
         { value: "tenant.telemetry", label: "tenant.telemetry", sublabel: "Telemetry data" },
         { value: "tenant.alerts", label: "tenant.alerts", sublabel: "Alert events" },
         { value: "tenant.automations", label: "tenant.automations", sublabel: "Automation events" },
@@ -215,10 +219,10 @@ watch(() => props.deviceUid, () => { if (props.entityType === "variable") fetchO
       class="absolute left-0 right-0 top-full mt-1 z-50 max-h-48 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl"
     >
       <div v-if="loading" class="px-3 py-2 text-xs text-[var(--text-muted)]">
-        Loading...
+        {{ t('common.loading') }}
       </div>
       <div v-else-if="filtered.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
-        {{ query ? 'No matches' : 'No options available' }}
+        {{ query ? t('common.noMatches') : t('common.noOptionsAvailable') }}
       </div>
       <button
         v-for="(opt, i) in filtered"

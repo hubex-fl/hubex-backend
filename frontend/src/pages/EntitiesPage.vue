@@ -20,17 +20,14 @@ const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
 const { entities, loading, error, reload } = useEntities();
 
-// ── Entity type options (combobox) ──────────────────────────────────────────
-const entityTypeOptions = [
-  { value: "building", label: "building" },
-  { value: "floor", label: "floor" },
-  { value: "room", label: "room" },
-  { value: "zone", label: "zone" },
-  { value: "property", label: "property" },
-  { value: "site", label: "site" },
-  { value: "group", label: "group" },
-  { value: "custom", label: "custom" },
-];
+// ── Entity type options (combobox) — Sprint 10 C4: i18n labels ─────────────
+const ENTITY_TYPE_KEYS = ["building", "floor", "room", "zone", "property", "site", "machine", "area", "group", "custom"] as const;
+const entityTypeOptions = computed(() =>
+  ENTITY_TYPE_KEYS.map(key => ({
+    value: key,
+    label: t(`pages.entities.types.${key}`),
+  }))
+);
 const createTypeDropdownOpen = ref(false);
 const editTypeDropdownOpen = ref(false);
 const createTypeQuery = ref("");
