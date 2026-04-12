@@ -88,6 +88,9 @@ CAPABILITY_REGISTRY: set[str] = {
     # Sprint 4 — server-side firmware builds
     "firmware.read",
     "firmware.write",
+    # Sprint 9 — CMS publish is separate from CMS write so testers
+    # can draft pages without making them live on the public web.
+    "cms.publish",
 }
 
 # Route -> capability mapping (method, path_template)
@@ -439,8 +442,10 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("GET", "/api/v1/cms/pages/{page_id}"): ["cms.read"],
     ("PUT", "/api/v1/cms/pages/{page_id}"): ["cms.write"],
     ("DELETE", "/api/v1/cms/pages/{page_id}"): ["cms.write"],
-    ("POST", "/api/v1/cms/pages/{page_id}/publish"): ["cms.write"],
-    ("POST", "/api/v1/cms/pages/{page_id}/unpublish"): ["cms.write"],
+    # Sprint 9 Step 2: publish/unpublish require the separate cms.publish cap
+    # so testers can draft pages but not make them live on the public web.
+    ("POST", "/api/v1/cms/pages/{page_id}/publish"): ["cms.publish"],
+    ("POST", "/api/v1/cms/pages/{page_id}/unpublish"): ["cms.publish"],
     ("POST", "/api/v1/cms/pages/{page_id}/share"): ["cms.write"],
     ("DELETE", "/api/v1/cms/pages/{page_id}/share"): ["cms.write"],
     ("POST", "/api/v1/cms/pages/{page_id}/pin"): ["cms.write"],
@@ -565,6 +570,24 @@ _VIEWER_CAPS: list[str] = [
     "firmware.read",
 ]
 
+# Sprint 9 — Tester: can interact with devices/dashboards/automations
+# but CANNOT publish CMS, modify config, manage org, purge devices,
+# create webhooks/apikeys, or toggle modules. Demo-safe role for
+# hubextest.tech test users.
+_TESTER_CAPS: list[str] = _VIEWER_CAPS + [
+    "devices.write", "devices.token.reissue",
+    "vars.write", "vars.ack", "telemetry.emit",
+    "entities.write", "events.emit", "events.ack",
+    "alerts.write", "automations.write", "dashboards.write",
+    "types.write", "tasks.write", "groups.write",
+    "pairing.start", "pairing.claim", "pairing.confirm",
+    "mcp.execute", "notifications.write",
+    "core.auth.login",
+    "cms.write",      # can draft CMS pages
+    # NOTE: cms.publish deliberately EXCLUDED — testers cannot make
+    # pages live on the public web
+]
+
 # Read + write capabilities (operator role)
 _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "devices.write", "devices.token.reissue", "devices.unclaim",
@@ -581,6 +604,7 @@ _OPERATOR_CAPS: list[str] = _VIEWER_CAPS + [
     "apikeys.read", "apikeys.write",
     "core.auth.login", "core.auth.register",
     "cms.write",
+    "cms.publish",    # Sprint 9: operators can publish CMS pages
     "media.write",
 ]
 
@@ -604,6 +628,7 @@ ROLE_CAPS: dict[str, list[str]] = {
     "admin": _ADMIN_CAPS,
     "operator": _OPERATOR_CAPS,
     "member": _OPERATOR_CAPS,  # backward compat alias
+    "tester": _TESTER_CAPS,    # Sprint 9 — demo-safe test-instance role
     "viewer": _VIEWER_CAPS,
     "kiosk": _KIOSK_CAPS,
 }

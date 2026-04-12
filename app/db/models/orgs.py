@@ -14,7 +14,7 @@ PLAN_DEFAULTS: dict[str, dict] = {
 }
 
 VALID_PLANS = set(PLAN_DEFAULTS)
-VALID_ROLES = {"owner", "admin", "operator", "member", "viewer", "kiosk"}
+VALID_ROLES = {"owner", "admin", "operator", "member", "tester", "viewer", "kiosk"}
 
 
 class Organization(Base):
