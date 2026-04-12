@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
+import { useThemeStore } from "../stores/theme";
 import UCard from "../components/ui/UCard.vue";
 import UButton from "../components/ui/UButton.vue";
 import UBadge from "../components/ui/UBadge.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const { t, tm, rt } = useI18n();
+const themeStore = useThemeStore();
+const isDark = computed(() => themeStore.current === "dark");
 
 const copied = ref(false);
 const activeTab = ref<"swagger" | "redoc" | "overview">("swagger");
@@ -92,8 +95,8 @@ async function initSwagger() {
     });
     swaggerLoaded.value = true;
 
-    // Inject dark mode styles for Swagger UI to match HUBEX theme
-    injectSwaggerDarkMode();
+    // Sync Swagger theme with current app theme
+    syncSwaggerTheme(isDark.value);
   } catch (err: any) {
     loadError.value = `Could not load Swagger UI: ${err.message}. Try opening /docs in a new tab instead.`;
   } finally {
@@ -148,9 +151,18 @@ async function initRedoc() {
   }
 }
 
-function injectSwaggerDarkMode() {
+// Sprint 10 C1: sync Swagger dark mode with theme store.
+// Previously injected once and never removed, so switching to Light Mode
+// left Swagger in Dark Mode. Now watches themeStore.current and
+// adds/removes the style block accordingly.
+function syncSwaggerTheme(dark: boolean) {
   const existingStyle = document.getElementById("swagger-dark-mode");
-  if (existingStyle) return;
+  if (!dark) {
+    // Light mode — remove dark overrides so Swagger renders in its default light theme
+    existingStyle?.remove();
+    return;
+  }
+  if (existingStyle) return; // already injected
   const style = document.createElement("style");
   style.id = "swagger-dark-mode";
   style.textContent = `
@@ -295,6 +307,11 @@ watch(activeTab, async (tab) => {
   } else if (tab === "redoc") {
     initRedoc();
   }
+});
+
+// Sprint 10 C1: re-sync Swagger dark mode when user toggles theme
+watch(isDark, (dark) => {
+  if (swaggerLoaded.value) syncSwaggerTheme(dark);
 });
 
 onMounted(() => {

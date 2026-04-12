@@ -2042,9 +2042,10 @@ export default {
     variables: {
       title: 'Alle Variablen deiner Geräte.',
       items: [
-        'Variablen speichern Sensordaten, Zustände und Konfiguration',
-        'Nach Gerät filtern, nach Name suchen',
+        'Variablen speichern Sensordaten, Zust\u00e4nde und Konfiguration',
+        'Nach Ger\u00e4t filtern, nach Name suchen',
         'Secrets ein-/ausblenden um sensible Werte zu zeigen/verbergen',
+        'Globale Variablen (Scope: global) werden \u00fcber alle Ger\u00e4te geteilt und eignen sich f\u00fcr Schwellwerte, Einstellungen oder berechnete Werte, auf die jede Automation zugreifen kann',
       ],
     },
     variableStreams: {

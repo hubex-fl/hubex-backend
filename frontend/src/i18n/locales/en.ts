@@ -2070,6 +2070,7 @@ export default {
         'Variables store sensor readings, states, and configuration',
         'Filter by device, search by name',
         'Toggle secrets visibility to show/hide sensitive values',
+        'Global variables (scope: global) are shared across all devices and useful for thresholds, settings, or computed values that any automation can reference',
       ],
     },
     variableStreams: {

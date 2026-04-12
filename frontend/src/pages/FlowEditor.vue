@@ -675,11 +675,32 @@ function getEdgePath(edge: FlowEdge): string {
 
 // ── Zoom & Pan ─────────────────────────────────────────────────────────────
 
+// Sprint 10 B2: zoom towards a focal point (cursor for wheel, center
+// for +/- buttons) instead of always zooming to top-left corner.
+// The math keeps the world-space point under the focal point fixed:
+//   newPan = focal - (focal - oldPan) * (newZoom / oldZoom)
+function _zoomTo(newZoom: number, focalX: number, focalY: number) {
+  newZoom = Math.max(0.3, Math.min(2.5, newZoom));
+  const ratio = newZoom / zoom.value;
+  pan.value = {
+    x: focalX - (focalX - pan.value.x) * ratio,
+    y: focalY - (focalY - pan.value.y) * ratio,
+  };
+  zoom.value = newZoom;
+}
+
 function zoomIn() {
-  zoom.value = Math.min(zoom.value + 0.15, 2.5);
+  // +/- buttons: zoom towards viewport center
+  const c = canvasRef.value;
+  const cx = c ? c.clientWidth / 2 : 0;
+  const cy = c ? c.clientHeight / 2 : 0;
+  _zoomTo(zoom.value + 0.15, cx, cy);
 }
 function zoomOut() {
-  zoom.value = Math.max(zoom.value - 0.15, 0.3);
+  const c = canvasRef.value;
+  const cx = c ? c.clientWidth / 2 : 0;
+  const cy = c ? c.clientHeight / 2 : 0;
+  _zoomTo(zoom.value - 0.15, cx, cy);
 }
 function zoomReset() {
   zoom.value = 1;
@@ -689,7 +710,11 @@ function zoomReset() {
 function onWheel(e: WheelEvent) {
   e.preventDefault();
   const delta = e.deltaY > 0 ? -0.08 : 0.08;
-  zoom.value = Math.max(0.3, Math.min(2.5, zoom.value + delta));
+  // Zoom towards cursor position (relative to canvas container)
+  const rect = canvasRef.value?.getBoundingClientRect();
+  const fx = rect ? e.clientX - rect.left : 0;
+  const fy = rect ? e.clientY - rect.top : 0;
+  _zoomTo(zoom.value + delta, fx, fy);
 }
 
 function startPan(e: MouseEvent) {
@@ -742,13 +767,20 @@ function onTouchMove(e: TouchEvent) {
     e.preventDefault();
     const currentDist = getTouchDistance(e);
     const scale = currentDist / touchStartDist.value;
-    zoom.value = Math.max(0.3, Math.min(2.5, touchStartZoom.value * scale));
+    const newZoom = Math.max(0.3, Math.min(2.5, touchStartZoom.value * scale));
 
+    // Sprint 10 B2: zoom towards the pinch midpoint, not just pan offset.
+    // This combines the focal-point zoom with the pan-delta from finger movement.
     const currentMid = getTouchMidpoint(e);
+    const rect = canvasRef.value?.getBoundingClientRect();
+    const fx = rect ? currentMid.x - rect.left : currentMid.x;
+    const fy = rect ? currentMid.y - rect.top : currentMid.y;
+    const ratio = newZoom / touchStartZoom.value;
     pan.value = {
-      x: touchStartPan.value.x + (currentMid.x - touchStartMid.value.x),
-      y: touchStartPan.value.y + (currentMid.y - touchStartMid.value.y),
+      x: fx - (fx - touchStartPan.value.x) * ratio + (currentMid.x - touchStartMid.value.x),
+      y: fy - (fy - touchStartPan.value.y) * ratio + (currentMid.y - touchStartMid.value.y),
     };
+    zoom.value = newZoom;
   } else if (e.touches.length === 1 && isTouchPanning.value) {
     const dx = e.touches[0].clientX - lastTouchPos.value.x;
     const dy = e.touches[0].clientY - lastTouchPos.value.y;
