@@ -16,6 +16,7 @@ export default {
     entities: 'Entities',
     ota: 'OTA Updates',
     settings: 'Settings',
+    profile: 'Profile',
     pairing: 'Pairing',
     systemHealth: 'System Health',
     systemStage: 'System Stage',
@@ -2614,6 +2615,18 @@ export default {
         sandbox: {
           title: 'Sandbox',
           text: 'Create virtual devices that simulate real sensor data. Perfect for testing automations, dashboards, and alerts without real hardware.',
+        },
+        navPlugins: {
+          title: 'Plugins & Marketplace',
+          text: "Click 'Plugins' in the sidebar to browse and install extensions like Frigate, Grafana, Ollama, or n8n.",
+        },
+        navCms: {
+          title: 'CMS & Content Pages',
+          text: "The 'CMS' section lets you build custom pages with HTML, template variables, and device data. Publish them publicly or keep as drafts.",
+        },
+        infoIcons: {
+          title: 'Info Icons & More Tours',
+          text: "Look for the small info icons (ℹ) next to page titles — they explain what each page does. Many also offer a 'Take a guided tour' button for a deeper walkthrough. You can also click the graduation cap icon in the top bar to access all available tours anytime.",
         },
         themeToggle: {
           title: 'Dark / Light Mode',

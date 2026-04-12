@@ -16,7 +16,8 @@ export default {
     entities: 'Entitäten',
     ota: 'OTA Updates',
     settings: 'Einstellungen',
-    pairing: 'Geräte-Kopplung',
+    profile: 'Profil',
+    pairing: 'Ger\u00e4te-Kopplung',
     systemHealth: 'Systemstatus',
     systemStage: 'System-B\u00fchne',
     apiDocs: 'API-Dokumentation',
@@ -2582,6 +2583,18 @@ export default {
         sandbox: {
           title: 'Sandbox',
           text: 'Erstelle virtuelle Ger\u00e4te die echte Sensordaten simulieren. Perfekt um Automatisierungen, Dashboards und Alarme ohne echte Hardware zu testen.',
+        },
+        navPlugins: {
+          title: 'Plugins & Marktplatz',
+          text: "Klicke auf 'Plugins' in der Seitenleiste um Erweiterungen wie Frigate, Grafana, Ollama oder n8n zu durchsuchen und zu installieren.",
+        },
+        navCms: {
+          title: 'CMS & Inhaltsseiten',
+          text: "Der Bereich 'CMS' l\u00e4sst dich eigene Seiten mit HTML, Template-Variablen und Ger\u00e4tedaten bauen. Ver\u00f6ffentliche sie oder behalte sie als Entw\u00fcrfe.",
+        },
+        infoIcons: {
+          title: 'Info-Symbole & weitere Touren',
+          text: "Achte auf die kleinen Info-Symbole (\u2139) neben den Seitentiteln \u2014 sie erkl\u00e4ren was jede Seite macht. Viele bieten auch einen 'Gef\u00fchrte Tour starten'-Button f\u00fcr tiefere Einf\u00fchrungen. Du kannst auch das Absolventenhut-Symbol in der Kopfzeile klicken um jederzeit alle verf\u00fcgbaren Touren zu sehen.",
         },
         themeToggle: {
           title: 'Dark / Light Mode',

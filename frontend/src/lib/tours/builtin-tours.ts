@@ -224,11 +224,39 @@ const onboardingSteps: TourStep[] = [
     text: "tours.onboarding.steps.sandbox.text",
     delay: 600,
   },
+  // -- Plugins
+  {
+    id: "nav-plugins",
+    page: "/sandbox",
+    target: "[data-tour='nav-plugins']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navPlugins.title",
+    text: "tours.onboarding.steps.navPlugins.text",
+  },
+  // -- CMS
+  {
+    id: "nav-cms",
+    page: "/sandbox",
+    target: "[data-tour='nav-cms'] , a[href='/cms']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navCms.title",
+    text: "tours.onboarding.steps.navCms.text",
+  },
+  // -- Info icons explanation
+  {
+    id: "info-icons",
+    action: "info",
+    position: "center",
+    title: "tours.onboarding.steps.infoIcons.title",
+    text: "tours.onboarding.steps.infoIcons.text",
+  },
   // -- Dark/Light mode toggle
   {
     id: "theme-toggle",
     page: "/sandbox",
-    target: "[data-tour='theme-toggle'], button:has(svg[viewBox='0 0 24 24'])",
+    target: "[data-tour='theme-toggle']",
     action: "spotlight+pulse",
     position: "bottom",
     title: "tours.onboarding.steps.themeToggle.title",
@@ -262,7 +290,9 @@ export const onboardingTour: TourDefinition = {
   steps: onboardingSteps,
   category: "builtin",
   autoplay: true,
-  autoplayInterval: 5000,
+  // Sprint 10 T2: increased from 5s to 10s — users reported they couldn't
+  // read the text before auto-advancing. 10s gives comfortable reading time.
+  autoplayInterval: 10000,
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────

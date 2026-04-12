@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:hubextest.tech)",
+      "mcp__hubex__hubex_get_health",
+      "mcp__hubex__hubex_list_devices",
+      "mcp__hubex__hubex_navigate",
+      "mcp__hubex__hubex_highlight_element",
+      "mcp__hubex__hubex_create_automation",
+      "mcp__hubex__hubex_set_variable",
+      "mcp__hubex__hubex_create_dashboard",
+      "mcp__hubex__hubex_create_device",
+      "mcp__hubex__hubex_create_alert_rule",
+      "mcp__hubex__hubex_get_variable_value",
+      "mcp__hubex__hubex_get_metrics",
+      "mcp__hubex__hubex_list_alerts",
+      "mcp__hubex__hubex_list_dashboards",
+      "mcp__hubex__hubex_list_automations",
+      "mcp__hubex__hubex_show_notification",
+      "mcp__hubex__hubex_get_device",
+      "mcp__hubex__hubex_list_variables",
+      "mcp__hubex__hubex_camera",
+      "mcp__hubex__hubex_fly_to_node"
+    ]
+  }
+}
