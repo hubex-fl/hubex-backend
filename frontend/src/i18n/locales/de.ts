@@ -127,6 +127,7 @@ export default {
     leaveEmptyGlobal: 'Leer lassen f\u00fcr globale Variable',
     selectGroup: 'Gruppe ausw\u00e4hlen',
     chooseGroup: 'Gruppe w\u00e4hlen...',
+    clickMapToSetLocation: 'Klicke auf die Karte um Koordinaten zu setzen',
     confirm: 'Best\u00e4tigen',
     back: 'Zurück',
     next: 'Weiter',

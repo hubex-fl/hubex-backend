@@ -15,6 +15,7 @@ import USkeleton from "../components/ui/USkeleton.vue";
 import UToggle from "../components/ui/UToggle.vue";
 import UEntitySelect from "../components/ui/UEntitySelect.vue";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
+import ULocationPicker from "../components/ui/ULocationPicker.vue";
 
 const { t, tm, rt } = useI18n();
 const caps = useCapabilities();
@@ -717,7 +718,12 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
               placeholder="13.405"
             />
           </div>
-          <p class="text-[9px] text-[var(--text-muted)]">{{ t('pages.entities.locationGpsHint') }}</p>
+          <ULocationPicker
+            :lat="Number(createLocationLat) || 48.137"
+            :lng="Number(createLocationLng) || 11.576"
+            @update:lat="createLocationLat = String($event)"
+            @update:lng="createLocationLng = String($event)"
+          />
         </div>
 
         <div

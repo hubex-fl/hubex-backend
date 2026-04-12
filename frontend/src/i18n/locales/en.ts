@@ -128,6 +128,7 @@ export default {
     leaveEmptyGlobal: 'Leave empty for global variable',
     selectGroup: 'Select Group',
     chooseGroup: 'Choose a group...',
+    clickMapToSetLocation: 'Click the map to set coordinates',
     confirm: 'Confirm',
     back: 'Back',
     next: 'Next',
