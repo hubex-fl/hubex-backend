@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { setLocale } from "../i18n";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+// Sprint 10: language selector for unauthenticated landing visitors.
+// Uses setLocale() which also persists to localStorage + sets html[lang].
+function switchLandingLocale(lang: string) {
+  setLocale(lang as "en" | "de" | "fr" | "es");
+}
 
 const currentYear = new Date().getFullYear();
 
@@ -19,6 +26,13 @@ const features: Feature[] = [
   { icon: "workflow", titleKey: "landing.features.n8nTitle", descKey: "landing.features.n8nDesc" },
   { icon: "shield", titleKey: "landing.features.securityTitle", descKey: "landing.features.securityDesc" },
   { icon: "rocket", titleKey: "landing.features.deployTitle", descKey: "landing.features.deployDesc" },
+  // Sprint 10: additional feature tiles to showcase the full platform
+  { icon: "puzzle", titleKey: "landing.features.pluginsTitle", descKey: "landing.features.pluginsDesc" },
+  { icon: "flask", titleKey: "landing.features.sandboxTitle", descKey: "landing.features.sandboxDesc" },
+  { icon: "api", titleKey: "landing.features.customApiTitle", descKey: "landing.features.customApiDesc" },
+  { icon: "map", titleKey: "landing.features.systemMapTitle", descKey: "landing.features.systemMapDesc" },
+  { icon: "mail", titleKey: "landing.features.emailTitle", descKey: "landing.features.emailDesc" },
+  { icon: "robot", titleKey: "landing.features.mcpTitle", descKey: "landing.features.mcpDesc" },
 ];
 
 interface Competitor {
@@ -218,6 +232,17 @@ const mobileMenuOpen = ref(false);
               >{{ t('landing.nav.compare') }}</a
             >
             <!-- pricing nav hidden (Sprint 9 #8) -->
+            <!-- Sprint 10: language selector for unauthenticated visitors -->
+            <select
+              :value="locale"
+              class="text-sm bg-transparent text-gray-400 hover:text-white border border-gray-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#F5A623]/60 cursor-pointer"
+              @change="switchLandingLocale(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="en" class="bg-gray-900">English</option>
+              <option value="de" class="bg-gray-900">Deutsch</option>
+              <option value="fr" class="bg-gray-900">Français</option>
+              <option value="es" class="bg-gray-900">Español</option>
+            </select>
             <router-link
               to="/login"
               class="text-sm font-medium px-4 py-2 rounded-lg bg-[#F5A623] hover:bg-[#E09510] text-gray-950 transition-colors"
@@ -495,6 +520,25 @@ const mobileMenuOpen = ref(false);
                   d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"
                 />
               </svg>
+              <!-- Sprint 10: icons for new feature tiles -->
+              <svg v-if="feature.icon === 'puzzle'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.421 48.421 0 01-4.185-.07c-.96-.044-1.808-.676-1.808-1.637v-.84c0-.355-.186-.676-.401-.959A1.647 1.647 0 014 2.25c0-1.036 1.007-1.875 2.25-1.875S8.5 1.214 8.5 2.25c0 .369-.128.713-.349 1.003-.215.283-.401.604-.401.959" />
+              </svg>
+              <svg v-if="feature.icon === 'flask'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-2.47 7.411A1.125 1.125 0 0115.46 23H8.54a1.125 1.125 0 01-1.07-1.089L5 14.5m14 0H5" />
+              </svg>
+              <svg v-if="feature.icon === 'api'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+              </svg>
+              <svg v-if="feature.icon === 'map'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m0-8.25a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm0 8.25a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm6.75-12.75a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm0 8.25a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
+              </svg>
+              <svg v-if="feature.icon === 'mail'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+              </svg>
+              <svg v-if="feature.icon === 'robot'" class="w-6 h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+              </svg>
             </div>
             <h3 class="text-lg font-semibold mb-2">{{ t(feature.titleKey) }}</h3>
             <p class="text-sm text-gray-400 leading-relaxed">
@@ -506,6 +550,15 @@ const mobileMenuOpen = ref(false);
     </section>
 
     <!-- Architecture -->
+    <!-- Sprint 10: CE vs EE subtle banner -->
+    <div class="py-8 text-center border-t border-white/5">
+      <div class="max-w-3xl mx-auto px-4 flex flex-wrap items-center justify-center gap-3">
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/20">{{ t('landing.ceVsEe.ceBadge') }}</span>
+        <p class="text-sm text-gray-400">{{ t('landing.ceVsEe.text') }}</p>
+        <span class="px-3 py-1 rounded-full text-xs font-bold bg-[#2DD4BF]/10 text-[#2DD4BF] border border-[#2DD4BF]/20">{{ t('landing.ceVsEe.eeBadge') }}</span>
+      </div>
+    </div>
+
     <section id="architecture" class="py-20 sm:py-28 bg-gray-900/30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
