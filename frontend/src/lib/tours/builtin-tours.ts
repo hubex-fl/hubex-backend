@@ -736,16 +736,94 @@ export const variablesOverviewTour: TourDefinition = {
 };
 
 /** All static built-in tour definitions (excluding dynamic dashboard-present). */
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 8-12. Page-specific inline tours
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const entitiesOverviewTour: TourDefinition = {
+  id: "entities-overview", name: "tours.entitiesOverview.name",
+  description: "tours.entitiesOverview.description", icon: "boxes", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/entities", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.entitiesOverview.steps.intro.title", text: "tours.entitiesOverview.steps.intro.text" },
+    { id: "create", page: "/entities", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.entitiesOverview.steps.create.title", text: "tours.entitiesOverview.steps.create.text" },
+    { id: "hierarchy", page: "/entities", action: "info", position: "center",
+      title: "tours.entitiesOverview.steps.hierarchy.title", text: "tours.entitiesOverview.steps.hierarchy.text" },
+  ],
+};
+
+const settingsOverviewTour: TourDefinition = {
+  id: "settings-overview", name: "tours.settingsOverview.name",
+  description: "tours.settingsOverview.description", icon: "cog", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/settings", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.settingsOverview.steps.intro.title", text: "tours.settingsOverview.steps.intro.text" },
+    { id: "search", page: "/settings", target: "input[type='search']", action: "spotlight+pulse", position: "bottom",
+      title: "tours.settingsOverview.steps.search.title", text: "tours.settingsOverview.steps.search.text" },
+    { id: "sections", page: "/settings", target: ".space-y-2", action: "spotlight", position: "top",
+      title: "tours.settingsOverview.steps.sections.title", text: "tours.settingsOverview.steps.sections.text" },
+  ],
+};
+
+const sandboxOverviewTour: TourDefinition = {
+  id: "sandbox-overview", name: "tours.sandboxOverview.name",
+  description: "tours.sandboxOverview.description", icon: "flask", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/sandbox", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.sandboxOverview.steps.intro.title", text: "tours.sandboxOverview.steps.intro.text" },
+    { id: "templates", page: "/sandbox", action: "info", position: "center",
+      title: "tours.sandboxOverview.steps.templates.title", text: "tours.sandboxOverview.steps.templates.text" },
+    { id: "create", page: "/sandbox", target: "button", action: "spotlight+pulse", position: "left",
+      title: "tours.sandboxOverview.steps.create.title", text: "tours.sandboxOverview.steps.create.text" },
+  ],
+};
+
+const eventsOverviewTour: TourDefinition = {
+  id: "events-overview", name: "tours.eventsOverview.name",
+  description: "tours.eventsOverview.description", icon: "list", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/events", target: "h2", action: "spotlight", position: "bottom",
+      title: "tours.eventsOverview.steps.intro.title", text: "tours.eventsOverview.steps.intro.text" },
+    { id: "stream", page: "/events", action: "info", position: "center",
+      title: "tours.eventsOverview.steps.stream.title", text: "tours.eventsOverview.steps.stream.text" },
+    { id: "controls", page: "/events", action: "info", position: "center",
+      title: "tours.eventsOverview.steps.controls.title", text: "tours.eventsOverview.steps.controls.text" },
+  ],
+};
+
+const cmsOverviewTour: TourDefinition = {
+  id: "cms-overview", name: "tours.cmsOverview.name",
+  description: "tours.cmsOverview.description", icon: "page", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/cms", target: "h1", action: "spotlight", position: "bottom",
+      title: "tours.cmsOverview.steps.intro.title", text: "tours.cmsOverview.steps.intro.text" },
+    { id: "create", page: "/cms", target: "button:last-of-type", action: "spotlight+pulse", position: "left",
+      title: "tours.cmsOverview.steps.create.title", text: "tours.cmsOverview.steps.create.text" },
+    { id: "templates", page: "/cms", action: "info", position: "center",
+      title: "tours.cmsOverview.steps.templates.title", text: "tours.cmsOverview.steps.templates.text" },
+  ],
+};
+
 export const builtinTours: TourDefinition[] = [
   onboardingTour,
-  testerTour,         // Sprint 10 E1: test-instance specific tour
+  testerTour,
   dataPathTour,
   dashboardPresentTour,
   alertInvestigationTour,
-  // Sprint 8 F09: inline "Erklärung" tours for the top-level pages.
   devicesOverviewTour,
   automationsOverviewTour,
   variablesOverviewTour,
+  entitiesOverviewTour,
+  settingsOverviewTour,
+  sandboxOverviewTour,
+  eventsOverviewTour,
+  cmsOverviewTour,
 ];
 
 /**

@@ -249,6 +249,7 @@
         :class="{
           'widget-edit-mode': editMode,
           'widget-drag-over': dragOverWidgetId === widget.id,
+          'widget-transparent': widget.display_config?.transparent,
         }"
         :style="{
           gridColumn: `${widget.grid_col} / span ${widget.grid_span_w}`,
@@ -403,6 +404,21 @@
               <!-- Appearance section -->
               <div class="settings-section">
                 <h3 class="settings-section-title">{{ t('dashboardEnhance.appearance') }}</h3>
+
+                <!-- Sprint 10: Transparent mode toggle -->
+                <div class="field">
+                  <label class="field-label">{{ t('dashboardEnhance.transparentMode') }}</label>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                      :class="newWidget.transparent ? 'bg-[var(--primary)]' : 'bg-[var(--bg-raised)] border border-[var(--border)]'"
+                      @click="newWidget.transparent = !newWidget.transparent"
+                    >
+                      <span class="inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform" :class="newWidget.transparent ? 'translate-x-5' : 'translate-x-1'" />
+                    </button>
+                    <span class="text-[10px] text-[var(--text-muted)]">{{ t('dashboardEnhance.transparentHint') }}</span>
+                  </div>
+                </div>
 
                 <!-- Border color -->
                 <div class="field">
@@ -779,6 +795,7 @@ function defaultNewWidget() {
     grid_span_h: 3,
     html_template: "",
     // Appearance
+    transparent: false,
     border_color: "" as string,
     bg_color: "" as string,
     title_color: "" as string,
@@ -1392,6 +1409,7 @@ async function submitAddWidget() {
     if (newWidget.value.title_color) appearanceProps.title_color = newWidget.value.title_color;
     if (newWidget.value.border_radius && newWidget.value.border_radius !== "medium") appearanceProps.border_radius = newWidget.value.border_radius;
     if (newWidget.value.shadow && newWidget.value.shadow !== "none") appearanceProps.shadow = newWidget.value.shadow;
+    if (newWidget.value.transparent) appearanceProps.transparent = true;
 
     const displayConfig: Record<string, unknown> | null = (() => {
       const cfg: Record<string, unknown> = { ...appearanceProps };
@@ -1503,6 +1521,7 @@ function openWidgetConfig(widget: DashboardWidget) {
     grid_span_h: widget.grid_span_h,
     html_template: (dc.html_template as string) || "",
     // Appearance
+    transparent: !!dc.transparent,
     border_color: (dc.border_color as string) || "",
     bg_color: (dc.bg_color as string) || "",
     title_color: (dc.title_color as string) || "",
@@ -1670,6 +1689,17 @@ function openAddWidget() {
   min-height: 0;
   transition: box-shadow 0.15s, border-color 0.15s;
   border-radius: 6px;
+}
+/* Sprint 10: transparent mode — no background, border, or shadow */
+.widget-transparent {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.widget-transparent .viz-widget {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .db-widget-cell > .viz-widget,
 .db-widget-cell > * {

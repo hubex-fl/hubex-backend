@@ -2444,6 +2444,8 @@ export default {
     pinPlaceholder: '4-6 digit PIN',
     // Appearance
     appearance: 'Appearance',
+    transparentMode: 'Transparent Widget',
+    transparentHint: 'Remove background, border and shadow — only the chart/data is visible',
     borderColor: 'Border Color',
     bgColor: 'Background Color',
     titleColor: 'Title Color',
@@ -2552,6 +2554,96 @@ export default {
         done: {
           title: 'Tip',
           text: 'Variables power dashboards, automations, alerts, and CMS pages. Assign semantic types (like temperature or GPS) to unlock smart widgets.',
+        },
+      },
+    },
+    entitiesOverview: {
+      name: 'Entities Overview',
+      description: 'Learn about entities and groups',
+      steps: {
+        intro: {
+          title: 'Entities & Groups',
+          text: 'Entities bundle related devices into logical groups — rooms, buildings, zones, or custom types. This lets you organize your fleet and scope dashboards and automations to specific areas.',
+        },
+        create: {
+          title: 'Create an Entity',
+          text: 'Click here to create a new entity. Choose a type, set a name, and optionally assign it to a parent entity to build hierarchies like Site → Building → Floor → Room.',
+        },
+        hierarchy: {
+          title: 'Why Hierarchies?',
+          text: 'Nesting entities lets you scope dashboards to show only data from a specific room, or automations to trigger only for devices in a certain zone. Think of it like folders for your IoT devices.',
+        },
+      },
+    },
+    settingsOverview: {
+      name: 'Settings Overview',
+      description: 'Navigate the settings sections',
+      steps: {
+        intro: {
+          title: 'Your Settings Hub',
+          text: 'Settings is organized into expandable sections: Edition & Limits, Account & Profile, Features, Notifications, Organization, Developer Tools, and System.',
+        },
+        search: {
+          title: 'Quick Search',
+          text: 'Type here to filter settings sections by name. Matching sections auto-expand so you can find what you need instantly.',
+        },
+        sections: {
+          title: 'Expandable Sections',
+          text: 'Click any section header to expand it. Each section contains related controls — from your profile and MFA setup to API keys and feature flags.',
+        },
+      },
+    },
+    sandboxOverview: {
+      name: 'Sandbox Overview',
+      description: 'Create device simulators',
+      steps: {
+        intro: {
+          title: 'The Simulator Sandbox',
+          text: 'Create virtual devices that generate realistic sensor data — temperature, humidity, GPS, motion, and more. Perfect for testing automations and dashboards without real hardware.',
+        },
+        templates: {
+          title: '12 Built-in Templates',
+          text: 'Choose from templates like BME280, Weather Station, GPS Tracker, Servo Motor, LED Dimmer, and Door Contact. Each generates data patterns that mimic real sensors.',
+        },
+        create: {
+          title: 'Create a Simulator',
+          text: 'Click here to create a new simulator. Pick a template, customize the data patterns, set the interval, and start it. A virtual device appears automatically in your Devices list.',
+        },
+      },
+    },
+    eventsOverview: {
+      name: 'Events Overview',
+      description: 'Understanding the event stream',
+      steps: {
+        intro: {
+          title: 'Live Event Stream',
+          text: 'Events is a real-time log of everything happening in your system — device telemetry, automation triggers, alert fires, and system actions. New events appear automatically via polling.',
+        },
+        stream: {
+          title: 'Streams Explained',
+          text: 'Events are grouped into streams. "system" shows platform-wide events. Device streams (device:uid) show events from a specific device. Select a stream from the dropdown to filter.',
+        },
+        controls: {
+          title: 'Controls & Filters',
+          text: 'Use Start/Stop to control polling. The Trace ID filter links related events — for example, find all downstream actions triggered by a single telemetry ingestion. Time presets let you jump to specific time windows.',
+        },
+      },
+    },
+    cmsOverview: {
+      name: 'CMS Overview',
+      description: 'Build content pages',
+      steps: {
+        intro: {
+          title: 'Content Management',
+          text: 'The CMS lets you build custom pages with HTML, template variables, and live device data. Pages can be private drafts or published publicly with their own URLs.',
+        },
+        create: {
+          title: 'Create a Page',
+          text: 'Click here to start from a template (Landing, Blog, About, Contact) or a blank page. Templates give you a pre-designed layout that you can customize.',
+        },
+        templates: {
+          title: 'Templates & Variables',
+          text: 'Pages support template variables like {{variable:temperature}} that render live device data. Use the visual TipTap editor for rich formatting, or drop to Code view for full HTML control.',
         },
       },
     },
