@@ -1595,6 +1595,11 @@ export default {
       activeCapabilities: 'Aktive Fähigkeiten',
       systemStatus: 'Systemstatus',
       // Sprint 8 R4 Bucket C F22: MVP Admin-Panels
+      rolesTitle: 'Rollen & Berechtigungen',
+      rolesHint: 'Vordefinierte Rollendefinitionen',
+      noRoles: 'Keine Rollen definiert.',
+      builtinRole: 'vordefiniert',
+      roleCapHint: 'Die Rolle "{role}" gew\u00e4hrt {count} Berechtigungen. Rollen werden pro Organisations-Mitgliedschaft zugewiesen.',
       yourCapsTitle: 'Deine Berechtigungen',
       yourCapsCount: '{n} aktiv',
       yourCapsLoading: 'Berechtigungen werden geprüft\u2026',

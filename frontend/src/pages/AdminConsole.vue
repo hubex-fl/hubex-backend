@@ -188,11 +188,33 @@ function roleBadgeStatus(role: string): "ok" | "warn" | "neutral" {
   return "neutral";
 }
 
+// Sprint 10 A1: Role → Caps overview for owners
+type RoleInfo = { role: string; caps_count: number; is_builtin: boolean };
+const roles = ref<RoleInfo[]>([]);
+const rolesLoading = ref(true);
+const expandedRole = ref<string | null>(null);
+
+async function loadRoles() {
+  rolesLoading.value = true;
+  try {
+    roles.value = await apiFetch<RoleInfo[]>("/api/v1/auth/roles");
+  } catch {
+    roles.value = [];
+  } finally {
+    rolesLoading.value = false;
+  }
+}
+
+function toggleRoleExpand(role: string) {
+  expandedRole.value = expandedRole.value === role ? null : role;
+}
+
 onMounted(() => {
   loadModules();
   loadHealth();
   loadOrgs();
   loadMembers();
+  loadRoles();
 });
 </script>
 
@@ -308,6 +330,39 @@ onMounted(() => {
           :title="capLabel(cap)"
           class="text-[10px] px-2 py-1 rounded bg-[var(--bg-raised)] border border-[var(--border)] font-mono text-[var(--text-secondary)]"
         >{{ cap }}</span>
+      </div>
+    </UCard>
+
+    <!-- Sprint 10 A1: Role → Capabilities overview -->
+    <UCard>
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('pages.admin.rolesTitle') }}</h3>
+          <span class="text-xs text-[var(--text-muted)]">{{ t('pages.admin.rolesHint') }}</span>
+        </div>
+      </template>
+      <div v-if="rolesLoading" class="text-xs text-[var(--text-muted)] py-2">{{ t('common.loading') }}</div>
+      <div v-else-if="!roles.length" class="text-xs text-[var(--text-muted)] py-2">{{ t('pages.admin.noRoles') }}</div>
+      <div v-else class="divide-y divide-[var(--border)]">
+        <div v-for="r in roles" :key="r.role" class="py-2.5">
+          <button
+            class="w-full flex items-center justify-between text-left hover:bg-[var(--bg-raised)]/50 rounded px-1 py-1 transition-colors"
+            @click="toggleRoleExpand(r.role)"
+          >
+            <div class="flex items-center gap-2">
+              <svg
+                :class="['h-3 w-3 text-[var(--text-muted)] transition-transform', expandedRole === r.role ? 'rotate-90' : '']"
+                fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+              ><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+              <span class="text-xs font-medium text-[var(--text-primary)]">{{ r.role }}</span>
+              <UBadge :status="roleBadgeStatus(r.role)" size="sm">{{ r.caps_count }} caps</UBadge>
+            </div>
+            <span v-if="r.is_builtin" class="text-[9px] text-[var(--text-muted)]">{{ t('pages.admin.builtinRole') }}</span>
+          </button>
+          <p v-if="expandedRole === r.role" class="mt-2 px-1 text-[10px] text-[var(--text-muted)] leading-relaxed">
+            {{ t('pages.admin.roleCapHint', { role: r.role, count: r.caps_count }) }}
+          </p>
+        </div>
       </div>
     </UCard>
 
