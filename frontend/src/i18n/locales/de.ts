@@ -17,6 +17,7 @@ export default {
     ota: 'OTA Updates',
     settings: 'Einstellungen',
     profile: 'Profil',
+    organization: 'Organisation',
     pairing: 'Ger\u00e4te-Kopplung',
     systemHealth: 'Systemstatus',
     systemStage: 'System-B\u00fchne',

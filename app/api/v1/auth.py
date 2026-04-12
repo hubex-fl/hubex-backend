@@ -168,12 +168,19 @@ async def _create_refresh_token(
 # ---------------------------------------------------------------------------
 
 async def _find_user_org(db: AsyncSession, user_id: int) -> int | None:
-    """Return the org_id if user belongs to exactly one org, else None."""
+    """Return the user's primary org_id.
+
+    If the user belongs to one org, return that.
+    If the user belongs to multiple orgs, return the first one (by id)
+    so they always land in a valid org context at login.
+    """
     res = await db.execute(
-        select(OrganizationUser).where(OrganizationUser.user_id == user_id)
+        select(OrganizationUser)
+        .where(OrganizationUser.user_id == user_id)
+        .order_by(OrganizationUser.org_id)
     )
     memberships = list(res.scalars().all())
-    if len(memberships) == 1:
+    if memberships:
         return memberships[0].org_id
     return None
 

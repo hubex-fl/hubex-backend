@@ -85,12 +85,58 @@ const showUserMenu = ref(false);
 // Sprint 10 T5: load user info for the account dropdown
 const userDisplayName = ref<string | null>(null);
 const userEmail = ref("");
+
+// Org-Switcher state
+interface OrgInfo { id: number; name: string; slug: string; }
+const userOrgs = ref<OrgInfo[]>([]);
+const currentOrgId = ref<number | null>(null);
+const currentOrgName = computed(() => {
+  const org = userOrgs.value.find(o => o.id === currentOrgId.value);
+  return org?.name || "";
+});
+const showOrgSwitcher = computed(() => userOrgs.value.length > 1);
+const switchingOrg = ref(false);
+
+async function switchOrg(orgId: number) {
+  if (orgId === currentOrgId.value || switchingOrg.value) return;
+  switchingOrg.value = true;
+  try {
+    const { apiFetch, setToken } = await import("../lib/api");
+    const resp = await apiFetch<{ access_token: string }>("/api/v1/auth/switch-org", {
+      method: "POST",
+      body: JSON.stringify({ org_id: orgId }),
+    });
+    setToken(resp.access_token);
+    currentOrgId.value = orgId;
+    showUserMenu.value = false;
+    // Reload page to reflect new org context
+    window.location.reload();
+  } catch (e) {
+    console.error("Failed to switch org:", e);
+  } finally {
+    switchingOrg.value = false;
+  }
+}
+
 onMounted(async () => {
   if (hasToken()) {
     try {
-      const me = await import("../lib/api").then(m => m.apiFetch<{ email: string; display_name?: string | null }>("/api/v1/users/me"));
+      const { apiFetch } = await import("../lib/api");
+      const me = await apiFetch<{ email: string; display_name?: string | null }>("/api/v1/users/me");
       userDisplayName.value = me.display_name || null;
       userEmail.value = me.email;
+
+      // Get current org_id from JWT token via auth store
+      const authStore = await import("../stores/auth").then(m => m.useAuthStore());
+      currentOrgId.value = authStore.orgId;
+
+      // Load user's orgs for the switcher
+      const orgs = await apiFetch<OrgInfo[]>("/api/v1/orgs");
+      userOrgs.value = orgs;
+      // If no current org from token, use first org
+      if (!currentOrgId.value && orgs.length > 0) {
+        currentOrgId.value = orgs[0].id;
+      }
     } catch { /* ignore */ }
   }
 });
@@ -715,10 +761,32 @@ function handleNavClick() {
               v-if="showUserMenu"
               class="absolute right-0 top-full mt-1 z-50 w-52 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl py-1"
             >
-              <!-- Sprint 10 T5: user identity header -->
+              <!-- User identity header -->
               <div class="px-3 py-2 border-b border-[var(--border)]">
                 <p v-if="userDisplayName" class="text-xs font-semibold text-[var(--text-primary)] truncate">{{ userDisplayName }}</p>
                 <p class="text-[10px] text-[var(--text-muted)] truncate">{{ userEmail }}</p>
+              </div>
+              <!-- Org Switcher (only if user is in 2+ orgs) -->
+              <div v-if="showOrgSwitcher" class="px-2 py-1.5 border-b border-[var(--border)]">
+                <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-wide px-1 mb-1">{{ t('nav.organization') }}</p>
+                <button
+                  v-for="org in userOrgs"
+                  :key="org.id"
+                  :class="[
+                    'w-full flex items-center gap-2 px-2 py-1.5 rounded text-[11px] transition-colors',
+                    org.id === currentOrgId
+                      ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-medium'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
+                  ]"
+                  :disabled="switchingOrg"
+                  @click="switchOrg(org.id)"
+                >
+                  <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21" />
+                  </svg>
+                  <span class="truncate">{{ org.name }}</span>
+                  <svg v-if="org.id === currentOrgId" class="h-3 w-3 ml-auto text-[var(--primary)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                </button>
               </div>
               <!-- Profile shortcut -->
               <router-link

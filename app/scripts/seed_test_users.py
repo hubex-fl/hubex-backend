@@ -1,28 +1,20 @@
-"""Sprint 9 — Seed test-user accounts with the 'tester' role + demo simulators.
+"""Seed test-user accounts with separate orgs, tester role, and demo simulators.
 
-Creates (or updates) test accounts on the hubextest.tech demo instance.
-Each test user gets the 'tester' RBAC role which gives them interactive
-access to devices, variables, dashboards, automations, and simulators
-but NOT to config, org admin, CMS publish, webhooks, OTA, or API keys.
-
-Also creates and starts 2-3 simulators so the test user has live data
-from the moment they log in — variables accumulate, dashboards have
-something to show, events fire.
+Each test user gets:
+- Their own Organization (isolated devices, variables, dashboards)
+- The 'tester' RBAC role (interactive but restricted)
+- 3 demo simulators (Temperature, Weather, Motion+GPS) auto-started
+- The owner account (account@florianlangen.de) added to their org as 'owner'
 
 Run manually:
     python -m app.scripts.seed_test_users
 
-Or add to the daily-reset cron on the VPS so test users survive resets.
-
-Environment variables (all optional):
-    HUBEX_TEST_EMAILS   — comma-separated emails (default: test@hubextest.tech)
-    HUBEX_TEST_PASSWORD — shared password (default: HubExDemo2025!)
-    HUBEX_TEST_ORG_ID   — org to assign tester role in (default: 1)
+Idempotent: skips users/orgs/simulators that already exist.
 """
 
 import asyncio
 import logging
-import os
+import re
 import secrets
 
 from datetime import datetime, timezone
@@ -31,7 +23,7 @@ from sqlalchemy import select
 from app.core.capabilities import ROLE_CAPS, resolve_caps_for_role
 from app.core.security import hash_password, verify_password
 from app.db.models.device import Device
-from app.db.models.orgs import OrganizationUser
+from app.db.models.orgs import Organization, OrganizationUser
 from app.db.models.simulator import SimulatorConfig
 from app.db.models.user import User
 from app.db.session import AsyncSessionLocal
@@ -39,73 +31,53 @@ from app.db.session import AsyncSessionLocal
 logger = logging.getLogger("uvicorn.error")
 
 
-DEFAULT_EMAILS = "test@hubextest.tech"
-DEFAULT_PASSWORD = "HubExDemo2025!"
-DEFAULT_ORG_ID = 1
+# ── Tester Definitions ─────────────────────────────────────────────────────────
+
+OWNER_EMAIL = "account@florianlangen.de"
+
+TESTERS = [
+    {
+        "email": "tobiaslangen69@gmail.com",
+        "password": "Kx8#mVpL2$nRqT",
+        "display_name": "Toby",
+        "org_name": "Community Systems",
+        "org_slug": "community-systems",
+    },
+    {
+        "email": "mmund@smail.uni-koeln.de",
+        "password": "Wf3@jNhD9&bYsG",
+        "display_name": "Martin",
+        "org_name": "ChaosUhren24.de",
+        "org_slug": "chaosuhren24",
+    },
+    {
+        "email": "info@dema-abrechnungsservice.de",
+        "password": "Qz7!cXrE4*uPaM",
+        "display_name": "Leo",
+        "org_name": "DeMa Abrechnungsservice",
+        "org_slug": "dema-abrechnungsservice",
+    },
+    {
+        "email": "praegustator@hubextest.tech",
+        "password": "Jt5%gBwK6^dFvH",
+        "display_name": "praegustator",
+        "org_name": "QA Internal",
+        "org_slug": "qa-internal",
+    },
+]
+
+# Also keep the legacy test user (for backward compat)
+LEGACY_TEST_EMAIL = "test@hubextest.tech"
+LEGACY_TEST_PASSWORD = "HubExDemo2025!"
 
 
-async def seed_test_user(
-    db,
-    *,
-    email: str,
-    password: str,
-    org_id: int,
-) -> str:
-    """Create or update a single test user with the 'tester' role.
+# ── Simulator Templates ─────────────────────────────────────────────────────────
 
-    Returns a status string for logging.
-    """
-    # 1. Upsert user record
-    res = await db.execute(select(User).where(User.email == email))
-    user = res.scalar_one_or_none()
-
-    tester_caps = resolve_caps_for_role("tester")
-
-    if user is None:
-        user = User(
-            email=email,
-            password_hash=hash_password(password),
-            caps=tester_caps,
-        )
-        db.add(user)
-        await db.flush()
-        status = "created"
-    else:
-        # Ensure password + caps match
-        if not verify_password(password, user.password_hash):
-            user.password_hash = hash_password(password)
-        user.caps = tester_caps
-        status = "updated"
-
-    # 2. Ensure OrganizationUser membership with role='tester'
-    ou_res = await db.execute(
-        select(OrganizationUser).where(
-            OrganizationUser.org_id == org_id,
-            OrganizationUser.user_id == user.id,
-        )
-    )
-    ou = ou_res.scalar_one_or_none()
-    if ou is None:
-        ou = OrganizationUser(org_id=org_id, user_id=user.id, role="tester")
-        db.add(ou)
-        status += "+joined-org"
-    elif ou.role != "tester":
-        ou.role = "tester"
-        status += "+role-fixed"
-
-    await db.commit()
-    return status
-
-
-# ── Simulator Seeding ────────────────────────────────────────────────────────
-
-# Templates to auto-create for the test user. These match the backend
-# _TEMPLATES in app/api/v1/simulator.py so they produce realistic data.
 SEED_SIMULATORS = [
     {
         "name": "[Demo] Temperature Sensor",
         "template": "temperature",
-        "description": "Auto-created demo simulator — temperature, humidity, pressure",
+        "description": "Demo simulator — temperature, humidity, pressure",
         "interval_seconds": 10,
         "patterns": [
             {"variable_key": "temperature", "pattern": "sine",
@@ -119,7 +91,7 @@ SEED_SIMULATORS = [
     {
         "name": "[Demo] Weather Station",
         "template": "weather",
-        "description": "Auto-created demo simulator — outdoor weather with wind + rain",
+        "description": "Demo simulator — outdoor weather with wind + rain",
         "interval_seconds": 15,
         "patterns": [
             {"variable_key": "temperature", "pattern": "sine",
@@ -135,7 +107,7 @@ SEED_SIMULATORS = [
     {
         "name": "[Demo] Motion Sensor",
         "template": "motion",
-        "description": "Auto-created demo simulator — PIR motion + ambient light + GPS tracking",
+        "description": "Demo simulator — PIR motion + ambient light + GPS tracking",
         "interval_seconds": 10,
         "patterns": [
             {"variable_key": "motion", "pattern": "step",
@@ -160,16 +132,72 @@ SEED_SIMULATORS = [
 ]
 
 
-async def seed_simulators(db, *, user: User, org_id: int | None) -> int:
-    """Create demo simulators + virtual devices and start them.
+# ── Core Functions ──────────────────────────────────────────────────────────────
 
-    Idempotent: skips simulators whose name already exists for this user.
-    Returns the number of newly created simulators.
-    """
+async def ensure_org(db, *, name: str, slug: str) -> Organization:
+    """Get or create an organization by slug."""
+    res = await db.execute(select(Organization).where(Organization.slug == slug))
+    org = res.scalar_one_or_none()
+    if org:
+        return org
+    org = Organization(name=name, slug=slug, plan="free", max_devices=50, max_users=10)
+    db.add(org)
+    await db.flush()
+    print(f"  Created org: {name} (id={org.id})")
+    return org
+
+
+async def ensure_user(db, *, email: str, password: str, display_name: str | None = None) -> tuple[User, str]:
+    """Get or create a user. Returns (user, status)."""
+    res = await db.execute(select(User).where(User.email == email))
+    user = res.scalar_one_or_none()
+
+    tester_caps = resolve_caps_for_role("tester")
+
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=hash_password(password),
+            caps=tester_caps,
+            display_name=display_name,
+        )
+        db.add(user)
+        await db.flush()
+        return user, "created"
+    else:
+        if not verify_password(password, user.password_hash):
+            user.password_hash = hash_password(password)
+        user.caps = tester_caps
+        if display_name and not user.display_name:
+            user.display_name = display_name
+        return user, "updated"
+
+
+async def ensure_membership(db, *, user_id: int, org_id: int, role: str) -> str:
+    """Ensure user is member of org with given role."""
+    res = await db.execute(
+        select(OrganizationUser).where(
+            OrganizationUser.org_id == org_id,
+            OrganizationUser.user_id == user_id,
+        )
+    )
+    ou = res.scalar_one_or_none()
+    if ou is None:
+        ou = OrganizationUser(org_id=org_id, user_id=user_id, role=role)
+        db.add(ou)
+        return f"joined ({role})"
+    elif ou.role != role:
+        ou.role = role
+        return f"role→{role}"
+    return "ok"
+
+
+async def seed_simulators_for_org(db, *, user: User, org_id: int) -> int:
+    """Create demo simulators + virtual devices for an org. Idempotent."""
     created = 0
 
     for spec in SEED_SIMULATORS:
-        # Check if already exists
+        # Check if already exists for this user
         res = await db.execute(
             select(SimulatorConfig).where(
                 SimulatorConfig.owner_id == user.id,
@@ -177,9 +205,9 @@ async def seed_simulators(db, *, user: User, org_id: int | None) -> int:
             )
         )
         if res.scalar_one_or_none() is not None:
-            continue  # already seeded
+            continue
 
-        # Create virtual device for this simulator
+        # Create virtual device
         uid = f"sim-{secrets.token_hex(6)}"
         device = Device(
             device_uid=uid,
@@ -221,34 +249,80 @@ async def seed_simulators(db, *, user: User, org_id: int | None) -> int:
 
         created += 1
 
-    await db.commit()
     return created
 
 
 async def main():
-    emails_raw = os.getenv("HUBEX_TEST_EMAILS", DEFAULT_EMAILS)
-    password = os.getenv("HUBEX_TEST_PASSWORD", DEFAULT_PASSWORD)
-    org_id = int(os.getenv("HUBEX_TEST_ORG_ID", str(DEFAULT_ORG_ID)))
-    emails = [e.strip() for e in emails_raw.split(",") if e.strip()]
-
-    print(f"Seeding {len(emails)} test user(s) with role='tester' in org_id={org_id}")
-    print(f"Tester caps: {len(ROLE_CAPS['tester'])} capabilities")
+    print("=" * 60)
+    print("HUBEX Test User Seeding — Separate Orgs")
+    print("=" * 60)
 
     async with AsyncSessionLocal() as db:
-        for email in emails:
-            status = await seed_test_user(db, email=email, password=password, org_id=org_id)
-            print(f"  {email}: {status}")
+        # ── Find the owner account ──────────────────────────────────
+        res = await db.execute(select(User).where(User.email == OWNER_EMAIL))
+        owner = res.scalar_one_or_none()
+        if not owner:
+            print(f"WARNING: Owner account {OWNER_EMAIL} not found!")
+            print("  Owner will not be added to tester orgs.")
+        else:
+            print(f"Owner: {OWNER_EMAIL} (id={owner.id})")
 
-            # Seed demo simulators for this user
-            res = await db.execute(select(User).where(User.email == email))
-            user = res.scalar_one()
-            sim_count = await seed_simulators(db, user=user, org_id=org_id)
+        # ── Process each tester ─────────────────────────────────────
+        for spec in TESTERS:
+            print(f"\n--- {spec['display_name']} ({spec['email']}) ---")
+
+            # 1. Create org
+            org = await ensure_org(db, name=spec["org_name"], slug=spec["org_slug"])
+            print(f"  Org: {org.name} (id={org.id})")
+
+            # 2. Create user
+            user, status = await ensure_user(
+                db,
+                email=spec["email"],
+                password=spec["password"],
+                display_name=spec["display_name"],
+            )
+            print(f"  User: {status} (id={user.id})")
+
+            # 3. Add user to their org as tester
+            mem_status = await ensure_membership(db, user_id=user.id, org_id=org.id, role="tester")
+            print(f"  Membership: {mem_status}")
+
+            # 4. Set user's default org
+            if hasattr(user, "default_org_id"):
+                user.default_org_id = org.id
+
+            # 5. Add owner to this org
+            if owner:
+                owner_status = await ensure_membership(db, user_id=owner.id, org_id=org.id, role="owner")
+                print(f"  Owner membership: {owner_status}")
+
+            await db.commit()
+
+            # 6. Seed simulators
+            sim_count = await seed_simulators_for_org(db, user=user, org_id=org.id)
             if sim_count:
-                print(f"    + {sim_count} demo simulator(s) created and started")
+                print(f"  + {sim_count} simulator(s) created and started")
             else:
-                print(f"    (simulators already seeded)")
+                print(f"  (simulators already seeded)")
+            await db.commit()
 
-    print("Done.")
+        # ── Legacy test user (keep for backward compat) ─────────────
+        print(f"\n--- Legacy: {LEGACY_TEST_EMAIL} ---")
+        res = await db.execute(select(User).where(User.email == LEGACY_TEST_EMAIL))
+        legacy = res.scalar_one_or_none()
+        if legacy:
+            legacy.caps = resolve_caps_for_role("tester")
+            if not verify_password(LEGACY_TEST_PASSWORD, legacy.password_hash):
+                legacy.password_hash = hash_password(LEGACY_TEST_PASSWORD)
+            print(f"  Updated (id={legacy.id})")
+            await db.commit()
+        else:
+            print("  Not found, skipping.")
+
+    print("\n" + "=" * 60)
+    print("Done! Tester accounts ready.")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
