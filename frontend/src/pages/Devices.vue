@@ -929,7 +929,8 @@ onUnmounted(() => {
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr class="border-b border-[var(--border)] bg-[var(--bg-raised)]">
-              <th class="w-10 px-4 py-3" />
+              <th v-if="caps.status === 'ready' && hasCap('cap.admin')" class="w-10 px-4 py-3" />
+              <th v-else class="w-2" />
               <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] text-left min-w-[200px]">
                 {{ t('devices.colDevice') }}
               </th>
@@ -1017,8 +1018,8 @@ onUnmounted(() => {
                 :class="d.state === 'claimed' ? 'cursor-pointer' : 'cursor-default'"
                 @click="onRowClick(d)"
               >
-                <!-- Checkbox -->
-                <td class="px-4 py-3 w-10">
+                <!-- Checkbox (only for admin/owner who can bulk-unclaim or purge) -->
+                <td v-if="caps.status === 'ready' && hasCap('cap.admin')" class="px-4 py-3 w-10">
                   <input
                     type="checkbox"
                     class="h-4 w-4 rounded accent-[var(--primary)]"
@@ -1028,6 +1029,7 @@ onUnmounted(() => {
                     @click.stop
                   />
                 </td>
+                <td v-else class="w-2" />
 
                 <!-- UID -->
                 <td class="px-4 py-3">
@@ -1214,8 +1216,9 @@ onUnmounted(() => {
                 </span>
               </div>
               <div class="flex items-center gap-1 shrink-0" @click.stop>
-                <!-- Bulk checkbox -->
+                <!-- Bulk checkbox (admin only) -->
                 <input
+                  v-if="caps.status === 'ready' && hasCap('cap.admin')"
                   type="checkbox"
                   class="h-4 w-4 shrink-0 rounded accent-[var(--primary)]"
                   :checked="isSelected(d.id)"

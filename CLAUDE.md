@@ -74,6 +74,27 @@ Erklärungen/Tooltips > Farben/Fonts. Interaktive Elemente > statische Anzeigen.
 - Phase 11a: Hardware Implementation Blocks A-H [coming soon]
 - Phase 11b: Produkt-Evolution [brainstorm]
 
+## Deploy-Checkliste (Tester-Safe) — PFLICHT vor jedem Deploy
+Testnutzer sind aktiv auf hubextest.tech. Jeder Deploy MUSS diese Regeln einhalten:
+
+- [ ] **Neue Sidebar-Items** → `comingSoon: true` ODER `cap: "cap.admin"` setzen
+- [ ] **Neue Seiten** → `<RequireCap cap="cap.admin">` wrapper um den Content
+- [ ] **Neue Sections auf bestehenden Seiten** → `v-if="hasCap('cap.admin')"` um neue Bereiche
+- [ ] **Neue API-Endpoints** → In `CAPABILITY_MAP` (capabilities.py) mit `cap.admin` schützen
+- [ ] **DB-Änderungen** → NUR `nullable=True` Columns (kein DROP, kein ALTER NOT NULL, kein Rename)
+- [ ] **`tsc -b && vite build` erfolgreich?** (tsc ist strenger als vite alleine!)
+- [ ] **Kein Breaking Change** an bestehenden API-Responses (keine Feld-Umbenennungen, keine Typ-Änderungen)
+- [ ] **Bestehende Daten unberührt** → Keine Seed-Scripts die vorhandene Daten überschreiben
+
+### Mechanismen zur Feature-Isolation
+| Mechanismus | Wo | Wirkung |
+|---|---|---|
+| `cap: "cap.admin"` | DefaultLayout.vue Nav-Item | Seite nur für Owner/Admin |
+| `comingSoon: true` | DefaultLayout.vue Nav-Item | Sichtbar aber ausgegraut + nicht klickbar |
+| `<RequireCap cap="x">` | Beliebige Seite | Content-Block nur mit passender Cap |
+| `v-if="hasCap('cap.admin')"` | Inline in Templates | Einzelne UI-Sections verstecken |
+| `CAPABILITY_MAP` | capabilities.py | Backend blockt Route ohne passende Cap |
+
 ## Design System — "Warm Depth"
 - Primary: Amber/Gold (#F5A623) | Accent: Teal (#2DD4BF) | BG: #111110
 - Fonts: Satoshi (Display), Inter (Body), IBM Plex Mono (Data)

@@ -550,6 +550,8 @@ export default {
     vizHintLabel: 'Visualization hint',
     saveChanges: 'Save changes',
     // Sprint 10 D3: computed variable fields
+    computed: 'Computed',
+    computedTooltip: 'This variable is calculated from a formula',
     computedSection: 'Computed Variable (optional)',
     formulaLabel: 'Formula',
     formulaPlaceholder: '(temperature + humidity) / 2',

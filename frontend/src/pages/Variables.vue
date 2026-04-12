@@ -144,6 +144,9 @@ const crDescription   = ref("");
 const crUnit          = ref("");
 const crMin           = ref("");
 const crMax           = ref("");
+const crFormula       = ref("");
+const crComputeTrigger = ref("");
+const crComputeCron   = ref("");
 const crSaving        = ref(false);
 const crError         = ref<string | null>(null);
 
@@ -348,6 +351,7 @@ function openCreate() {
   crIsSecret.value = false; crIsReadonly.value = false;
   crDisplayHint.value = "auto"; crCategory.value = ""; crDescription.value = "";
   crUnit.value = ""; crMin.value = ""; crMax.value = "";
+  crFormula.value = ""; crComputeTrigger.value = ""; crComputeCron.value = "";
   crError.value = null; createOpen.value = true;
 }
 
@@ -368,6 +372,9 @@ async function handleCreate() {
       unit: crUnit.value || null,
       minValue: crMin.value !== "" ? parseFloat(crMin.value) : null,
       maxValue: crMax.value !== "" ? parseFloat(crMax.value) : null,
+      formula: crFormula.value || null,
+      computeTrigger: crComputeTrigger.value || null,
+      computeCron: crComputeCron.value || null,
     } as unknown as VariableDefinitionInput;
     await createDefinition(defInput);
     if (crValue.value) {
@@ -765,6 +772,7 @@ onMounted(async () => {
                 <div class="key-wrap">
                   <span v-if="categoryIcon(def.category)" class="key-icon">{{ categoryIcon(def.category) }}</span>
                   <span class="key-name">{{ def.key }}</span>
+                  <UBadge v-if="(def as any).formula" status="info" size="sm" :title="t('variables.computedTooltip')">⚡ {{ t('variables.computed') }}</UBadge>
                   <span v-if="def.category" class="key-cat">{{ categoryLabel(def.category) }}</span>
                 </div>
                 <span v-if="def.description" class="key-desc">{{ descriptionLabel(def.description) }}</span>
@@ -982,6 +990,41 @@ onMounted(async () => {
             <span>{{ t('variables.readonlyToggle') }} <span class="toggle-hint">{{ t('variables.readonlyHint') }}</span></span>
           </label>
         </div>
+        <!-- Computed Variable fields (create) -->
+        <div class="border-t border-[var(--border)] pt-3 mt-3">
+          <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">{{ t('variables.computedSection') }}</p>
+          <div class="form-field">
+            <label>{{ t('variables.formulaLabel') }}</label>
+            <input
+              v-model="crFormula"
+              type="text"
+              class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono"
+              :placeholder="t('variables.formulaPlaceholder')"
+            />
+            <p class="text-[9px] text-[var(--text-muted)] mt-0.5">{{ t('variables.formulaHint') }}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-2">
+            <div class="form-field">
+              <label>{{ t('variables.computeTriggerLabel') }}</label>
+              <select v-model="crComputeTrigger" class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                <option value="">{{ t('variables.computeTriggerNone') }}</option>
+                <option value="reactive">{{ t('variables.computeTriggerReactive') }}</option>
+                <option value="cron">{{ t('variables.computeTriggerCron') }}</option>
+                <option value="manual">{{ t('variables.computeTriggerManual') }}</option>
+              </select>
+            </div>
+            <div v-if="crComputeTrigger === 'cron'" class="form-field">
+              <label>{{ t('variables.computeCronLabel') }}</label>
+              <input
+                v-model="crComputeCron"
+                type="text"
+                class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono"
+                placeholder="*/5 * * * *"
+              />
+            </div>
+          </div>
+        </div>
+
         <div v-if="crError" class="modal-error">{{ crError }}</div>
       </div>
       <template #footer>

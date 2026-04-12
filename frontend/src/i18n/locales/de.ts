@@ -545,6 +545,8 @@ export default {
     keyTypeReadonly: 'Schlüssel und Typ können nicht geändert werden',
     vizHintLabel: 'Visualisierungshinweis',
     saveChanges: '\u00c4nderungen speichern',
+    computed: 'Berechnet',
+    computedTooltip: 'Diese Variable wird aus einer Formel berechnet',
     computedSection: 'Berechnete Variable (optional)',
     formulaLabel: 'Formel',
     formulaPlaceholder: '(temperature + humidity) / 2',
