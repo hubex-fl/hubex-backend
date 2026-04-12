@@ -993,6 +993,9 @@ export default {
     digestOff: 'Aus',
     digestDaily: 'T\u00e4glich',
     digestWeekly: 'W\u00f6chentlich',
+    emailOverride: 'An andere E-Mail senden',
+    emailOverrideHint: 'Leer lassen um deine Login-E-Mail zu verwenden. Benachrichtigungen gehen dann an diese Adresse.',
+    emailOverridePlaceholder: 'andere@beispiel.de',
     notificationsSaved: 'Benachrichtigungseinstellungen gespeichert',
     sections: {
       account: 'Profil & Konto',

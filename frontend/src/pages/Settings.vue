@@ -190,6 +190,8 @@ interface NotificationPrefs {
   email_digest: "off" | "daily" | "weekly";
   email_device_offline: boolean;
   email_automation_errors: boolean;
+  // Sprint 10 D1: send notifications to a different email than the login email
+  email_override: string;
 }
 
 const notifPrefs = ref<NotificationPrefs>({
@@ -198,6 +200,7 @@ const notifPrefs = ref<NotificationPrefs>({
   email_digest: "off",
   email_device_offline: true,
   email_automation_errors: false,
+  email_override: "",
 });
 const notifSaving = ref(false);
 
@@ -209,6 +212,7 @@ function initNotificationPrefs() {
     email_digest: saved.email_digest ?? "off",
     email_device_offline: saved.email_device_offline ?? true,
     email_automation_errors: saved.email_automation_errors ?? false,
+    email_override: saved.email_override ?? "",
   };
 }
 
@@ -872,6 +876,19 @@ onMounted(async () => {
                         <option value="daily">{{ t('settings.digestDaily') }}</option>
                         <option value="weekly">{{ t('settings.digestWeekly') }}</option>
                       </select>
+                    </div>
+
+                    <!-- Sprint 10 D1: Send notifications to a different email -->
+                    <div class="pl-3 pt-2 border-t border-[var(--border)]/30">
+                      <p class="text-sm text-[var(--text-primary)] mb-1">{{ t('settings.emailOverride') }}</p>
+                      <p class="text-xs text-[var(--text-muted)] mb-2">{{ t('settings.emailOverrideHint') }}</p>
+                      <input
+                        type="email"
+                        :value="notifPrefs.email_override"
+                        @change="notifPrefs.email_override = ($event.target as HTMLInputElement).value.trim(); saveNotificationPrefs()"
+                        :placeholder="userInfo?.email || t('settings.emailOverridePlaceholder')"
+                        class="w-full max-w-xs px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]/50 transition-colors"
+                      />
                     </div>
                   </div>
                 </div>

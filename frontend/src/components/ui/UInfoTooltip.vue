@@ -168,6 +168,8 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .info-popover-title {
@@ -176,6 +178,8 @@ onUnmounted(() => {
   color: var(--text-primary, #e6edf3);
   line-height: 1.5;
   margin: 0 0 6px 0;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .info-popover-list {

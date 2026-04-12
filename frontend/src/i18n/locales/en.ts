@@ -1000,6 +1000,9 @@ export default {
     digestOff: 'Off',
     digestDaily: 'Daily',
     digestWeekly: 'Weekly',
+    emailOverride: 'Send to a different email',
+    emailOverrideHint: 'Leave empty to use your login email. Notifications will go to this address instead.',
+    emailOverridePlaceholder: 'other@example.com',
     notificationsSaved: 'Notification preferences saved',
     sections: {
       account: 'Profile & Account',

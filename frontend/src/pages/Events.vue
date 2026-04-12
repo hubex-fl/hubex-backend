@@ -246,6 +246,11 @@ function retryAll() {
   if (!canReadEvents.value) { error.value = t('caps.missing', { cap: 'events.read' }); return; }
   error.value = null;
   stoppedOnError.value = false;
+  // Full reset: re-fetch from cursor 0, preserve the trace filter
+  items.value = [];
+  cursor.value = 0;
+  nextCursor.value = 0;
+  caughtUp.value = false;
   refreshEvents().catch(() => { stoppedOnError.value = true; poller.stop(); });
   if (polling.value) poller.start();
 }
@@ -253,13 +258,20 @@ function retryAll() {
 const poller = createPoller(refreshEvents, 3000, { pauseWhenHidden: true });
 
 watch(() => stream.value, () => {
+  const wasPolling = polling.value;
+  if (wasPolling) stopPolling();
   items.value = [];
   cursor.value = 0;
   nextCursor.value = 0;
   caughtUp.value = false;
+  error.value = null;
+  stoppedOnError.value = false;
   useFromTs.value = false;
   fromTsValue.value = 0;
-  if (polling.value) stopPolling();
+  // Auto-restart polling if it was running before the stream change
+  if (wasPolling && stream.value.trim()) {
+    nextTick(() => startPolling());
+  }
 });
 
 /* ── Auto-start: default to "system" stream and begin polling ── */
