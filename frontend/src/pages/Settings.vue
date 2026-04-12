@@ -369,6 +369,50 @@ function selectOrg(org: OrgInfo) {
 const tokenPresent = computed(() => !!getToken());
 const capList = computed(() => Array.from(caps.caps).sort());
 
+// Sprint 10 A2: group raw caps into human-readable permission categories.
+// Each group gets an icon + a translated label + a list of human-readable
+// "abilities" derived from the user's active caps. Users see "Geräte
+// erstellen und verwalten" instead of "devices.write".
+type PermGroup = { icon: string; label: string; abilities: string[] };
+const permissionGroups = computed<PermGroup[]>(() => {
+  const c = new Set(capList.value);
+  const groups: PermGroup[] = [];
+  const push = (icon: string, labelKey: string, checks: [string, string][]) => {
+    const abilities: string[] = [];
+    for (const [cap, abilityKey] of checks) {
+      if (c.has(cap)) abilities.push(t(`settings.permAbilities.${abilityKey}`));
+    }
+    if (abilities.length) groups.push({ icon, label: t(`settings.permGroups.${labelKey}`), abilities });
+  };
+  push("📡", "devices", [
+    ["devices.read", "viewDevices"], ["devices.write", "manageDevices"],
+    ["telemetry.read", "viewTelemetry"], ["telemetry.emit", "sendTelemetry"],
+    ["pairing.start", "pairDevices"],
+  ]);
+  push("📊", "variables", [
+    ["vars.read", "viewVars"], ["vars.write", "editVars"],
+  ]);
+  push("📈", "dashboards", [
+    ["dashboards.read", "viewDashboards"], ["dashboards.write", "editDashboards"],
+  ]);
+  push("⚡", "automations", [
+    ["automations.read", "viewAutomations"], ["automations.write", "editAutomations"],
+    ["alerts.read", "viewAlerts"], ["alerts.write", "manageAlerts"],
+  ]);
+  push("📄", "cms", [
+    ["cms.read", "viewCms"], ["cms.write", "editCmsDrafts"], ["cms.publish", "publishCms"],
+  ]);
+  push("🔧", "system", [
+    ["config.read", "viewConfig"], ["config.write", "editConfig"],
+    ["org.admin", "adminOrg"], ["cap.admin", "superAdmin"],
+    ["modules.write", "manageModules"],
+  ]);
+  push("🤖", "mcp", [
+    ["mcp.read", "viewMcp"], ["mcp.execute", "executeMcp"],
+  ]);
+  return groups;
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   loadUser();
@@ -590,6 +634,30 @@ onMounted(async () => {
                 </div>
                 <div v-else class="text-xs text-[var(--text-muted)]">Could not load user info. Please log in.</div>
               </UCard>
+              <!-- Sprint 10 A2: human-readable "My Permissions" card -->
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.myPermissions') }}</h3>
+                    <span class="text-xs text-[var(--text-muted)]">{{ capList.length }} {{ t('settings.capsActive') }}</span>
+                  </div>
+                </template>
+                <div class="space-y-3">
+                  <div
+                    v-for="group in permissionGroups"
+                    :key="group.label"
+                    class="flex items-start gap-3"
+                  >
+                    <span class="mt-0.5 text-lg">{{ group.icon }}</span>
+                    <div class="min-w-0">
+                      <p class="text-xs font-semibold text-[var(--text-primary)]">{{ group.label }}</p>
+                      <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">{{ group.abilities.join(' · ') }}</p>
+                    </div>
+                  </div>
+                  <p v-if="!permissionGroups.length" class="text-xs text-[var(--text-muted)]">{{ t('settings.noPermissions') }}</p>
+                </div>
+              </UCard>
+
               <UCard>
                 <template #header>
                   <h3 class="text-sm font-semibold text-[var(--text-primary)]">Session</h3>
