@@ -658,69 +658,67 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           :label="t('pages.entities.entityIdLabel')"
           :placeholder="t('pages.entities.entityIdPlaceholder')"
         />
-        <!-- Type combobox -->
-        <div class="relative flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{{ t('pages.entities.typeLabel') }}</label>
-          <input
-            :value="createTypeDropdownOpen ? createTypeQuery : createEntityType"
-            :placeholder="t('pages.entities.typePlaceholder')"
-            class="input w-full pr-8"
-            autocomplete="off"
-            @input="createTypeQuery = ($event.target as HTMLInputElement).value; createEntityType = createTypeQuery"
-            @focus="createTypeDropdownOpen = true; createTypeQuery = createEntityType"
-            @blur="setTimeout(() => createTypeDropdownOpen = false, 150)"
-          />
-          <svg class="absolute right-2 top-[calc(50%+8px)] -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-          <div v-if="createTypeDropdownOpen" class="absolute left-0 right-0 top-full mt-1 z-50 max-h-40 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl">
-            <button
-              v-for="opt in entityTypeOptions.filter(o => !createTypeQuery || o.value.includes(createTypeQuery.toLowerCase()))"
-              :key="opt.value"
-              type="button"
-              class="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-raised)] transition-colors"
-              :class="opt.value === createEntityType ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'"
-              @mousedown.prevent="createEntityType = opt.value; createTypeDropdownOpen = false; createTypeQuery = ''"
+        <!-- ── Section 1: Basic Info ── -->
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]/30 p-3 space-y-3">
+          <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('pages.entities.sectionBasic') }}</p>
+
+          <!-- Type as proper select (not combobox) -->
+          <div>
+            <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">{{ t('pages.entities.typeLabel') }}</label>
+            <select
+              v-model="createEntityType"
+              class="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)]/50"
             >
-              {{ t('pages.entities.types.' + opt.value) }}
-              <span class="text-[10px] text-[var(--text-muted)] ml-1">({{ opt.value }})</span>
-            </button>
+              <option v-for="opt in entityTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+            <p class="text-[9px] text-[var(--text-muted)] mt-1">{{ t('pages.entities.typeHint') }}</p>
           </div>
-          <p class="text-[10px] text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.typeHint') }}</p>
-        </div>
-        <UInput
-          v-model="createEntityName"
-          :label="t('pages.entities.nameLabelOptional')"
-          :placeholder="t('pages.entities.namePlaceholder')"
-        />
-        <!-- Parent Entity (optional) -->
-        <UEntitySelect
-          v-model="createParentId"
-          entity-type="entity"
-          :label="t('pages.entities.parentEntity')"
-          :placeholder="t('pages.entities.parentEntityPlaceholder')"
-          optional
-        />
-        <!-- Location fields -->
-        <UInput
-          v-model="createLocationName"
-          :label="t('pages.entities.locationName')"
-          :placeholder="t('pages.entities.locationNamePlaceholder')"
-        />
-        <div class="grid grid-cols-2 gap-3">
+
           <UInput
-            v-model="createLocationLat"
-            :label="t('pages.entities.locationLat')"
-            type="number"
-            placeholder="52.520"
-          />
-          <UInput
-            v-model="createLocationLng"
-            :label="t('pages.entities.locationLng')"
-            type="number"
-            placeholder="13.405"
+            v-model="createEntityName"
+            :label="t('pages.entities.nameLabelOptional')"
+            :placeholder="t('pages.entities.namePlaceholder')"
           />
         </div>
+
+        <!-- ── Section 2: Hierarchy ── -->
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]/30 p-3 space-y-2">
+          <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('pages.entities.sectionHierarchy') }}</p>
+          <p class="text-[9px] text-[var(--text-muted)] leading-relaxed">{{ t('pages.entities.hierarchyExplainer') }}</p>
+          <UEntitySelect
+            v-model="createParentId"
+            entity-type="entity"
+            :label="t('pages.entities.parentEntity')"
+            :placeholder="t('pages.entities.parentEntityPlaceholder')"
+            optional
+          />
+        </div>
+
+        <!-- ── Section 3: Location ── -->
+        <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]/30 p-3 space-y-3">
+          <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('pages.entities.sectionLocation') }}</p>
+          <UInput
+            v-model="createLocationName"
+            :label="t('pages.entities.locationName')"
+            :placeholder="t('pages.entities.locationNamePlaceholder')"
+          />
+          <div class="grid grid-cols-2 gap-3">
+            <UInput
+              v-model="createLocationLat"
+              :label="t('pages.entities.locationLat')"
+              type="number"
+              placeholder="52.520"
+            />
+            <UInput
+              v-model="createLocationLng"
+              :label="t('pages.entities.locationLng')"
+              type="number"
+              placeholder="13.405"
+            />
+          </div>
+          <p class="text-[9px] text-[var(--text-muted)]">{{ t('pages.entities.locationGpsHint') }}</p>
+        </div>
+
         <div
           v-if="createError"
           class="rounded-lg border border-[var(--status-bad)]/30 bg-[var(--status-bad-bg)] px-3 py-2 text-xs text-[var(--status-bad)]"
