@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import { i18n } from "./i18n";
+import { hasToken } from "./lib/api";
 import { injectTourRouter } from "./stores/tour";
 import { useFeaturesStore } from "./stores/features";
 import "./style.css";
@@ -18,6 +19,16 @@ const pinia = createPinia();
 try { (window as any).__hubex_pinia = pinia; } catch { /* noop */ }
 
 const app = createApp(App).use(pinia).use(i18n).use(router);
+
+// Sprint 9 #6: unauthenticated visitors hitting "/" see the landing page,
+// not the login form. Authenticated users still see their dashboard.
+// "/login" stays accessible for direct deep-links.
+router.beforeEach((to, _from, next) => {
+  if (to.path === "/" && !hasToken()) {
+    return next("/landing");
+  }
+  return next();
+});
 
 // Feature-flag route guard: redirect disabled-feature routes to /disabled.
 // The features store is lazy-loaded; we await the load on first navigation

@@ -217,11 +217,7 @@ const mobileMenuOpen = ref(false);
               class="text-sm text-gray-400 hover:text-white transition-colors"
               >{{ t('landing.nav.compare') }}</a
             >
-            <a
-              href="#pricing"
-              class="text-sm text-gray-400 hover:text-white transition-colors"
-              >{{ t('landing.nav.pricing') }}</a
-            >
+            <!-- pricing nav hidden (Sprint 9 #8) -->
             <router-link
               to="/login"
               class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 transition-colors"
@@ -277,12 +273,7 @@ const mobileMenuOpen = ref(false);
             @click="mobileMenuOpen = false"
             >{{ t('landing.nav.compare') }}</a
           >
-          <a
-            href="#pricing"
-            class="text-sm text-gray-400 hover:text-white"
-            @click="mobileMenuOpen = false"
-            >{{ t('landing.nav.pricing') }}</a
-          >
+          <!-- pricing nav hidden (Sprint 9 #8) -->
           <router-link
             to="/login"
             class="text-sm font-medium px-4 py-2 rounded-lg bg-cyan-500 text-gray-950 text-center"
@@ -781,8 +772,8 @@ const mobileMenuOpen = ref(false);
       </div>
     </section>
 
-    <!-- Pricing -->
-    <section id="pricing" class="py-20 sm:py-28 bg-gray-900/30">
+    <!-- Pricing — hidden until pricing model is finalized (Sprint 9 #8) -->
+    <section v-if="false" id="pricing" class="py-20 sm:py-28 bg-gray-900/30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl sm:text-4xl font-bold">{{ t('landing.pricing.heading') }}</h2>
@@ -937,9 +928,7 @@ const mobileMenuOpen = ref(false);
           <a href="#features" class="text-gray-500 hover:text-gray-300 text-sm"
             >{{ t('landing.nav.features') }}</a
           >
-          <a href="#pricing" class="text-gray-500 hover:text-gray-300 text-sm"
-            >{{ t('landing.nav.pricing') }}</a
-          >
+          <!-- pricing nav hidden (Sprint 9 #8) -->
         </div>
       </div>
     </footer>
