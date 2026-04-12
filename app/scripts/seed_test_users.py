@@ -175,9 +175,7 @@ async def seed_simulators(db, *, user: User, org_id: int | None) -> int:
             category="hardware",
             owner_user_id=user.id,
             org_id=org_id,
-            claimed=True,
-            state="claimed",
-            is_simulated=True,
+            is_claimed=True,
         )
         db.add(device)
         await db.flush()
