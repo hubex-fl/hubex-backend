@@ -150,6 +150,10 @@ const editDescription  = ref("");
 const editUnit         = ref("");
 const editMin          = ref("");
 const editMax          = ref("");
+// Sprint 10 D3: computed variable fields in edit modal
+const editFormula         = ref("");
+const editComputeTrigger  = ref("");
+const editComputeCron     = ref("");
 const editSaving       = ref(false);
 const editError        = ref<string | null>(null);
 
@@ -360,6 +364,10 @@ function openEditDef(def: VariableDefinition) {
     ? String((def as unknown as { min_value: number }).min_value) : "";
   editMax.value = (def as unknown as { max_value?: number | null }).max_value != null
     ? String((def as unknown as { max_value: number }).max_value) : "";
+  // Sprint 10 D3: populate computed variable fields
+  editFormula.value = (def as any).formula ?? "";
+  editComputeTrigger.value = (def as any).compute_trigger ?? "";
+  editComputeCron.value = (def as any).compute_cron ?? "";
   editError.value = null;
   editOpen.value = true;
 }
@@ -376,7 +384,11 @@ async function handleEditSave() {
       unit:         editUnit.value || null,
       minValue:     editMin.value !== "" ? parseFloat(editMin.value) : null,
       maxValue:     editMax.value !== "" ? parseFloat(editMax.value) : null,
-    };
+      // Sprint 10 D3: computed variable fields
+      formula:         editFormula.value || null,
+      computeTrigger:  editComputeTrigger.value || null,
+      computeCron:     editComputeCron.value || null,
+    } as any;
     const updated = await patchDefinition(editDef.value.key, patch);
     // Update local definitions list
     definitions.value = definitions.value.map((d) => d.key === updated.key ? updated : d);
@@ -978,6 +990,42 @@ onMounted(async () => {
             <UInput v-model="editMax" type="number" />
           </div>
         </div>
+
+        <!-- Sprint 10 D3: Computed Variable fields -->
+        <div class="border-t border-[var(--border)] pt-3 mt-3">
+          <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">{{ t('variables.computedSection') }}</p>
+          <div class="form-field">
+            <label>{{ t('variables.formulaLabel') }}</label>
+            <input
+              v-model="editFormula"
+              type="text"
+              class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono"
+              :placeholder="t('variables.formulaPlaceholder')"
+            />
+            <p class="text-[9px] text-[var(--text-muted)] mt-0.5">{{ t('variables.formulaHint') }}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-2">
+            <div class="form-field">
+              <label>{{ t('variables.computeTriggerLabel') }}</label>
+              <select v-model="editComputeTrigger" class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]">
+                <option value="">{{ t('variables.computeTriggerNone') }}</option>
+                <option value="reactive">{{ t('variables.computeTriggerReactive') }}</option>
+                <option value="cron">{{ t('variables.computeTriggerCron') }}</option>
+                <option value="manual">{{ t('variables.computeTriggerManual') }}</option>
+              </select>
+            </div>
+            <div v-if="editComputeTrigger === 'cron'" class="form-field">
+              <label>{{ t('variables.computeCronLabel') }}</label>
+              <input
+                v-model="editComputeCron"
+                type="text"
+                class="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] font-mono"
+                placeholder="*/5 * * * *"
+              />
+            </div>
+          </div>
+        </div>
+
         <div v-if="editError" class="modal-error">{{ editError }}</div>
       </div>
       <template #footer>

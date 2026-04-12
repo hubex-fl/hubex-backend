@@ -543,6 +543,17 @@ export default {
     keyTypeReadonly: 'Key and type cannot be changed',
     vizHintLabel: 'Visualization hint',
     saveChanges: 'Save changes',
+    // Sprint 10 D3: computed variable fields
+    computedSection: 'Computed Variable (optional)',
+    formulaLabel: 'Formula',
+    formulaPlaceholder: '(temperature + humidity) / 2',
+    formulaHint: 'Reference other variable keys by name. Arithmetic operators: + - * / ( )',
+    computeTriggerLabel: 'Compute Trigger',
+    computeTriggerNone: 'None (not computed)',
+    computeTriggerReactive: 'Reactive (on dependency change)',
+    computeTriggerCron: 'Scheduled (cron)',
+    computeTriggerManual: 'Manual (API only)',
+    computeCronLabel: 'Cron Expression',
     // Set value modal
     setValueTitle: 'Set value \u2014 {key}',
     valueLabel: 'Value',

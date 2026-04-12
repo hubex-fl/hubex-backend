@@ -35,6 +35,14 @@ class VariableDefinitionIn(BaseModel):
         default=None, validation_alias=AliasChoices("display_hint", "displayHint")
     )
     category: str | None = None
+    # Sprint 10 D3: computed variable fields
+    formula: str | None = None
+    compute_trigger: str | None = Field(
+        default=None, validation_alias=AliasChoices("compute_trigger", "computeTrigger")
+    )
+    compute_cron: str | None = Field(
+        default=None, validation_alias=AliasChoices("compute_cron", "computeCron")
+    )
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -60,6 +68,14 @@ class VariableDefinitionPatchIn(BaseModel):
         default=None, validation_alias=AliasChoices("enum_values", "enumValues")
     )
     regex: str | None = None
+    # Sprint 10 D3: computed variable fields
+    formula: str | None = None
+    compute_trigger: str | None = Field(
+        default=None, validation_alias=AliasChoices("compute_trigger", "computeTrigger")
+    )
+    compute_cron: str | None = Field(
+        default=None, validation_alias=AliasChoices("compute_cron", "computeCron")
+    )
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -82,6 +98,10 @@ class VariableDefinitionOut(BaseModel):
     allow_device_override: bool
     display_hint: str | None = None
     category: str | None = None
+    # Sprint 10 D3: computed variable fields
+    formula: str | None = None
+    compute_trigger: str | None = None
+    compute_cron: str | None = None
     created_at: datetime
     updated_at: datetime
 
