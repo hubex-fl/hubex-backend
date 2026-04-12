@@ -310,7 +310,7 @@ const editionResourceLabels: Record<LimitResource, string> = {
 const editionResourceKeys: LimitResource[] = ['users', 'devices', 'api_keys', 'dashboards', 'automations', 'custom_endpoints'];
 
 // ── Account tab ───────────────────────────────────────────────────────────────
-type UserInfo = { id: number; email: string };
+type UserInfo = { id: number; email: string; display_name?: string | null };
 const userInfo = ref<UserInfo | null>(null);
 const userLoading = ref(true);
 
@@ -320,6 +320,20 @@ async function loadUser() {
     userInfo.value = await apiFetch<UserInfo>("/api/v1/users/me");
   } catch { /* ignore */ }
   userLoading.value = false;
+}
+
+async function saveDisplayName(name: string) {
+  const trimmed = name.trim() || null;
+  try {
+    const res = await apiFetch<UserInfo>("/api/v1/users/me/display-name", {
+      method: "PATCH",
+      body: JSON.stringify({ display_name: trimmed }),
+    });
+    if (userInfo.value) userInfo.value = res;
+    toast.addToast(t('settings.displayNameSaved'), "success");
+  } catch {
+    toast.addToast(t('settings.displayNameFailed'), "error");
+  }
 }
 
 function handleLogout() {
@@ -623,11 +637,26 @@ onMounted(async () => {
                 <div v-else-if="userInfo" class="space-y-4">
                   <div class="flex items-center gap-4">
                     <div class="h-14 w-14 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/30 flex items-center justify-center shrink-0">
-                      <span class="text-xl font-bold text-[var(--primary)]">{{ userInfo.email.charAt(0).toUpperCase() }}</span>
+                      <span class="text-xl font-bold text-[var(--primary)]">{{ (userInfo.display_name || userInfo.email).charAt(0).toUpperCase() }}</span>
                     </div>
-                    <div>
-                      <p class="text-sm font-semibold text-[var(--text-primary)]">{{ userInfo.email }}</p>
-                      <p class="text-xs text-[var(--text-muted)]">User ID: {{ userInfo.id }}</p>
+                    <div class="min-w-0">
+                      <p v-if="userInfo.display_name" class="text-sm font-semibold text-[var(--text-primary)]">{{ userInfo.display_name }}</p>
+                      <p class="text-xs text-[var(--text-muted)]" :class="{ 'text-sm font-semibold text-[var(--text-primary)]': !userInfo.display_name }">{{ userInfo.email }}</p>
+                      <p class="text-[10px] text-[var(--text-muted)]">User #{{ userInfo.id }}</p>
+                    </div>
+                  </div>
+                  <!-- Sprint 10 F9: editable display name -->
+                  <div class="border-t border-[var(--border)] pt-3">
+                    <label class="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-1">{{ t('settings.displayName') }}</label>
+                    <div class="flex gap-2">
+                      <input
+                        type="text"
+                        :value="userInfo.display_name || ''"
+                        @change="saveDisplayName(($event.target as HTMLInputElement).value)"
+                        :placeholder="t('settings.displayNamePlaceholder')"
+                        class="flex-1 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)]/50 transition-colors"
+                        maxlength="100"
+                      />
                     </div>
                   </div>
                   <div class="border-t border-[var(--border)] pt-4 flex items-center gap-3">

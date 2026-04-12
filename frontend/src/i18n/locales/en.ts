@@ -914,6 +914,11 @@ export default {
     mcpEndpoint: 'SSE Endpoint',
     mcpApiKeyHint: 'To restrict MCP access further, create an API key (above) with only the capabilities you want the AI to use, then pass that key instead of your session token.',
     mcpTesterHint: 'Your role does not allow creating API keys. MCP uses your current permissions as-is. Ask an admin for a scoped API key if needed.',
+    // Sprint 10 F9: display name
+    displayName: 'Display Name',
+    displayNamePlaceholder: 'Your name (shown instead of email)',
+    displayNameSaved: 'Display name updated',
+    displayNameFailed: 'Failed to save display name',
     // Sprint 8 R4 F20: search
     searchPlaceholder: 'Search settings…',
     searchNoResults: 'No settings matched "{query}"',

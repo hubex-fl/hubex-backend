@@ -905,6 +905,10 @@ export default {
     mcpEndpoint: 'SSE-Endpunkt',
     mcpApiKeyHint: 'Um den MCP-Zugriff weiter einzuschr\u00e4nken, erstelle einen API-Schl\u00fcssel (oben) mit nur den Berechtigungen die die KI nutzen soll, und \u00fcbergib diesen statt deines Session-Tokens.',
     mcpTesterHint: 'Deine Rolle erlaubt keine API-Schl\u00fcssel-Erstellung. MCP nutzt deine aktuellen Berechtigungen direkt. Frage einen Admin nach einem eingeschr\u00e4nkten API-Schl\u00fcssel falls n\u00f6tig.',
+    displayName: 'Anzeigename',
+    displayNamePlaceholder: 'Dein Name (wird statt E-Mail angezeigt)',
+    displayNameSaved: 'Anzeigename aktualisiert',
+    displayNameFailed: 'Anzeigename konnte nicht gespeichert werden',
     // Sprint 8 R4 F20: Suche
     searchPlaceholder: 'Einstellungen durchsuchen\u2026',
     searchNoResults: 'Keine Einstellungen gefunden f\u00fcr "{query}"',

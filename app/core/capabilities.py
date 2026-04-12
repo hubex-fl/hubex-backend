@@ -417,6 +417,7 @@ CAPABILITY_MAP: dict[tuple[str, str], list[str]] = {
     ("POST", "/api/v1/system/run-demo"): ["mcp.execute"],
     # User preferences
     ("PATCH", "/api/v1/users/me/preferences"): ["users.read"],
+    ("PATCH", "/api/v1/users/me/display-name"): ["users.read"],
     # Tours — user-scoped, no special capability required
     ("GET", "/api/v1/tours"): [],
     ("POST", "/api/v1/tours"): [],

@@ -14,7 +14,12 @@ router = APIRouter(prefix="/users")
 class UserOut(BaseModel):
     id: int
     email: str
+    display_name: str | None = None  # Sprint 10 F9
     preferences: dict[str, Any] = {}
+
+
+class DisplayNameUpdate(BaseModel):
+    display_name: str | None = None
 
 
 class PreferencesUpdate(BaseModel):
@@ -27,6 +32,25 @@ async def me(user: User = Depends(get_current_user)):
     return UserOut(
         id=user.id,
         email=user.email,
+        display_name=user.display_name,
+        preferences=user.preferences or {},
+    )
+
+
+@router.patch("/me/display-name", response_model=UserOut)
+async def update_display_name(
+    body: DisplayNameUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Update the user's display name."""
+    user.display_name = body.display_name.strip() if body.display_name else None
+    await db.commit()
+    await db.refresh(user)
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
         preferences=user.preferences or {},
     )
 
