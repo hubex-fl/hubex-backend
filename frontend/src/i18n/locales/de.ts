@@ -129,7 +129,6 @@ export default {
     chooseGroup: 'Gruppe w\u00e4hlen...',
     clickMapToSetLocation: 'Klicke auf die Karte um Koordinaten zu setzen',
     searchAddress: 'Adresse suchen...',
-    search: 'Suchen',
     noAddressFound: 'Keine Adresse gefunden',
     addressSearchError: 'Adresssuche fehlgeschlagen',
     confirm: 'Best\u00e4tigen',
@@ -499,7 +498,6 @@ export default {
     colDevice: 'Gerät',
     colUpdated: 'Aktualisiert',
     colActions: 'Aktionen',
-    global: 'Global',
     viewInSystemMap: 'In Systemkarte anzeigen',
     // Group headers
     globalVariables: 'Globale Variablen',

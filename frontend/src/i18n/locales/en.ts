@@ -130,7 +130,6 @@ export default {
     chooseGroup: 'Choose a group...',
     clickMapToSetLocation: 'Click the map to set coordinates',
     searchAddress: 'Search address...',
-    search: 'Search',
     noAddressFound: 'No address found',
     addressSearchError: 'Address search failed',
     confirm: 'Confirm',
@@ -503,7 +502,6 @@ export default {
     colDevice: 'Device',
     colUpdated: 'Updated',
     colActions: 'Actions',
-    global: 'Global',
     viewInSystemMap: 'View in System Map',
     // Group headers
     globalVariables: 'Global Variables',
