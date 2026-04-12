@@ -899,6 +899,12 @@ export default {
       viewMcp: 'Use MCP read tools',
       executeMcp: 'Execute MCP actions',
     },
+    // Sprint 10 A3: MCP permissions info
+    mcpPermissions: 'MCP Server Permissions',
+    mcpActive: 'Active',
+    mcpPermissionsHint: 'When you connect an AI assistant (like Claude) via MCP, it inherits your exact permissions. It can only do what you can do — no more, no less. Your role determines the available tools.',
+    mcpEndpoint: 'SSE Endpoint',
+    mcpApiKeyHint: 'To restrict MCP access further, create an API key (above) with only the capabilities you want the AI to use, then pass that key instead of your session token.',
     // Sprint 8 R4 F20: search
     searchPlaceholder: 'Search settings…',
     searchNoResults: 'No settings matched "{query}"',

@@ -891,6 +891,12 @@ export default {
       viewMcp: 'MCP Lese-Tools nutzen',
       executeMcp: 'MCP Aktionen ausf\u00fchren',
     },
+    // Sprint 10 A3: MCP-Berechtigungen
+    mcpPermissions: 'MCP-Server-Berechtigungen',
+    mcpActive: 'Aktiv',
+    mcpPermissionsHint: 'Wenn du einen KI-Assistenten (wie Claude) \u00fcber MCP verbindest, erbt er genau deine Berechtigungen. Er kann nur tun was du auch tun kannst \u2014 nicht mehr und nicht weniger. Deine Rolle bestimmt die verf\u00fcgbaren Tools.',
+    mcpEndpoint: 'SSE-Endpunkt',
+    mcpApiKeyHint: 'Um den MCP-Zugriff weiter einzuschr\u00e4nken, erstelle einen API-Schl\u00fcssel (oben) mit nur den Berechtigungen die die KI nutzen soll, und \u00fcbergib diesen statt deines Session-Tokens.',
     // Sprint 8 R4 F20: Suche
     searchPlaceholder: 'Einstellungen durchsuchen\u2026',
     searchNoResults: 'Keine Einstellungen gefunden f\u00fcr "{query}"',

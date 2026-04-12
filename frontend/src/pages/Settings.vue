@@ -372,6 +372,7 @@ function selectOrg(org: OrgInfo) {
 // ── Developer tab ─────────────────────────────────────────────────────────────
 const tokenPresent = computed(() => !!getToken());
 const capList = computed(() => Array.from(caps.caps).sort());
+const mcpSseUrl = computed(() => `${window.location.origin}/api/v1/mcp/sse`);
 
 // Sprint 10 A2: group raw caps into human-readable permission categories.
 // Each group gets an icon + a translated label + a list of human-readable
@@ -1037,6 +1038,28 @@ onMounted(async () => {
               <UCard>
                 <ApiKeyManager />
               </UCard>
+              <!-- Sprint 10 A3: MCP Server Permissions info card -->
+              <UCard>
+                <template #header>
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.mcpPermissions') }}</h3>
+                    <UBadge status="ok" size="sm">{{ t('settings.mcpActive') }}</UBadge>
+                  </div>
+                </template>
+                <div class="space-y-3">
+                  <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                    {{ t('settings.mcpPermissionsHint') }}
+                  </p>
+                  <div class="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-3">
+                    <p class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1.5">{{ t('settings.mcpEndpoint') }}</p>
+                    <code class="text-xs text-[var(--primary)] font-mono break-all">{{ mcpSseUrl }}</code>
+                  </div>
+                  <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                    {{ t('settings.mcpApiKeyHint') }}
+                  </p>
+                </div>
+              </UCard>
+
               <UCard>
                 <template #header>
                   <h3 class="text-sm font-semibold text-[var(--text-primary)]">Useful Links</h3>
