@@ -2560,9 +2560,73 @@ export default {
           title: 'Settings',
           text: 'Configure your account, organization, API keys, language, and branding.',
         },
+        // Sprint 10 E1: extended steps
+        navAlerts: {
+          title: 'Navigate to Alerts',
+          text: "Click 'Alerts' to see rule-based monitoring.",
+        },
+        alerts: {
+          title: 'Alerts & Rules',
+          text: 'Create alert rules that watch your variables and fire events when conditions are met. Set severity levels and get notified.',
+        },
+        navEntities: {
+          title: 'Navigate to Entities',
+          text: "Click 'Entities' to see logical groups.",
+        },
+        entities: {
+          title: 'Entities & Groups',
+          text: 'Bundle related devices into rooms, buildings, zones, or custom groups. Build hierarchies and scope dashboards per entity.',
+        },
+        navSandbox: {
+          title: 'Navigate to Sandbox',
+          text: "Click 'Sandbox' to create device simulators.",
+        },
+        sandbox: {
+          title: 'Sandbox',
+          text: 'Create virtual devices that simulate real sensor data. Perfect for testing automations, dashboards, and alerts without real hardware.',
+        },
+        themeToggle: {
+          title: 'Dark / Light Mode',
+          text: 'Click the sun/moon icon in the top bar to switch between dark and light themes. Your preference is saved.',
+        },
+        tourLauncher: {
+          title: 'Tour Guide',
+          text: 'Click the graduation cap icon to access all available guided tours anytime. Each tour focuses on a different feature area.',
+        },
         done: {
           title: "You're ready!",
-          text: "That's the basics! Explore at your own pace. Click the tour button anytime to replay this tour or discover advanced guides.",
+          text: "That's a full overview of HubEx! Explore at your own pace. Click the tour button anytime to replay or discover advanced guides like Data Path Trace and Alert Investigation.",
+        },
+      },
+    },
+    // Sprint 10 E1: test-user specific tour
+    tester: {
+      name: 'Test Instance Guide',
+      description: 'What you can do on this demo instance',
+      steps: {
+        welcome: {
+          title: 'Welcome to the HubEx Test Instance',
+          text: "This is a demo environment where you can freely explore HubEx. Your account has the 'tester' role with access to most features. Some admin functions are restricted. Let's show you around!",
+        },
+        sandbox: {
+          title: 'Start with Simulators',
+          text: 'We have already set up 3 demo simulators (Temperature, Weather, Motion) that generate live data. You can create more from 12 different templates!',
+        },
+        devices: {
+          title: 'Your Demo Devices',
+          text: 'The simulators created virtual devices that are actively sending telemetry. Click any device to see live sensor readings, variables, and connection status.',
+        },
+        variables: {
+          title: 'Live Variables',
+          text: 'All data points from your devices appear here. Temperature, humidity, wind speed, motion — all updating in real time.',
+        },
+        limits: {
+          title: 'What You Can and Cannot Do',
+          text: "You CAN: create devices, dashboards, automations, alerts, and play with simulators. You CANNOT: publish CMS pages live, change system config, manage the organization, or create API keys. Check Settings > Account > My Permissions for the full list.",
+        },
+        done: {
+          title: 'Happy Testing!',
+          text: 'The instance resets daily, so feel free to experiment without worry. Create automations, build dashboards, set up alerts — everything resets overnight.',
         },
       },
     },

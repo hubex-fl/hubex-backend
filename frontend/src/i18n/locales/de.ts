@@ -2532,9 +2532,71 @@ export default {
           title: 'Einstellungen',
           text: 'Konfiguriere dein Konto, Organisation, API-Schl\u00FCssel, Sprache und Branding.',
         },
+        navAlerts: {
+          title: 'Zu Alarme navigieren',
+          text: "Klicke auf 'Alarme' um regelbasiertes Monitoring zu sehen.",
+        },
+        alerts: {
+          title: 'Alarme & Regeln',
+          text: 'Erstelle Alarmregeln die deine Variablen \u00fcberwachen und Events ausl\u00f6sen wenn Bedingungen erf\u00fcllt sind. Setze Schweregrade und werde benachrichtigt.',
+        },
+        navEntities: {
+          title: 'Zu Entit\u00e4ten navigieren',
+          text: "Klicke auf 'Entit\u00e4ten' um logische Gruppen zu sehen.",
+        },
+        entities: {
+          title: 'Entit\u00e4ten & Gruppen',
+          text: 'B\u00fcndle zusammengeh\u00f6rige Ger\u00e4te in R\u00e4umen, Geb\u00e4uden, Zonen oder eigenen Gruppen. Baue Hierarchien und scope Dashboards pro Entit\u00e4t.',
+        },
+        navSandbox: {
+          title: 'Zur Sandbox navigieren',
+          text: "Klicke auf 'Sandbox' um Ger\u00e4tesimulatoren zu erstellen.",
+        },
+        sandbox: {
+          title: 'Sandbox',
+          text: 'Erstelle virtuelle Ger\u00e4te die echte Sensordaten simulieren. Perfekt um Automatisierungen, Dashboards und Alarme ohne echte Hardware zu testen.',
+        },
+        themeToggle: {
+          title: 'Dark / Light Mode',
+          text: 'Klicke das Sonnen-/Mond-Symbol in der Kopfzeile um zwischen Dark und Light Theme zu wechseln. Deine Einstellung wird gespeichert.',
+        },
+        tourLauncher: {
+          title: 'Tour-Guide',
+          text: 'Klicke das Absolventenhut-Symbol um jederzeit auf alle verf\u00fcgbaren gef\u00fchrten Touren zuzugreifen. Jede Tour fokussiert sich auf einen anderen Funktionsbereich.',
+        },
         done: {
           title: 'Du bist startklar!',
-          text: 'Das waren die Grundlagen! Erkunde in deinem eigenen Tempo. Klicke jederzeit den Tour-Button um diese Tour zu wiederholen oder weitere Anleitungen zu entdecken.',
+          text: 'Das war ein vollst\u00e4ndiger \u00dcberblick \u00fcber HubEx! Erkunde in deinem eigenen Tempo. Klicke jederzeit den Tour-Button um forgeschrittene Guides wie Datenpfad-Verfolgung oder Alarm-Untersuchung zu entdecken.',
+        },
+      },
+    },
+    tester: {
+      name: 'Testinstanz-Guide',
+      description: 'Was du auf dieser Demo-Instanz tun kannst',
+      steps: {
+        welcome: {
+          title: 'Willkommen auf der HubEx-Testinstanz',
+          text: "Dies ist eine Demo-Umgebung in der du HubEx frei erkunden kannst. Dein Konto hat die Rolle 'Tester' mit Zugriff auf die meisten Funktionen. Einige Admin-Funktionen sind eingeschr\u00e4nkt. Lass uns dich herumf\u00fchren!",
+        },
+        sandbox: {
+          title: 'Starte mit Simulatoren',
+          text: 'Wir haben bereits 3 Demo-Simulatoren (Temperatur, Wetter, Bewegung) eingerichtet die Live-Daten generieren. Du kannst weitere aus 12 verschiedenen Vorlagen erstellen!',
+        },
+        devices: {
+          title: 'Deine Demo-Ger\u00e4te',
+          text: 'Die Simulatoren haben virtuelle Ger\u00e4te erstellt die aktiv Telemetrie senden. Klicke auf ein Ger\u00e4t um Live-Sensordaten, Variablen und Verbindungsstatus zu sehen.',
+        },
+        variables: {
+          title: 'Live-Variablen',
+          text: 'Alle Datenpunkte deiner Ger\u00e4te erscheinen hier. Temperatur, Feuchtigkeit, Windgeschwindigkeit, Bewegung \u2014 alles in Echtzeit aktualisiert.',
+        },
+        limits: {
+          title: 'Was du tun kannst und was nicht',
+          text: 'Du KANNST: Ger\u00e4te, Dashboards, Automatisierungen, Alarme erstellen und mit Simulatoren spielen. Du KANNST NICHT: CMS-Seiten ver\u00f6ffentlichen, Systemkonfiguration \u00e4ndern, die Organisation verwalten oder API-Schl\u00fcssel erstellen. Siehe Einstellungen > Konto > Meine Berechtigungen f\u00fcr die vollst\u00e4ndige Liste.',
+        },
+        done: {
+          title: 'Viel Spa\u00df beim Testen!',
+          text: 'Die Instanz wird t\u00e4glich zur\u00fcckgesetzt \u2014 experimentiere ohne Sorge. Erstelle Automatisierungen, baue Dashboards, richte Alarme ein \u2014 alles wird \u00fcber Nacht zur\u00fcckgesetzt.',
         },
       },
     },

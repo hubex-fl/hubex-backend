@@ -163,6 +163,88 @@ const onboardingSteps: TourStep[] = [
     text: "tours.onboarding.steps.settings.text",
     delay: 600,
   },
+  // Sprint 10 E1: extended tour — alerts, entities, sandbox, dark mode, tour guide
+  // -- Navigate to Alerts
+  {
+    id: "nav-alerts",
+    page: "/settings",
+    target: "[data-tour='nav-alerts']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navAlerts.title",
+    text: "tours.onboarding.steps.navAlerts.text",
+  },
+  {
+    id: "alerts-page",
+    page: "/alerts",
+    target: "h1, [data-tour='page-header']",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.onboarding.steps.alerts.title",
+    text: "tours.onboarding.steps.alerts.text",
+    delay: 600,
+  },
+  // -- Entities
+  {
+    id: "nav-entities",
+    page: "/alerts",
+    target: "[data-tour='nav-entities']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navEntities.title",
+    text: "tours.onboarding.steps.navEntities.text",
+  },
+  {
+    id: "entities-page",
+    page: "/entities",
+    target: "h1, main",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.onboarding.steps.entities.title",
+    text: "tours.onboarding.steps.entities.text",
+    delay: 600,
+  },
+  // -- Sandbox
+  {
+    id: "nav-sandbox",
+    page: "/entities",
+    target: "[data-tour='nav-sandbox']",
+    action: "spotlight+pulse",
+    position: "right",
+    title: "tours.onboarding.steps.navSandbox.title",
+    text: "tours.onboarding.steps.navSandbox.text",
+  },
+  {
+    id: "sandbox-page",
+    page: "/sandbox",
+    target: "h1, main",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.onboarding.steps.sandbox.title",
+    text: "tours.onboarding.steps.sandbox.text",
+    delay: 600,
+  },
+  // -- Dark/Light mode toggle
+  {
+    id: "theme-toggle",
+    page: "/sandbox",
+    target: "[data-tour='theme-toggle'], button:has(svg[viewBox='0 0 24 24'])",
+    action: "spotlight+pulse",
+    position: "bottom",
+    title: "tours.onboarding.steps.themeToggle.title",
+    text: "tours.onboarding.steps.themeToggle.text",
+  },
+  // -- Tour Guide button
+  {
+    id: "tour-launcher",
+    page: "/sandbox",
+    target: "[data-tour='tour-launcher']",
+    action: "spotlight+pulse",
+    position: "bottom",
+    title: "tours.onboarding.steps.tourLauncher.title",
+    text: "tours.onboarding.steps.tourLauncher.text",
+  },
+  // -- Done
   {
     id: "done",
     action: "info",
@@ -180,6 +262,80 @@ export const onboardingTour: TourDefinition = {
   steps: onboardingSteps,
   category: "builtin",
   autoplay: true,
+  autoplayInterval: 5000,
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 1b. Tester Tour  ("tester-welcome")
+ *
+ * Sprint 10 E1: tailored for test-instance users. Explains what they
+ * CAN do (devices, simulators, dashboards, automations) and what they
+ * CANNOT (publish CMS, config, admin, webhooks). Short and focused.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const testerSteps: TourStep[] = [
+  {
+    id: "welcome",
+    page: "/",
+    action: "info",
+    position: "center",
+    title: "tours.tester.steps.welcome.title",
+    text: "tours.tester.steps.welcome.text",
+  },
+  {
+    id: "sandbox",
+    page: "/sandbox",
+    target: "h1, main",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.tester.steps.sandbox.title",
+    text: "tours.tester.steps.sandbox.text",
+    delay: 600,
+  },
+  {
+    id: "devices",
+    page: "/devices",
+    target: "h1, main",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.tester.steps.devices.title",
+    text: "tours.tester.steps.devices.text",
+    delay: 600,
+  },
+  {
+    id: "variables",
+    page: "/variables",
+    target: "h1, main",
+    action: "spotlight",
+    position: "bottom",
+    title: "tours.tester.steps.variables.title",
+    text: "tours.tester.steps.variables.text",
+    delay: 600,
+  },
+  {
+    id: "limits",
+    action: "info",
+    position: "center",
+    title: "tours.tester.steps.limits.title",
+    text: "tours.tester.steps.limits.text",
+  },
+  {
+    id: "done",
+    action: "info",
+    position: "center",
+    title: "tours.tester.steps.done.title",
+    text: "tours.tester.steps.done.text",
+  },
+];
+
+export const testerTour: TourDefinition = {
+  id: "tester-welcome",
+  name: "tours.tester.name",
+  description: "tours.tester.description",
+  icon: "flask",
+  steps: testerSteps,
+  category: "builtin",
+  autoplay: false,
   autoplayInterval: 5000,
 };
 
@@ -548,6 +704,7 @@ export const variablesOverviewTour: TourDefinition = {
 /** All static built-in tour definitions (excluding dynamic dashboard-present). */
 export const builtinTours: TourDefinition[] = [
   onboardingTour,
+  testerTour,         // Sprint 10 E1: test-instance specific tour
   dataPathTour,
   dashboardPresentTour,
   alertInvestigationTour,
