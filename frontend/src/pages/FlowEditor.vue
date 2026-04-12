@@ -107,9 +107,9 @@ const isAnimating = ref(false);
 const pulsingNodeId = ref<string | null>(null);
 
 // ── Layout mode ───────────────────────────────────────────────────────────
-// Sprint 10 F8: 4 layout presets
-type LayoutMode = "columns" | "radial" | "hierarchical" | "force";
-const layoutMode = ref<LayoutMode>("columns");
+// Sprint 10 F8: layout presets — hierarchical is the default (user feedback)
+type LayoutMode = "columns" | "hierarchical" | "grouped";
+const layoutMode = ref<LayoutMode>("hierarchical");
 const customPositions = ref<Record<string, { x: number; y: number }>>({});
 
 // ── Drag state ────────────────────────────────────────────────────────────
@@ -1183,72 +1183,81 @@ function applyLayout() {
       customPositions.value[node.id] = { x: node.x, y: node.y };
     });
   } else if (layoutMode.value === "hierarchical") {
-    // Top-down tree: devices top, variables middle, automations/alerts bottom
+    // Top-down tree: devices top → variables middle → automations/alerts bottom
+    // User feedback: MORE SPACING — elements were squeezed together
     const typeOrder: Record<string, number> = { device: 0, variable: 1, automation: 2, alert: 3, webhook: 3 };
     const layers: Record<number, typeof n> = {};
     for (const node of n) {
       const layer = typeOrder[node.type] ?? 2;
       (layers[layer] ??= []).push(node);
     }
-    const layerGap = 200, nodeGap = 180;
+    // Generous spacing: 280px between layers, 220px between nodes
+    const layerGap = 280, nodeGap = 220;
     for (const [layerStr, layerNodes] of Object.entries(layers)) {
       const layer = Number(layerStr);
       const totalW = (layerNodes.length - 1) * nodeGap;
-      const startX = 600 - totalW / 2;
+      const startX = 700 - totalW / 2;
       layerNodes.forEach((node, i) => {
         node.x = startX + i * nodeGap;
-        node.y = 100 + layer * layerGap;
+        node.y = 80 + layer * layerGap;
         customPositions.value[node.id] = { x: node.x, y: node.y };
       });
     }
-  } else if (layoutMode.value === "force") {
-    // Simple force-directed simulation (80 iterations)
-    const pos: Record<string, { x: number; y: number }> = {};
-    for (const node of n) {
-      pos[node.id] = { x: 600 + (Math.random() - 0.5) * 400, y: 400 + (Math.random() - 0.5) * 300 };
-    }
+  } else if (layoutMode.value === "grouped") {
+    // Grouped by device: each device gets its own cluster with its
+    // connected variables arranged around it. Unconnected nodes go
+    // to a separate "global" cluster on the right.
+    const deviceNodes = n.filter(nd => nd.type === "device");
+    const otherNodes = n.filter(nd => nd.type !== "device");
     const edgeList = edges.value;
-    for (let iter = 0; iter < 80; iter++) {
-      const forces: Record<string, { fx: number; fy: number }> = {};
-      for (const node of n) forces[node.id] = { fx: 0, fy: 0 };
-      // Repulsion
-      for (let i = 0; i < n.length; i++) {
-        for (let j = i + 1; j < n.length; j++) {
-          const a = pos[n[i].id], b = pos[n[j].id];
-          let dx = b.x - a.x, dy = b.y - a.y;
-          const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-          const repulse = 8000 / (dist * dist);
-          dx /= dist; dy /= dist;
-          forces[n[i].id].fx -= dx * repulse;
-          forces[n[i].id].fy -= dy * repulse;
-          forces[n[j].id].fx += dx * repulse;
-          forces[n[j].id].fy += dy * repulse;
-        }
-      }
-      // Edge attraction
-      for (const e of edgeList) {
-        const a = pos[e.from], b = pos[e.to];
-        if (!a || !b) continue;
-        let dx = b.x - a.x, dy = b.y - a.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const attract = dist * 0.01;
-        dx /= Math.max(1, dist); dy /= Math.max(1, dist);
-        forces[e.from].fx += dx * attract;
-        forces[e.from].fy += dy * attract;
-        forces[e.to].fx -= dx * attract;
-        forces[e.to].fy -= dy * attract;
-      }
-      // Apply with damping
-      for (const node of n) {
-        const f = forces[node.id];
-        pos[node.id].x += Math.max(-30, Math.min(30, f.fx * 0.3));
-        pos[node.id].y += Math.max(-30, Math.min(30, f.fy * 0.3));
+
+    // Build device → connected-nodes mapping
+    const deviceClusters: Record<string, typeof n> = {};
+    const assignedIds = new Set<string>();
+    deviceNodes.forEach(d => { deviceClusters[d.id] = []; });
+
+    for (const node of otherNodes) {
+      const connectedDevice = edgeList.find(e =>
+        (e.from === node.id && deviceClusters[e.to]) ||
+        (e.to === node.id && deviceClusters[e.from])
+      );
+      if (connectedDevice) {
+        const devId = deviceClusters[connectedDevice.from] ? connectedDevice.from : connectedDevice.to;
+        deviceClusters[devId].push(node);
+        assignedIds.add(node.id);
       }
     }
-    for (const node of n) {
-      node.x = pos[node.id].x;
-      node.y = pos[node.id].y;
-      customPositions.value[node.id] = { x: node.x, y: node.y };
+
+    // Unassigned nodes (global variables, standalone automations)
+    const unassigned = otherNodes.filter(nd => !assignedIds.has(nd.id));
+
+    // Layout each cluster as a vertical stack with the device at top
+    let clusterX = 80;
+    const clusterGap = 350;
+    const innerGap = 80;
+
+    for (const [devId, children] of Object.entries(deviceClusters)) {
+      const dev = deviceNodes.find(d => d.id === devId);
+      if (!dev) continue;
+      dev.x = clusterX + 60;
+      dev.y = 80;
+      customPositions.value[dev.id] = { x: dev.x, y: dev.y };
+
+      children.forEach((child, i) => {
+        child.x = clusterX + (i % 2 === 0 ? 0 : 140);
+        child.y = 180 + Math.floor(i / 2) * innerGap;
+        customPositions.value[child.id] = { x: child.x, y: child.y };
+      });
+      clusterX += clusterGap;
+    }
+
+    // Unassigned at the end
+    if (unassigned.length) {
+      unassigned.forEach((node, i) => {
+        node.x = clusterX + (i % 2 === 0 ? 0 : 140);
+        node.y = 80 + Math.floor(i / 2) * innerGap;
+        customPositions.value[node.id] = { x: node.x, y: node.y };
+      });
     }
   }
 }
@@ -1304,10 +1313,9 @@ function applyLayout() {
           class="px-2 py-1 rounded text-[10px] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] cursor-pointer focus:outline-none focus:border-[var(--primary)]/50"
           @change="setLayoutMode(($event.target as HTMLSelectElement).value as LayoutMode)"
         >
-          <option value="columns">{{ t('pages.flowEditor.layoutColumns') }}</option>
           <option value="hierarchical">{{ t('pages.flowEditor.layoutHierarchical') }}</option>
-          <option value="radial">{{ t('pages.flowEditor.layoutRadial') }}</option>
-          <option value="force">{{ t('pages.flowEditor.layoutForce') }}</option>
+          <option value="columns">{{ t('pages.flowEditor.layoutColumns') }}</option>
+          <option value="grouped">{{ t('pages.flowEditor.layoutGrouped') }}</option>
         </select>
       </div>
     </div>
@@ -1511,8 +1519,9 @@ function applyLayout() {
           :class="{ 'flow-animate': isAnimating }"
           class="absolute inset-0"
         >
-          <!-- Column headers -->
+          <!-- Column headers (only visible in columns layout) -->
           <div
+            v-if="layoutMode === 'columns'"
             v-for="(col, idx) in columnHeaders"
             :key="idx"
             class="absolute text-center"

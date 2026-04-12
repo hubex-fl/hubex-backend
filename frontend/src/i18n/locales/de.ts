@@ -1556,7 +1556,7 @@ export default {
       refresh: 'Aktualisieren', openDetail: 'Öffnen',
       // Detail-Inspektor-Panel
       inspector: 'Inspektor', connectedElements: 'Verbindungen',
-      layoutColumns: 'Spalten', layoutHierarchical: 'Hierarchisch', layoutRadial: 'Radial', layoutForce: 'Kr\u00e4fte-basiert', goToDevice: 'Zum Ger\u00e4t', goToVariable: 'Zur Variable',
+      layoutColumns: 'Spalten', layoutHierarchical: 'Hierarchisch', layoutGrouped: 'Gruppiert nach Ger\u00e4t', goToDevice: 'Zum Ger\u00e4t', goToVariable: 'Zur Variable',
       editAutomation: 'Automatisierung bearbeiten', viewAlerts: 'Alarme anzeigen', viewWebhook: 'Webhook anzeigen',
       deviceName: 'Name', deviceType: 'Typ', deviceStatus: 'Status', lastSeen: 'Zuletzt gesehen',
       variableCount: 'Variablen', variableKey: 'Schlüssel', currentValue: 'Wert', unit: 'Einheit',

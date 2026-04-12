@@ -290,9 +290,9 @@ export const onboardingTour: TourDefinition = {
   steps: onboardingSteps,
   category: "builtin",
   autoplay: true,
-  // Sprint 10 T2: increased from 5s to 10s — users reported they couldn't
-  // read the text before auto-advancing. 10s gives comfortable reading time.
-  autoplayInterval: 10000,
+  // Sprint 10: increased 5s→10s→30s — user says still too fast to read.
+  // 30s gives ample time for reading + looking at the highlighted element.
+  autoplayInterval: 30000,
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────

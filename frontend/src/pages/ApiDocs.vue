@@ -158,10 +158,28 @@ async function initRedoc() {
 function syncSwaggerTheme(dark: boolean) {
   const existingStyle = document.getElementById("swagger-dark-mode");
   if (!dark) {
-    // Light mode — remove dark overrides so Swagger renders in its default light theme
+    // Light mode — remove dark overrides AND force light background
     existingStyle?.remove();
+    // Also add an explicit light-mode reset to clear any residual dark styles
+    let lightReset = document.getElementById("swagger-light-reset");
+    if (!lightReset) {
+      lightReset = document.createElement("style");
+      lightReset.id = "swagger-light-reset";
+      lightReset.textContent = `
+        .swagger-ui-wrapper { background: #fff !important; }
+        .swagger-ui { color: #3b4151 !important; }
+        .swagger-ui .info .title, .swagger-ui .opblock-tag { color: #3b4151 !important; }
+        .swagger-ui .opblock { background: #fff !important; border-color: #d8dde7 !important; }
+        .swagger-ui .opblock-body, .swagger-ui .opblock .opblock-section-header { background: #fff !important; }
+        .swagger-ui .scheme-container { background: #fff !important; }
+        .swagger-ui input, .swagger-ui textarea, .swagger-ui select { background: #fff !important; color: #3b4151 !important; border-color: #d8dde7 !important; }
+      `;
+      document.head.appendChild(lightReset);
+    }
     return;
   }
+  // Dark mode — remove any light reset
+  document.getElementById("swagger-light-reset")?.remove();
   if (existingStyle) return; // already injected
   const style = document.createElement("style");
   style.id = "swagger-dark-mode";

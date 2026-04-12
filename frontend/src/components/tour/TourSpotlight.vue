@@ -30,6 +30,17 @@ let _resizeObserver: ResizeObserver | null = null;
 
 function startTracking() {
   stopTracking();
+
+  // Sprint 10: scroll the target element into view BEFORE measuring its rect.
+  // This fixes the bug where sidebar nav items below the fold were highlighted
+  // at the wrong position because they weren't visible in the viewport.
+  if (props.target) {
+    const el = document.querySelector(props.target) as HTMLElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }
+
   updateRect();
   updateViewport();
 
