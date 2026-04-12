@@ -6,7 +6,6 @@ const { t } = useI18n();
 const visible = ref(false);
 
 onMounted(() => {
-  // Only show if user hasn't accepted yet
   const accepted = localStorage.getItem("hubex_cookies_accepted");
   if (!accepted) {
     visible.value = true;
@@ -26,17 +25,17 @@ function acceptAll() {
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="cookie-banner">
-      <div class="cookie-content">
-        <p class="cookie-text">
+    <div v-if="visible" class="hbx-consent-strip">
+      <div class="hbx-consent-inner">
+        <p class="hbx-consent-msg">
           {{ t('legal.cookies.bannerText') }}
-          <router-link to="/datenschutz" class="cookie-link">{{ t('legal.cookies.moreInfo') }}</router-link>
+          <router-link to="/datenschutz" class="hbx-consent-link">{{ t('legal.cookies.moreInfo') }}</router-link>
         </p>
-        <div class="cookie-actions">
-          <button class="cookie-btn essential" @click="acceptEssential">
+        <div class="hbx-consent-btns">
+          <button class="hbx-consent-btn hbx-essential" @click="acceptEssential">
             {{ t('legal.cookies.essentialOnly') }}
           </button>
-          <button class="cookie-btn accept" @click="acceptAll">
+          <button class="hbx-consent-btn hbx-accept" @click="acceptAll">
             {{ t('legal.cookies.acceptAll') }}
           </button>
         </div>
@@ -46,7 +45,7 @@ function acceptAll() {
 </template>
 
 <style scoped>
-.cookie-banner {
+.hbx-consent-strip {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -57,7 +56,7 @@ function acceptAll() {
   border-top: 1px solid #333;
   padding: 16px 24px;
 }
-.cookie-content {
+.hbx-consent-inner {
   max-width: 1000px;
   margin: 0 auto;
   display: flex;
@@ -65,23 +64,23 @@ function acceptAll() {
   justify-content: space-between;
   gap: 24px;
 }
-.cookie-text {
+.hbx-consent-msg {
   font-size: 13px;
   color: #bbb;
   line-height: 1.5;
   flex: 1;
 }
-.cookie-link {
+.hbx-consent-link {
   color: #F5A623;
   text-decoration: none;
 }
-.cookie-link:hover { text-decoration: underline; }
-.cookie-actions {
+.hbx-consent-link:hover { text-decoration: underline; }
+.hbx-consent-btns {
   display: flex;
   gap: 10px;
   flex-shrink: 0;
 }
-.cookie-btn {
+.hbx-consent-btn {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 12px;
@@ -90,25 +89,25 @@ function acceptAll() {
   transition: all 0.2s;
   border: none;
 }
-.cookie-btn.essential {
+.hbx-essential {
   background: transparent;
   border: 1px solid #444;
   color: #ccc;
 }
-.cookie-btn.essential:hover {
+.hbx-essential:hover {
   border-color: #666;
   color: #fff;
 }
-.cookie-btn.accept {
+.hbx-accept {
   background: #F5A623;
   color: #111;
 }
-.cookie-btn.accept:hover {
+.hbx-accept:hover {
   background: #dda020;
 }
 
 @media (max-width: 640px) {
-  .cookie-content { flex-direction: column; text-align: center; }
-  .cookie-actions { width: 100%; justify-content: center; }
+  .hbx-consent-inner { flex-direction: column; text-align: center; }
+  .hbx-consent-btns { width: 100%; justify-content: center; }
 }
 </style>
