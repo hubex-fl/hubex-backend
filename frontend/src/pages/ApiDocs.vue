@@ -9,7 +9,7 @@ import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const { t, tm, rt } = useI18n();
 const themeStore = useThemeStore();
-const isDark = computed(() => themeStore.current === "dark");
+const isDark = computed(() => themeStore.theme === "dark");
 
 const copied = ref(false);
 const activeTab = ref<"swagger" | "redoc" | "overview">("swagger");

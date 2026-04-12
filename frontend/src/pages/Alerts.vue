@@ -815,7 +815,7 @@ const statusClass: Record<string, string> = {
 
             <!-- Variable Threshold config (only when condition_type === variable_threshold) -->
             <template v-if="form.condition_type === 'variable_threshold'">
-              <UEntitySelect v-model="vtKey" entity-type="variable" label="Variable Key" />
+              <UEntitySelect v-model="vtKey" entity-type="variable" :label="t('common.variableKey')" />
               <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
                   <label class="text-xs font-medium text-[var(--text-muted)]">{{ t('alerts.operator') }}</label>
@@ -836,7 +836,7 @@ const statusClass: Record<string, string> = {
                   />
                 </div>
               </div>
-              <UEntitySelect v-model="vtDeviceUid" entity-type="device" label="Device UID" placeholder="Leave empty for global variable" :optional="true" />
+              <UEntitySelect v-model="vtDeviceUid" entity-type="device" :label="t('common.deviceUid')" :placeholder="t('common.leaveEmptyGlobal')" :optional="true" />
             </template>
 
             <!-- Device UID (for non-threshold conditions too) -->
@@ -844,8 +844,8 @@ const statusClass: Record<string, string> = {
               v-if="form.condition_type !== 'variable_threshold'"
               v-model="vtDeviceUid"
               entity-type="device"
-              label="Device"
-              placeholder="Select device (optional)"
+              :label="t('common.device')"
+              :placeholder="t('common.selectDeviceOptional')"
               :optional="true"
             />
 

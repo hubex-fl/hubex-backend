@@ -642,9 +642,9 @@ onMounted(async () => {
               <!-- Sprint 10 A2: human-readable "My Permissions" card -->
               <UCard>
                 <template #header>
-                  <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-between gap-3 w-full">
                     <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.myPermissions') }}</h3>
-                    <span class="text-xs text-[var(--text-muted)]">{{ capList.length }} {{ t('settings.capsActive') }}</span>
+                    <span class="text-xs text-[var(--text-muted)] shrink-0">{{ capList.length }} {{ t('settings.capsActive') }}</span>
                   </div>
                 </template>
                 <div class="space-y-3">
@@ -1041,9 +1041,9 @@ onMounted(async () => {
               <!-- Sprint 10 A3: MCP Server Permissions info card -->
               <UCard>
                 <template #header>
-                  <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-between gap-3 w-full">
                     <h3 class="text-sm font-semibold text-[var(--text-primary)]">{{ t('settings.mcpPermissions') }}</h3>
-                    <UBadge status="ok" size="sm">{{ t('settings.mcpActive') }}</UBadge>
+                    <UBadge status="ok" size="sm" class="shrink-0">{{ t('settings.mcpActive') }}</UBadge>
                   </div>
                 </template>
                 <div class="space-y-3">
@@ -1056,6 +1056,9 @@ onMounted(async () => {
                   </div>
                   <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">
                     {{ t('settings.mcpApiKeyHint') }}
+                  </p>
+                  <p v-if="!hasCap('apikeys.write')" class="text-[10px] text-[var(--status-warn)] leading-relaxed mt-1">
+                    {{ t('settings.mcpTesterHint') }}
                   </p>
                 </div>
               </UCard>

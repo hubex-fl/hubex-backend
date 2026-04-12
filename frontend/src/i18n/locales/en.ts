@@ -119,6 +119,14 @@ export default {
     noData: 'No data available',
     noMatches: 'No matches',
     noOptionsAvailable: 'No options available',
+    // Shared selector labels (used by UEntitySelect across all pages)
+    device: 'Device',
+    deviceUid: 'Device UID',
+    variableKey: 'Variable Key',
+    selectDeviceOptional: 'Select device (optional)',
+    leaveEmptyGlobal: 'Leave empty for global variable',
+    selectGroup: 'Select Group',
+    chooseGroup: 'Choose a group...',
     confirm: 'Confirm',
     back: 'Back',
     next: 'Next',
@@ -905,6 +913,7 @@ export default {
     mcpPermissionsHint: 'When you connect an AI assistant (like Claude) via MCP, it inherits your exact permissions. It can only do what you can do — no more, no less. Your role determines the available tools.',
     mcpEndpoint: 'SSE Endpoint',
     mcpApiKeyHint: 'To restrict MCP access further, create an API key (above) with only the capabilities you want the AI to use, then pass that key instead of your session token.',
+    mcpTesterHint: 'Your role does not allow creating API keys. MCP uses your current permissions as-is. Ask an admin for a scoped API key if needed.',
     // Sprint 8 R4 F20: search
     searchPlaceholder: 'Search settings…',
     searchNoResults: 'No settings matched "{query}"',

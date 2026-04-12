@@ -2371,7 +2371,7 @@ onUnmounted(() => {
 
             <!-- Existing group selector -->
             <template v-if="!quickCreateMode">
-              <UEntitySelect v-model="addGroupEntityId" entity-type="entity" label="Select Group" placeholder="Choose a group..." />
+              <UEntitySelect v-model="addGroupEntityId" entity-type="entity" :label="t('common.selectGroup')" :placeholder="t('common.chooseGroup')" />
               <UInput v-model="addGroupPriority" label="Priority" type="number" placeholder="0" />
             </template>
 
