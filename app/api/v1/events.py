@@ -205,6 +205,61 @@ async def emit_event(
     return EventEmitOut(ok=True, event_id=event.id)
 
 
+class FeedbackIn(BaseModel):
+    type: str = Field(default="other", pattern="^(bug|feature|other)$")
+    message: str = Field(min_length=1, max_length=5000)
+    metadata: dict = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class FeedbackOut(BaseModel):
+    ok: bool
+    feedback_id: int
+
+
+@router.post("/feedback", response_model=FeedbackOut)
+async def submit_feedback(
+    data: FeedbackIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Submit user feedback with silent metadata for analysis.
+
+    Feedback is stored as an event in the 'feedback' stream so admins
+    can query, filter, and export it using the standard events API.
+    The metadata (page, viewport, recent pages, console errors, etc.)
+    is collected silently by the frontend widget — the user only sees
+    and fills in the message text.
+    """
+    import logging
+    logger = logging.getLogger("uvicorn.error")
+
+    payload = {
+        "message": data.message,
+        "feedback_type": data.type,
+        "user_email": user.email,
+        "user_id": user.id,
+        **data.metadata,
+    }
+
+    event = EventV1(
+        stream="feedback",
+        type=f"feedback.{data.type}",
+        payload=payload,
+    )
+    db.add(event)
+    await db.commit()
+    await db.refresh(event)
+
+    logger.info(
+        "Feedback [%s] from %s: %s",
+        data.type, user.email, data.message[:100],
+    )
+
+    return FeedbackOut(ok=True, feedback_id=event.id)
+
+
 @router.get("/export")
 async def export_events(
     stream: str = Query("system"),

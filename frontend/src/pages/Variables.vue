@@ -100,6 +100,11 @@ function varMenuItems(def: VariableDefinition): ContextMenuItem[] {
       action: () => openDeleteDef(def),
       destructive: true,
     },
+    {
+      label: t('variables.viewInSystemMap'),
+      icon: "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15",
+      action: () => router.push({ path: "/flow-editor", query: { highlight: `var-${def.key}` } }),
+    },
   ];
 }
 
@@ -108,6 +113,7 @@ type ScopeFilter = "all" | VariableScope;
 
 const definitions   = ref<VariableDefinition[]>([]);
 const valuesByKey   = ref<Record<string, VariableValue>>({});
+const varDeviceMap  = ref<Record<string, { uid: string; name: string }>>({});
 const historyByKey  = ref<Record<string, VizDataPoint[]>>({});
 const expandedKey   = ref<string | null>(null);
 const error         = ref<string | null>(null);
@@ -249,17 +255,44 @@ async function loadDefinitionsAndValues() {
     definitions.value = defs;
 
     const values: Record<string, VariableValue> = {};
+    const devMap: Record<string, { uid: string; name: string }> = {};
+
     if (deviceUid.value.trim()) {
       const vars = await getDeviceVariables(deviceUid.value.trim());
       for (const item of [...vars.globals, ...vars.device]) values[item.key] = item;
     } else {
+      // Load global values
       await Promise.all(
         defs.filter((d) => d.scope === "global").map(async (d) => {
           try { values[d.key] = await getValue({ key: d.key, scope: "global" }); } catch { /* no value yet */ }
         })
       );
+
+      // Also load device-scoped values from all devices
+      const hasDeviceVars = defs.some((d) => d.scope === "device");
+      if (hasDeviceVars) {
+        try {
+          const { apiFetch } = await import("../lib/api");
+          const devices = await apiFetch<Array<{ id: number; device_uid: string; name: string | null }>>("/api/v1/devices");
+          await Promise.all(
+            devices.map(async (dev) => {
+              try {
+                const dvars = await getDeviceVariables(dev.device_uid);
+                for (const item of dvars.device) {
+                  // Only set value if we don't have one yet or this is newer
+                  if (!values[item.key] || (item.updated_at && (!values[item.key].updated_at || item.updated_at > values[item.key].updated_at))) {
+                    values[item.key] = item;
+                    devMap[item.key] = { uid: dev.device_uid, name: dev.name || dev.device_uid };
+                  }
+                }
+              } catch { /* device may have no vars */ }
+            })
+          );
+        } catch { /* fallback: no device values */ }
+      }
     }
     valuesByKey.value = values;
+    varDeviceMap.value = devMap;
     revealKeys.value = new Set();
 
     // Load sparkline data for numeric defs (last 1h, max 60 points, no await)
@@ -684,7 +717,7 @@ onMounted(async () => {
             <th>{{ t('variables.colType') }}</th>
             <th>{{ t('variables.colValue') }}</th>
             <th class="col-spark">{{ t('variables.colTrend') }}</th>
-            <th>{{ t('variables.colHint') }}</th>
+            <th>{{ t('variables.colDevice') }}</th>
             <th>{{ t('variables.colUpdated') }}</th>
             <th class="col-actions">{{ t('variables.colActions') }}</th>
           </tr>
@@ -775,10 +808,13 @@ onMounted(async () => {
                 <span v-else-if="!isNumeric(def.value_type)" class="spark-na">—</span>
               </td>
 
-              <!-- Display hint -->
+              <!-- Device -->
               <td>
-                <span v-if="def.display_hint" class="hint-badge">{{ def.display_hint }}</span>
-                <span v-else class="hint-none">auto</span>
+                <router-link v-if="def.scope === 'device' && varDeviceMap[def.key]" :to="`/devices/${varDeviceMap[def.key].uid}`" class="text-[10px] text-[var(--primary)] hover:underline truncate max-w-[120px] block">
+                  {{ varDeviceMap[def.key].name }}
+                </router-link>
+                <span v-else-if="def.scope === 'device'" class="text-[10px] text-[var(--text-muted)]">–</span>
+                <UBadge v-else status="info" size="sm">{{ t('variables.global') }}</UBadge>
               </td>
 
               <!-- Updated -->

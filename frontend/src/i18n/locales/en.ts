@@ -129,6 +129,10 @@ export default {
     selectGroup: 'Select Group',
     chooseGroup: 'Choose a group...',
     clickMapToSetLocation: 'Click the map to set coordinates',
+    searchAddress: 'Search address...',
+    search: 'Search',
+    noAddressFound: 'No address found',
+    addressSearchError: 'Address search failed',
     confirm: 'Confirm',
     back: 'Back',
     next: 'Next',
@@ -174,6 +178,7 @@ export default {
   devices: {
     title: 'Devices',
     subtitle: 'Manage and pair IoT devices',
+    viewInSystemMap: 'System Map',
     adminViewSuffix: 'admin view (includes unclaimed)',
     addDevice: 'Add Device',
     pairDevice: 'Pair Device',
@@ -495,9 +500,11 @@ export default {
     colType: 'Type',
     colValue: 'Value',
     colTrend: 'Trend',
-    colHint: 'Hint',
+    colDevice: 'Device',
     colUpdated: 'Updated',
     colActions: 'Actions',
+    global: 'Global',
+    viewInSystemMap: 'View in System Map',
     // Group headers
     globalVariables: 'Global Variables',
     deviceVariables: 'Device Variables',
@@ -2551,9 +2558,21 @@ export default {
           title: 'The data layer',
           text: 'Variables are every data point your devices send or receive — sensor readings, states, configuration values. The table shows current value, source, and freshness.',
         },
-        filters: {
-          title: 'Filter and search',
-          text: 'Use the filters at the top to scope by device or source, or the search box to find a variable by key. Click any row to see the full history and live stream.',
+        table: {
+          title: 'The variables table',
+          text: 'Each row is a variable with its key, current value, scope, device assignment, and last-updated timestamp. Click any row to expand its history chart and details.',
+        },
+        scopeFilter: {
+          title: 'Filter by scope',
+          text: 'Use the scope dropdown to show only global, device-scoped, or all variables. Global variables are shared across the system, while device variables belong to a specific device.',
+        },
+        deviceFilter: {
+          title: 'Filter by device',
+          text: 'Pick a device from this selector to see only the variables assigned to it. Combined with the scope filter, you can quickly zero in on exactly the data you need.',
+        },
+        editing: {
+          title: 'Edit values inline',
+          text: 'Writable variables show an edit control in the table row. You can change values directly — great for configuration knobs, target setpoints, or manual overrides.',
         },
         done: {
           title: 'Tip',
@@ -2831,6 +2850,36 @@ export default {
         },
       },
     },
+    traceTimelineOverview: {
+      name: 'Trace Timeline Overview',
+      description: 'Understand the chronological event timeline',
+      steps: {
+        intro: {
+          title: 'The Trace Timeline',
+          text: 'This page shows a chronological timeline of all system activity — events, alerts, automations, and audit entries — merged into a single view grouped by trace ID.',
+        },
+        timeRange: {
+          title: 'Time range selector',
+          text: 'Choose a time window — from 15 minutes to 24 hours. The timeline reloads to show events within the selected range.',
+        },
+        incidents: {
+          title: 'Incident summary',
+          text: 'These cards give you a quick health snapshot: active alerts, automations fired in the last 24h, offline devices, and error events in the last hour.',
+        },
+        anomalies: {
+          title: 'Anomaly detection',
+          text: 'When variable values deviate significantly from their normal range (z-score above 2.5), they appear here as anomaly hints. A quick way to spot unusual behavior.',
+        },
+        timeline: {
+          title: 'Event timeline',
+          text: 'Each dot represents an event. Color-coded by source: amber for events, teal for audit, red for alerts, blue for automations. Click any entry to see its full details.',
+        },
+        detail: {
+          title: 'Trace detail panel',
+          text: 'When you click a timeline entry, the detail panel shows source, type, timestamp, trace ID, and the originating device. Use the trace ID to follow related events across the system.',
+        },
+      },
+    },
     onboarding: {
       name: 'Getting Started',
       description: 'Quick tour through the main features',
@@ -2939,6 +2988,10 @@ export default {
         tourLauncher: {
           title: 'Tour Guide',
           text: 'Click the graduation cap icon to access all available guided tours anytime. Each tour focuses on a different feature area.',
+        },
+        feedback: {
+          title: 'Share Your Feedback',
+          text: 'Found a bug, missing a feature, or have a suggestion? Click this button anytime to send us feedback. Your input helps us improve HubEx — every report counts!',
         },
         done: {
           title: "You're ready!",
@@ -4750,5 +4803,53 @@ export default {
     footer: {
       copyright: 'HUBEX © {year}. Open Source under MIT License.',
     },
+  },
+  legal: {
+    impressum: {
+      title: 'Legal Notice (Impressum)',
+      operator: 'Operator',
+      contact: 'Contact',
+      responsibility: 'Responsibility for Content',
+      responsibilityText: 'The content of this website has been created with care. However, we cannot guarantee the accuracy, completeness, or timeliness of the content.',
+      disclaimer: 'Disclaimer',
+      disclaimerText: 'This is a test instance for evaluation purposes. No guarantees are made regarding availability, data persistence, or functionality.',
+    },
+    datenschutz: {
+      title: 'Privacy Policy',
+      overview: 'Overview',
+      overviewText: 'The protection of your personal data is important to us. This privacy policy explains which data is collected on this test instance and how it is used.',
+      collection: 'Data Collection',
+      collectionText: 'The following data is collected when using this platform:',
+      collectionItem1: 'Login data (email, hashed password) for authentication',
+      collectionItem2: 'Usage data (pages visited, actions performed) for functionality',
+      collectionItem3: 'Device and sensor data submitted through the IoT interface',
+      cookies: 'Cookies',
+      cookiesText: 'This platform uses only technically necessary cookies for session management and user preferences. No tracking or advertising cookies are used.',
+      hosting: 'Hosting',
+      hostingText: 'This instance is hosted on a VPS by Hostinger. Server logs may be stored temporarily for security purposes.',
+      rights: 'Your Rights',
+      rightsText: 'You have the right to request information about your stored data, correction, deletion, or restriction of processing.',
+      contactSection: 'Contact',
+      contactText: 'For privacy inquiries, contact us at the email in the legal notice.',
+    },
+    cookies: {
+      bannerText: 'This site uses only technically necessary cookies for session management and preferences. No tracking cookies are used.',
+      moreInfo: 'More info',
+      essentialOnly: 'Essential only',
+      acceptAll: 'Accept',
+    },
+  },
+  feedback: {
+    button: 'Feedback',
+    title: 'Send Feedback',
+    typeBug: '🐛 Bug',
+    typeFeature: '💡 Feature',
+    typeOther: '💬 Other',
+    placeholder: 'Describe the issue, idea, or question...',
+    metaHint: 'Technical details (page, browser, recent actions) are included automatically for analysis.',
+    send: 'Send',
+    sending: 'Sending...',
+    sent: 'Feedback sent — thank you!',
+    error: 'Could not send feedback. Please try again.',
   },
 };

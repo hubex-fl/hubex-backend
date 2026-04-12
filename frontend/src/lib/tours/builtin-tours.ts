@@ -272,6 +272,15 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.tourLauncher.title",
     text: "tours.onboarding.steps.tourLauncher.text",
   },
+  // -- Feedback button
+  {
+    id: "feedback",
+    target: "[data-tour='feedback-button'], .feedback-widget, button:has(> span)",
+    action: "spotlight+pulse",
+    position: "top",
+    title: "tours.onboarding.steps.feedback.title",
+    text: "tours.onboarding.steps.feedback.text",
+  },
   // -- Done
   {
     id: "done",
@@ -533,7 +542,7 @@ const alertInvestigationSteps: TourStep[] = [
   {
     id: "alert-event",
     page: "/alerts",
-    target: "[data-tour='alert-event'], .alert-event-card, table tbody tr:first-child",
+    target: "[data-tour='alert-event'], .space-y-2 > div:first-child, .space-y-4 > div:nth-child(3), main",
     action: "spotlight+pulse",
     position: "bottom",
     title: "tours.alertInvestigation.steps.alertEvent.title",
@@ -541,7 +550,8 @@ const alertInvestigationSteps: TourStep[] = [
   },
   {
     id: "alert-rule",
-    target: "[data-tour='alert-rule'], .alert-rule-config",
+    page: "/alerts",
+    target: "[data-tour='alert-rule'], .space-y-2, .space-y-4 > div:last-child, main",
     action: "spotlight",
     position: "bottom",
     title: "tours.alertInvestigation.steps.alertRule.title",
@@ -550,7 +560,7 @@ const alertInvestigationSteps: TourStep[] = [
   {
     id: "variable-history",
     page: "/variables",
-    target: "[data-tour='variable-chart'], .sparkline, canvas",
+    target: "[data-tour='variable-chart'], .sparkline, canvas, .vars-table-wrap, main",
     action: "spotlight",
     position: "top",
     title: "tours.alertInvestigation.steps.variableHistory.title",
@@ -559,11 +569,13 @@ const alertInvestigationSteps: TourStep[] = [
   },
   {
     id: "device-source",
-    target: "[data-tour='device-detail'], .device-header, h1",
+    page: "/devices",
+    target: "[data-tour='device-detail'], h1, [data-tour='page-header'], main",
     action: "spotlight",
     position: "bottom",
     title: "tours.alertInvestigation.steps.deviceSource.title",
     text: "tours.alertInvestigation.steps.deviceSource.text",
+    delay: 600,
   },
   {
     id: "resolution",
@@ -706,19 +718,47 @@ const variablesOverviewSteps: TourStep[] = [
     text: "tours.variablesOverview.steps.intro.text",
   },
   {
-    id: "filters",
+    id: "table",
     page: "/variables",
-    target: ".vars-filters, input[type='search'], select",
+    target: ".vars-table-wrap, .vars-table, table, main",
+    action: "spotlight",
+    position: "top",
+    title: "tours.variablesOverview.steps.table.title",
+    text: "tours.variablesOverview.steps.table.text",
+  },
+  {
+    id: "scope-filter",
+    page: "/variables",
+    target: ".toolbar-scope, .vars-toolbar select, .vars-toolbar",
     action: "spotlight+pulse",
     position: "bottom",
-    title: "tours.variablesOverview.steps.filters.title",
-    text: "tours.variablesOverview.steps.filters.text",
+    title: "tours.variablesOverview.steps.scopeFilter.title",
+    text: "tours.variablesOverview.steps.scopeFilter.text",
+  },
+  {
+    id: "device-filter",
+    page: "/variables",
+    target: ".toolbar-device, .vars-toolbar .entity-select, .vars-toolbar",
+    action: "spotlight+pulse",
+    position: "bottom",
+    title: "tours.variablesOverview.steps.deviceFilter.title",
+    text: "tours.variablesOverview.steps.deviceFilter.text",
+  },
+  {
+    id: "editing",
+    page: "/variables",
+    target: ".vars-table tbody tr:first-child, .vars-table tr:nth-child(2), table tbody, main",
+    action: "spotlight",
+    position: "top",
+    title: "tours.variablesOverview.steps.editing.title",
+    text: "tours.variablesOverview.steps.editing.text",
   },
   {
     id: "done",
     page: "/variables",
-    action: "info",
-    position: "center",
+    target: ".vars-toolbar, .vars-table-wrap, main",
+    action: "spotlight",
+    position: "top",
     title: "tours.variablesOverview.steps.done.title",
     text: "tours.variablesOverview.steps.done.text",
   },
@@ -789,9 +829,9 @@ const eventsOverviewTour: TourDefinition = {
   steps: [
     { id: "intro", page: "/events", target: "h2", action: "spotlight", position: "bottom",
       title: "tours.eventsOverview.steps.intro.title", text: "tours.eventsOverview.steps.intro.text" },
-    { id: "stream", page: "/events", action: "info", position: "center",
+    { id: "stream", page: "/events", target: ".entity-select, select, .flex-col.sm\\:flex-row .flex-1:first-child, main", action: "spotlight+pulse", position: "bottom",
       title: "tours.eventsOverview.steps.stream.title", text: "tours.eventsOverview.steps.stream.text" },
-    { id: "controls", page: "/events", action: "info", position: "center",
+    { id: "controls", page: "/events", target: "table, .overflow-x-auto, .w-full.text-xs, main", action: "spotlight", position: "top",
       title: "tours.eventsOverview.steps.controls.title", text: "tours.eventsOverview.steps.controls.text" },
   ],
 };
@@ -954,6 +994,34 @@ const traceHubOverviewTour: TourDefinition = {
   ],
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Trace Timeline Overview  ("trace-timeline-overview")
+ *
+ * Referenced by the UInfoTooltip on /trace-timeline.
+ * Shows incident summary cards, anomaly detection, the event timeline,
+ * and the trace detail panel.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const traceTimelineOverviewTour: TourDefinition = {
+  id: "trace-timeline-overview", name: "tours.traceTimelineOverview.name",
+  description: "tours.traceTimelineOverview.description", icon: "activity", category: "builtin",
+  autoplay: false, autoplayInterval: 10000,
+  steps: [
+    { id: "intro", page: "/trace-timeline", target: "h1, .text-xl", action: "spotlight", position: "bottom",
+      title: "tours.traceTimelineOverview.steps.intro.title", text: "tours.traceTimelineOverview.steps.intro.text" },
+    { id: "time-range", page: "/trace-timeline", target: "select, .flex.items-center.gap-2", action: "spotlight+pulse", position: "bottom",
+      title: "tours.traceTimelineOverview.steps.timeRange.title", text: "tours.traceTimelineOverview.steps.timeRange.text" },
+    { id: "incidents", page: "/trace-timeline", target: ".grid.grid-cols-2.sm\\:grid-cols-4, .grid.grid-cols-2, main", action: "spotlight", position: "bottom",
+      title: "tours.traceTimelineOverview.steps.incidents.title", text: "tours.traceTimelineOverview.steps.incidents.text" },
+    { id: "anomalies", page: "/trace-timeline", target: ".space-y-2, .rounded-lg.bg-\\[var\\(--status-warn\\)\\], main", action: "spotlight", position: "top",
+      title: "tours.traceTimelineOverview.steps.anomalies.title", text: "tours.traceTimelineOverview.steps.anomalies.text" },
+    { id: "timeline", page: "/trace-timeline", target: ".space-y-1.max-h-\\[50vh\\], .overflow-y-auto, main", action: "spotlight", position: "top",
+      title: "tours.traceTimelineOverview.steps.timeline.title", text: "tours.traceTimelineOverview.steps.timeline.text" },
+    { id: "detail", page: "/trace-timeline", target: ".grid.grid-cols-2.gap-2, .space-y-6 > div:last-child, main", action: "spotlight", position: "top",
+      title: "tours.traceTimelineOverview.steps.detail.title", text: "tours.traceTimelineOverview.steps.detail.text" },
+  ],
+};
+
 export const builtinTours: TourDefinition[] = [
   onboardingTour,
   testerTour,
@@ -978,6 +1046,7 @@ export const builtinTours: TourDefinition[] = [
   healthOverviewTour,
   auditOverviewTour,
   traceHubOverviewTour,
+  traceTimelineOverviewTour,
 ];
 
 /**

@@ -37,6 +37,8 @@ const router = createRouter({
       },
     },
     { path: "/landing",      component: () => import("./pages/Landing.vue"),        meta: { layout: "public", noPublicShell: true, title: "HUBEX — The Universal IoT Device Hub" } },
+    { path: "/impressum",    component: () => import("./pages/LegalPage.vue"),      meta: { layout: "public", noPublicShell: true, title: "Impressum" }, props: { page: "impressum" } },
+    { path: "/datenschutz",  component: () => import("./pages/LegalPage.vue"),      meta: { layout: "public", noPublicShell: true, title: "Datenschutz" }, props: { page: "datenschutz" } },
     { path: "/login",        component: () => import("./pages/Login.vue"),          meta: { layout: "auth",  title: "Sign In", titleKey: "nav.signIn" } },
     { path: "/system-stage", component: () => import("./pages/SystemStage.vue"),    meta: { title: "System Stage", titleKey: "nav.systemStage" } },
     { path: "/devices",      component: () => import("./pages/Devices.vue"),         meta: { title: "Devices", titleKey: "nav.devices" } },

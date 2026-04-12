@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { apiFetch } from "../lib/api";
 import UInfoTooltip from "../components/ui/UInfoTooltip.vue";
 
 const { t, tm, rt } = useI18n();
+const route = useRoute();
 const router = useRouter();
 
 // ── Raw API data types ─────────────────────────────────────────────────────
@@ -668,19 +669,95 @@ function getEdgePath(edge: FlowEdge): string {
   const fromH = getNodeHeight(fromNode.type);
   const toH = getNodeHeight(toNode.type);
 
-  const x1 = fromNode.x + NODE_W;
-  const y1 = fromNode.y + fromH / 2;
-  const x2 = toNode.x;
-  const y2 = toNode.y + toH / 2;
+  // Determine exit/entry points based on relative positions
+  const fromCx = fromNode.x + NODE_W / 2;
+  const toCx = toNode.x + NODE_W / 2;
+  const fromCy = fromNode.y + fromH / 2;
+  const toCy = toNode.y + toH / 2;
 
-  if (toNode.column <= fromNode.column) {
-    const midX = Math.min(x1, x2) - 40;
-    return `M${x1},${y1} C${x1 + 40},${y1} ${midX},${y2} ${x2},${y2}`;
+  // For hierarchical layout (top→down), use bottom/top ports
+  // For column layout (left→right), use right/left ports
+  const isVertical = Math.abs(toCy - fromCy) > Math.abs(toCx - fromCx) * 0.8;
+
+  let x1: number, y1: number, x2: number, y2: number;
+
+  if (isVertical) {
+    // Vertical connection: exit from bottom, enter from top (or vice-versa)
+    x1 = fromCx;
+    y1 = toCy > fromCy ? fromNode.y + fromH : fromNode.y;
+    x2 = toCx;
+    y2 = toCy > fromCy ? toNode.y : toNode.y + toH;
+  } else {
+    // Horizontal connection: exit from right side, enter from left side
+    if (toCx > fromCx) {
+      x1 = fromNode.x + NODE_W;
+      y1 = fromCy;
+      x2 = toNode.x;
+      y2 = toCy;
+    } else {
+      x1 = fromNode.x;
+      y1 = fromCy;
+      x2 = toNode.x + NODE_W;
+      y2 = toCy;
+    }
   }
 
-  const dx = Math.abs(x2 - x1);
-  const cpOffset = Math.min(dx * 0.4, 80);
-  return `M${x1},${y1} C${x1 + cpOffset},${y1} ${x2 - cpOffset},${y2} ${x2},${y2}`;
+  // Check if any other node lies on the direct path and route around it
+  const obstacleNodes = visibleNodes.value.filter(
+    (n) => n.id !== edge.from && n.id !== edge.to
+  );
+
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+
+  // Find nodes that overlap with the edge's bounding box
+  const minX = Math.min(x1, x2) - 10;
+  const maxX = Math.max(x1, x2) + 10;
+  const minY = Math.min(y1, y2) - 5;
+  const maxY = Math.max(y1, y2) + 5;
+
+  const blocking = obstacleNodes.filter((n) => {
+    const nh = getNodeHeight(n.type);
+    const nodeRight = n.x + NODE_W;
+    const nodeBottom = n.y + nh;
+    // Check if node bounding box overlaps with the edge's bounding box
+    return n.x < maxX && nodeRight > minX && n.y < maxY && nodeBottom > minY;
+  });
+
+  if (isVertical) {
+    const dy = Math.abs(y2 - y1);
+    const cpDist = Math.max(dy * 0.35, 40);
+
+    if (blocking.length > 0) {
+      // Route around blocking nodes by offsetting control points horizontally
+      const avgBlockX = blocking.reduce((s, n) => s + n.x + NODE_W / 2, 0) / blocking.length;
+      const offsetDir = midX > avgBlockX ? 1 : -1;
+      const offset = NODE_W * 0.8 * offsetDir;
+      const cp1x = x1 + offset;
+      const cp2x = x2 + offset;
+      return `M${x1},${y1} C${cp1x},${y1 + cpDist * (y2 > y1 ? 1 : -1)} ${cp2x},${y2 - cpDist * (y2 > y1 ? 1 : -1)} ${x2},${y2}`;
+    }
+
+    return `M${x1},${y1} C${x1},${y1 + cpDist * (y2 > y1 ? 1 : -1)} ${x2},${y2 - cpDist * (y2 > y1 ? 1 : -1)} ${x2},${y2}`;
+  } else {
+    const dx = Math.abs(x2 - x1);
+    const cpOffset = Math.min(dx * 0.4, 80);
+
+    if (blocking.length > 0) {
+      // Route around blocking nodes by offsetting control points vertically
+      const avgBlockY = blocking.reduce((s, n) => s + n.y + getNodeHeight(n.type) / 2, 0) / blocking.length;
+      const offsetDir = midY > avgBlockY ? 1 : -1;
+      const yOffset = 50 * offsetDir;
+      return `M${x1},${y1} C${x1 + cpOffset},${y1 + yOffset} ${x2 - cpOffset},${y2 + yOffset} ${x2},${y2}`;
+    }
+
+    if (toNode.column <= fromNode.column) {
+      const backX = Math.min(x1, x2) - 40;
+      return `M${x1},${y1} C${x1 + 40},${y1} ${backX},${y2} ${x2},${y2}`;
+    }
+
+    return `M${x1},${y1} C${x1 + cpOffset},${y1} ${x2 - cpOffset},${y2} ${x2},${y2}`;
+  }
 }
 
 // ── Zoom & Pan ─────────────────────────────────────────────────────────────
@@ -1078,8 +1155,25 @@ onMounted(async () => {
   document.addEventListener("click", onDocumentClick);
   window.addEventListener("ai-fly-to", onAiFlyTo);
   await loadSystemGraph();
+  // Apply the selected layout mode (default: hierarchical) — loadSystemGraph
+  // positions nodes in column layout initially, so we must re-layout here.
+  applyLayout();
   await nextTick();
   fitToView();
+
+  // Handle ?highlight=nodeId query param (e.g. from Variables/Devices pages)
+  const highlightId = route.query.highlight as string | undefined;
+  if (highlightId) {
+    await nextTick();
+    const node = nodes.value.find((n) => n.id === highlightId);
+    if (node) {
+      selectedNode.value = node;
+      inspectorOpen.value = true;
+      flyToNode(node);
+      pulsingNodeId.value = node.id;
+      setTimeout(() => { pulsingNodeId.value = null; }, 3000);
+    }
+  }
 });
 
 onUnmounted(() => {
@@ -1171,17 +1265,6 @@ function applyLayout() {
       node.y = COL_START_Y + colCounts[colIdx] * (getNodeHeight(node.type) + ROW_GAP);
       colCounts[colIdx]++;
     }
-  } else if (layoutMode.value === "radial") {
-    // Circular: nodes in a ring grouped by type
-    const cx = 600, cy = 500;
-    const radius = Math.max(250, count * 20);
-    n.forEach((node, i) => {
-      const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
-      const r = radius + (node.column * 60);
-      node.x = cx + Math.cos(angle) * r;
-      node.y = cy + Math.sin(angle) * r;
-      customPositions.value[node.id] = { x: node.x, y: node.y };
-    });
   } else if (layoutMode.value === "hierarchical") {
     // Top-down tree: devices top → variables middle → automations/alerts bottom
     // User feedback: MORE SPACING — elements were squeezed together

@@ -128,6 +128,10 @@ export default {
     selectGroup: 'Gruppe ausw\u00e4hlen',
     chooseGroup: 'Gruppe w\u00e4hlen...',
     clickMapToSetLocation: 'Klicke auf die Karte um Koordinaten zu setzen',
+    searchAddress: 'Adresse suchen...',
+    search: 'Suchen',
+    noAddressFound: 'Keine Adresse gefunden',
+    addressSearchError: 'Adresssuche fehlgeschlagen',
     confirm: 'Best\u00e4tigen',
     back: 'Zurück',
     next: 'Weiter',
@@ -173,6 +177,7 @@ export default {
   devices: {
     title: 'Geräte',
     subtitle: 'IoT-Geräte verwalten und koppeln',
+    viewInSystemMap: 'Systemkarte',
     adminViewSuffix: 'Admin-Ansicht (inkl. nicht beanspruchter)',
     addDevice: 'Gerät hinzufügen',
     pairDevice: 'Gerät koppeln',
@@ -491,9 +496,11 @@ export default {
     colType: 'Typ',
     colValue: 'Wert',
     colTrend: 'Trend',
-    colHint: 'Hinweis',
+    colDevice: 'Gerät',
     colUpdated: 'Aktualisiert',
     colActions: 'Aktionen',
+    global: 'Global',
+    viewInSystemMap: 'In Systemkarte anzeigen',
     // Group headers
     globalVariables: 'Globale Variablen',
     deviceVariables: 'Geräte-Variablen',
@@ -2518,9 +2525,21 @@ export default {
           title: 'Die Datenschicht',
           text: 'Variablen sind alle Datenpunkte, die deine Geräte senden oder empfangen — Sensorwerte, Zustände, Konfigurationen. Die Tabelle zeigt aktuellen Wert, Quelle und Aktualität.',
         },
-        filters: {
-          title: 'Filtern und suchen',
-          text: 'Nutze die Filter oben, um nach Gerät oder Quelle einzuschränken, oder die Suche, um eine Variable am Schlüssel zu finden. Klick auf eine Zeile für Verlauf und Live-Stream.',
+        table: {
+          title: 'Die Variablen-Tabelle',
+          text: 'Jede Zeile ist eine Variable mit Schlüssel, aktuellem Wert, Scope, Gerätezuordnung und letztem Update. Klick auf eine Zeile, um das Verlaufsdiagramm und Details aufzuklappen.',
+        },
+        scopeFilter: {
+          title: 'Nach Scope filtern',
+          text: 'Nutze das Scope-Dropdown, um nur globale, gerätebezogene oder alle Variablen anzuzeigen. Globale Variablen gelten systemweit, Gerätevariablen gehören zu einem bestimmten Gerät.',
+        },
+        deviceFilter: {
+          title: 'Nach Gerät filtern',
+          text: 'Wähle ein Gerät aus diesem Selektor, um nur dessen Variablen zu sehen. In Kombination mit dem Scope-Filter findest du schnell genau die Daten, die du brauchst.',
+        },
+        editing: {
+          title: 'Werte inline bearbeiten',
+          text: 'Schreibbare Variablen zeigen ein Bearbeitungsfeld direkt in der Tabellenzeile. Du kannst Werte sofort ändern — ideal für Konfigurationsregler, Sollwerte oder manuelle Übersteuerungen.',
         },
         done: {
           title: 'Tipp',
@@ -2798,6 +2817,36 @@ export default {
         },
       },
     },
+    traceTimelineOverview: {
+      name: 'Trace-Timeline-\u00dcberblick',
+      description: 'Die chronologische Event-Timeline verstehen',
+      steps: {
+        intro: {
+          title: 'Die Trace Timeline',
+          text: 'Diese Seite zeigt eine chronologische Timeline aller Systemaktivit\u00e4ten \u2014 Events, Alarme, Automationen und Audit-Eintr\u00e4ge \u2014 zusammengef\u00fchrt in einer einzigen Ansicht, gruppiert nach Trace-ID.',
+        },
+        timeRange: {
+          title: 'Zeitraum-Auswahl',
+          text: 'W\u00e4hle ein Zeitfenster \u2014 von 15 Minuten bis 24 Stunden. Die Timeline l\u00e4dt neu und zeigt Events im gew\u00e4hlten Bereich.',
+        },
+        incidents: {
+          title: 'Incident-\u00dcbersicht',
+          text: 'Diese Karten geben dir einen schnellen Gesundheits-Snapshot: aktive Alarme, Automationen der letzten 24h, Offline-Ger\u00e4te und Fehler-Events der letzten Stunde.',
+        },
+        anomalies: {
+          title: 'Anomalie-Erkennung',
+          text: 'Wenn Variablenwerte deutlich von ihrem Normalbereich abweichen (Z-Score \u00fcber 2,5), erscheinen sie hier als Anomalie-Hinweise. Ein schneller Weg, un\u00fcbliches Verhalten zu erkennen.',
+        },
+        timeline: {
+          title: 'Event-Timeline',
+          text: 'Jeder Punkt repr\u00e4sentiert ein Event. Farbkodiert nach Quelle: Amber f\u00fcr Events, T\u00fcrkis f\u00fcr Audit, Rot f\u00fcr Alarme, Blau f\u00fcr Automationen. Klicke auf einen Eintrag f\u00fcr die vollst\u00e4ndigen Details.',
+        },
+        detail: {
+          title: 'Trace-Detail-Panel',
+          text: 'Wenn du einen Timeline-Eintrag anklickst, zeigt das Detail-Panel Quelle, Typ, Zeitstempel, Trace-ID und das ausl\u00f6sende Ger\u00e4t. Nutze die Trace-ID, um zusammengeh\u00f6rige Events im System zu verfolgen.',
+        },
+      },
+    },
     onboarding: {
       name: 'Erste Schritte',
       description: 'Schnelle Tour durch die wichtigsten Funktionen',
@@ -2905,6 +2954,10 @@ export default {
         tourLauncher: {
           title: 'Tour-Guide',
           text: 'Klicke das Absolventenhut-Symbol um jederzeit auf alle verf\u00fcgbaren gef\u00fchrten Touren zuzugreifen. Jede Tour fokussiert sich auf einen anderen Funktionsbereich.',
+        },
+        feedback: {
+          title: 'Feedback geben',
+          text: 'Einen Bug gefunden, ein Feature vermisst oder einen Vorschlag? Klicke jederzeit diesen Button, um uns Feedback zu senden. Dein Input hilft uns, HubEx zu verbessern — jede Meldung z\u00e4hlt!',
         },
         done: {
           title: 'Du bist startklar!',
@@ -4702,5 +4755,53 @@ export default {
     footer: {
       copyright: 'HUBEX \u00a9 {year}. Open Source unter MIT-Lizenz.',
     },
+  },
+  legal: {
+    impressum: {
+      title: 'Impressum',
+      operator: 'Betreiber',
+      contact: 'Kontakt',
+      responsibility: 'Inhaltliche Verantwortung',
+      responsibilityText: 'Die Inhalte dieser Webseite wurden mit Sorgfalt erstellt. F\u00fcr die Richtigkeit, Vollst\u00e4ndigkeit und Aktualit\u00e4t der Inhalte k\u00f6nnen wir jedoch keine Gew\u00e4hr \u00fcbernehmen.',
+      disclaimer: 'Haftungsausschluss',
+      disclaimerText: 'Dies ist eine Testinstanz zu Evaluierungszwecken. Es werden keine Garantien hinsichtlich Verf\u00fcgbarkeit, Datenpersistenz oder Funktionalit\u00e4t gegeben.',
+    },
+    datenschutz: {
+      title: 'Datenschutzerkl\u00e4rung',
+      overview: '\u00dcbersicht',
+      overviewText: 'Der Schutz Ihrer pers\u00f6nlichen Daten ist uns wichtig. Diese Datenschutzerkl\u00e4rung erl\u00e4utert, welche Daten auf dieser Testinstanz erhoben und wie sie verwendet werden.',
+      collection: 'Datenerhebung',
+      collectionText: 'Bei der Nutzung dieser Plattform werden folgende Daten erhoben:',
+      collectionItem1: 'Anmeldedaten (E-Mail, gehashtes Passwort) zur Authentifizierung',
+      collectionItem2: 'Nutzungsdaten (besuchte Seiten, ausgef\u00fchrte Aktionen) f\u00fcr die Funktionalit\u00e4t',
+      collectionItem3: 'Ger\u00e4te- und Sensordaten, die \u00fcber die IoT-Schnittstelle \u00fcbermittelt werden',
+      cookies: 'Cookies',
+      cookiesText: 'Diese Plattform verwendet ausschlie\u00dflich technisch notwendige Cookies f\u00fcr Sitzungsverwaltung und Benutzereinstellungen. Es werden keine Tracking- oder Werbe-Cookies eingesetzt.',
+      hosting: 'Hosting',
+      hostingText: 'Diese Testinstanz wird auf einem VPS von Hostinger gehostet. Serverprotokolle k\u00f6nnen vor\u00fcbergehend zu Sicherheitszwecken gespeichert werden.',
+      rights: 'Ihre Rechte',
+      rightsText: 'Sie haben das Recht auf Auskunft, Berichtigung, L\u00f6schung oder Einschr\u00e4nkung der Verarbeitung Ihrer gespeicherten Daten.',
+      contactSection: 'Kontakt',
+      contactText: 'F\u00fcr datenschutzbezogene Anfragen kontaktieren Sie uns \u00fcber die im Impressum angegebene E-Mail-Adresse.',
+    },
+    cookies: {
+      bannerText: 'Diese Seite verwendet ausschlie\u00dflich technisch notwendige Cookies f\u00fcr Sitzungsverwaltung und Einstellungen. Keine Tracking-Cookies.',
+      moreInfo: 'Mehr erfahren',
+      essentialOnly: 'Nur notwendige',
+      acceptAll: 'Akzeptieren',
+    },
+  },
+  feedback: {
+    button: 'Feedback',
+    title: 'Feedback senden',
+    typeBug: '🐛 Bug',
+    typeFeature: '💡 Feature',
+    typeOther: '💬 Sonstiges',
+    placeholder: 'Beschreibe das Problem, die Idee oder Frage...',
+    metaHint: 'Technische Details (Seite, Browser, letzte Aktionen) werden automatisch zur Analyse mitgesendet.',
+    send: 'Senden',
+    sending: 'Wird gesendet...',
+    sent: 'Feedback gesendet — vielen Dank!',
+    error: 'Feedback konnte nicht gesendet werden. Bitte versuche es erneut.',
   },
 };

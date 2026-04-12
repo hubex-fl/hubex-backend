@@ -135,13 +135,26 @@ SEED_SIMULATORS = [
     {
         "name": "[Demo] Motion Sensor",
         "template": "motion",
-        "description": "Auto-created demo simulator — PIR motion + ambient light",
+        "description": "Auto-created demo simulator — PIR motion + ambient light + GPS tracking",
         "interval_seconds": 10,
         "patterns": [
             {"variable_key": "motion", "pattern": "step",
              "config": {"values": [False, False, False, True, False, True], "interval_seconds": 30}},
             {"variable_key": "luminance", "pattern": "sine",
              "config": {"min": 0.0, "max": 1000.0, "period_seconds": 300}},
+            {"variable_key": "demo.gps", "pattern": "gps_track",
+             "config": {
+                 "speed_kmh": 15,
+                 "waypoints": [
+                     {"lat": 50.1109, "lng": 8.6821},
+                     {"lat": 50.1133, "lng": 8.6785},
+                     {"lat": 50.1155, "lng": 8.6730},
+                     {"lat": 50.1180, "lng": 8.6700},
+                     {"lat": 50.1155, "lng": 8.6650},
+                     {"lat": 50.1120, "lng": 8.6690},
+                     {"lat": 50.1109, "lng": 8.6821},
+                 ],
+             }},
         ],
     },
 ]

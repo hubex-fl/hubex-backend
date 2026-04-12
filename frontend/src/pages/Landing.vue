@@ -981,7 +981,8 @@ const mobileMenuOpen = ref(false);
           <a href="#features" class="text-gray-500 hover:text-gray-300 text-sm"
             >{{ t('landing.nav.features') }}</a
           >
-          <!-- pricing nav hidden (Sprint 9 #8) -->
+          <router-link to="/impressum" class="text-gray-500 hover:text-gray-300 text-sm">Impressum</router-link>
+          <router-link to="/datenschutz" class="text-gray-500 hover:text-gray-300 text-sm">Datenschutz</router-link>
         </div>
       </div>
     </footer>

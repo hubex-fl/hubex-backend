@@ -7,6 +7,7 @@ import KioskLayout from "./layouts/KioskLayout.vue";
 import PublicLayout from "./layouts/PublicLayout.vue";
 import ConnectPanel from "./components/ConnectPanel.vue";
 import FeedbackWidget from "./components/FeedbackWidget.vue";
+import CookieBanner from "./components/CookieBanner.vue";
 
 const route = useRoute();
 // Embed: render without any wrapper (no header/footer). Public: use PublicLayout.
@@ -37,4 +38,6 @@ const layout = computed(() => {
   <ConnectPanel />
   <!-- Feedback Widget (bottom-right) -->
   <FeedbackWidget />
+  <!-- Cookie Banner (shown once, until accepted) -->
+  <CookieBanner />
 </template>
