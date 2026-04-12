@@ -708,6 +708,10 @@ export default {
     action: 'Action',
     cooldown: 'Cooldown',
     cooldownTooltip: 'Minimum time between triggers (in seconds)',
+    // Sprint 10 D2: multi-action steps
+    additionalActions: 'Additional Actions',
+    addAction: 'Add Action',
+    noAdditionalActions: 'Only the primary action above will run. Add more to chain multiple actions.',
     fireCount: 'Fire Count',
     lastFired: 'Last Fired',
     testFire: 'Test Fire',

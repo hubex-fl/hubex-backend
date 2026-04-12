@@ -170,6 +170,14 @@ const formTriggerType = ref("variable_threshold");
 const formActionType = ref("create_alert_event");
 const formCooldown = ref(300);
 
+// Sprint 10 D2: additional action steps (multi-action support)
+type FormStep = { action_type: string; action_config: Record<string, any>; delay_seconds: number };
+const formSteps = ref<FormStep[]>([]);
+
+function addStep() {
+  formSteps.value.push({ action_type: "create_alert_event", action_config: {}, delay_seconds: 0 });
+}
+
 // Trigger-specific fields
 const trigVarKey = ref("");
 const trigOperator = ref("gt");
@@ -323,6 +331,7 @@ function resetForm() {
   actAlertMessage.value = "";
   actEventType.value = "";
   actEventPayload.value = "{}";
+  formSteps.value = [];
 }
 
 function openCreate() {
@@ -466,8 +475,24 @@ function openEdit(rule: AutomationRuleOut) {
     actEventPayload.value = JSON.stringify(ac.payload_extra ?? {});
   }
 
+  // Sprint 10 D2: load existing steps for this rule
+  loadStepsForRule(rule.id);
+
   modalError.value = null;
   modalOpen.value = true;
+}
+
+async function loadStepsForRule(ruleId: number) {
+  try {
+    const steps = await apiFetch<Array<{ action_type: string; action_config: Record<string, any>; delay_seconds: number }>>(`/api/v1/automations/${ruleId}/steps`);
+    formSteps.value = steps.map(s => ({
+      action_type: s.action_type,
+      action_config: s.action_config || {},
+      delay_seconds: s.delay_seconds || 0,
+    }));
+  } catch {
+    formSteps.value = [];
+  }
 }
 
 function duplicateRule(rule: AutomationRuleOut) {
@@ -612,16 +637,53 @@ async function handleSave() {
   };
 
   try {
+    let ruleId: number;
     if (modalMode.value === "create") {
       const created = await createAutomation(payload);
       rules.value.unshift(created);
+      ruleId = created.id;
       toast.addToast(t('automations.ruleCreated'), "success");
     } else if (editingId.value !== null) {
       const updated = await updateAutomation(editingId.value, payload);
       const idx = rules.value.findIndex((r) => r.id === editingId.value);
       if (idx !== -1) rules.value[idx] = updated;
+      ruleId = editingId.value;
       toast.addToast(t('automations.ruleUpdated'), "success");
+    } else {
+      ruleId = 0;
     }
+
+    // Sprint 10 D2: save additional steps after rule save
+    if (ruleId && formSteps.value.length) {
+      // Delete existing steps first, then re-create in order
+      try {
+        const existing = await apiFetch<Array<{ id: number }>>(`/api/v1/automations/${ruleId}/steps`);
+        for (const s of existing) {
+          await apiFetch(`/api/v1/automations/${ruleId}/steps/${s.id}`, { method: "DELETE" });
+        }
+      } catch { /* no existing steps */ }
+      for (let i = 0; i < formSteps.value.length; i++) {
+        const step = formSteps.value[i];
+        await apiFetch(`/api/v1/automations/${ruleId}/steps`, {
+          method: "POST",
+          body: JSON.stringify({
+            step_order: i,
+            action_type: step.action_type,
+            action_config: step.action_config,
+            delay_seconds: step.delay_seconds,
+          }),
+        });
+      }
+    } else if (ruleId && modalMode.value === "edit") {
+      // If no steps but editing, clear any existing steps
+      try {
+        const existing = await apiFetch<Array<{ id: number }>>(`/api/v1/automations/${ruleId}/steps`);
+        for (const s of existing) {
+          await apiFetch(`/api/v1/automations/${ruleId}/steps/${s.id}`, { method: "DELETE" });
+        }
+      } catch { /* ignore */ }
+    }
+
     closeModal();
   } catch (err) {
     const info = parseApiError(err);
@@ -1182,6 +1244,57 @@ function toggleRuleExpand(id: number) {
           <div class="space-y-3">
             <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.settingsLabel') }}</h4>
             <div class="space-y-1">
+              <!-- Sprint 10 D2: Additional Actions (steps) -->
+              <div class="border-t border-[var(--border)] pt-3 mt-2">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{{ t('automations.additionalActions') }}</label>
+                  <button
+                    type="button"
+                    class="text-[10px] px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-colors"
+                    @click="addStep"
+                  >+ {{ t('automations.addAction') }}</button>
+                </div>
+                <p v-if="!formSteps.length" class="text-[10px] text-[var(--text-muted)] mb-2">{{ t('automations.noAdditionalActions') }}</p>
+                <div v-for="(step, si) in formSteps" :key="si" class="flex items-start gap-2 mb-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)]">
+                  <span class="text-[10px] text-[var(--text-muted)] mt-1.5 shrink-0">{{ si + 2 }}.</span>
+                  <div class="flex-1 min-w-0 space-y-1.5">
+                    <select
+                      v-model="step.action_type"
+                      class="w-full px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)]"
+                    >
+                      <option v-for="at in ACTION_TYPES" :key="at.value" :value="at.value">{{ at.label }}</option>
+                    </select>
+                    <!-- Inline config for common action types -->
+                    <input
+                      v-if="step.action_type === 'set_variable'"
+                      v-model="step.action_config.variable_key"
+                      class="w-full px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] text-[var(--text-primary)] font-mono"
+                      :placeholder="t('automations.selectors.variableKey')"
+                    />
+                    <input
+                      v-if="step.action_type === 'create_alert_event'"
+                      v-model="step.action_config.message"
+                      class="w-full px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] text-[var(--text-primary)]"
+                      :placeholder="t('automations.alertMessagePlaceholder')"
+                    />
+                    <input
+                      v-if="step.action_type === 'call_webhook'"
+                      v-model="step.action_config.url"
+                      class="w-full px-2 py-1 rounded border border-[var(--border)] bg-[var(--bg-base)] text-[10px] text-[var(--text-primary)] font-mono"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="text-[var(--text-muted)] hover:text-[var(--status-bad)] mt-1 shrink-0"
+                    @click="formSteps.splice(si, 1)"
+                    :title="t('common.delete')"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              </div>
+
               <label :class="labelClass" :title="t('automations.cooldownTooltip')">Cooldown: {{ formCooldown }}s</label>
               <p class="text-[9px] text-[var(--text-muted)] -mt-0.5 mb-1">{{ t('automations.cooldownFieldHint') }}</p>
               <input v-model.number="formCooldown" type="range" min="0" max="3600" step="30" class="w-full accent-[var(--primary)]" />

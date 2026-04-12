@@ -186,11 +186,14 @@ def _check_telemetry_received(rule: AutomationRule, event_payload: dict[str, Any
 # Action executors
 # ---------------------------------------------------------------------------
 
-async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[str, Any]) -> None:
-    """Execute the configured action for a rule. Called by engine + test endpoint."""
-    action_type = rule.action_type
-    cfg = rule.action_config
-
+async def _execute_single_action(
+    db: AsyncSession,
+    action_type: str,
+    cfg: dict[str, Any],
+    rule: AutomationRule,
+    context: dict[str, Any],
+) -> None:
+    """Execute one action by type + config. Shared by primary action and steps."""
     if action_type == "set_variable":
         await _action_set_variable(db, cfg, context)
     elif action_type == "call_webhook":
@@ -207,6 +210,38 @@ async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[s
         await _action_send_email(db, rule, cfg, context)
     else:
         logger.warning("automation_engine: unknown action_type=%s rule_id=%d", action_type, rule.id)
+
+
+async def execute_action(db: AsyncSession, rule: AutomationRule, context: dict[str, Any]) -> None:
+    """Execute the primary action + any additional AutomationSteps for a rule.
+
+    Sprint 10 D2: after running the rule's primary action_type/action_config,
+    we query for AutomationSteps linked to this rule (ordered by step_order)
+    and execute each one in sequence. This enables multi-action automations
+    without changing the single-action DB schema — the primary action stays
+    as-is for backward compat, and steps are additive.
+    """
+    # 1. Primary action (the original single-action from the rule)
+    await _execute_single_action(db, rule.action_type, rule.action_config, rule, context)
+
+    # 2. Additional steps (if any)
+    from app.db.models.automation import AutomationStep
+    result = await db.execute(
+        select(AutomationStep)
+        .where(AutomationStep.rule_id == rule.id)
+        .order_by(AutomationStep.step_order)
+    )
+    steps = result.scalars().all()
+    for step in steps:
+        if step.delay_seconds and step.delay_seconds > 0:
+            await asyncio.sleep(min(step.delay_seconds, 30))  # cap delay at 30s safety
+        try:
+            await _execute_single_action(db, step.action_type, step.action_config, rule, context)
+        except Exception as e:
+            logger.error(
+                "automation_engine: step %d (order=%d) failed for rule_id=%d: %s",
+                step.id, step.step_order, rule.id, e,
+            )
 
 
 async def _action_set_variable(db: AsyncSession, cfg: dict[str, Any], context: dict[str, Any]) -> None:
