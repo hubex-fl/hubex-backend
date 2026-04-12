@@ -362,6 +362,7 @@ async function toggleBinding(entityId: string, deviceId: number, enabled: boolea
           <UInfoTooltip
             :title="t('infoTooltips.entities.title')"
             :items="tm('infoTooltips.entities.items').map((i: any) => rt(i))"
+            tourId="entities-overview"
           />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ t('pages.entities.subtitle') }}</p>

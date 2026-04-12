@@ -412,6 +412,7 @@ onUnmounted(() => {
           <UInfoTooltip
             :title="t('sandbox.infoTitle')"
             :items="[t('sandbox.infoItem1'), t('sandbox.infoItem2'), t('sandbox.infoItem3')]"
+            tourId="sandbox-overview"
           />
         </div>
         <p class="text-sm text-[var(--text-muted)] mt-1">{{ t('sandbox.subtitle') }}</p>

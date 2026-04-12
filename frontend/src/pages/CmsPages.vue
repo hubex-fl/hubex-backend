@@ -399,6 +399,7 @@ onMounted(loadPages);
           <UInfoTooltip
             :title="t('infoTooltips.cmsPages.title')"
             :items="tm('infoTooltips.cmsPages.items').map((i: any) => rt(i))"
+            tourId="cms-overview"
           />
         </div>
         <p class="page-sub">{{ t('cms.subtitle') }}</p>

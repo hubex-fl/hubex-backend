@@ -2414,6 +2414,8 @@ export default {
     pinPlaceholder: '4-6 stellige PIN',
     // Darstellung
     appearance: 'Darstellung',
+    transparentMode: 'Transparentes Widget',
+    transparentHint: 'Hintergrund, Rahmen und Schatten entfernen \u2014 nur das Diagramm/die Daten sind sichtbar',
     borderColor: 'Rahmenfarbe',
     bgColor: 'Hintergrundfarbe',
     titleColor: 'Titelfarbe',
@@ -2519,6 +2521,96 @@ export default {
         done: {
           title: 'Tipp',
           text: 'Variablen befeuern Dashboards, Automationen, Alarme und CMS-Seiten. Weise semantische Typen (z.B. Temperatur oder GPS) zu, um smarte Widgets freizuschalten.',
+        },
+      },
+    },
+    entitiesOverview: {
+      name: 'Entitäten-Überblick',
+      description: 'Entitäten und Gruppen kennenlernen',
+      steps: {
+        intro: {
+          title: 'Entitäten & Gruppen',
+          text: 'Entitäten bündeln verwandte Geräte in logische Gruppen — Räume, Gebäude, Zonen oder benutzerdefinierte Typen. So kannst du deine Flotte organisieren und Dashboards sowie Automationen auf bestimmte Bereiche einschränken.',
+        },
+        create: {
+          title: 'Entität erstellen',
+          text: 'Klicke hier, um eine neue Entität zu erstellen. Wähle einen Typ, vergib einen Namen und weise sie optional einer übergeordneten Entität zu, um Hierarchien wie Standort → Gebäude → Etage → Raum aufzubauen.',
+        },
+        hierarchy: {
+          title: 'Warum Hierarchien?',
+          text: 'Verschachtelte Entitäten ermöglichen es, Dashboards nur für einen bestimmten Raum anzuzeigen oder Automationen nur für Geräte in einer bestimmten Zone auszulösen. Stell dir das wie Ordner für deine IoT-Geräte vor.',
+        },
+      },
+    },
+    settingsOverview: {
+      name: 'Einstellungen-Überblick',
+      description: 'Durch die Einstellungsbereiche navigieren',
+      steps: {
+        intro: {
+          title: 'Dein Einstellungs-Hub',
+          text: 'Die Einstellungen sind in aufklappbare Bereiche gegliedert: Edition & Limits, Konto & Profil, Features, Benachrichtigungen, Organisation, Entwickler-Tools und System.',
+        },
+        search: {
+          title: 'Schnellsuche',
+          text: 'Tippe hier, um Einstellungsbereiche nach Name zu filtern. Passende Bereiche klappen automatisch auf, damit du sofort findest, was du suchst.',
+        },
+        sections: {
+          title: 'Aufklappbare Bereiche',
+          text: 'Klicke auf eine Bereichsüberschrift, um sie aufzuklappen. Jeder Bereich enthält zusammengehörige Einstellungen — von Profil und MFA-Setup bis hin zu API-Schlüsseln und Feature-Flags.',
+        },
+      },
+    },
+    sandboxOverview: {
+      name: 'Sandbox-Überblick',
+      description: 'Geräte-Simulatoren erstellen',
+      steps: {
+        intro: {
+          title: 'Die Simulator-Sandbox',
+          text: 'Erstelle virtuelle Geräte, die realistische Sensordaten generieren — Temperatur, Luftfeuchtigkeit, GPS, Bewegung und mehr. Perfekt zum Testen von Automationen und Dashboards ohne echte Hardware.',
+        },
+        templates: {
+          title: '12 eingebaute Vorlagen',
+          text: 'Wähle aus Vorlagen wie BME280, Wetterstation, GPS-Tracker, Servomotor, LED-Dimmer und Türkontakt. Jede erzeugt Datenmuster, die echte Sensoren nachahmen.',
+        },
+        create: {
+          title: 'Simulator erstellen',
+          text: 'Klicke hier, um einen neuen Simulator zu erstellen. Wähle eine Vorlage, passe die Datenmuster an, stelle das Intervall ein und starte ihn. Ein virtuelles Gerät erscheint automatisch in deiner Geräteliste.',
+        },
+      },
+    },
+    eventsOverview: {
+      name: 'Events-Überblick',
+      description: 'Den Event-Stream verstehen',
+      steps: {
+        intro: {
+          title: 'Live Event-Stream',
+          text: 'Events ist ein Echtzeit-Protokoll von allem, was in deinem System passiert — Geräte-Telemetrie, Automations-Trigger, Alarm-Auslösungen und Systemaktionen. Neue Events erscheinen automatisch per Polling.',
+        },
+        stream: {
+          title: 'Streams erklärt',
+          text: 'Events sind in Streams gruppiert. „system" zeigt plattformweite Events. Geräte-Streams (device:uid) zeigen Events eines bestimmten Geräts. Wähle einen Stream aus dem Dropdown, um zu filtern.',
+        },
+        controls: {
+          title: 'Steuerung & Filter',
+          text: 'Nutze Start/Stop zur Polling-Steuerung. Der Trace-ID-Filter verknüpft zusammengehörige Events — finde z.B. alle nachgelagerten Aktionen, die durch eine einzelne Telemetrie-Einspeisung ausgelöst wurden. Zeit-Presets ermöglichen den Sprung zu bestimmten Zeitfenstern.',
+        },
+      },
+    },
+    cmsOverview: {
+      name: 'CMS-Überblick',
+      description: 'Inhaltsseiten erstellen',
+      steps: {
+        intro: {
+          title: 'Content-Management',
+          text: 'Das CMS ermöglicht es, eigene Seiten mit HTML, Template-Variablen und Live-Gerätedaten zu erstellen. Seiten können private Entwürfe oder öffentlich mit eigener URL veröffentlicht werden.',
+        },
+        create: {
+          title: 'Seite erstellen',
+          text: 'Klicke hier, um mit einer Vorlage (Landing, Blog, Über uns, Kontakt) oder einer leeren Seite zu starten. Vorlagen bieten ein vorgefertigtes Layout, das du anpassen kannst.',
+        },
+        templates: {
+          title: 'Vorlagen & Variablen',
+          text: 'Seiten unterstützen Template-Variablen wie {{variable:temperature}}, die Live-Gerätedaten rendern. Nutze den visuellen TipTap-Editor für formatierte Inhalte oder wechsle zur Code-Ansicht für volle HTML-Kontrolle.',
         },
       },
     },
