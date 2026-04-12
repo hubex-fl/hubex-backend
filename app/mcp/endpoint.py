@@ -33,6 +33,8 @@ from app.api.deps_auth import get_current_user
 from app.db.models.user import User
 from app.mcp.tools import get_tool_definitions
 from app.mcp.handler import execute_tool
+from app.mcp.system_prompt import SYSTEM_PROMPT
+from app.mcp.prompts import PROMPT_TEMPLATES, get_prompt_messages
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -163,6 +165,10 @@ async def _handle_jsonrpc(
             "serverInfo": {"name": "hubex-mcp", "version": "1.0.0"},
             "capabilities": {
                 "tools": {"listChanged": False},
+                # Sprint 9 Step 3: advertise resources + prompts so MCP
+                # clients auto-discover the system-prompt and templates.
+                "resources": {},
+                "prompts": {},
             },
         })
 
@@ -216,6 +222,41 @@ async def _handle_jsonrpc(
                 "error": str(e),
             })
             return _jsonrpc_error(req_id, -32603, str(e))
+
+    # ── Sprint 9 Step 3: Resources + Prompts ────────────────────────────
+    if method == "resources/list":
+        return _jsonrpc_response(req_id, {
+            "resources": [{
+                "uri": "hubex://system-prompt",
+                "name": "HubEx System Context",
+                "description": "Background context about HubEx for AI assistants — concepts, workflows, and tool usage guide",
+                "mimeType": "text/plain",
+            }],
+        })
+
+    if method == "resources/read":
+        uri = params.get("uri", "")
+        if uri == "hubex://system-prompt":
+            return _jsonrpc_response(req_id, {
+                "contents": [{
+                    "uri": "hubex://system-prompt",
+                    "text": SYSTEM_PROMPT,
+                    "mimeType": "text/plain",
+                }],
+            })
+        return _jsonrpc_error(req_id, -32602, f"Unknown resource URI: {uri}")
+
+    if method == "prompts/list":
+        return _jsonrpc_response(req_id, {"prompts": PROMPT_TEMPLATES})
+
+    if method == "prompts/get":
+        prompt_name = params.get("name", "")
+        prompt_args = params.get("arguments", {})
+        known = {t["name"] for t in PROMPT_TEMPLATES}
+        if prompt_name not in known:
+            return _jsonrpc_error(req_id, -32602, f"Unknown prompt: {prompt_name}")
+        messages = get_prompt_messages(prompt_name, prompt_args)
+        return _jsonrpc_response(req_id, {"messages": messages})
 
     return _jsonrpc_error(req_id, -32601, f"Method not found: {method}")
 
