@@ -1867,6 +1867,17 @@ function openAddWidget() {
   transition: opacity 0.15s;
 }
 .resize-handle:hover { opacity: 1; color: var(--primary); }
+/* Free layout widget style */
+.widget-free {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+.widget-free.widget-transparent {
+  border-color: transparent;
+  background: transparent;
+}
 
 /* Add widget placeholder */
 .add-widget-cell {
