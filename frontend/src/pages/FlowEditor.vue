@@ -669,79 +669,19 @@ function getEdgePath(edge: FlowEdge): string {
   const fromH = getNodeHeight(fromNode.type);
   const toH = getNodeHeight(toNode.type);
 
-  const fromCx = fromNode.x + NODE_W / 2;
-  const toCx = toNode.x + NODE_W / 2;
-  const fromCy = fromNode.y + fromH / 2;
-  const toCy = toNode.y + toH / 2;
+  const x1 = fromNode.x + NODE_W;
+  const y1 = fromNode.y + fromH / 2;
+  const x2 = toNode.x;
+  const y2 = toNode.y + toH / 2;
 
-  const dy = Math.abs(toCy - fromCy);
-  const dx = Math.abs(toCx - fromCx);
-  const isVertical = dy > dx * 0.4;
-
-  if (isVertical) {
-    const goingDown = toCy > fromCy;
-    // Exit from bottom of source, enter top of target
-    const y1 = goingDown ? fromNode.y + fromH : fromNode.y;
-    const y2 = goingDown ? toNode.y : toNode.y + toH;
-
-    // Shift exit-X on source toward the target-X to reduce horizontal travel.
-    // Clamp within the source node width so the line starts inside the node.
-    const clampedX1 = Math.max(fromNode.x + 8, Math.min(fromNode.x + NODE_W - 8, toCx));
-    const x1 = clampedX1;
-    const x2 = toCx;
-
-    // Check if the straight path from (x1,y1)->(x2,y2) would cross any node
-    const blocked = _findBlockingNodes(edge, x1, y1, x2, y2);
-
-    if (blocked.length === 0) {
-      // No nodes in the way — smooth direct curve
-      const gap = Math.abs(y2 - y1);
-      const cpY = Math.max(gap * 0.45, 30);
-      const dir = goingDown ? 1 : -1;
-      return `M${x1},${y1} C${x1},${y1 + cpY * dir} ${x2},${y2 - cpY * dir} ${x2},${y2}`;
-    }
-
-    // Route AROUND blocking nodes: offset the curve horizontally
-    // Find whether to go left or right of the blockers
-    const blockCenterX = blocked.reduce((s, n) => s + n.x + NODE_W / 2, 0) / blocked.length;
-    const midX = (x1 + x2) / 2;
-    const goRight = midX <= blockCenterX;
-    // Find the edge of the outermost blocking node
-    const clearX = goRight
-      ? Math.min(...blocked.map(n => n.x)) - 30
-      : Math.max(...blocked.map(n => n.x + NODE_W)) + 30;
-
-    const midY = (y1 + y2) / 2;
-    // 5-point path: down → side → across → side → down
-    return `M${x1},${y1} C${x1},${midY} ${clearX},${midY} ${clearX},${midY} S${x2},${y2 - 20} ${x2},${y2}`;
-  } else {
-    // Horizontal: exit from right/left side
-    const goRight = toCx > fromCx;
-    const x1 = goRight ? fromNode.x + NODE_W : fromNode.x;
-    const y1 = fromCy;
-    const x2 = goRight ? toNode.x : toNode.x + NODE_W;
-    const y2 = toCy;
-
-    const gap = Math.abs(x2 - x1);
-    const cpX = Math.min(gap * 0.4, 80);
-    return `M${x1},${y1} C${x1 + cpX},${y1} ${x2 - cpX},${y2} ${x2},${y2}`;
+  if (toNode.column <= fromNode.column) {
+    const midX = Math.min(x1, x2) - 40;
+    return `M${x1},${y1} C${x1 + 40},${y1} ${midX},${y2} ${x2},${y2}`;
   }
-}
 
-/** Find visible nodes whose bounding box overlaps the straight line from (x1,y1) to (x2,y2). */
-function _findBlockingNodes(edge: FlowEdge, x1: number, y1: number, x2: number, y2: number): FlowNode[] {
-  const minX = Math.min(x1, x2);
-  const maxX = Math.max(x1, x2);
-  const minY = Math.min(y1, y2) + 5;  // small inset to avoid self-detection
-  const maxY = Math.max(y1, y2) - 5;
-  return visibleNodes.value.filter((n) => {
-    if (n.id === edge.from || n.id === edge.to) return false;
-    const nh = getNodeHeight(n.type);
-    const nRight = n.x + NODE_W;
-    const nBottom = n.y + nh;
-    // Check bounding box overlap
-    return n.x < maxX && nRight > minX && n.y < maxY && nBottom > minY;
-  });
+  const dx = Math.abs(x2 - x1);
+  const cpOffset = Math.min(dx * 0.4, 80);
+  return `M${x1},${y1} C${x1 + cpOffset},${y1} ${x2 - cpOffset},${y2} ${x2},${y2}`;
 }
 
 // ── Zoom & Pan ─────────────────────────────────────────────────────────────
@@ -1139,13 +1079,11 @@ onMounted(async () => {
   document.addEventListener("click", onDocumentClick);
   window.addEventListener("ai-fly-to", onAiFlyTo);
   await loadSystemGraph();
-  // Apply the selected layout mode (default: hierarchical) — loadSystemGraph
-  // positions nodes in column layout initially, so we must re-layout here.
   applyLayout();
   await nextTick();
   fitToView();
 
-  // Handle ?highlight=nodeId query param (e.g. from Variables/Devices pages)
+  // Handle ?highlight=nodeId query param (from Variables/Devices pages)
   const highlightId = route.query.highlight as string | undefined;
   if (highlightId) {
     await nextTick();
@@ -1250,26 +1188,75 @@ function applyLayout() {
       colCounts[colIdx]++;
     }
   } else if (layoutMode.value === "hierarchical") {
-    // Top-down tree: devices top → variables middle → automations/alerts bottom
-    // User feedback: MORE SPACING — elements were squeezed together
-    const typeOrder: Record<string, number> = { device: 0, variable: 1, automation: 2, alert: 3, webhook: 3 };
-    const layers: Record<number, typeof n> = {};
-    for (const node of n) {
-      const layer = typeOrder[node.type] ?? 2;
-      (layers[layer] ??= []).push(node);
+    // Top-down tree with DEVICE-BASED variable grouping:
+    // Variables are positioned directly below their owning device,
+    // so connections run mostly straight down without crossing other nodes.
+    const edgeList = edges.value;
+    const deviceNodes = n.filter(nd => nd.type === "device");
+    const variableNodes = n.filter(nd => nd.type === "variable");
+    const autoAlertNodes = n.filter(nd => nd.type === "automation" || nd.type === "alert");
+    const webhookNodes = n.filter(nd => nd.type === "webhook");
+
+    // Map each variable to its connected device (via edges)
+    const varToDevice: Record<string, string> = {};
+    for (const v of variableNodes) {
+      const edge = edgeList.find(e => e.to === v.id && deviceNodes.some(d => d.id === e.from));
+      if (edge) varToDevice[v.id] = edge.from;
     }
-    // Generous spacing: 280px between layers, 220px between nodes
-    const layerGap = 280, nodeGap = 220;
-    for (const [layerStr, layerNodes] of Object.entries(layers)) {
-      const layer = Number(layerStr);
-      const totalW = (layerNodes.length - 1) * nodeGap;
-      const startX = 700 - totalW / 2;
-      layerNodes.forEach((node, i) => {
-        node.x = startX + i * nodeGap;
-        node.y = 80 + layer * layerGap;
-        customPositions.value[node.id] = { x: node.x, y: node.y };
+
+    // Group variables by their device
+    const deviceVarGroups: Record<string, typeof n> = {};
+    const unownedVars: typeof n = [];
+    for (const d of deviceNodes) deviceVarGroups[d.id] = [];
+    for (const v of variableNodes) {
+      const devId = varToDevice[v.id];
+      if (devId && deviceVarGroups[devId]) {
+        deviceVarGroups[devId].push(v);
+      } else {
+        unownedVars.push(v);
+      }
+    }
+
+    // Layout: each device gets a column with its variables below
+    const layerGap = 250;
+    const nodeGapX = 210;
+    const nodeGapY = 58;
+    let cursorX = 80;
+
+    for (const device of deviceNodes) {
+      const vars = deviceVarGroups[device.id];
+      const groupWidth = Math.max(1, vars.length) * nodeGapX;
+
+      // Device centered above its variable group
+      device.x = cursorX + (groupWidth - NODE_W) / 2;
+      device.y = 80;
+      customPositions.value[device.id] = { x: device.x, y: device.y };
+
+      // Variables in a row below the device
+      vars.forEach((v, i) => {
+        v.x = cursorX + i * nodeGapX;
+        v.y = 80 + layerGap;
+        customPositions.value[v.id] = { x: v.x, y: v.y };
       });
+
+      cursorX += groupWidth + 80; // gap between device groups
     }
+
+    // Unowned variables at the right end
+    unownedVars.forEach((v, i) => {
+      v.x = cursorX + i * nodeGapX;
+      v.y = 80 + layerGap;
+      customPositions.value[v.id] = { x: v.x, y: v.y };
+    });
+    if (unownedVars.length) cursorX += unownedVars.length * nodeGapX + 80;
+
+    // Automations + alerts below variables
+    const logicY = 80 + layerGap * 2;
+    [...autoAlertNodes, ...webhookNodes].forEach((node, i) => {
+      node.x = 80 + i * nodeGapX;
+      node.y = logicY;
+      customPositions.value[node.id] = { x: node.x, y: node.y };
+    });
   } else if (layoutMode.value === "grouped") {
     // Grouped by device: each device gets its own cluster with its
     // connected variables arranged around it. Unconnected nodes go
