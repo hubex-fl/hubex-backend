@@ -351,16 +351,30 @@ async def main():
             "demo.heater_on", "brightness", "pressed",
         }
         for key in ORPHAN_KEYS:
-            # First delete any values referencing this definition (FK constraint)
-            await db.execute(
-                delete(VariableValue).where(VariableValue.variable_key == key)
-            )
-            result = await db.execute(
-                delete(VariableDefinition).where(VariableDefinition.key == key)
-            )
-            if result.rowcount:
-                print(f"  Removed orphaned definition: {key}")
-        await db.commit()
+            try:
+                # First delete any values referencing this definition (FK constraint)
+                await db.execute(
+                    delete(VariableValue).where(VariableValue.variable_key == key)
+                )
+                result = await db.execute(
+                    delete(VariableDefinition).where(VariableDefinition.key == key)
+                )
+                await db.commit()
+                if result.rowcount:
+                    print(f"  Removed orphaned definition: {key}")
+            except Exception as e:
+                await db.rollback()
+                # Try with raw SQL to also clean up history table
+                try:
+                    from sqlalchemy import text
+                    await db.execute(text(f"DELETE FROM variable_history WHERE variable_key = :k"), {"k": key})
+                    await db.execute(text(f"DELETE FROM variable_values WHERE variable_key = :k"), {"k": key})
+                    await db.execute(text(f"DELETE FROM variable_definitions WHERE key = :k"), {"k": key})
+                    await db.commit()
+                    print(f"  Removed orphaned definition (raw SQL): {key}")
+                except Exception:
+                    await db.rollback()
+                    print(f"  WARNING: Could not remove {key}: {e}")
 
         # Ensure valid definitions have correct display_hints
         for key in VALID_KEYS:
