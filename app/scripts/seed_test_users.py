@@ -333,7 +333,7 @@ async def main():
 
         # ── Cleanup orphaned variable definitions ─────────────────
         print("\n--- Cleaning up orphaned variable definitions ---")
-        from app.db.models.variables import VariableDefinition
+        from app.db.models.variables import VariableDefinition, VariableValue
         from sqlalchemy import delete
 
         # Keys that simulators actually produce
@@ -351,6 +351,10 @@ async def main():
             "demo.heater_on", "brightness", "pressed",
         }
         for key in ORPHAN_KEYS:
+            # First delete any values referencing this definition (FK constraint)
+            await db.execute(
+                delete(VariableValue).where(VariableValue.variable_key == key)
+            )
             result = await db.execute(
                 delete(VariableDefinition).where(VariableDefinition.key == key)
             )
