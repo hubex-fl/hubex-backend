@@ -669,51 +669,79 @@ function getEdgePath(edge: FlowEdge): string {
   const fromH = getNodeHeight(fromNode.type);
   const toH = getNodeHeight(toNode.type);
 
-  // Smart port selection: exit from the side closest to the target
   const fromCx = fromNode.x + NODE_W / 2;
   const toCx = toNode.x + NODE_W / 2;
   const fromCy = fromNode.y + fromH / 2;
   const toCy = toNode.y + toH / 2;
 
-  // Use bottom→top ports for hierarchical (vertical) connections
-  // Use right→left ports for same-layer (horizontal) connections
   const dy = Math.abs(toCy - fromCy);
   const dx = Math.abs(toCx - fromCx);
   const isVertical = dy > dx * 0.4;
 
-  let x1: number, y1: number, x2: number, y2: number;
-
   if (isVertical) {
+    const goingDown = toCy > fromCy;
     // Exit from bottom of source, enter top of target
-    x1 = fromCx;
-    y1 = toCy > fromCy ? fromNode.y + fromH : fromNode.y;
-    x2 = toCx;
-    y2 = toCy > fromCy ? toNode.y : toNode.y + toH;
+    const y1 = goingDown ? fromNode.y + fromH : fromNode.y;
+    const y2 = goingDown ? toNode.y : toNode.y + toH;
 
-    // Smooth cubic bezier — control points pull the curve vertically
-    // so it never cuts through the horizontal node layers
-    const gap = Math.abs(y2 - y1);
-    const cpY = Math.max(gap * 0.5, 40);
-    const dir = y2 > y1 ? 1 : -1;
-    return `M${x1},${y1} C${x1},${y1 + cpY * dir} ${x2},${y2 - cpY * dir} ${x2},${y2}`;
-  } else {
-    // Exit from right/left side
-    if (toCx > fromCx) {
-      x1 = fromNode.x + NODE_W;
-      y1 = fromCy;
-      x2 = toNode.x;
-      y2 = toCy;
-    } else {
-      x1 = fromNode.x;
-      y1 = fromCy;
-      x2 = toNode.x + NODE_W;
-      y2 = toCy;
+    // Shift exit-X on source toward the target-X to reduce horizontal travel.
+    // Clamp within the source node width so the line starts inside the node.
+    const clampedX1 = Math.max(fromNode.x + 8, Math.min(fromNode.x + NODE_W - 8, toCx));
+    const x1 = clampedX1;
+    const x2 = toCx;
+
+    // Check if the straight path from (x1,y1)->(x2,y2) would cross any node
+    const blocked = _findBlockingNodes(edge, x1, y1, x2, y2);
+
+    if (blocked.length === 0) {
+      // No nodes in the way — smooth direct curve
+      const gap = Math.abs(y2 - y1);
+      const cpY = Math.max(gap * 0.45, 30);
+      const dir = goingDown ? 1 : -1;
+      return `M${x1},${y1} C${x1},${y1 + cpY * dir} ${x2},${y2 - cpY * dir} ${x2},${y2}`;
     }
+
+    // Route AROUND blocking nodes: offset the curve horizontally
+    // Find whether to go left or right of the blockers
+    const blockCenterX = blocked.reduce((s, n) => s + n.x + NODE_W / 2, 0) / blocked.length;
+    const midX = (x1 + x2) / 2;
+    const goRight = midX <= blockCenterX;
+    // Find the edge of the outermost blocking node
+    const clearX = goRight
+      ? Math.min(...blocked.map(n => n.x)) - 30
+      : Math.max(...blocked.map(n => n.x + NODE_W)) + 30;
+
+    const midY = (y1 + y2) / 2;
+    // 5-point path: down → side → across → side → down
+    return `M${x1},${y1} C${x1},${midY} ${clearX},${midY} ${clearX},${midY} S${x2},${y2 - 20} ${x2},${y2}`;
+  } else {
+    // Horizontal: exit from right/left side
+    const goRight = toCx > fromCx;
+    const x1 = goRight ? fromNode.x + NODE_W : fromNode.x;
+    const y1 = fromCy;
+    const x2 = goRight ? toNode.x : toNode.x + NODE_W;
+    const y2 = toCy;
 
     const gap = Math.abs(x2 - x1);
     const cpX = Math.min(gap * 0.4, 80);
     return `M${x1},${y1} C${x1 + cpX},${y1} ${x2 - cpX},${y2} ${x2},${y2}`;
   }
+}
+
+/** Find visible nodes whose bounding box overlaps the straight line from (x1,y1) to (x2,y2). */
+function _findBlockingNodes(edge: FlowEdge, x1: number, y1: number, x2: number, y2: number): FlowNode[] {
+  const minX = Math.min(x1, x2);
+  const maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2) + 5;  // small inset to avoid self-detection
+  const maxY = Math.max(y1, y2) - 5;
+  return visibleNodes.value.filter((n) => {
+    if (n.id === edge.from || n.id === edge.to) return false;
+    const nh = getNodeHeight(n.type);
+    const nRight = n.x + NODE_W;
+    const nBottom = n.y + nh;
+    // Check bounding box overlap
+    return n.x < maxX && nRight > minX && n.y < maxY && nBottom > minY;
+  });
 }
 
 // ── Zoom & Pan ─────────────────────────────────────────────────────────────
