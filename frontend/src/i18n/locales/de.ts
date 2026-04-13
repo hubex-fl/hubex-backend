@@ -2852,81 +2852,117 @@ export default {
       name: 'Erste Schritte',
       description: 'Schnelle Tour durch die wichtigsten Funktionen',
       steps: {
-        // Phase A: Orientierung
         welcome: {
-          title: 'Willkommen bei HubEx',
-          text: 'Willkommen bei HubEx \u2014 deinem universellen IoT Device Hub. Diese Tour zeigt dir die wichtigsten Funktionen.',
+          title: 'Willkommen bei HUBEX',
+          text: 'Lass uns eine kurze Tour durch deinen IoT-Hub machen. Wir zeigen dir die wichtigsten Funktionen in unter 2 Minuten.',
         },
-        sidebarGroups: {
-          title: 'Die Seitenleiste',
-          text: 'Die Navigation ist in vier Bereiche gegliedert: Haupt (Dashboard, Ger\u00e4te), Daten (Variablen, Systemkarte), Monitoring (Alarme, Automatisierungen) und Tools (Sandbox, Plugins). So findest du dich schnell zurecht.',
-        },
-        search: {
-          title: 'Schnellsuche',
-          text: 'Finde Ger\u00e4te, Variablen, Seiten \u2014 alles \u00fcber die Suche erreichbar. Einfach lostippen.',
-        },
-        themeToggle: {
-          title: 'Dark / Light Mode',
-          text: 'Wechsel zwischen Hell- und Dunkelmodus. Deine Einstellung wird gespeichert.',
-        },
-        language: {
-          title: 'Sprache & Profil',
-          text: 'Sprache und Profil findest du im Account-Men\u00fc oben rechts.',
-        },
-        // Phase B: Deine Daten sind schon da
         dashboardKpis: {
-          title: 'Dashboard-\u00dcbersicht',
-          text: 'Dein Dashboard zeigt Live-\u00dcbersichten: Ger\u00e4te online, aktive Alarme, Events.',
+          title: 'System\u00FCbersicht',
+          text: 'Dein Dashboard zeigt die wichtigsten Kennzahlen auf einen Blick \u2014 Online-Ger\u00E4te, aktive Alarme, letzte Ereignisse.',
+        },
+        navDevices: {
+          title: 'Zu Ger\u00E4te navigieren',
+          text: "Klicke auf 'Ger\u00E4te' um alle verbundenen Ger\u00E4te zu sehen.",
         },
         devices: {
-          title: 'Deine Ger\u00e4te',
-          text: 'Deine Ger\u00e4te \u2014 drei Simulatoren mit Live-Daten sind bereits eingerichtet.',
+          title: 'Deine Ger\u00E4te',
+          text: 'Hier leben alle verbundenen Ger\u00E4te. Hardware-Sensoren, API-Services, Bridges und Software-Agents.',
+        },
+        addDevice: {
+          title: 'Ger\u00E4t hinzuf\u00FCgen',
+          text: 'Klicke hier um ein neues Ger\u00E4t zu verbinden. Der Assistent f\u00FChrt dich durch Hardware-Kopplung, API-Konfiguration oder Bridge-Setup.',
+        },
+        navVariables: {
+          title: 'Zu Variablen navigieren',
+          text: "Klicke auf 'Variablen' um deine Datenstr\u00F6me zu erkunden.",
         },
         variables: {
-          title: 'Variablen',
-          text: 'Variablen sind die Datenpunkte deiner Ger\u00e4te: Temperatur, GPS, Bewegung und mehr.',
+          title: 'Variablen & Daten',
+          text: 'Variablen sind deine Datenstr\u00F6me. Jeder Sensorwert, Status und jede Konfiguration wird hier mit voller Historie gespeichert.',
         },
-        navSystemMap: {
-          title: 'Systemkarte',
-          text: 'Die Systemkarte zeigt wie Ger\u00e4te, Variablen und Automationen verbunden sind.',
-        },
-        // Phase C: Was du tun kannst
-        dashboards: {
-          title: 'Dashboards',
-          text: 'Erstelle Dashboards mit Widgets \u2014 Charts, Gauges, GPS-Karten, Live-Werte.',
+        navAutomations: {
+          title: 'Zu Automatisierungen navigieren',
+          text: "Klicke auf 'Automatisierungen' um deine Wenn-Dann-Regeln zu verwalten.",
         },
         automations: {
           title: 'Automatisierungen',
-          text: 'Automatisierungen: Wenn Temperatur \u00fcber 30\u00b0C \u2192 Alarm. Wenn Ger\u00e4t offline \u2192 Benachrichtigung.',
+          text: 'Erstelle Wenn-Dann-Regeln: Temperatur \u00FCber 30\u00B0C \u2192 Alarm senden, Webhook aufrufen oder Variable setzen.',
+        },
+        navSystemMap: {
+          title: 'Zur Systemkarte navigieren',
+          text: "Klicke auf 'Systemkarte' um zu sehen, wie alles verbunden ist.",
+        },
+        systemMap: {
+          title: 'Systemkarte',
+          text: 'Sieh wie alles zusammenh\u00E4ngt. Ger\u00E4te \u2192 Variablen \u2192 Automatisierungen \u2192 Alarme \u2014 alles in einer Ansicht visualisiert.',
+        },
+        navDashboards: {
+          title: 'Zu Dashboards navigieren',
+          text: "Klicke auf 'Dashboards' um deine eigenen Ansichten zu sehen.",
+        },
+        dashboards: {
+          title: 'Eigene Dashboards',
+          text: 'Baue eigene Dashboards mit Widgets \u2014 Charts, Anzeigen, Schalter, sogar eigenes HTML. Teile sie \u00F6ffentlich oder bette sie in andere Seiten ein.',
+        },
+        navSettings: {
+          title: 'Zu Einstellungen navigieren',
+          text: "Klicke auf 'Einstellungen' um dein Konto zu konfigurieren.",
+        },
+        settings: {
+          title: 'Einstellungen',
+          text: 'Konfiguriere dein Konto, Organisation, API-Schl\u00FCssel, Sprache und Branding.',
+        },
+        navAlerts: {
+          title: 'Zu Alarme navigieren',
+          text: "Klicke auf 'Alarme' um regelbasiertes Monitoring zu sehen.",
         },
         alerts: {
-          title: 'Alarme',
-          text: 'Alarme \u00fcberwachen Grenzwerte und informieren dich in Echtzeit.',
+          title: 'Alarme & Regeln',
+          text: 'Erstelle Alarmregeln die deine Variablen \u00fcberwachen und Events ausl\u00f6sen wenn Bedingungen erf\u00fcllt sind. Setze Schweregrade und werde benachrichtigt.',
+        },
+        navEntities: {
+          title: 'Zu Entit\u00e4ten navigieren',
+          text: "Klicke auf 'Entit\u00e4ten' um logische Gruppen zu sehen.",
+        },
+        entities: {
+          title: 'Entit\u00e4ten & Gruppen',
+          text: 'B\u00fcndle zusammengeh\u00f6rige Ger\u00e4te in R\u00e4umen, Geb\u00e4uden, Zonen oder eigenen Gruppen. Baue Hierarchien und scope Dashboards pro Entit\u00e4t.',
+        },
+        navSandbox: {
+          title: 'Zur Sandbox navigieren',
+          text: "Klicke auf 'Sandbox' um Ger\u00e4tesimulatoren zu erstellen.",
         },
         sandbox: {
           title: 'Sandbox',
-          text: 'Die Sandbox: Hier laufen deine Simulatoren. Du kannst sie steuern, pausieren und anpassen.',
+          text: 'Erstelle virtuelle Ger\u00e4te die echte Sensordaten simulieren. Perfekt um Automatisierungen, Dashboards und Alarme ohne echte Hardware zu testen.',
         },
-        entities: {
-          title: 'Entit\u00e4ten',
-          text: 'Entit\u00e4ten organisieren deine Ger\u00e4te in R\u00e4ume, Geb\u00e4ude und Zonen.',
+        navPlugins: {
+          title: 'Plugins & Marktplatz',
+          text: "Klicke auf 'Plugins' in der Seitenleiste um Erweiterungen wie Frigate, Grafana, Ollama oder n8n zu durchsuchen und zu installieren.",
         },
-        // Phase D: Hilfe & Feedback
+        navCms: {
+          title: 'CMS & Inhaltsseiten',
+          text: "Der Bereich 'CMS' l\u00e4sst dich eigene Seiten mit HTML, Template-Variablen und Ger\u00e4tedaten bauen. Ver\u00f6ffentliche sie oder behalte sie als Entw\u00fcrfe.",
+        },
         infoIcons: {
-          title: 'Info-Symbole',
-          text: 'Auf jeder Seite findest du \u2139\ufe0f Info-Icons. Klicke darauf f\u00fcr eine Erkl\u00e4rung der jeweiligen Funktion.',
+          title: 'Info-Symbole & weitere Touren',
+          text: "Achte auf die kleinen Info-Symbole (\u2139) neben den Seitentiteln \u2014 sie erkl\u00e4ren was jede Seite macht. Viele bieten auch einen 'Gef\u00fchrte Tour starten'-Button f\u00fcr tiefere Einf\u00fchrungen. Du kannst auch das Absolventenhut-Symbol in der Kopfzeile klicken um jederzeit alle verf\u00fcgbaren Touren zu sehen.",
+        },
+        themeToggle: {
+          title: 'Dark / Light Mode',
+          text: 'Klicke das Sonnen-/Mond-Symbol in der Kopfzeile um zwischen Dark und Light Theme zu wechseln. Deine Einstellung wird gespeichert.',
         },
         tourLauncher: {
           title: 'Tour-Guide',
-          text: 'Starte jederzeit eine Erkl\u00e4rungstour f\u00fcr einzelne Seiten \u00fcber den Tour-Launcher.',
+          text: 'Klicke das Absolventenhut-Symbol um jederzeit auf alle verf\u00fcgbaren gef\u00fchrten Touren zuzugreifen. Jede Tour fokussiert sich auf einen anderen Funktionsbereich.',
         },
         feedback: {
           title: 'Feedback geben',
-          text: 'Dies ist eine Testversion. Nutze den Feedback-Button f\u00fcr Bugs, Ideen und Fragen \u2014 dein Feedback hilft uns!',
+          text: 'Einen Bug gefunden, ein Feature vermisst oder einen Vorschlag? Klicke jederzeit diesen Button, um uns Feedback zu senden. Dein Input hilft uns, HubEx zu verbessern — jede Meldung z\u00e4hlt!',
         },
         done: {
           title: 'Du bist startklar!',
-          text: 'Du bist startklar! Erkunde die Plattform, nutze die Info-Icons und gib uns Feedback. Viel Spa\u00df mit HubEx!',
+          text: 'Das war ein vollst\u00e4ndiger \u00dcberblick \u00fcber HubEx! Erkunde in deinem eigenen Tempo. Klicke jederzeit den Tour-Button um forgeschrittene Guides wie Datenpfad-Verfolgung oder Alarm-Untersuchung zu entdecken.',
         },
       },
     },
