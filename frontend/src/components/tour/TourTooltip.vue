@@ -130,21 +130,38 @@ const slideClass = computed(() => {
 /* ---- Track position continuously ---- */
 let _raf: number | null = null;
 
-function startTracking() {
+async function startTracking() {
   visible.value = false;
-  // Let DOM settle, then position + fade in
-  requestAnimationFrame(() => {
-    reposition();
-    requestAnimationFrame(() => {
-      reposition();
-      visible.value = true;
-    });
-  });
+  // Wait for async positioning (scrolling sidebar etc.) before showing
+  await reposition();
+  await new Promise(r => requestAnimationFrame(r));
+  await reposition();
+  visible.value = true;
 
-  const tick = () => {
-    reposition();
-    _raf = requestAnimationFrame(tick);
+  // Continuous sync tracking (non-async, just re-measure)
+  const syncReposition = () => {
+    const el = tooltipRef.value;
+    if (!el || !props.step.target) return;
+    const target = document.querySelector(props.step.target);
+    if (!target) return;
+    const targetRect = target.getBoundingClientRect();
+    const tooltipRect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let pos = props.step.position;
+    let top = 0, left = 0;
+    switch (pos) {
+      case "bottom": top = targetRect.bottom + 16; left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2; break;
+      case "top": top = targetRect.top - tooltipRect.height - 16; left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2; break;
+      case "left": top = targetRect.top + targetRect.height / 2 - tooltipRect.height / 2; left = targetRect.left - tooltipRect.width - 16; break;
+      case "right": top = targetRect.top + targetRect.height / 2 - tooltipRect.height / 2; left = targetRect.right + 16; break;
+      default: top = vh / 2 - tooltipRect.height / 2; left = vw / 2 - tooltipRect.width / 2;
+    }
+    top = Math.max(8, Math.min(vh - tooltipRect.height - 8, top));
+    left = Math.max(8, Math.min(vw - tooltipRect.width - 8, left));
+    posStyle.value = { top: `${top}px`, left: `${left}px` };
   };
+  const tick = () => { syncReposition(); _raf = requestAnimationFrame(tick); };
   _raf = requestAnimationFrame(tick);
 }
 
@@ -158,14 +175,15 @@ function stopTracking() {
 onMounted(startTracking);
 onUnmounted(stopTracking);
 
-watch(() => [props.step.id, props.step.target], () => {
+watch(() => [props.step.id, props.step.target], async () => {
   visible.value = false;
-  requestAnimationFrame(() => {
-    reposition();
-    requestAnimationFrame(() => {
-      visible.value = true;
-    });
-  });
+  stopTracking();
+  await reposition();
+  await new Promise(r => requestAnimationFrame(r));
+  await reposition();
+  visible.value = true;
+  const tick = () => { _raf = requestAnimationFrame(tick); };
+  _raf = requestAnimationFrame(tick);
 });
 </script>
 

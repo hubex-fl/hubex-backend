@@ -244,11 +244,13 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.navCms.title",
     text: "tours.onboarding.steps.navCms.text",
   },
-  // -- Info icons explanation
+  // -- Info icons explanation — spotlight an actual info icon on the current page
   {
     id: "info-icons",
-    action: "info",
-    position: "center",
+    page: "/sandbox",
+    target: ".info-trigger",
+    action: "spotlight+pulse",
+    position: "bottom",
     title: "tours.onboarding.steps.infoIcons.title",
     text: "tours.onboarding.steps.infoIcons.text",
   },
@@ -272,22 +274,24 @@ const onboardingSteps: TourStep[] = [
     title: "tours.onboarding.steps.tourLauncher.title",
     text: "tours.onboarding.steps.tourLauncher.text",
   },
-  // -- Feedback button
+  // -- Feedback button (fixed position bottom-right)
   {
     id: "feedback",
-    target: "[data-tour='feedback-button'], .feedback-widget, button:has(> span)",
+    target: "[data-tour='feedback-button']",
     action: "spotlight+pulse",
     position: "top",
     title: "tours.onboarding.steps.feedback.title",
     text: "tours.onboarding.steps.feedback.text",
   },
-  // -- Done
+  // -- Done — return to dashboard
   {
     id: "done",
+    page: "/",
     action: "info",
     position: "center",
     title: "tours.onboarding.steps.done.title",
     text: "tours.onboarding.steps.done.text",
+    delay: 600,
   },
 ];
 

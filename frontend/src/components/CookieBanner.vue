@@ -6,6 +6,12 @@ const { t } = useI18n();
 const visible = ref(false);
 
 onMounted(() => {
+  // Only show for unauthenticated users (landing/login pages)
+  // Logged-in users don't need the cookie banner — it's distracting
+  // and covers the feedback button
+  const hasToken = !!localStorage.getItem("hubex_access_token");
+  if (hasToken) return;
+
   const accepted = localStorage.getItem("hubex_cookies_accepted");
   if (!accepted) {
     visible.value = true;
