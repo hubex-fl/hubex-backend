@@ -668,49 +668,51 @@ function getEdgePath(edge: FlowEdge): string {
 
   const fromH = getNodeHeight(fromNode.type);
   const toH = getNodeHeight(toNode.type);
-  const PAD = 20; // padding around nodes for routing
 
-  // Manhattan routing: orthogonal lines that go around nodes
-  // Determine if connection is primarily vertical or horizontal
+  // Smart port selection: exit from the side closest to the target
   const fromCx = fromNode.x + NODE_W / 2;
   const toCx = toNode.x + NODE_W / 2;
   const fromCy = fromNode.y + fromH / 2;
   const toCy = toNode.y + toH / 2;
-  const isVertical = Math.abs(toCy - fromCy) > Math.abs(toCx - fromCx) * 0.5;
+
+  // Use bottom→top ports for hierarchical (vertical) connections
+  // Use right→left ports for same-layer (horizontal) connections
+  const dy = Math.abs(toCy - fromCy);
+  const dx = Math.abs(toCx - fromCx);
+  const isVertical = dy > dx * 0.4;
+
+  let x1: number, y1: number, x2: number, y2: number;
 
   if (isVertical) {
-    // Vertical: exit from bottom of source, enter top of target
-    const goingDown = toCy > fromCy;
-    const x1 = fromCx;
-    const y1 = goingDown ? fromNode.y + fromH : fromNode.y;
-    const x2 = toCx;
-    const y2 = goingDown ? toNode.y : toNode.y + toH;
+    // Exit from bottom of source, enter top of target
+    x1 = fromCx;
+    y1 = toCy > fromCy ? fromNode.y + fromH : fromNode.y;
+    x2 = toCx;
+    y2 = toCy > fromCy ? toNode.y : toNode.y + toH;
 
-    // Midpoint Y between the two layers
-    const midY = (y1 + y2) / 2;
-
-    if (Math.abs(x1 - x2) < 2) {
-      // Straight vertical line
-      return `M${x1},${y1} L${x2},${y2}`;
-    }
-    // L-shaped: down to mid, across, then down to target
-    return `M${x1},${y1} L${x1},${midY} L${x2},${midY} L${x2},${y2}`;
+    // Smooth cubic bezier — control points pull the curve vertically
+    // so it never cuts through the horizontal node layers
+    const gap = Math.abs(y2 - y1);
+    const cpY = Math.max(gap * 0.5, 40);
+    const dir = y2 > y1 ? 1 : -1;
+    return `M${x1},${y1} C${x1},${y1 + cpY * dir} ${x2},${y2 - cpY * dir} ${x2},${y2}`;
   } else {
-    // Horizontal: exit from right of source, enter left of target
-    const goingRight = toCx > fromCx;
-    const x1 = goingRight ? fromNode.x + NODE_W : fromNode.x;
-    const y1 = fromCy;
-    const x2 = goingRight ? toNode.x : toNode.x + NODE_W;
-    const y2 = toCy;
-
-    const midX = (x1 + x2) / 2;
-
-    if (Math.abs(y1 - y2) < 2) {
-      // Straight horizontal line
-      return `M${x1},${y1} L${x2},${y2}`;
+    // Exit from right/left side
+    if (toCx > fromCx) {
+      x1 = fromNode.x + NODE_W;
+      y1 = fromCy;
+      x2 = toNode.x;
+      y2 = toCy;
+    } else {
+      x1 = fromNode.x;
+      y1 = fromCy;
+      x2 = toNode.x + NODE_W;
+      y2 = toCy;
     }
-    // L-shaped: right to mid, down/up, then right to target
-    return `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`;
+
+    const gap = Math.abs(x2 - x1);
+    const cpX = Math.min(gap * 0.4, 80);
+    return `M${x1},${y1} C${x1 + cpX},${y1} ${x2 - cpX},${y2} ${x2},${y2}`;
   }
 }
 
