@@ -251,9 +251,9 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     description: "Temperature, humidity, CO₂ sensors",
     icon: "🌡",
     widgets: [
-      { widget_type: "gauge",      label: "Temperature", variable_key: null, unit: "°C", min_value: -20, max_value: 60, grid_span_w: 4, grid_span_h: 3 },
-      { widget_type: "gauge",      label: "Humidity",    variable_key: null, unit: "%",  min_value: 0,   max_value: 100, grid_span_w: 4, grid_span_h: 3 },
-      { widget_type: "line_chart", label: "History",     variable_key: null, grid_span_w: 8, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "Temperature", variable_key: null, unit: "°C", min_value: -20, max_value: 60, grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "Humidity",    variable_key: null, unit: "%",  min_value: 0,   max_value: 100, grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "line_chart", label: "History",     variable_key: null, grid_span_w: 8, grid_span_h: 5 },
     ],
   },
   {
@@ -262,10 +262,10 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     description: "CPU, memory, disk, uptime",
     icon: "🖥",
     widgets: [
-      { widget_type: "gauge",      label: "CPU",    variable_key: null, unit: "%",  min_value: 0, max_value: 100, grid_span_w: 3, grid_span_h: 3 },
-      { widget_type: "gauge",      label: "Memory", variable_key: null, unit: "%",  min_value: 0, max_value: 100, grid_span_w: 3, grid_span_h: 3 },
-      { widget_type: "sparkline",  label: "Disk",   variable_key: null, unit: "GB", grid_span_w: 3, grid_span_h: 3 },
-      { widget_type: "log",        label: "Log",    variable_key: null, grid_span_w: 9, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "CPU",    variable_key: null, unit: "%",  min_value: 0, max_value: 100, grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "Memory", variable_key: null, unit: "%",  min_value: 0, max_value: 100, grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "sparkline",  label: "Disk",   variable_key: null, unit: "GB", grid_span_w: 4, grid_span_h: 5 },
+      { widget_type: "log",        label: "Log",    variable_key: null, grid_span_w: 8, grid_span_h: 5 },
     ],
   },
   {
@@ -274,9 +274,9 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     description: "GPS positions and device status",
     icon: "🗺",
     widgets: [
-      { widget_type: "map",        label: "Location",  variable_key: null, grid_span_w: 8, grid_span_h: 6 },
-      { widget_type: "bool",       label: "Online",    variable_key: null, grid_span_w: 4, grid_span_h: 3 },
-      { widget_type: "sparkline",  label: "Speed",     variable_key: null, unit: "km/h", grid_span_w: 4, grid_span_h: 3 },
+      { widget_type: "map",        label: "Location",  variable_key: null, grid_span_w: 8, grid_span_h: 7 },
+      { widget_type: "bool",       label: "Online",    variable_key: null, grid_span_w: 4, grid_span_h: 2 },
+      { widget_type: "sparkline",  label: "Speed",     variable_key: null, unit: "km/h", grid_span_w: 4, grid_span_h: 5 },
     ],
   },
   {
@@ -285,9 +285,9 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     description: "Power consumption, solar, battery",
     icon: "⚡",
     widgets: [
-      { widget_type: "gauge",      label: "Power",   variable_key: null, unit: "W",  min_value: 0, max_value: 5000, grid_span_w: 4, grid_span_h: 3 },
-      { widget_type: "gauge",      label: "Battery", variable_key: null, unit: "%",  min_value: 0, max_value: 100,  grid_span_w: 4, grid_span_h: 3 },
-      { widget_type: "line_chart", label: "24h",     variable_key: null, grid_span_w: 12, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "Power",   variable_key: null, unit: "W",  min_value: 0, max_value: 5000, grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "gauge",      label: "Battery", variable_key: null, unit: "%",  min_value: 0, max_value: 100,  grid_span_w: 4, grid_span_h: 4 },
+      { widget_type: "line_chart", label: "24h",     variable_key: null, grid_span_w: 12, grid_span_h: 5 },
     ],
   },
 ];

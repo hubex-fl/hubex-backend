@@ -101,24 +101,65 @@ export interface TourDefinition {
 /* ---------- Helpers ---------- */
 
 /**
- * Calculates a readable duration for a step based on its text length.
- * Roughly 50 ms per character, clamped between 3 s and 8 s.
+ * Calculates a comfortable reading duration for a step.
+ *
+ * Formula: 4s base (orient to spotlight) + 300ms per word.
+ * Average reading speed is ~250ms/word; we add 20% buffer.
+ * Clamped between 8s minimum and 45s maximum.
  */
 export function calcStepDuration(step: TourStep): number {
   if (step.duration != null) return step.duration;
-  const chars = step.title.length + step.text.length;
-  return Math.max(3000, Math.min(8000, chars * 50));
+  const fullText = `${step.title} ${step.text}`;
+  const wordCount = fullText.trim().split(/\s+/).length;
+  return Math.max(8000, Math.min(45000, 4000 + wordCount * 300));
 }
 
 /**
  * Resolves the bounding rect of a target element on screen.
  * Returns `null` when the element is not (yet) in the DOM.
+ *
+ * For sidebar nav items (`[data-tour="nav-*"]`), this function will:
+ * 1. Expand any collapsed sidebar group containing the item
+ * 2. Scroll the sidebar to make the item visible
+ * 3. Wait briefly for the scroll animation before measuring
  */
-export function resolveTargetRect(selector: string | undefined): DOMRect | null {
+export async function resolveTargetRect(selector: string | undefined): Promise<DOMRect | null> {
   if (!selector) return null;
-  const el = document.querySelector(selector);
-  if (!el) return null;
-  return el.getBoundingClientRect();
+
+  let el = document.querySelector(selector);
+
+  // If targeting a sidebar nav item, ensure it's visible
+  if (selector.includes('data-tour') && selector.includes('nav-')) {
+    // Find the sidebar scroll container
+    const sidebar = document.querySelector('aside, nav, .sidebar, [class*="sidebar"]');
+
+    if (el) {
+      // Scroll the element into view within the sidebar
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Wait for scroll animation
+      await new Promise(r => setTimeout(r, 400));
+    } else if (sidebar) {
+      // Element might be hidden inside a collapsed group — try scrolling sidebar down
+      sidebar.scrollTop = sidebar.scrollHeight;
+      await new Promise(r => setTimeout(r, 300));
+      el = document.querySelector(selector);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  } else if (el) {
+    // Non-sidebar elements: also scroll into view for below-the-fold items
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (!el) {
+    // Final attempt after all scrolling
+    el = document.querySelector(selector);
+  }
+
+  return el?.getBoundingClientRect() ?? null;
 }
 
 /**

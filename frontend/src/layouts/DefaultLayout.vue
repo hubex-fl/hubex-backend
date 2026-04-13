@@ -121,6 +121,10 @@ async function switchOrg(orgId: number) {
 onMounted(async () => {
   if (hasToken()) {
     try {
+      // Sync locale from user preferences (before UI renders text)
+      const { syncLocaleFromUser } = await import("../i18n");
+      await syncLocaleFromUser();
+
       const { apiFetch } = await import("../lib/api");
       const me = await apiFetch<{ email: string; display_name?: string | null }>("/api/v1/users/me");
       userDisplayName.value = me.display_name || null;

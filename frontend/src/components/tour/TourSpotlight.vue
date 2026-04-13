@@ -16,8 +16,15 @@ const PADDING = 10; // px around element
 const vpW = ref(window.innerWidth);
 const vpH = ref(window.innerHeight);
 
-function updateRect() {
-  rect.value = resolveTargetRect(props.target);
+async function updateRect() {
+  rect.value = await resolveTargetRect(props.target);
+}
+
+/** Fast sync version for RAF loop (no scrolling, just measure) */
+function updateRectSync() {
+  if (!props.target) { rect.value = null; return; }
+  const el = document.querySelector(props.target);
+  rect.value = el?.getBoundingClientRect() ?? null;
 }
 
 function updateViewport() {
@@ -28,25 +35,16 @@ function updateViewport() {
 let _raf: number | null = null;
 let _resizeObserver: ResizeObserver | null = null;
 
-function startTracking() {
+async function startTracking() {
   stopTracking();
 
-  // Sprint 10: scroll the target element into view BEFORE measuring its rect.
-  // This fixes the bug where sidebar nav items below the fold were highlighted
-  // at the wrong position because they weren't visible in the viewport.
-  if (props.target) {
-    const el = document.querySelector(props.target) as HTMLElement | null;
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-    }
-  }
-
-  updateRect();
+  // Initial resolve: scrolls sidebar, waits for visibility
+  await updateRect();
   updateViewport();
 
-  // Continuously track position (handles scroll / layout shifts)
+  // After initial positioning, use fast sync tracking for smooth animation
   const tick = () => {
-    updateRect();
+    updateRectSync();
     _raf = requestAnimationFrame(tick);
   };
   _raf = requestAnimationFrame(tick);
@@ -55,7 +53,7 @@ function startTracking() {
   if (props.target) {
     const el = document.querySelector(props.target);
     if (el) {
-      _resizeObserver = new ResizeObserver(updateRect);
+      _resizeObserver = new ResizeObserver(() => updateRectSync());
       _resizeObserver.observe(el);
     }
   }

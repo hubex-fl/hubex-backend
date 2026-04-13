@@ -35,8 +35,8 @@ const visible = ref(false);
 
 const GAP = 16; // px between target and tooltip
 
-function reposition() {
-  const targetRect = resolveTargetRect(props.step.target);
+async function reposition() {
+  const targetRect = await resolveTargetRect(props.step.target);
   const el = tooltipRef.value;
   if (!el) return;
 

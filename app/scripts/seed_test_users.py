@@ -42,6 +42,7 @@ TESTERS = [
         "display_name": "Toby",
         "org_name": "Community Systems",
         "org_slug": "community-systems",
+        "locale": "en",
     },
     {
         "email": "mmund@smail.uni-koeln.de",
@@ -49,6 +50,7 @@ TESTERS = [
         "display_name": "Martin",
         "org_name": "ChaosUhren24.de",
         "org_slug": "chaosuhren24",
+        "locale": "de",
     },
     {
         "email": "info@dema-abrechnungsservice.de",
@@ -56,6 +58,7 @@ TESTERS = [
         "display_name": "Leo",
         "org_name": "DeMa Abrechnungsservice",
         "org_slug": "dema-abrechnungsservice",
+        "locale": "de",
     },
     {
         "email": "praegustator@hubextest.tech",
@@ -63,6 +66,7 @@ TESTERS = [
         "display_name": "praegustator",
         "org_name": "QA Internal",
         "org_slug": "qa-internal",
+        "locale": "de",
     },
 ]
 
@@ -147,7 +151,7 @@ async def ensure_org(db, *, name: str, slug: str) -> Organization:
     return org
 
 
-async def ensure_user(db, *, email: str, password: str, display_name: str | None = None) -> tuple[User, str]:
+async def ensure_user(db, *, email: str, password: str, display_name: str | None = None, locale: str = "de") -> tuple[User, str]:
     """Get or create a user. Returns (user, status)."""
     res = await db.execute(select(User).where(User.email == email))
     user = res.scalar_one_or_none()
@@ -160,6 +164,7 @@ async def ensure_user(db, *, email: str, password: str, display_name: str | None
             password_hash=hash_password(password),
             caps=tester_caps,
             display_name=display_name,
+            preferences={"locale": locale},
         )
         db.add(user)
         await db.flush()
@@ -170,6 +175,11 @@ async def ensure_user(db, *, email: str, password: str, display_name: str | None
         user.caps = tester_caps
         if display_name and not user.display_name:
             user.display_name = display_name
+        # Ensure locale preference is set
+        prefs = user.preferences or {}
+        if "locale" not in prefs:
+            prefs["locale"] = locale
+            user.preferences = prefs
         return user, "updated"
 
 
@@ -281,6 +291,7 @@ async def main():
                 email=spec["email"],
                 password=spec["password"],
                 display_name=spec["display_name"],
+                locale=spec.get("locale", "de"),
             )
             print(f"  User: {status} (id={user.id})")
 
@@ -319,6 +330,70 @@ async def main():
             await db.commit()
         else:
             print("  Not found, skipping.")
+
+        # ── Cleanup orphaned variable definitions ─────────────────
+        print("\n--- Cleaning up orphaned variable definitions ---")
+        from app.db.models.variables import VariableDefinition
+        from sqlalchemy import delete
+
+        # Keys that simulators actually produce
+        VALID_KEYS = {
+            "temperature", "humidity", "pressure",
+            "wind_speed", "rain_mm",
+            "motion", "luminance",
+            "demo.gps", "demo.gps.lat", "demo.gps.lng",
+            "feels_like",
+        }
+        # Old demo.* keys that should be removed
+        ORPHAN_KEYS = {
+            "demo.temperature", "demo.humidity", "demo.pressure",
+            "demo.online", "demo.log", "demo.target_temp",
+            "demo.heater_on", "brightness", "pressed",
+        }
+        for key in ORPHAN_KEYS:
+            result = await db.execute(
+                delete(VariableDefinition).where(VariableDefinition.key == key)
+            )
+            if result.rowcount:
+                print(f"  Removed orphaned definition: {key}")
+        await db.commit()
+
+        # Ensure valid definitions have correct display_hints
+        for key in VALID_KEYS:
+            res = await db.execute(
+                select(VariableDefinition).where(VariableDefinition.key == key)
+            )
+            vdef = res.scalar_one_or_none()
+            if vdef and not vdef.display_hint:
+                # Set display hints for auto-discovered variables
+                hints = {
+                    "temperature": "line_chart", "humidity": "gauge", "pressure": "sparkline",
+                    "wind_speed": "line_chart", "rain_mm": "sparkline",
+                    "motion": "toggle", "luminance": "gauge",
+                    "demo.gps": "map", "demo.gps.lat": "sparkline", "demo.gps.lng": "sparkline",
+                    "feels_like": "line_chart",
+                }
+                units = {
+                    "temperature": "\u00b0C", "humidity": "%", "pressure": "hPa",
+                    "wind_speed": "km/h", "rain_mm": "mm", "luminance": "lux",
+                    "demo.gps.lat": "\u00b0", "demo.gps.lng": "\u00b0", "feels_like": "\u00b0C",
+                }
+                categories = {
+                    "temperature": "sensor.temperature", "humidity": "sensor.humidity",
+                    "pressure": "sensor.pressure", "wind_speed": "sensor.speed",
+                    "rain_mm": "sensor.count", "motion": "sensor.boolean",
+                    "luminance": "sensor.brightness", "demo.gps": "gps",
+                    "demo.gps.lat": "gps", "demo.gps.lng": "gps",
+                    "feels_like": "sensor.temperature",
+                }
+                if key in hints:
+                    vdef.display_hint = hints[key]
+                if key in units and not vdef.unit:
+                    vdef.unit = units[key]
+                if key in categories and not vdef.category:
+                    vdef.category = categories[key]
+                print(f"  Updated definition: {key} → hint={vdef.display_hint}")
+        await db.commit()
 
     print("\n" + "=" * 60)
     print("Done! Tester accounts ready.")

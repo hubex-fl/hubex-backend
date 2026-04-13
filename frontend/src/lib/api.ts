@@ -84,6 +84,14 @@ export async function apiFetch<T>(
     window.location.href = "/login";
     throw new Error("unauthorized");
   }
+  if (res.status === 403) {
+    const text = await res.text();
+    // Provide user-friendly permission error instead of raw JSON
+    const i18nMsg = (typeof window !== "undefined" && document.documentElement.lang === "de")
+      ? "Du hast nicht die Berechtigung f\u00fcr diese Aktion."
+      : "You don't have permission for this action.";
+    throw new Error(i18nMsg);
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);

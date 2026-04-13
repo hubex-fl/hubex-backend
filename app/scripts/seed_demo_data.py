@@ -79,15 +79,27 @@ async def seed(db) -> dict:
         summary["devices"] += 1
 
     # ── 2. Demo Variable Definitions ───────────────────────────────────────
+    # These MUST match the variable_keys that the simulators actually produce.
+    # Simulator keys: temperature, humidity, pressure, wind_speed, rain_mm,
+    #                 motion, luminance, demo.gps (→ auto-splits to demo.gps.lat/lng)
     demo_vars = [
-        {"key": "demo.temperature", "scope": "device", "value_type": "float", "description": "Temperature reading (Demo)", "unit": "C", "display_hint": "line_chart", "category": "sensor.temperature"},
-        {"key": "demo.humidity", "scope": "device", "value_type": "float", "description": "Humidity (Demo)", "unit": "%", "display_hint": "gauge", "category": "sensor.humidity"},
-        {"key": "demo.pressure", "scope": "device", "value_type": "float", "description": "Atmospheric pressure (Demo)", "unit": "hPa", "display_hint": "sparkline", "category": "sensor.pressure"},
-        {"key": "demo.online", "scope": "device", "value_type": "bool", "description": "Online status (Demo)", "display_hint": "toggle", "category": "status"},
-        {"key": "demo.gps", "scope": "device", "value_type": "json", "description": "GPS location (Demo)", "display_hint": "map", "category": "gps"},
-        {"key": "demo.log", "scope": "global", "value_type": "string", "description": "System log (Demo)", "display_hint": "log", "category": "system"},
-        {"key": "demo.target_temp", "scope": "device", "value_type": "float", "description": "Target temperature (Demo)", "unit": "C", "display_hint": "control_slider", "category": "config"},
-        {"key": "demo.heater_on", "scope": "device", "value_type": "bool", "description": "Heater enabled (Demo)", "display_hint": "control_toggle", "category": "actuator"},
+        # Temperature Sensor + Weather Station
+        {"key": "temperature", "scope": "device", "value_type": "float", "description": "Temperature reading", "unit": "\u00b0C", "display_hint": "line_chart", "category": "sensor.temperature"},
+        {"key": "humidity", "scope": "device", "value_type": "float", "description": "Relative humidity", "unit": "%", "display_hint": "gauge", "category": "sensor.humidity"},
+        {"key": "pressure", "scope": "device", "value_type": "float", "description": "Atmospheric pressure", "unit": "hPa", "display_hint": "sparkline", "category": "sensor.pressure"},
+        # Weather Station only
+        {"key": "wind_speed", "scope": "device", "value_type": "float", "description": "Wind speed", "unit": "km/h", "display_hint": "line_chart", "category": "sensor.speed"},
+        {"key": "rain_mm", "scope": "device", "value_type": "float", "description": "Rainfall accumulation", "unit": "mm", "display_hint": "sparkline", "category": "sensor.count"},
+        # Motion Sensor
+        {"key": "motion", "scope": "device", "value_type": "bool", "description": "PIR motion detected", "display_hint": "toggle", "category": "sensor.boolean"},
+        {"key": "luminance", "scope": "device", "value_type": "float", "description": "Ambient light level", "unit": "lux", "display_hint": "gauge", "category": "sensor.brightness"},
+        # GPS (the simulator writes demo.gps as JSON, telemetry bridge auto-splits)
+        {"key": "demo.gps", "scope": "device", "value_type": "json", "description": "GPS location", "display_hint": "map", "category": "gps"},
+        {"key": "demo.gps.lat", "scope": "device", "value_type": "float", "description": "GPS latitude", "unit": "\u00b0", "display_hint": "sparkline", "category": "gps"},
+        {"key": "demo.gps.lng", "scope": "device", "value_type": "float", "description": "GPS longitude", "unit": "\u00b0", "display_hint": "sparkline", "category": "gps"},
+        # Computed variable example: "feels like" temperature
+        {"key": "feels_like", "scope": "device", "value_type": "float", "description": "Feels-like temperature (computed)", "unit": "\u00b0C", "display_hint": "line_chart", "category": "sensor.temperature",
+         "formula": "temperature + 0.33 * humidity / 100 * 6 - 4", "compute_trigger": "reactive"},
     ]
 
     for dv in demo_vars:
@@ -104,34 +116,35 @@ async def seed(db) -> dict:
             unit=dv.get("unit"),
             display_hint=dv.get("display_hint"),
             category=dv.get("category"),
+            formula=dv.get("formula"),
+            compute_trigger=dv.get("compute_trigger"),
         )
         db.add(vdef)
         summary["variables"] += 1
 
-    # ── 2b. Demo Variable VALUES — sensible per device type ──────────────
-    # Device 0 = Temp Sensor (hardware): temperature, humidity, heater, target_temp, online
-    # Device 1 = Weather API (service): temperature, humidity, pressure
-    # Device 2 = MQTT Bridge (bridge): online, gps
+    # ── 2b. Demo Variable VALUES — matching simulator output keys ────────
+    # Device 0 = Temp Sensor: temperature, humidity, pressure
+    # Device 1 = Weather API: temperature, humidity, wind_speed, rain_mm
+    # Device 2 = MQTT Bridge: motion, luminance, demo.gps
     device_var_map = [
-        # Temp Sensor — has physical sensors + heater control
+        # Temp Sensor
         {
-            "demo.temperature": 23.5,
-            "demo.humidity": 65.0,
-            "demo.target_temp": 22.0,
-            "demo.heater_on": False,
-            "demo.online": True,
+            "temperature": 23.5,
+            "humidity": 65.0,
+            "pressure": 1013.2,
         },
-        # Weather API — reads weather data from external API
+        # Weather Station
         {
-            "demo.temperature": 18.2,
-            "demo.humidity": 72.3,
-            "demo.pressure": 1015.8,
+            "temperature": 18.2,
+            "humidity": 72.3,
+            "wind_speed": 12.5,
+            "rain_mm": 2.4,
         },
-        # MQTT Bridge — connects via MQTT, has GPS for location tracking
+        # Motion Sensor (GPS + PIR)
         {
-            "demo.online": True,
+            "motion": False,
+            "luminance": 450.0,
             "demo.gps": {"lat": 50.110, "lng": 8.682},
-            "demo.pressure": 1010.5,
         },
     ]
 

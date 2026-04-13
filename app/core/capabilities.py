@@ -585,6 +585,7 @@ _TESTER_CAPS: list[str] = _VIEWER_CAPS + [
     "mcp.execute", "notifications.write",
     "core.auth.login",
     "cms.write",      # can draft CMS pages
+    "modules.write",  # can activate/deactivate plugins
     # NOTE: cms.publish deliberately EXCLUDED — testers cannot make
     # pages live on the public web
 ]

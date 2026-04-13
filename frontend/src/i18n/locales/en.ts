@@ -2885,118 +2885,81 @@ export default {
       name: 'Getting Started',
       description: 'Quick tour through the main features',
       steps: {
+        // Phase A: Orientation
         welcome: {
-          title: 'Welcome to HUBEX',
-          text: "Let's take a quick tour through your IoT hub. We'll show you the main features in under 2 minutes.",
+          title: 'Welcome to HubEx',
+          text: 'Welcome to HubEx \u2014 your universal IoT Device Hub. This tour walks you through the most important features.',
         },
-        dashboardKpis: {
-          title: 'System Overview',
-          text: 'Your dashboard shows key metrics at a glance — online devices, active alerts, recent events.',
+        sidebarGroups: {
+          title: 'The Sidebar',
+          text: 'Navigation is split into four groups: Main (Dashboard, Devices), Data (Variables, System Map), Monitoring (Alerts, Automations), and Tools (Sandbox, Plugins). This helps you find things fast.',
         },
-        navDevices: {
-          title: 'Navigate to Devices',
-          text: "Click 'Devices' to see all your connected devices.",
-        },
-        devices: {
-          title: 'Your Devices',
-          text: 'This is where all your connected devices live. Hardware sensors, API services, bridges, and software agents.',
-        },
-        addDevice: {
-          title: 'Add a Device',
-          text: 'Click here to connect a new device. The wizard guides you through hardware pairing, API configuration, or bridge setup.',
-        },
-        navVariables: {
-          title: 'Navigate to Variables',
-          text: "Click 'Variables' to explore your data streams.",
-        },
-        variables: {
-          title: 'Variables & Data',
-          text: 'Variables are your data streams. Every sensor reading, status value, and configuration is stored here with full history.',
-        },
-        navAutomations: {
-          title: 'Navigate to Automations',
-          text: "Click 'Automations' to manage your if-then rules.",
-        },
-        automations: {
-          title: 'Automations',
-          text: 'Create if-then rules: When temperature exceeds 30\u00B0C \u2192 send alert, call webhook, or set another variable.',
-        },
-        navSystemMap: {
-          title: 'Navigate to System Map',
-          text: "Click 'System Map' to see how everything connects.",
-        },
-        systemMap: {
-          title: 'System Map',
-          text: 'See how everything connects. Devices \u2192 Variables \u2192 Automations \u2192 Alerts — all visualized in one view.',
-        },
-        navDashboards: {
-          title: 'Navigate to Dashboards',
-          text: "Click 'Dashboards' to see your custom views.",
-        },
-        dashboards: {
-          title: 'Custom Dashboards',
-          text: 'Build your own dashboards with widgets — charts, gauges, toggles, even custom HTML. Share them publicly or embed in other sites.',
-        },
-        navSettings: {
-          title: 'Navigate to Settings',
-          text: "Click 'Settings' to configure your account.",
-        },
-        settings: {
-          title: 'Settings',
-          text: 'Configure your account, organization, API keys, language, and branding.',
-        },
-        // Sprint 10 E1: extended steps
-        navAlerts: {
-          title: 'Navigate to Alerts',
-          text: "Click 'Alerts' to see rule-based monitoring.",
-        },
-        alerts: {
-          title: 'Alerts & Rules',
-          text: 'Create alert rules that watch your variables and fire events when conditions are met. Set severity levels and get notified.',
-        },
-        navEntities: {
-          title: 'Navigate to Entities',
-          text: "Click 'Entities' to see logical groups.",
-        },
-        entities: {
-          title: 'Entities & Groups',
-          text: 'Bundle related devices into rooms, buildings, zones, or custom groups. Build hierarchies and scope dashboards per entity.',
-        },
-        navSandbox: {
-          title: 'Navigate to Sandbox',
-          text: "Click 'Sandbox' to create device simulators.",
-        },
-        sandbox: {
-          title: 'Sandbox',
-          text: 'Create virtual devices that simulate real sensor data. Perfect for testing automations, dashboards, and alerts without real hardware.',
-        },
-        navPlugins: {
-          title: 'Plugins & Marketplace',
-          text: "Click 'Plugins' in the sidebar to browse and install extensions like Frigate, Grafana, Ollama, or n8n.",
-        },
-        navCms: {
-          title: 'CMS & Content Pages',
-          text: "The 'CMS' section lets you build custom pages with HTML, template variables, and device data. Publish them publicly or keep as drafts.",
-        },
-        infoIcons: {
-          title: 'Info Icons & More Tours',
-          text: "Look for the small info icons (ℹ) next to page titles — they explain what each page does. Many also offer a 'Take a guided tour' button for a deeper walkthrough. You can also click the graduation cap icon in the top bar to access all available tours anytime.",
+        search: {
+          title: 'Quick Search',
+          text: 'Find devices, variables, pages \u2014 everything is reachable through the search. Just start typing.',
         },
         themeToggle: {
           title: 'Dark / Light Mode',
-          text: 'Click the sun/moon icon in the top bar to switch between dark and light themes. Your preference is saved.',
+          text: 'Switch between dark and light mode. Your preference is saved.',
+        },
+        language: {
+          title: 'Language & Profile',
+          text: 'Language and profile settings are in the account menu at the top right.',
+        },
+        // Phase B: Your data is already here
+        dashboardKpis: {
+          title: 'Dashboard Overview',
+          text: 'Your dashboard shows live overviews: devices online, active alerts, events.',
+        },
+        devices: {
+          title: 'Your Devices',
+          text: 'Your devices \u2014 three simulators with live data are already set up.',
+        },
+        variables: {
+          title: 'Variables',
+          text: 'Variables are the data points of your devices: temperature, GPS, motion, and more.',
+        },
+        navSystemMap: {
+          title: 'System Map',
+          text: 'The System Map shows how devices, variables, and automations are connected.',
+        },
+        // Phase C: What you can do
+        dashboards: {
+          title: 'Dashboards',
+          text: 'Create dashboards with widgets \u2014 charts, gauges, GPS maps, live values.',
+        },
+        automations: {
+          title: 'Automations',
+          text: 'Automations: When temperature exceeds 30\u00b0C \u2192 alert. When device goes offline \u2192 notification.',
+        },
+        alerts: {
+          title: 'Alerts',
+          text: 'Alerts monitor thresholds and notify you in real time.',
+        },
+        sandbox: {
+          title: 'Sandbox',
+          text: 'The Sandbox: This is where your simulators run. You can control, pause, and customize them.',
+        },
+        entities: {
+          title: 'Entities',
+          text: 'Entities organize your devices into rooms, buildings, and zones.',
+        },
+        // Phase D: Help & Feedback
+        infoIcons: {
+          title: 'Info Icons',
+          text: 'On every page you will find \u2139\ufe0f info icons. Click them for an explanation of the respective feature.',
         },
         tourLauncher: {
           title: 'Tour Guide',
-          text: 'Click the graduation cap icon to access all available guided tours anytime. Each tour focuses on a different feature area.',
+          text: 'Launch a guided tour for any page at any time using the Tour Launcher.',
         },
         feedback: {
           title: 'Share Your Feedback',
-          text: 'Found a bug, missing a feature, or have a suggestion? Click this button anytime to send us feedback. Your input helps us improve HubEx — every report counts!',
+          text: 'This is a test version. Use the feedback button for bugs, ideas, and questions \u2014 your feedback helps us!',
         },
         done: {
-          title: "You're ready!",
-          text: "That's a full overview of HubEx! Explore at your own pace. Click the tour button anytime to replay or discover advanced guides like Data Path Trace and Alert Investigation.",
+          title: "You're all set!",
+          text: "You're all set! Explore the platform, use the info icons, and give us feedback. Have fun with HubEx!",
         },
       },
     },

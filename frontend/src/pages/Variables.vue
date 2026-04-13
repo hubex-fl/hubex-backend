@@ -203,6 +203,15 @@ function valueDisplay(def: VariableDefinition, val?: VariableValue): string {
   if (def.is_secret && !revealKeys.value.has(def.key)) return "••••••";
   if (!val || val.value === null || val.value === undefined) return "–";
   if (typeof val.value === "string") return val.value.slice(0, 80);
+  // Format GPS JSON nicely
+  if (def.value_type === "json" && typeof val.value === "object" && val.value) {
+    const v = val.value as Record<string, unknown>;
+    if ("lat" in v && "lng" in v) {
+      return `${Number(v.lat).toFixed(4)}°N, ${Number(v.lng).toFixed(4)}°E`;
+    }
+  }
+  if (typeof val.value === "boolean") return val.value ? "true" : "false";
+  if (typeof val.value === "number") return String(Math.round(val.value * 10000) / 10000);
   return JSON.stringify(val.value).slice(0, 80);
 }
 

@@ -256,12 +256,15 @@
         v-for="widget in sortedWidgets"
         :key="widget.id"
         class="db-widget-cell"
-        :class="{
-          'widget-edit-mode': editMode,
-          'widget-drag-over': dragOverWidgetId === widget.id,
-          'widget-transparent': widget.display_config?.transparent,
-          'widget-free': freeLayout,
-        }"
+        :class="[
+          widgetTypeClass(widget),
+          {
+            'widget-edit-mode': editMode,
+            'widget-drag-over': dragOverWidgetId === widget.id,
+            'widget-transparent': widget.display_config?.transparent,
+            'widget-free': freeLayout,
+          },
+        ]"
         :style="freeLayout ? {
           position: 'absolute',
           left: (widget.display_config?.free_x ?? (widget.grid_col - 1) * 100) + 'px',
@@ -811,7 +814,7 @@ function defaultNewWidget() {
     min_value: null as number | null,
     max_value: null as number | null,
     grid_span_w: 4,
-    grid_span_h: 3,
+    grid_span_h: 4,
     html_template: "",
     // Appearance
     transparent: false,
@@ -1250,7 +1253,44 @@ function onGridDragOver(e: DragEvent) {
 }
 
 function onGridDrop(e: DragEvent) {
-  // Grid-level drop only if not handled by a widget
+  // Grid-level drop: move widget to the target grid cell
+  if (!editMode.value || !dashboard.value || resizeWidgetId.value) {
+    dragWidgetId.value = null;
+    dragOverWidgetId.value = null;
+    return;
+  }
+  const sourceId = dragWidgetId.value ?? Number(e.dataTransfer?.getData("text/plain"));
+  if (!sourceId) {
+    dragWidgetId.value = null;
+    dragOverWidgetId.value = null;
+    return;
+  }
+  const widget = dashboard.value.widgets.find(w => w.id === sourceId);
+  if (!widget) {
+    dragWidgetId.value = null;
+    dragOverWidgetId.value = null;
+    return;
+  }
+  // Calculate target grid position from mouse coords relative to grid
+  const grid = gridRef.value;
+  if (grid && !freeLayout.value) {
+    const rect = grid.getBoundingClientRect();
+    const colWidth = grid.clientWidth / 12;
+    const rowHeight = 60;
+    const relX = e.clientX - rect.left + grid.scrollLeft;
+    const relY = e.clientY - rect.top + grid.scrollTop;
+    let targetCol = Math.max(1, Math.min(12, Math.floor(relX / colWidth) + 1));
+    let targetRow = Math.max(1, Math.floor(relY / rowHeight) + 1);
+    // Clamp so widget stays within grid bounds
+    targetCol = Math.min(targetCol, 13 - widget.grid_span_w);
+    // Only move if the new position is different and doesn't overlap
+    if ((targetCol !== widget.grid_col || targetRow !== widget.grid_row) &&
+        !wouldOverlap(widget.id, targetCol, targetRow, widget.grid_span_w, widget.grid_span_h)) {
+      widget.grid_col = targetCol;
+      widget.grid_row = targetRow;
+      saveLayout();
+    }
+  }
   dragWidgetId.value = null;
   dragOverWidgetId.value = null;
 }
@@ -1278,19 +1318,30 @@ function wouldOverlap(widgetId: number, col: number, row: number, spanW: number,
 }
 
 /**
- * Find the maximum width/height the widget can grow to before hitting another widget.
+ * Find the best width/height the widget can be set to without hitting another widget.
+ * Supports both growing and shrinking (desiredW/H can be smaller than current).
  */
 function clampToNoOverlap(widget: DashboardWidget, desiredW: number, desiredH: number): { w: number; h: number } {
-  let bestW = widget.grid_span_w;
-  let bestH = widget.grid_span_h;
-  // Try expanding width first, then height
-  for (let w = widget.grid_span_w; w <= desiredW; w++) {
-    if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, w, bestH)) break;
-    bestW = w;
+  // If shrinking, no overlap check needed — smaller is always safe
+  if (desiredW <= widget.grid_span_w && desiredH <= widget.grid_span_h) {
+    return { w: desiredW, h: desiredH };
   }
-  for (let h = widget.grid_span_h; h <= desiredH; h++) {
-    if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, bestW, h)) break;
-    bestH = h;
+  // Mixed: try the desired size, fall back to current for each axis
+  let bestW = desiredW;
+  let bestH = desiredH;
+  if (desiredW > widget.grid_span_w) {
+    bestW = widget.grid_span_w;
+    for (let w = widget.grid_span_w; w <= desiredW; w++) {
+      if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, w, bestH)) break;
+      bestW = w;
+    }
+  }
+  if (desiredH > widget.grid_span_h) {
+    bestH = widget.grid_span_h;
+    for (let h = widget.grid_span_h; h <= desiredH; h++) {
+      if (wouldOverlap(widget.id, widget.grid_col, widget.grid_row, bestW, h)) break;
+      bestH = h;
+    }
   }
   return { w: bestW, h: bestH };
 }
@@ -1331,13 +1382,13 @@ function onResizeDrag(e: DragEvent, widget: DashboardWidget) {
     resizeStartX.value = e.clientX;
     resizeStartY.value = e.clientY;
   } else {
-    // Grid mode: resize in grid units
+    // Grid mode: resize in grid units (supports both growing AND shrinking)
     const grid = gridRef.value;
     if (!grid) return;
     const colWidth = grid.clientWidth / 12;
     const rowHeight = 60;
-    let newW = Math.max(2, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
-    let newH = Math.max(2, Math.min(6, resizeStartH.value + Math.round(dy / rowHeight)));
+    let newW = Math.max(1, Math.min(12, resizeStartW.value + Math.round(dx / colWidth)));
+    let newH = Math.max(1, Math.min(8, resizeStartH.value + Math.round(dy / rowHeight)));
     newW = Math.min(newW, 13 - widget.grid_col);
     const clamped = clampToNoOverlap(widget, newW, newH);
     widget.grid_span_w = clamped.w;
@@ -1406,6 +1457,30 @@ async function loadWidgetHistory(widget: DashboardWidget) {
     if (pts.length) {
       currentValues.value[widget.id] = pts[pts.length - 1].raw;
     }
+
+    // For map widgets with no data: try to load lat/lng sub-keys
+    // (telemetry bridge flattens JSON {lat,lng} into separate float keys)
+    if (widget.widget_type === "map" && !pts.length) {
+      try {
+        const [latResp, lngResp] = await Promise.all([
+          getVariableHistory({
+            key: widget.variable_key + ".lat", scope,
+            deviceUid: widget.device_uid || null,
+            from: rangeToFrom(currentRange.value), limit: 1,
+          }),
+          getVariableHistory({
+            key: widget.variable_key + ".lng", scope,
+            deviceUid: widget.device_uid || null,
+            from: rangeToFrom(currentRange.value), limit: 1,
+          }),
+        ]);
+        if (latResp.points.length && lngResp.points.length) {
+          const lat = latResp.points[latResp.points.length - 1].v;
+          const lng = lngResp.points[lngResp.points.length - 1].v;
+          currentValues.value[widget.id] = { lat: Number(lat), lng: Number(lng) };
+        }
+      } catch { /* lat/lng sub-keys don't exist — that's fine */ }
+    }
   } catch {
     historyData.value[widget.id] = [];
   } finally {
@@ -1422,7 +1497,38 @@ function widgetPoints(widget: DashboardWidget): VizDataPoint[] {
 }
 
 function widgetCurrentValue(widget: DashboardWidget): unknown {
-  return currentValues.value[widget.id] ?? null;
+  const val = currentValues.value[widget.id] ?? null;
+
+  // For map widgets: if the value is null but we have lat/lng sub-keys,
+  // reconstruct the GPS JSON from the companion widgets or variable values.
+  // The telemetry bridge flattens {lat, lng} into separate keys (demo.gps.lat/lng).
+  if (val === null && widget.widget_type === "map" && widget.variable_key) {
+    const latKey = widget.variable_key + ".lat";
+    const lngKey = widget.variable_key + ".lng";
+    // Search for lat/lng in other widget currentValues
+    const allWidgets = dashboard.value?.widgets ?? [];
+    const latWidget = allWidgets.find(w => w.variable_key === latKey);
+    const lngWidget = allWidgets.find(w => w.variable_key === lngKey);
+    const lat = latWidget ? currentValues.value[latWidget.id] : null;
+    const lng = lngWidget ? currentValues.value[lngWidget.id] : null;
+
+    if (lat != null && lng != null) {
+      return { lat: Number(lat), lng: Number(lng) };
+    }
+
+    // Fallback: try to load lat/lng directly from the variable history
+    // by checking if we have history data for the lat/lng keys
+    const latHist = latWidget ? historyData.value[latWidget.id] : null;
+    const lngHist = lngWidget ? historyData.value[lngWidget.id] : null;
+    if (latHist?.length && lngHist?.length) {
+      return {
+        lat: Number(latHist[latHist.length - 1].v),
+        lng: Number(lngHist[lngHist.length - 1].v),
+      };
+    }
+  }
+
+  return val;
 }
 
 function widgetValueType(widget: DashboardWidget): "string" | "int" | "float" | "bool" | "json" {
@@ -1435,7 +1541,24 @@ function widgetValueType(widget: DashboardWidget): "string" | "int" | "float" | 
 }
 
 function widgetBodyHeight(widget: DashboardWidget): number {
-  return Math.max(120, widget.grid_span_h * 40);
+  // Use grid_auto_rows (60px) as the base unit for height calculation
+  const baseHeight = widget.grid_span_h * 60 - 40; // subtract header/padding
+  const wt = widget.widget_type;
+  if (wt === 'map') return Math.max(300, baseHeight);
+  if (['line_chart', 'sparkline'].includes(wt)) return Math.max(220, baseHeight);
+  if (wt === 'gauge') return Math.max(160, baseHeight);
+  return Math.max(100, baseHeight);
+}
+
+function widgetTypeClass(widget: DashboardWidget): string {
+  const wt = widget.widget_type;
+  const viz = (widget.display_config as Record<string, string> | null)?.viz_type;
+  const effective = viz || wt;
+  if (effective === 'map') return 'widget-type-map';
+  if (['line_chart', 'sparkline'].includes(effective)) return 'widget-type-chart';
+  if (effective === 'gauge') return 'widget-type-gauge';
+  if (['bool', 'log', 'json', 'control_toggle', 'control_slider'].includes(effective)) return 'widget-type-status';
+  return 'widget-type-status';
 }
 
 function isWritable(widget: DashboardWidget): boolean {
@@ -1768,6 +1891,17 @@ function openAddWidget() {
   transition: box-shadow 0.15s, border-color 0.15s;
   border-radius: 6px;
 }
+/* Widget type minimum heights */
+.db-widget-cell.widget-type-map { min-height: 350px; }
+.db-widget-cell.widget-type-chart { min-height: 280px; }
+.db-widget-cell.widget-type-gauge { min-height: 200px; }
+.db-widget-cell.widget-type-status { min-height: 120px; }
+
+/* GPS Map z-index fix: Leaflet sets very high z-index internally */
+.db-widget-cell :deep(.leaflet-container) { z-index: 1 !important; }
+.db-widget-cell :deep(.leaflet-pane) { z-index: 1 !important; }
+.db-widget-cell :deep(.leaflet-top),
+.db-widget-cell :deep(.leaflet-bottom) { z-index: 2 !important; }
 /* Sprint 10: transparent mode — no background, border, or shadow */
 .widget-transparent {
   background: transparent !important;
@@ -1778,6 +1912,17 @@ function openAddWidget() {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+}
+/* Transparent mode: make inner buttons (time range, controls) transparent too */
+.widget-transparent :deep(.tr-btn),
+.widget-transparent :deep(.time-btns),
+.widget-transparent :deep(button:not(.we-btn)) {
+  background: transparent !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+.widget-transparent :deep(.tr-btn.active) {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.25) !important;
 }
 .db-widget-cell > .viz-widget,
 .db-widget-cell > * {
